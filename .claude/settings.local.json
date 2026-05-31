@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem \"C:\\\\xampp\\\\htdocs\\\\chair-app\" -Force)",
+      "Bash(Select-Object Name, Length, LastWriteTime)",
+      "PowerShell(php --version)",
+      "PowerShell(node --version)",
+      "PowerShell(npm --version)",
+      "PowerShell(composer --version 2>&1)",
+      "PowerShell($env:PATH -split \";\" | Where-Object { $_ -match \"php|composer|laravel\" })"
+    ]
+  }
+}
