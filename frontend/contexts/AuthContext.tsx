@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await api.post<AuthResponse>('/register', registerData);
     saveSession(data.token, data.user);
     setUser(data.user);
-    router.push(redirectPathForRole(data.user.role));
+    router.push(redirectPathForRole(data.user.role, true));
   }
 
   function updateUser(updates: Partial<AuthUser>): void {

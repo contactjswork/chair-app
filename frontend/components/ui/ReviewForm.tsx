@@ -44,7 +44,8 @@ export default function ReviewForm({ hairdresserId, hairdresserUserId, onSuccess
     setError('');
 
     try {
-      const res = await fetch(`http://localhost:8000/api/hairdressers/${hairdresserId}/reviews`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+      const res = await fetch(`${apiBase}/hairdressers/${hairdresserId}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class InteractionController extends Controller
@@ -53,6 +54,19 @@ class InteractionController extends Controller
 
         $user->follows()->attach($hairdresserId);
         $hairdresser->increment('followers_count');
+
+        // Notification → coiffeur (nouvel abonné)
+        $hairdresser->loadMissing('user');
+        if ($hairdresser->user_id) {
+            $followerName = $user->name ?? 'Un utilisateur';
+            NotificationService::send(
+                $hairdresser->user_id,
+                'new_follower',
+                'Nouvel abonné',
+                "{$followerName} suit maintenant votre profil.",
+                ['follower_id' => $user->id, 'follower_name' => $followerName]
+            );
+        }
 
         return response()->json(['following' => true, 'followers_count' => $hairdresser->fresh()->followers_count], 201);
     }

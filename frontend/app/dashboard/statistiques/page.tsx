@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import DashboardNav from '@/components/layout/DashboardNav';
+import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import StarRating from '@/components/ui/StarRating';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi } from '@/lib/api';
 import type { ApiStats } from '@/lib/types';
-import { Users, Heart, Star, Calendar, CheckCircle2, Clock, ImageIcon } from 'lucide-react';
+import { Users, Heart, Star, Calendar, CheckCircle2, Clock, ImageIcon, TrendingUp, Activity } from 'lucide-react';
 
 function StatCard({
   icon: Icon,
@@ -52,9 +52,13 @@ export default function StatistiquesPage() {
   const profile = user?.hairdresser_profile;
 
   return (
-    <AppShell>
-      <div className="max-w-2xl mx-auto pb-28 md:pb-8">
-        <div className="px-4 pt-6 pb-4 border-b border-neutral-100">
+    <div className="min-h-screen bg-white pb-28 md:pb-8">
+      <DashboardNav />
+      <div className="max-w-2xl mx-auto">
+        <div className="px-4 pt-4">
+          <DashboardPageHeader title="Statistiques" />
+        </div>
+        <div className="hidden md:block px-4 pt-6 pb-4 border-b border-neutral-100">
           <h1 className="text-xl font-bold text-neutral-900">Statistiques</h1>
           <p className="text-sm text-neutral-500 mt-0.5">Un aperçu de votre activité sur CHAIR</p>
         </div>
@@ -75,6 +79,12 @@ export default function StatistiquesPage() {
                 <StatCard icon={Users} label="Abonnés" value={stats.followers_count} />
                 <StatCard icon={Heart} label="Favoris" value={stats.saved_count} />
                 <StatCard icon={ImageIcon} label="Réalisations" value={stats.posts_count} />
+                <StatCard
+                  icon={Activity}
+                  label="Visites"
+                  value={stats.visits_count ?? 0}
+                  sub="Prestations realisees"
+                />
                 <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-8 h-8 rounded-xl bg-white border border-neutral-100 flex items-center justify-center">
@@ -84,7 +94,7 @@ export default function StatistiquesPage() {
                   </div>
                   {stats.reviews_count > 0 ? (
                     <>
-                      <p className="text-3xl font-bold text-neutral-900 leading-none mb-1">{stats.avg_rating}</p>
+                      <p className="text-3xl font-bold text-neutral-900 leading-none mb-1">{parseFloat(stats.avg_rating).toFixed(1)}</p>
                       <StarRating rating={parseFloat(stats.avg_rating)} size={13} />
                       <p className="text-xs text-neutral-400 mt-1">{stats.reviews_count} avis</p>
                     </>
@@ -97,6 +107,49 @@ export default function StatistiquesPage() {
                 </div>
               </div>
             </div>
+
+            {/* Avis — répartition détaillée */}
+            {stats.reviews_count > 0 && stats.review_breakdown && (
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Repartition des avis</p>
+                <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-5">
+                  <div className="flex items-start gap-5">
+                    {/* Note globale */}
+                    <div className="text-center flex-shrink-0">
+                      <p className="text-4xl font-bold text-neutral-900 leading-none">
+                        {parseFloat(stats.avg_rating).toFixed(1)}
+                      </p>
+                      <StarRating rating={parseFloat(stats.avg_rating)} size={12} />
+                      <p className="text-[11px] text-neutral-400 mt-1.5">
+                        {stats.reviews_count} avis
+                      </p>
+                    </div>
+
+                    {/* Barres */}
+                    <div className="flex-1 space-y-1.5">
+                      {[5, 4, 3, 2, 1].map((star) => {
+                        const count = stats.review_breakdown?.[star] ?? 0;
+                        const pct = stats.reviews_count > 0
+                          ? Math.round((count / stats.reviews_count) * 100)
+                          : 0;
+                        return (
+                          <div key={star} className="flex items-center gap-2">
+                            <span className="text-[11px] font-medium text-neutral-500 w-3 text-right flex-shrink-0">{star}</span>
+                            <div className="flex-1 h-1.5 bg-neutral-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-neutral-900 rounded-full"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-[11px] text-neutral-400 w-4 text-right flex-shrink-0">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Rendez-vous */}
             {profile?.is_independent !== false && (
@@ -127,6 +180,18 @@ export default function StatistiquesPage() {
                     value={stats.appointments_total}
                     sub="Toutes demandes"
                   />
+                  <StatCard
+                    icon={Calendar}
+                    label="Ce mois"
+                    value={stats.appointments_this_month ?? 0}
+                    sub="Rendez-vous du mois"
+                  />
+                  <StatCard
+                    icon={TrendingUp}
+                    label="Chiffre d'affaires"
+                    value={stats.revenue_estimate != null ? `${stats.revenue_estimate.toFixed(0)} €` : '—'}
+                    sub="Total encaisse"
+                  />
                 </div>
               </div>
             )}
@@ -141,7 +206,6 @@ export default function StatistiquesPage() {
           </div>
         )}
       </div>
-      <DashboardNav />
-    </AppShell>
+    </div>
   );
 }

@@ -5,13 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
     /**
      * Afficher une réalisation publique avec son contexte.
+     * Inclut liked_by_user si un token Sanctum est présent.
      */
     public function show(int $postId)
     {
@@ -20,7 +22,13 @@ class PostController extends Controller
             ->where('is_published', true)
             ->firstOrFail();
 
-        return response()->json($post);
+        $user   = \Auth::guard('sanctum')->user();
+        $data   = $post->toArray();
+        $data['liked_by_user'] = $user
+            ? DB::table('post_likes')->where('post_id', $postId)->where('user_id', $user->id)->exists()
+            : false;
+
+        return response()->json($data);
     }
 
     /**
@@ -43,7 +51,7 @@ class PostController extends Controller
 
     /**
      * Créer une réalisation.
-     * after_image obligatoire (résultat), before_image optionnel (avant).
+     * Accepte images[] (1–10 fichiers) OU after_image + before_image (compat legacy).
      */
     public function store(Request $request)
     {
@@ -52,6 +60,48 @@ class PostController extends Controller
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
         }
 
+        $cloudinary = new CloudinaryService();
+
+        // ── Nouveau format : images[] ────────────────────────────────
+        if ($request->hasFile('images')) {
+            $request->validate([
+                'images'       => 'required|array|min:1|max:10',
+                'images.*'     => 'image|mimes:jpeg,png,webp|max:5120',
+                'description'  => 'nullable|string|max:1000',
+                'specialty_id' => 'nullable|integer|exists:specialties,id',
+            ]);
+
+            $post = Post::create([
+                'hairdresser_id' => $profile->id,
+                'specialty_id'   => $request->input('specialty_id'),
+                'type'           => 'result',
+                'description'    => $request->input('description'),
+                'duration_minutes' => null,
+                'price_indication' => null,
+                'cover_image'    => null,
+                'is_published'   => true,
+                'views_count'    => 0,
+                'likes_count'    => 0,
+            ]);
+
+            foreach ($request->file('images') as $index => $file) {
+                $url = $cloudinary->upload($file, 'chair/posts');
+                if ($index === 0) {
+                    $post->update(['cover_image' => $url]);
+                }
+                PostImage::create([
+                    'post_id' => $post->id,
+                    'url'     => $url,
+                    'type'    => 'result',
+                    'order'   => $index,
+                ]);
+            }
+
+            $profile->increment('posts_count');
+            return response()->json($post->load(['specialty', 'images']), 201);
+        }
+
+        // ── Ancien format : after_image (compat) ────────────────────
         $request->validate([
             'after_image'      => 'required|image|mimes:jpeg,png,webp|max:5120',
             'before_image'     => 'nullable|image|mimes:jpeg,png,webp|max:5120',
@@ -63,9 +113,7 @@ class PostController extends Controller
 
         $hasBeforeImage = $request->hasFile('before_image');
         $type           = $hasBeforeImage ? 'before_after' : 'result';
-
-        $afterPath = $request->file('after_image')->store('posts', 'public');
-        $afterUrl  = '/storage/' . $afterPath;
+        $afterUrl       = $cloudinary->upload($request->file('after_image'), 'chair/posts');
 
         $post = Post::create([
             'hairdresser_id'   => $profile->id,
@@ -80,31 +128,19 @@ class PostController extends Controller
             'likes_count'      => 0,
         ]);
 
-        PostImage::create([
-            'post_id' => $post->id,
-            'url'     => $afterUrl,
-            'type'    => 'after',
-            'order'   => 1,
-        ]);
+        PostImage::create(['post_id' => $post->id, 'url' => $afterUrl, 'type' => 'after', 'order' => 1]);
 
         if ($hasBeforeImage) {
-            $beforePath = $request->file('before_image')->store('posts', 'public');
-            $beforeUrl  = '/storage/' . $beforePath;
-            PostImage::create([
-                'post_id' => $post->id,
-                'url'     => $beforeUrl,
-                'type'    => 'before',
-                'order'   => 0,
-            ]);
+            $beforeUrl = $cloudinary->upload($request->file('before_image'), 'chair/posts');
+            PostImage::create(['post_id' => $post->id, 'url' => $beforeUrl, 'type' => 'before', 'order' => 0]);
         }
 
         $profile->increment('posts_count');
-
         return response()->json($post->load(['specialty', 'images']), 201);
     }
 
     /**
-     * Modifier description, spécialité, durée, prix.
+     * Modifier description et spécialité d'une réalisation.
      */
     public function update(Request $request, int $postId)
     {
@@ -114,10 +150,8 @@ class PostController extends Controller
             ->firstOrFail();
 
         $validated = $request->validate([
-            'description'      => 'nullable|string|max:1000',
-            'specialty_id'     => 'nullable|integer|exists:specialties,id',
-            'duration_minutes' => 'nullable|integer|min:0|max:480',
-            'price_indication' => 'nullable|numeric|min:0|max:9999',
+            'description'  => 'nullable|string|max:1000',
+            'specialty_id' => 'nullable|integer|exists:specialties,id',
         ]);
 
         $post->update($validated);
@@ -126,7 +160,7 @@ class PostController extends Controller
     }
 
     /**
-     * Supprimer une réalisation + ses fichiers.
+     * Supprimer une réalisation + ses fichiers (Cloudinary ou local).
      */
     public function destroy(Request $request, int $postId)
     {
@@ -135,10 +169,10 @@ class PostController extends Controller
             ->where('hairdresser_id', $profile?->id)
             ->firstOrFail();
 
+        $cloudinary = new CloudinaryService();
+
         foreach ($post->images as $image) {
-            if (str_starts_with($image->url, '/storage/')) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $image->url));
-            }
+            $cloudinary->deleteOldMedia($image->url);
         }
 
         $post->images()->delete();
@@ -149,5 +183,38 @@ class PostController extends Controller
         }
 
         return response()->json(['message' => 'Réalisation supprimée']);
+    }
+
+    /**
+     * Basculer le like d'une réalisation (authentifié requis).
+     */
+    public function toggleLike(Request $request, int $postId)
+    {
+        $post = Post::where('is_published', true)->findOrFail($postId);
+        $userId = $request->user()->id;
+
+        $liked = DB::table('post_likes')
+            ->where('post_id', $postId)
+            ->where('user_id', $userId)
+            ->exists();
+
+        if ($liked) {
+            DB::table('post_likes')
+                ->where('post_id', $postId)
+                ->where('user_id', $userId)
+                ->delete();
+            $post->decrement('likes_count');
+            $newCount = max(0, $post->fresh()->likes_count);
+            return response()->json(['liked' => false, 'likes_count' => $newCount]);
+        }
+
+        DB::table('post_likes')->insert([
+            'post_id'    => $postId,
+            'user_id'    => $userId,
+            'created_at' => now(),
+        ]);
+        $post->increment('likes_count');
+
+        return response()->json(['liked' => true, 'likes_count' => $post->fresh()->likes_count]);
     }
 }

@@ -53,7 +53,7 @@ export default function FeedPostCard({ post, hairdresser: hdProp, aspect = 'port
   if (!slug) return <div>{card}</div>;
 
   return (
-    <Link href={`/coiffeur/${slug}`} className="block">
+    <Link href={`/feed?from=${post.id}`} className="block">
       {card}
     </Link>
   );

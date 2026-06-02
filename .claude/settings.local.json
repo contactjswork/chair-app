@@ -7,7 +7,8 @@
       "PowerShell(node --version)",
       "PowerShell(npm --version)",
       "PowerShell(composer --version 2>&1)",
-      "PowerShell($env:PATH -split \";\" | Where-Object { $_ -match \"php|composer|laravel\" })"
+      "PowerShell($env:PATH -split \";\" | Where-Object { $_ -match \"php|composer|laravel\" })",
+      "Bash(node -e ' *)"
     ]
   }
 }

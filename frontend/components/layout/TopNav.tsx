@@ -5,7 +5,8 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, User } from 'lucide-react';
+import { useNotificationCount } from '@/contexts/NotificationContext';
+import { LogOut, User, Bell } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/types';
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
 export default function TopNav() {
   const pathname  = usePathname();
   const { user, isLoading, logout } = useAuth();
+  const { unreadCount } = useNotificationCount();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -72,6 +74,14 @@ export default function TopNav() {
                   Dashboard
                 </Link>
               )}
+              <Link href="/notifications" className="relative p-1 rounded-full hover:bg-black/10 transition-colors">
+                <Bell size={17} strokeWidth={1.5} className={glass ? 'text-white/80' : 'text-neutral-500'} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
               <Link
                 href="/compte"
                 className={`flex items-center gap-1.5 text-sm transition-colors ${glass ? 'text-white/80 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'}`}

@@ -11,6 +11,7 @@ export interface HairdresserProfile {
   is_verified: boolean;
   is_independent: boolean;
   city: string | null;
+  salon_id: number | null;
 }
 
 export interface AuthUser {
@@ -58,7 +59,7 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
-export function redirectPathForRole(role: UserRole): string {
-  if (role === 'hairdresser') return '/dashboard';
+export function redirectPathForRole(role: UserRole, isNewUser = false): string {
+  if (role === 'hairdresser') return isNewUser ? '/onboarding' : '/dashboard';
   return '/compte';
 }

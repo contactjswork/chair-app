@@ -50,7 +50,10 @@ export default function ImageUpload({
 
     try {
       const token = getStoredToken();
-      const res = await fetch(`http://localhost:8000${endpoint}`, {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+      // endpoint peut être '/api/profile/avatar' ou '/profile/avatar'
+      const path = endpoint.startsWith('/api/') ? endpoint.slice(4) : endpoint;
+      const res = await fetch(`${apiBase}${path}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         body: formData,
@@ -83,7 +86,7 @@ export default function ImageUpload({
         {displayUrl ? (
           <Image
             src={displayUrl.startsWith('/storage/')
-              ? `http://localhost:8000${displayUrl}`
+              ? `${(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api$/, '')}${displayUrl}`
               : displayUrl}
             alt={label}
             fill

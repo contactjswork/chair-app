@@ -5,11 +5,11 @@ import AppShell from '@/components/layout/AppShell';
 import ProfileActions from '@/components/ui/ProfileActions';
 import ReviewsSection from '@/components/ui/ReviewsSection';
 import StarRating from '@/components/ui/StarRating';
-import type { ApiHairdresserProfile, ApiPost, PaginatedResponse } from '@/lib/types';
+import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
-import { MapPin, BadgeCheck, ChevronLeft, Calendar, Briefcase, ExternalLink } from 'lucide-react';
+import { MapPin, BadgeCheck, ChevronLeft, Calendar, Briefcase, ExternalLink, Tag } from 'lucide-react';
 
-const API = 'http://localhost:8000/api';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 async function getHairdresser(slug: string): Promise<ApiHairdresserProfile | null> {
   const res = await fetch(`${API}/hairdressers/${slug}`, { cache: 'no-store' });
@@ -22,6 +22,13 @@ async function getHairdresserPosts(slug: string): Promise<ApiPost[]> {
   if (!res.ok) return [];
   const data: PaginatedResponse<ApiPost> = await res.json();
   return data.data;
+}
+
+async function getHairdresserServices(slug: string): Promise<ApiServiceCategory[]> {
+  try {
+    const res = await fetch(`${API}/hairdressers/${slug}/services`, { cache: 'no-store' });
+    return res.ok ? res.json() : [];
+  } catch { return []; }
 }
 
 // ── Statut salon ─────────────────────────────────────────────────────
@@ -65,9 +72,10 @@ function PortfolioItem({ post }: { post: ApiPost }) {
 
 export default async function HairdresserProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [hairdresser, posts] = await Promise.all([
+  const [hairdresser, posts, serviceCategories] = await Promise.all([
     getHairdresser(slug),
     getHairdresserPosts(slug),
+    getHairdresserServices(slug),
   ]);
 
   if (!hairdresser) notFound();
@@ -82,8 +90,8 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
   const stats = [
     { label: 'Abonnés', value: hairdresser.followers_count },
     { label: 'Avis',    value: hairdresser.reviews_count },
-    { label: 'Note',    value: hasRating ? hairdresser.avg_rating : '—' },
-    { label: 'Visites', value: '—' },
+    { label: 'Note',    value: hasRating ? parseFloat(hairdresser.avg_rating).toFixed(1) : '—' },
+    { label: 'Visites', value: hairdresser.visits_count ?? 0 },
   ];
 
   const portfolioPosts = posts.filter((p) => getAfterImage(p));
@@ -168,7 +176,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                 className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-sm hover:bg-neutral-700 transition-colors"
               >
                 <Calendar size={16} strokeWidth={2} />
-                Demander un rendez-vous
+                Réserver
               </Link>
             ) : hairdresser.booking_url ? (
               /* Salarié avec lien externe */
@@ -188,7 +196,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                 className="w-full flex items-center justify-center gap-2 bg-neutral-100 text-neutral-400 font-semibold py-3.5 rounded-xl text-sm cursor-not-allowed"
               >
                 <Calendar size={16} strokeWidth={2} />
-                Réservation via le salon
+                Lien de réservation indisponible
               </button>
             )}
           </div>
@@ -262,6 +270,52 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                     {s.name}
                   </Link>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Services ── */}
+          {serviceCategories.length > 0 && (
+            <div className="mb-8">
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3 flex items-center gap-1.5">
+                <Tag size={11} />
+                Services
+              </p>
+              <div className="space-y-3">
+                {serviceCategories.map((cat) => {
+                  const activeServices = (cat.services ?? []).filter((s) => s.is_active);
+                  if (activeServices.length === 0) return null;
+                  return (
+                    <div key={cat.id}>
+                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">
+                        {cat.name}
+                      </p>
+                      <div className="flex flex-col gap-1">
+                        {activeServices.map((svc) => (
+                          <div key={svc.id} className="flex items-center justify-between py-1.5 border-b border-neutral-50 last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm text-neutral-900">{svc.name}</span>
+                              {svc.description && (
+                                <span className="text-xs text-neutral-400 ml-2">{svc.description}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                              {svc.duration_minutes != null && (
+                                <span className="text-xs text-neutral-400">{svc.duration_minutes} min</span>
+                              )}
+                              {svc.price != null && parseFloat(String(svc.price)) > 0
+                                ? <span className="text-xs font-semibold text-neutral-700">{parseFloat(String(svc.price)).toFixed(0)} €</span>
+                                : !hairdresser.is_independent
+                                  ? <span className="text-[11px] text-neutral-400 italic">Tarifs au salon</span>
+                                  : null
+                              }
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -2,8 +2,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
+import { formatDistance } from '@/hooks/useGeolocation';
 
-export default function HairdresserCard({ hairdresser }: { hairdresser: ApiHairdresserProfile }) {
+export default function HairdresserCard({
+  hairdresser,
+  distanceKm,
+}: {
+  hairdresser: ApiHairdresserProfile;
+  distanceKm?: number;
+}) {
   const banner = resolveMediaUrl(hairdresser.banner_image);
   const avatar = resolveMediaUrl(hairdresser.user.avatar);
   const name = hairdresser.user.name;
@@ -75,13 +82,17 @@ export default function HairdresserCard({ hairdresser }: { hairdresser: ApiHaird
             </div>
           )}
 
-          {/* Nom + Ville + Note */}
+          {/* Nom + Ville + Distance + Note */}
           <div className="flex items-end justify-between gap-2">
             <div className="min-w-0">
               <h3 className="text-white font-semibold text-[14px] leading-tight truncate">{name}</h3>
-              {hairdresser.city && (
+              {distanceKm != null ? (
+                <p className="text-white/70 text-[11px] mt-0.5 font-semibold">
+                  à {formatDistance(distanceKm)}
+                </p>
+              ) : hairdresser.city ? (
                 <p className="text-white/55 text-[11px] mt-0.5 truncate">{hairdresser.city}</p>
-              )}
+              ) : null}
             </div>
             {hasRating && (
               <div className="text-right flex-shrink-0">

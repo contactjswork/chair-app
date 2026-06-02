@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
 use App\Models\Salon;
+use App\Services\GeocodingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -24,14 +25,21 @@ class AuthController extends Controller
             'salon_city'        => 'nullable|string|max:100',
             'booking_url'       => 'nullable|url|max:500',
             'salon_instagram'   => 'nullable|url|max:255',
+            // Champs géo client
+            'postal_code'       => 'nullable|string|max:10',
+            'latitude'          => 'nullable|numeric|between:-90,90',
+            'longitude'         => 'nullable|numeric|between:-180,180',
         ]);
 
         $user = \App\Models\User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => bcrypt($validated['password']),
-            'role'     => $validated['role'],
-            'city'     => $validated['city'] ?? $validated['salon_city'] ?? null,
+            'name'        => $validated['name'],
+            'email'       => $validated['email'],
+            'password'    => bcrypt($validated['password']),
+            'role'        => $validated['role'],
+            'city'        => $validated['city'] ?? $validated['salon_city'] ?? null,
+            'postal_code' => $validated['postal_code'] ?? null,
+            'latitude'    => $validated['latitude'] ?? null,
+            'longitude'   => $validated['longitude'] ?? null,
         ]);
 
         if ($user->role === 'hairdresser') {
@@ -67,11 +75,16 @@ class AuthController extends Controller
                 $salonId = $salon->id;
             }
 
+            $profileCity = $validated['city'] ?? $validated['salon_city'] ?? null;
+            $geoCoords   = $profileCity ? GeocodingService::geocode($profileCity) : null;
+
             HairdresserProfile::create([
                 'user_id'          => $user->id,
                 'salon_id'         => $salonId,
                 'slug'             => $slug,
-                'city'             => $validated['city'] ?? $validated['salon_city'] ?? null,
+                'city'             => $profileCity,
+                'latitude'         => $geoCoords['lat']  ?? null,
+                'longitude'        => $geoCoords['lng']  ?? null,
                 'is_independent'   => $isIndependent,
                 'is_verified'      => false,
                 'booking_url'      => $validated['booking_url'] ?? null,

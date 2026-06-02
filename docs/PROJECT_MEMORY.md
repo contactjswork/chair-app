@@ -1,6 +1,6 @@
 # CHAIR — Project Memory
 > Source de vérité du projet. À relire au début de chaque session.  
-> Dernière mise à jour : 2026-05-31 (session Sprints E→H — Profil, Réalisation, Recherche, Réservation V1 complète)
+> Dernière mise à jour : 2026-06-01 (session — Planning vue jour + Invalid Date + Réservations client)
 
 ---
 
@@ -252,7 +252,7 @@ Instagram + LinkedIn + Planity + Airbnb
 
 ### À venir (production)
 - Hébergement : Railway ou Render
-- Médias : Cloudinary (optimisation auto + CDN)
+- Médias : Cloudinary ✓ **intégré** — cloud `dnwtc0dra`, dossiers `chair/avatars`, `chair/banners`, `chair/posts`
 - Recherche : Meilisearch
 - Emails : Resend
 - Cache : Redis
@@ -318,6 +318,7 @@ hairdresser_profiles
 ├── latitude, longitude
 ├── is_independent, is_verified
 ├── followers_count, posts_count, avg_rating, reviews_count
+├── visits_count INT UNSIGNED DEFAULT 0  ← prestations réalisées (RDV completed)
 ├── instagram_url, tiktok_url, booking_url
 └── created_at, updated_at
 
@@ -343,14 +344,50 @@ post_images
 ├── order
 └── created_at, updated_at
 
+service_categories
+├── id, hairdresser_id (→ hairdresser_profiles)
+├── name, description, image_url (nullable)
+├── display_order, visits_count  ← incrémenté à chaque réservation confirmée
+└── created_at, updated_at
+
+services
+├── id, hairdresser_id (→ hairdresser_profiles), category_id (→ service_categories)
+├── name, description
+├── price DECIMAL(8,2), duration_minutes INT
+├── is_active BOOLEAN, visits_count  ← incrémenté à chaque réservation confirmée
+├── image_url (nullable)
+└── created_at, updated_at
+
+hairdresser_schedules
+├── id, hairdresser_id (→ hairdresser_profiles)
+├── day_of_week TINYINT (0=Dim … 6=Sam)
+├── start_time, end_time, break_start, break_end (nullable TIMEs)
+├── is_open BOOLEAN
+└── [UNIQUE hairdresser_id + day_of_week]
+
+hairdresser_unavailabilities
+├── id, hairdresser_id (→ hairdresser_profiles)
+├── start_datetime, end_datetime DATETIME
+├── reason (nullable)
+└── created_at, updated_at
+
 appointments
 ├── id, hairdresser_id (→ hairdresser_profiles), client_id (→ users, nullable)
 ├── client_name, client_email, client_phone (nullable)
-├── service, desired_date, desired_slot (Matin/Après-midi/Soir), message (nullable)
-├── status ENUM('pending','confirmed','declined','completed','cancelled') DEFAULT 'pending'
+├── service (texte legacy), service_id (→ services, nullable)
+├── desired_date (legacy), desired_slot (legacy)
+├── appointment_date DATE (nullable), appointment_time TIME (nullable)
+├── duration_minutes INT (nullable), price DECIMAL (nullable)
+├── payment_method ENUM('on_site','deposit','full') nullable
+├── message (nullable)
+├── status ENUM('pending','pending_payment','confirmed','declined','completed','cancelled','no_show')
 ├── review_token VARCHAR(64) UNIQUE nullable
 ├── review_unlocked BOOLEAN DEFAULT false
 └── created_at, updated_at
+
+[hairdresser_profiles également mis à jour]
+├── work_status ENUM('home','private_salon','rented_chair','studio') nullable
+└── work_address VARCHAR(255) nullable
 
 reviews
 ├── id, hairdresser_id (→ hairdresser_profiles)
@@ -358,7 +395,8 @@ reviews
 ├── appointment_id (→ appointments, nullable) ← lien avis certifié
 ├── rating (1-5), comment, is_verified, specialty
 └── created_at, updated_at
-[UNIQUE: hairdresser_id + client_id]
+[UNIQUE: appointment_id — 1 avis max par rendez-vous]
+[Index séparés: hairdresser_id, client_id — support FK]
 
 follows [pivot]
 ├── follower_id (→ users)
@@ -408,6 +446,9 @@ notifications
 | GET | `/hairdressers` | Liste coiffeurs paginée (`?city=&specialty=`) |
 | GET | `/hairdressers/{slug}` | Profil complet + avis + spécialités + salon + booking_url |
 | GET | `/hairdressers/{slug}/posts` | Posts publiés du coiffeur |
+| GET | `/hairdressers/{slug}/services` | Catégories + services actifs (pour parcours client) |
+| GET | `/hairdressers/{slug}/availability` | Créneaux disponibles (`?date=YYYY-MM-DD&service_id=X`) |
+| GET | `/hairdressers/{slug}/available-dates` | Jours disponibles dans un mois (`?service_id=X&month=YYYY-MM`) |
 | GET | `/posts/{id}` | Post unique public (pour page détail réalisation) |
 | GET | `/specialties` | Liste des spécialités actives |
 | POST | `/appointments` | Créer une demande de RDV (client connecté ou guest) |
@@ -428,8 +469,26 @@ notifications
 | PUT | `/posts/{id}` | Modifier description/spécialité/durée/prix |
 | DELETE | `/posts/{id}` | Supprimer réalisation + fichiers |
 | GET | `/appointments` | Liste des RDVs du coiffeur connecté |
-| PUT | `/appointments/{id}/status` | Changer statut (confirmed/declined/completed/cancelled) |
-| GET | `/stats` | Stats agrégées du coiffeur (profil + RDVs) |
+| GET | `/my-appointments` | Liste des RDVs du client connecté (avec hairdresser.user + review) |
+| POST | `/appointments/{id}/review` | Soumettre un avis in-app pour un RDV terminé (client connecté) |
+| GET | `/notifications` | Notifications non lues du client connecté |
+| POST | `/notifications/{id}/read` | Marquer une notification comme lue |
+| POST | `/notifications/read-all` | Marquer toutes les notifications comme lues |
+| PUT | `/appointments/{id}/status` | Changer statut (confirmed/declined/completed/cancelled/no_show) |
+| GET | `/stats` | Stats agrégées du coiffeur (profil + RDVs + revenus) |
+| GET | `/service-categories` | Catégories du coiffeur connecté |
+| POST | `/service-categories` | Créer catégorie |
+| PUT | `/service-categories/{id}` | Modifier catégorie |
+| DELETE | `/service-categories/{id}` | Supprimer catégorie |
+| GET | `/services` | Services du coiffeur connecté |
+| POST | `/services` | Créer service |
+| PUT | `/services/{id}` | Modifier service (prix, durée, actif...) |
+| DELETE | `/services/{id}` | Désactiver service |
+| GET | `/schedule` | Horaires de la semaine (7 jours) |
+| PUT | `/schedule` | Mettre à jour les horaires |
+| GET | `/unavailabilities` | Indisponibilités à venir |
+| POST | `/unavailabilities` | Créer indisponibilité |
+| DELETE | `/unavailabilities/{id}` | Supprimer indisponibilité |
 | GET | `/interactions/{id}` | Status suivre + sauvegarder pour un profil |
 | POST | `/follows/{id}` | Suivre un coiffeur |
 | DELETE | `/follows/{id}` | Ne plus suivre |
@@ -442,7 +501,11 @@ notifications
 - `HairdresserController.php` — index, show, posts, feed
 - `ProfileController.php` — show (auto-crée), update (+ booking_url), uploadAvatar, uploadBanner
 - `PostController.php` — index, show (public), store, update, destroy
-- `AppointmentController.php` — store (public), index, updateStatus, reviewByToken, stats
+- `AppointmentController.php` — store (mode réel + legacy), index, updateStatus (+ notification client), submitReview (in-app), reviewByToken (token email), clientAppointments (+ review chargée), stats (+ review_breakdown)
+- `NotificationController.php` — NOUVEAU — index, markRead, markAllRead
+- `ServiceController.php` — NOUVEAU — publicList, indexCategories, storeCategory, updateCategory, destroyCategory, indexServices, storeService, updateService, destroyService
+- `ScheduleController.php` — NOUVEAU — index, update (horaires), indexUnavailabilities, storeUnavailability, destroyUnavailability
+- `AvailabilityController.php` — NOUVEAU — slots (créneaux dispo), availableDates (jours ouverts)
 - `ReviewController.php` — store (legacy — avis libres; nouvelles reviews via AppointmentController)
 - `InteractionController.php` — follow/unfollow, save/unsave, status, savedIndex
 - `SpecialtyController.php` — index
@@ -474,7 +537,9 @@ notifications
 | `/connexion` | `app/connexion/page.tsx` | Terminé | Auth API Sanctum |
 | `/inscription` | `app/inscription/page.tsx` | Terminé | Multi-step : identité → type coiffeur (salon/indépendant) + champs adaptés |
 | `/coiffeur/[slug]` | `app/coiffeur/[slug]/page.tsx` | Terminé | Profil premium : bannière, avatar, statut salon, CTA dynamique, stats, badges, portfolio 3-col |
-| `/coiffeur/[slug]/reserver` | `app/coiffeur/[slug]/reserver/page.tsx` | Terminé | Formulaire demande de RDV (indépendants) |
+| `/coiffeur/[slug]/reserver` | `app/coiffeur/[slug]/reserver/page.tsx` | Terminé | Parcours multi-étapes réservation réelle : catégorie → service → date → créneau → infos → confirmation |
+| `/dashboard/services` | `app/dashboard/services/page.tsx` | Terminé | CRUD catégories + services (prix, durée, actif/inactif) |
+| `/dashboard/planning` | `app/dashboard/planning/page.tsx` | Terminé | Calendrier RDV + gestion horaires de la semaine |
 | `/realisation/[id]` | `app/realisation/[id]/page.tsx` | Terminé | Détail réalisation : image, avant/après, infos, nav prev/next, thumbnails |
 | `/avis/[token]` | `app/avis/[token]/page.tsx` | Terminé | Formulaire avis certifié via token |
 | `/dashboard` | `app/dashboard/page.tsx` | Terminé | Stats + onboarding + réalisations récentes |
@@ -485,6 +550,10 @@ notifications
 | `/not-found` | `app/not-found.tsx` | Terminé | Page 404 CHAIR |
 | `/_error` | `app/error.tsx` | Terminé | Page erreur globale |
 | `/loading` | `app/loading.tsx` | Terminé | Skeleton hero dark |
+| `/onboarding` | `app/onboarding/page.tsx` | Terminé | Wizard 7 étapes post-inscription coiffeur |
+| `/salon/[slug]` | `app/salon/[slug]/page.tsx` | Terminé | Page publique salon : bannière, logo, équipe, infos |
+| `/dashboard/salon` | `app/dashboard/salon/page.tsx` | Terminé | Gestion salon (owner) : équipe, demandes, édition |
+| `/dashboard/rejoindre-salon` | `app/dashboard/rejoindre-salon/page.tsx` | Terminé | Coiffeur cherche + demande à rejoindre un salon |
 
 **Toutes les pages utilisent l'API réelle. `mockData.ts` n'est plus utilisé.**
 
@@ -672,6 +741,98 @@ notifications
     - Bouton "Voir tous les coiffeurs" + "Retirer le filtre spécialité" en état vide
     - Skeleton du Suspense fallback aligné avec le nouveau layout
   - **`HairdresserCard.tsx`** — fallback premium quand pas de bannière :
+- [ x ] **Sprint I — Système de réservation professionnel** (session 2026-06-01)
+  - **DB** : 4 nouvelles tables (`service_categories`, `services`, `hairdresser_schedules`, `hairdresser_unavailabilities`) + 2 migrations d'altération (`appointments` + 6 colonnes, `hairdresser_profiles` + `work_status`, `work_address`)
+  - **Backend** :
+    - `ServiceCategory` + `Service` + `HairdresserSchedule` + `HairdresserUnavailability` — nouveaux modèles Eloquent
+    - `ServiceController` — CRUD catégories + services (public list + protégé)
+    - `ScheduleController` — horaires de la semaine (7 jours, upsert) + indisponibilités
+    - `AvailabilityController` — calcul créneaux dispo (exclut pauses, RDVs existants, indisponibilités, passé) + jours dispo dans un mois
+    - `AppointmentController::store()` — mode réel (`service_id` + `appointment_date` + `appointment_time`) → status `confirmed` automatique + double-check anti-collision
+    - `AppointmentController::stats()` — revenue_estimate + appointments_this_month
+    - `HairdresserProfile.$fillable` — `work_status` + `work_address`
+    - 15 nouvelles routes API
+  - **Frontend** :
+    - `lib/types.ts` — `ApiServiceCategory`, `ApiService`, `ApiScheduleDay`, `ApiUnavailability`, `ApiAppointment` (champs réels), `ApiStats` (revenus), `ApiHairdresserProfile` (work_status/address)
+    - `lib/api.ts` — helpers `services`, `schedule`, `availability` + `appointments.book()`
+    - `/dashboard/services` — CRUD catégories (accordéon) + services (prix, durée, actif/inactif)
+    - `/dashboard/planning` — calendrier mini + rendez-vous par date + prochains RDV + gestion horaires hebdo
+    - `/coiffeur/[slug]/reserver` — parcours 6 étapes : catégorie → service → calendrier (jours dispo) → créneaux → coordonnées → récapitulatif + confirmation
+    - `DashboardNav` — remplacé "Portfolio/RDV" par "Services/Planning"
+    - `/dashboard/reservations` — statuts étendus (no_show, pending_payment)
+    - `/dashboard/statistiques` — revenus estimés + RDV ce mois
+    - `/coiffeur/[slug]` — CTA "Réserver" (au lieu de "Demander un rendez-vous")
+  - **Build** : TypeScript 0 erreur, Next.js build 19 routes propres
+- [ x ] **Sprint L — Popularité, visites réelles et référencement interne** (session 2026-06-01)
+  - **DB** : migration `visits_count INT UNSIGNED DEFAULT 0` sur `hairdresser_profiles`. Backfill : `visits_count` = nombre de RDV `completed` existants. Backfill `service_categories.visits_count` = somme des `visits_count` de leurs services.
+  - **Backend** :
+    - `HairdresserProfile.$fillable` — `visits_count` ajouté
+    - `AppointmentController::store()` — incrément `service_categories.visits_count` en plus de `services.visits_count` à chaque réservation créée
+    - `AppointmentController::updateStatus()` — incrément `hairdresser_profiles.visits_count` quand `status = completed` (1 RDV terminé = 1 visite réelle)
+    - `AppointmentController::stats()` — `visits_count` inclus dans la réponse
+  - **Frontend** :
+    - `lib/types.ts` — `visits_count` ajouté dans `ApiHairdresserProfile` et `ApiStats`
+    - `/coiffeur/[slug]` — stat "Visites" affiche la vraie valeur (au lieu de "—")  + note avec 1 décimale
+    - `/coiffeur/[slug]/reserver` step Catégorie — "X reservations" affiché sous le nom de catégorie si > 0
+    - `/coiffeur/[slug]/reserver` step Service — "X reservations" affiché avec la durée si > 0
+    - `dashboard/statistiques` — carte "Visites" ajoutée dans la section Profil (icon Activity)
+  - **Préparé pour l'avenir** : ces compteurs permettront classements (services les plus demandés), catégories tendances, mise en avant automatique, référencement interne, recommandations intelligentes
+  - **Build** : TypeScript 0 erreur, Next.js build 19 routes propres
+- [ x ] **Sprint N — UX Navigation & Architecture** (session 2026-06-01)
+  - **Nouveaux composants** :
+    - `DashboardPageHeader` — header mobile standardisé (← Retour + titre centré + Bell badge) pour toutes les pages dashboard coiffeur
+    - `PageHeader` — header mobile générique (← Retour + titre + action droite optionnelle) pour les pages AppShell
+  - **Back navigation ajoutée** sur : `/dashboard/profil`, `/dashboard/realisations`, `/dashboard/services`, `/dashboard/planning`, `/dashboard/reservations`, `/dashboard/statistiques`, `/notifications`, `/favoris`
+  - **DashboardNav** : "Aperçu" renommé "Public" (plus intuitif), "Alertes" → Bell icon avec badge
+  - **TopNav desktop** : Bell icon avec badge rouge pour tous les utilisateurs connectés → lien vers `/notifications`
+  - **Dashboard home** : section "Aujourd'hui" ajoutée (RDV confirmés/en attente + compteur notifications) ; header mobile enrichi avec Bell icon
+  - **Mobile header dashboard** : Bell icon + badge rouge dans le header de toutes les pages dashboard
+  - **Build** : TypeScript 0 erreur, Next.js build 20 routes propres
+- [ x ] **Sprint M — Système de notifications complet** (session 2026-06-01)
+  - **DB** : migration `title` + `message` sur la table `notifications` ; nouvelle table `push_subscriptions` (user_id, platform, provider, token, enabled, last_used_at)
+  - **Backend** :
+    - `NotificationService` — NOUVEAU — `sendInternal()` + `sendPush()` (TODO) + `send()` : abstraction unique, prête pour Firebase/OneSignal
+    - `Notification.$fillable` — `title` + `message` ajoutés
+    - `AppointmentController::store()` — notifications `appointment_created` (coiffeur) + `appointment_confirmed` (client) à chaque réservation réelle créée
+    - `AppointmentController::updateStatus()` — notification `appointment_confirmed` (client, confirmation manuelle) + `appointment_cancelled` (client ET coiffeur) + `review_request` via `NotificationService`
+    - `AppointmentController::submitReview()` — notification `review_received` envoyée au coiffeur
+    - `InteractionController::follow()` — notification `new_follower` envoyée au coiffeur
+    - `NotificationController::index()` — supporte `?all=true` (toutes les notifs) ou sans (non lues) ; retourne `{ notifications, unread_count }`
+  - **Frontend** :
+    - `lib/types.ts` — `ApiNotification` enrichi (`title`, `message`, `data: Record<string, unknown>`) + `NotificationType` union + `ApiNotificationsResponse`
+    - `lib/api.ts` — `notifications.list()` → `ApiNotificationsResponse` ; `notifications.listAll()` ajouté
+    - `/notifications` — NOUVELLE page : non lues + lues, groupées par section, marquer lu individuel + tout marquer lu, skeletons, empty state, date relative
+    - `BottomNav` — badge pour tous les rôles connectés (coiffeur sur Dashboard, client sur Compte) — polling 60s
+    - `DashboardNav` — onglet Bell "Alertes" avec badge rouge pour les coiffeurs
+    - `/compte` — import `Bell` + lien "Notifications" avec badge dans le bloc Actions
+    - `/dashboard` — lien "Notifications" dans la sidebar desktop avec badge rouge
+  - **Build** : TypeScript 0 erreur, Next.js build 20 routes propres
+- [ x ] **Sprint K — Système d'avis premium** (session 2026-06-01)
+  - **DB** : migration — suppression UNIQUE(hairdresser_id, client_id) → UNIQUE(appointment_id). Un client peut maintenant donner un avis par rendez-vous (pas un seul par coiffeur).
+  - **Backend** :
+    - `Notification` model — `$fillable`, cast `data` → array, cast `read_at` → datetime
+    - `AppointmentController::updateStatus()` — quand status = completed : crée une notification `review_request` pour le client (si compte connecté)
+    - `AppointmentController::submitReview()` — `POST /api/appointments/{id}/review` (auth) : soumet un avis in-app, vérifie que le RDV appartient au client + est completed + pas encore d'avis, recalcule avg_rating + reviews_count, marque la notification lue
+    - `AppointmentController::clientAppointments()` — charge la relation `review` pour que le frontend sache si un avis existe
+    - `AppointmentController::stats()` — ajoute `review_breakdown` (répartition 1-5 étoiles)
+    - `NotificationController` — NOUVEAU : `GET /notifications`, `POST /notifications/{id}/read`, `POST /notifications/read-all`
+    - `routes/api.php` — 5 nouvelles routes protégées
+  - **Frontend** :
+    - `lib/types.ts` — `ApiNotification`, champ `review` dans `ApiAppointment`, `review_breakdown` dans `ApiStats`, avatar dans `hairdresser` de `ApiAppointment`
+    - `lib/api.ts` — `appointments.submitReview()`, `notifications.list/markRead/markAllRead`
+    - `ReviewPromptModal.tsx` — NOUVEAU — popup plein écran premium : avatar coiffeur, service, date, étoiles interactives animées avec label contextuel, commentaire optionnel, écran succès
+    - `ReviewPromptTrigger.tsx` — NOUVEAU — monté dans AppShell, détecte automatiquement les RDVs terminés sans avis et déclenche la popup. Gestion dismissal via localStorage (TTL 4h), file d'attente si plusieurs avis pendants
+    - `AppShell.tsx` — injection de `ReviewPromptTrigger`
+    - `BottomNav.tsx` — badge rouge sur l'icône "Compte" si notifications non lues (client uniquement), polling 60s
+    - `ReviewsSection.tsx` — refonte premium : résumé note globale + barres de répartition 1-5, cartes d'avis avec avatar client + initiale fallback + badge Certifié + guillemets
+    - `dashboard/statistiques/page.tsx` — section "Répartition des avis" avec barres visuelles
+  - **Build** : TypeScript 0 erreur, Next.js build 19 routes propres
+- [ x ] **Sprint J — Dashboard branchement + Bugfixes** (session 2026-06-01)
+  - **`app/dashboard/page.tsx`** — sidebar desktop reécrite : suppression cadenas + items verrouillés ; `navItems` pointe sur `/dashboard/services`, `/dashboard/planning`, `/dashboard/reservations`, `/dashboard/statistiques` ; logique active `pathname.startsWith(href)` ; actions rapides "Gérer mes services" + "Mon planning" ajoutées
+  - **`components/layout/DashboardNav.tsx`** — mobile nav : Scissors/CalendarDays remplacent ImageIcon/Calendar ; active-state corrigé avec `startsWith`
+  - **Bug B24** : `POST /api/services` → 500 "Cannot unpack array with string keys" — PHP 8.0 ne supporte pas `[...$assocArray]` dans les littéraux tableau (requiert PHP 8.1) → `array_merge()` dans `ServiceController::storeService()`
+  - **Bug B25** : même correctif appliqué à `ScheduleController::storeUnavailability()` et `AppointmentController::store()` mode legacy (prévention)
+  - **Bug B26** : warnings React "NaN is not a valid number" sur l'input prix de ServiceForm → `parseFloat(e.target.value)` sur champ vidé donnait `NaN` → remplacé par `isNaN(v) ? 0 : v` ; init `price` corrigée (`!= null` au lieu de truthy pour gérer le cas prix = 0)
 - [ x ] **Sprint H — Réservation V1 complète** (session 2026-05-31)
   - **DB** : migration `booking_url` sur `hairdresser_profiles`, table `appointments` (7 champs + statuts ENUM + review_token), colonne `appointment_id` sur `reviews`
   - **Backend** :
@@ -698,6 +859,24 @@ notifications
     - Si pas d'avatar : initiale en `text-5xl text-white/20` sur fond sombre
     - Note affichée seulement si `reviews_count > 0`
     - Nom truncate, city truncate — pas de débordement
+
+### Terminé ✓ (Sprint U — 2026-06-02)
+- [ x ] **Onboarding coiffeur** — wizard 7 étapes post-inscription, barre de progression, bouton "Voir mon profil public" sticky
+- [ x ] **Feed intelligent géo-aware** — scoring PHP multi-critères (`?sort=scored&lat=X&lng=Y`)
+- [ x ] **Disponibilités dans la recherche** — `AvailableHairdressersController`, filtre Aujourd'hui/Demain/Cette semaine/Week-end dans `/rechercher`, section homepage "Disponible aujourd'hui"
+- [ x ] **Salons complets** — table `salon_join_requests`, `SalonController`, page `/salon/[slug]`, dashboard salon, page "Rejoindre un salon"
+
+### Terminé ✓ (Sprint Beta — 2026-06-02)
+- [ x ] **Variable d'env `NEXT_PUBLIC_API_URL`** — `.env.local` créé, tous les `localhost:8000` remplacés (16 fichiers)
+- [ x ] **Bug onboarding photos** — aperçu instantané avatar/bannière via `URL.createObjectURL()` avant réponse API
+- [ x ] **Données fake supprimées** — 5 faux coiffeurs, 15 posts, 15 avis, 15 clients seedés supprimés de la DB
+- [ x ] **Pages légales** — `/cgu` et `/confidentialite` créées ; footer desktop dans `AppShell` ; lien `/inscription` corrigé
+- [ x ] **Feed amélioré** — `trending` avec décroissance temporelle ; `scored` inclut `reviews_count` et `visits_count` ; `AvailableTodaySection` injectée dans la homepage
+- [ x ] **Navigation salon dashboard** — lien "Mon salon" / "Rejoindre un salon" conditionnel dans la sidebar desktop
+- [ x ] **Navigation `/favoris`** — `PageHeader` avec bouton retour ajouté
+- [ x ] **Typos accents corrigés** — `/reserver`, `/compte`, `/dashboard`, `/inscription`
+- [ x ] **Badge prototype supprimé** — "Bientôt Premium" retiré de la homepage
+- [ x ] **`mockData.ts` supprimé** — fichier inutilisé
 
 ### Bugs actifs 🐛
 
@@ -727,14 +906,31 @@ notifications
 | B19 | `PostCard` crash `post.hairdresser undefined` | `HairdresserController::posts()` charge `hairdresser.user` + PostCard défensif |
 | B20 | 404 en cliquant sur réalisation depuis le feed | Même fix que B19 (hairdresser.slug disponible) |
 | B21 | Apostrophes JSX cassaient le parser (`/rechercher`) | Strings avec apostrophe en double quotes |
+| B22 | Images `localhost:8000/storage/...` → 400 Bad Request | Next.js 16 bloque les IP privées par défaut → `dangerouslyAllowLocalIP: true` + `pathname: '/storage/**'` dans `next.config.ts` |
+| B23 | Images uploadées en prod non servies (localhost) | Intégration Cloudinary — nouveaux uploads → `res.cloudinary.com`, anciens `/storage/...` conservés |
+| B24 | `POST /api/services` → 500 "Cannot unpack array with string keys" | PHP 8.0 n'accepte pas `[...$assocArray]` → `array_merge()` dans `ServiceController::storeService()` |
+| B25 | Même risque dans `ScheduleController` et `AppointmentController` legacy | `array_merge()` appliqué par précaution |
+| B26 | Warnings React "NaN is not a valid number" sur l'input prix | `parseFloat('')` = NaN → `isNaN(v) ? 0 : v` + init `!= null` |
+| B27 | Sidebar dashboard affichait cadenas au lieu des vraies pages | `navItems` reécrit avec 7 liens réels, cadenas supprimés |
+| B28 | Compteur abonnés dans `/dashboard` figé à la valeur du login | `/dashboard/page.tsx` — ajout `apptApi.getStats()` au montage → `liveStats` prioritaire sur le cache localStorage |
+| B29 | Services créés dans dashboard invisibles côté client | Faux bug — code correct : le slug de `publicList` cible bien le profil du coiffeur. Cause réelle : test effectué avec un compte différent (julien-2 ≠ julien-schillinger). Liaison vérifiée et validée. |
+| B30 | Aucun créneau proposé dans le parcours réservation | `start_time`/`end_time` sauvegardés `NULL` en base : le toggle "Ouvert" n'initialisait pas les heures (le `?? '09:00'` était purement visuel, jamais dans le state React). Fix : `toggleDay()` initialise `start_time='09:00'` et `end_time='19:00'` si null. Fix DB : UPDATE des 6 rows existantes. |
+| B31 | Pas de confirmation après sauvegarde des horaires | Aucun toast success. Fix : `successMsg` state + banner `"Horaires enregistres"` (disparaît après 3s). |
+| B32 | `start_time` retourné "09:00:00" par MySQL → bug validation au 2e save | DB TIME → "HH:MM:SS", validation `date_format:H:i`. Fix : `normalizeSchedule()` coupe à 5 chars au chargement. |
+| B33 | "Invalid Date" dans les cartes RDV du planning | `appointment_date` casté `'date'` en Laravel → sérialisé "2026-06-03T00:00:00.000000Z". `dateStr + 'T00:00:00'` invalide. Fix : cast `'date:Y-m-d'` dans `Appointment.php` + helpers `apptDateStr()` / `formatApptDate()` dans `types.ts`. |
+| B34 | Dots calendrier planning absents / vue jour vide | Même cause que B33 (comparaison string "2026-06-03" ≠ "2026-06-03T…"). Fix : `apptDateStr()` normalise via `.slice(0, 10)` avant comparaison. |
+| B35 | Pas de vue client pour ses réservations | Pas d'endpoint `GET /my-appointments`. Fix : `clientAppointments()` dans `AppointmentController` + route + section "Mes reservations" dans `/compte`. |
+| B36 | Réservations client absentes dans `/compte` malgré l'endpoint | `POST /appointments` est une route publique — sur ces routes, `$request->user()` retourne `null` même si un token est envoyé (Sanctum n'authentifie pas sans middleware). `client_id` restait `NULL` en base. Fix : `\Auth::guard('sanctum')->user()` dans `store()` et `reviewByToken()` pour résoudre le token même sans middleware. RDVs existants patchés via `UPDATE appointments SET client_id = 31 WHERE client_email = 'client@gmail.com'`. |
+| B37 | `ALTER TABLE reviews DROP INDEX` échoue (FK support) | MySQL refuse de supprimer un index UNIQUE si des FK l'utilisent. Fix : créer d'abord des index séparés sur `hairdresser_id` et `client_id`, puis supprimer l'index UNIQUE composite. |
+| B38 | Stat "Visites" affichait "—" sur le profil public | `visits_count` absent de `hairdresser_profiles`. Fix : migration + backfill + `$fillable` + incrément dans `updateStatus()`. |
+| B39 | `service_categories.visits_count` jamais incrémenté | `store()` incrémentait seulement le service, pas la catégorie. Fix : ajout `ServiceCategory::where('id', $service->category_id)->increment('visits_count')`. |
 
 ### Non commencé ○ (prochaines priorités)
-- [ ] Variable d'environnement `NEXT_PUBLIC_API_URL` (hardcoded `localhost:8000`) ← **BLOQUANT PROD**
-- [ ] Onboarding post-inscription coiffeur → redirect `/dashboard/profil`
-- [ ] Onboarding post-inscription — redirect vers `/dashboard/profil` immédiatement
-- [ ] Entité juridique + CGU + Politique confidentialité ← **bloquant lancement**
-- [ ] Page salon
-- [ ] Système de notifications
+- [ ] SEO — `generateMetadata()` + sitemap.xml + structured data JSON-LD ← **critique acquisition**
+- [ ] Config production : `NEXT_PUBLIC_API_URL` en prod (Railway/Render)
+- [ ] `next.config.ts` remotePatterns en prod (remplacer localhost:8000 par domaine API)
+- [ ] Entité juridique ← **bloquant lancement commercial**
+- [ ] Inscription : champs `work_status` / `work_address` coiffeur indépendant
 
 ---
 
@@ -884,8 +1080,7 @@ Le champ `icon` de la table `specialties` contient des emojis (💛, 🌀…). N
 **P4 — Page profil coiffeur pré-refonte UI**
 `/coiffeur/[slug]` design antérieur à la refonte globale. Refonte planifiée (tabs Réalisations / Avis, inspiré LinkedIn/Instagram).
 
-**P5 — `http://localhost:8000` hardcodé dans le frontend**
-Présent dans `lib/api.ts`, `lib/types.ts`, `app/page.tsx`, `app/rechercher/page.tsx`, `app/dashboard/page.tsx`, `app/dashboard/realisations/page.tsx`, `components/ui/ImageUpload.tsx`, `components/ui/ReviewForm.tsx`. Bloquant production. À passer en `NEXT_PUBLIC_API_URL` via `.env.local`.
+~~**P5 — `http://localhost:8000` hardcodé dans le frontend**~~ ✓ Corrigé Sprint Beta — `.env.local` créé, tous les hardcodes remplacés par `process.env.NEXT_PUBLIC_API_URL`. **Pour la production**, créer `.env.production` avec `NEXT_PUBLIC_API_URL=https://api.getchair.app/api` et mettre à jour `next.config.ts` remotePatterns.
 
 **P6 — `doctrine/dbal` incompatible avec PHP 8.0 + laravel 8.x-dev**
 `composer require doctrine/dbal` échoue. Workaround : `DB::statement()` pour les migrations ALTER TABLE (déjà appliqué).

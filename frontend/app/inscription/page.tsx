@@ -26,6 +26,7 @@ export default function InscriptionPage() {
   // Step 2 — coiffeur uniquement
   const [hairdresserType, setHairdresserType] = useState<HairdresserType>('independent');
   const [city, setCity]                 = useState('');
+  const [postalCode, setPostalCode]     = useState('');
   const [salonName, setSalonName]       = useState('');
   const [salonCity, setSalonCity]       = useState('');
   const [bookingUrl, setBookingUrl]     = useState('');
@@ -65,6 +66,7 @@ export default function InscriptionPage() {
         payload.hairdresser_type = hairdresserType;
         if (hairdresserType === 'independent') {
           payload.city = city || undefined;
+          payload.postal_code = postalCode || undefined;
         } else {
           payload.salon_name      = salonName || undefined;
           payload.salon_city      = salonCity || undefined;
@@ -72,7 +74,8 @@ export default function InscriptionPage() {
           payload.salon_instagram = salonInstagram || undefined;
         }
       } else {
-        payload.city = city || undefined;
+        payload.city        = city || undefined;
+        payload.postal_code = postalCode || undefined;
       }
 
       await register(payload as unknown as Parameters<typeof register>[0]);
@@ -133,15 +136,24 @@ export default function InscriptionPage() {
                 <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8 caractères minimum" required
                   className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
               </div>
-              {/* Ville uniquement pour les clients */}
+              {/* Ville + Code postal pour les clients */}
               {role === 'client' && (
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                    Ville <span className="font-normal text-neutral-400">(optionnelle)</span>
-                  </label>
-                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Strasbourg"
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Ville <span className="font-normal text-neutral-400">(optionnelle)</span>
+                    </label>
+                    <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Strasbourg"
+                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Code postal <span className="font-normal text-neutral-400">(optionnel)</span>
+                    </label>
+                    <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="67000" maxLength={5}
+                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
+                  </div>
+                </>
               )}
               <button type="submit"
                 className="w-full bg-neutral-900 text-white font-semibold py-3 rounded-xl hover:bg-neutral-700 transition-colors text-sm mt-2">
@@ -151,7 +163,9 @@ export default function InscriptionPage() {
 
             <p className="text-[11px] text-neutral-400 text-center mt-4">
               En créant un compte, vous acceptez nos{' '}
-              <a href="#" className="underline">Conditions d'utilisation</a>.
+              <a href="/cgu" className="underline hover:text-neutral-700">Conditions d'utilisation</a>
+              {' '}et notre{' '}
+              <a href="/confidentialite" className="underline hover:text-neutral-700">Politique de confidentialité</a>.
             </p>
           </form>
         )}
@@ -222,10 +236,15 @@ export default function InscriptionPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Lien de réservation du salon <span className="font-normal text-neutral-400">(optionnel)</span>
+                      Lien de réservation
                     </label>
-                    <input type="url" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)} placeholder="https://planity.com/votre-salon"
+                    <input type="url" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)}
+                      placeholder="https://planity.com/votre-salon"
+                      required
                       className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
+                    <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
+                      Planity, Shortcuts, Treatwell, site du salon ou Instagram.
+                    </p>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-neutral-700 mb-1.5">

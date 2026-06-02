@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
+use App\Services\CloudinaryService;
+use App\Services\GeocodingService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -18,7 +19,6 @@ class ProfileController extends Controller
         $profile = $user->hairdresserProfile()->with('specialties')->first();
 
         if (!$profile) {
-            // Auto-création si le compte coiffeur n'a pas encore de profil
             $base = \Illuminate\Support\Str::slug($user->name ?: 'coiffeur-' . $user->id);
             $slug = $base;
             $i    = 1;
@@ -68,23 +68,34 @@ class ProfileController extends Controller
             'specialties.*'    => 'integer|exists:specialties,id',
         ]);
 
-        // Mise à jour bio + city sur le modèle User
-        // array_key_exists permet de vider un champ nullable en envoyant null explicitement
         $user->update([
             'bio'  => array_key_exists('bio',  $validated) ? $validated['bio']  : $user->bio,
             'city' => array_key_exists('city', $validated) ? $validated['city'] : $user->city,
         ]);
 
-        // Mise à jour du profil coiffeur
-        $profile->update([
+        // Géocodage automatique si la ville a changé
+        $newCity   = array_key_exists('city', $validated) ? $validated['city'] : $profile->city;
+        $geoCoords = null;
+        if ($newCity && $newCity !== $profile->city) {
+            $geoCoords = GeocodingService::geocode($newCity);
+        }
+
+        $profileData = [
             'tagline'          => array_key_exists('tagline',          $validated) ? $validated['tagline']          : $profile->tagline,
-            'city'             => array_key_exists('city',             $validated) ? $validated['city']             : $profile->city,
+            'city'             => $newCity,
             'instagram_url'    => array_key_exists('instagram_url',    $validated) ? $validated['instagram_url']    : $profile->instagram_url,
             'booking_url'      => array_key_exists('booking_url',      $validated) ? $validated['booking_url']      : $profile->booking_url,
             'years_experience' => array_key_exists('years_experience', $validated) ? $validated['years_experience'] : $profile->years_experience,
-        ]);
+        ];
 
-        // Synchronisation des spécialités
+        // Mise à jour des coordonnées si géocodage réussi
+        if ($geoCoords !== null) {
+            $profileData['latitude']  = $geoCoords['lat'];
+            $profileData['longitude'] = $geoCoords['lng'];
+        }
+
+        $profile->update($profileData);
+
         if (isset($validated['specialties'])) {
             $profile->specialties()->sync($validated['specialties']);
         }
@@ -96,7 +107,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Upload avatar.
+     * Upload avatar → Cloudinary.
      */
     public function uploadAvatar(Request $request)
     {
@@ -104,15 +115,13 @@ class ProfileController extends Controller
             'avatar' => 'required|image|mimes:jpeg,png,webp|max:2048',
         ]);
 
-        $user = $request->user();
+        $user      = $request->user();
+        $cloudinary = new CloudinaryService();
 
-        // Supprime l'ancien avatar s'il est en stockage local
-        if ($user->avatar && str_starts_with($user->avatar, '/storage/')) {
-            Storage::disk('public')->delete(str_replace('/storage/', '', $user->avatar));
-        }
+        // Supprime l'ancienne image (locale ou Cloudinary)
+        $cloudinary->deleteOldMedia($user->avatar);
 
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $url  = '/storage/' . $path;
+        $url = $cloudinary->upload($request->file('avatar'), 'chair/avatars');
 
         $user->update(['avatar' => $url]);
 
@@ -120,7 +129,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Upload bannière.
+     * Upload bannière → Cloudinary.
      */
     public function uploadBanner(Request $request)
     {
@@ -133,28 +142,49 @@ class ProfileController extends Controller
 
         if (!$profile) {
             $base = \Illuminate\Support\Str::slug($user->name ?: 'coiffeur-' . $user->id);
-            $slug = $base; $i = 1;
+            $slug = $base;
+            $i    = 1;
             while (\App\Models\HairdresserProfile::where('slug', $slug)->exists()) {
                 $slug = $base . '-' . $i++;
             }
             $profile = \App\Models\HairdresserProfile::create([
-                'user_id' => $user->id, 'slug' => $slug,
-                'is_independent' => true, 'is_verified' => false,
-                'followers_count' => 0, 'posts_count' => 0,
-                'avg_rating' => 0, 'reviews_count' => 0,
+                'user_id'        => $user->id,
+                'slug'           => $slug,
+                'is_independent' => true,
+                'is_verified'    => false,
+                'followers_count'=> 0,
+                'posts_count'    => 0,
+                'avg_rating'     => 0,
+                'reviews_count'  => 0,
             ]);
         }
 
-        // Supprime l'ancienne bannière si locale
-        if ($profile->banner_image && str_starts_with($profile->banner_image, '/storage/')) {
-            Storage::disk('public')->delete(str_replace('/storage/', '', $profile->banner_image));
-        }
+        $cloudinary = new CloudinaryService();
 
-        $path = $request->file('banner')->store('banners', 'public');
-        $url  = '/storage/' . $path;
+        // Supprime l'ancienne bannière (locale ou Cloudinary)
+        $cloudinary->deleteOldMedia($profile->banner_image);
+
+        $url = $cloudinary->upload($request->file('banner'), 'chair/banners');
 
         $profile->update(['banner_image' => $url]);
 
         return response()->json(['banner_image' => $url]);
+    }
+
+    /**
+     * Mise à jour de la position géographique de l'utilisateur connecté.
+     * Appelé après autorisation géolocalisation navigateur.
+     */
+    public function updateLocation(Request $request)
+    {
+        $validated = $request->validate([
+            'latitude'    => 'required|numeric|between:-90,90',
+            'longitude'   => 'required|numeric|between:-180,180',
+            'postal_code' => 'nullable|string|max:10',
+        ]);
+
+        $request->user()->update($validated);
+
+        return response()->json(['ok' => true, 'user' => $request->user()]);
     }
 }

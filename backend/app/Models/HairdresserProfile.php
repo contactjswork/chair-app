@@ -12,9 +12,9 @@ class HairdresserProfile extends Model
     protected $fillable = [
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
         'years_experience', 'diploma', 'city', 'postal_code',
-        'latitude', 'longitude', 'is_independent', 'is_verified',
-        'followers_count', 'posts_count', 'avg_rating', 'reviews_count',
-        'instagram_url', 'tiktok_url', 'booking_url',
+        'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'is_verified',
+        'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count',
+        'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
     ];
 
     protected $casts = [
@@ -51,5 +51,25 @@ class HairdresserProfile extends Model
     public function followers()
     {
         return $this->belongsToMany(User::class, 'follows', 'hairdresser_id', 'follower_id');
+    }
+
+    public function serviceCategories()
+    {
+        return $this->hasMany(ServiceCategory::class, 'hairdresser_id')->orderBy('display_order');
+    }
+
+    public function services()
+    {
+        return $this->hasMany(Service::class, 'hairdresser_id');
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(HairdresserSchedule::class, 'hairdresser_id')->orderBy('day_of_week');
+    }
+
+    public function unavailabilities()
+    {
+        return $this->hasMany(HairdresserUnavailability::class, 'hairdresser_id');
     }
 }

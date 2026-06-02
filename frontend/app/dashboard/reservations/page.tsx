@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import DashboardNav from '@/components/layout/DashboardNav';
+import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi } from '@/lib/api';
 import type { ApiAppointment, AppointmentStatus } from '@/lib/types';
@@ -10,15 +10,17 @@ import { formatDate } from '@/lib/types';
 import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Copy, Check } from 'lucide-react';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
-  pending:   { label: 'En attente',  color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  confirmed: { label: 'Confirmé',    color: 'text-green-700 bg-green-50 border-green-200' },
-  completed: { label: 'Terminé',     color: 'text-neutral-600 bg-neutral-100 border-neutral-200' },
-  declined:  { label: 'Refusé',      color: 'text-red-600 bg-red-50 border-red-200' },
-  cancelled: { label: 'Annulé',      color: 'text-neutral-400 bg-neutral-50 border-neutral-200' },
+  pending:         { label: 'En attente',           color: 'text-amber-600 bg-amber-50 border-amber-200' },
+  pending_payment: { label: 'Paiement en attente',  color: 'text-blue-700 bg-blue-50 border-blue-200' },
+  confirmed:       { label: 'Confirme',             color: 'text-green-700 bg-green-50 border-green-200' },
+  completed:       { label: 'Termine',              color: 'text-neutral-600 bg-neutral-100 border-neutral-200' },
+  declined:        { label: 'Refuse',               color: 'text-red-600 bg-red-50 border-red-200' },
+  cancelled:       { label: 'Annule',               color: 'text-neutral-400 bg-neutral-50 border-neutral-200' },
+  no_show:         { label: 'Absent',               color: 'text-orange-600 bg-orange-50 border-orange-200' },
 };
 
-const ACTIVE_STATUSES: AppointmentStatus[] = ['pending', 'confirmed'];
-const PAST_STATUSES: AppointmentStatus[]   = ['completed', 'declined', 'cancelled'];
+const ACTIVE_STATUSES: AppointmentStatus[] = ['pending', 'pending_payment', 'confirmed'];
+const PAST_STATUSES: AppointmentStatus[]   = ['completed', 'declined', 'cancelled', 'no_show'];
 
 function CopyButton({ token }: { token: string }) {
   const [copied, setCopied] = useState(false);
@@ -53,9 +55,15 @@ function AppointmentCard({
   const isPending   = appt.status === 'pending';
   const isConfirmed = appt.status === 'confirmed';
 
-  const dateFormatted = new Date(appt.desired_date).toLocaleDateString('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
+  const displayDate = appt.appointment_date || appt.desired_date;
+  const dateFormatted = displayDate
+    ? new Date(displayDate + 'T00:00:00').toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      })
+    : '';
+  const timeFormatted = appt.appointment_time
+    ? appt.appointment_time.slice(0, 5)
+    : appt.desired_slot;
 
   return (
     <div className="bg-white border border-neutral-100 rounded-2xl p-4 space-y-3">
@@ -81,8 +89,12 @@ function AppointmentCard({
           </span>
           <span className="flex items-center gap-1">
             <Clock size={12} />
-            {appt.desired_slot}
+            {timeFormatted}
+            {appt.duration_minutes && ` · ${appt.duration_minutes} min`}
           </span>
+          {appt.price && (
+            <span className="font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>
+          )}
         </div>
         {appt.message && (
           <p className="text-xs text-neutral-500 italic border-t border-neutral-200 pt-1.5 mt-1.5">
@@ -173,9 +185,16 @@ export default function ReservationsPage() {
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
 
   return (
-    <AppShell>
-      <div className="max-w-2xl mx-auto pb-28 md:pb-8">
-        <div className="px-4 pt-6 pb-4 border-b border-neutral-100">
+    <div className="min-h-screen bg-white pb-28 md:pb-8">
+      <DashboardNav />
+      <div className="max-w-2xl mx-auto">
+        <div className="px-4 pt-4">
+          <DashboardPageHeader title="Rendez-vous" />
+        </div>
+        <div className="px-4 pb-4 border-b border-neutral-100 md:hidden">
+          <p className="text-sm text-neutral-500">Gérez vos demandes de rendez-vous</p>
+        </div>
+        <div className="hidden md:block px-4 pt-6 pb-4 border-b border-neutral-100">
           <h1 className="text-xl font-bold text-neutral-900">Rendez-vous</h1>
           <p className="text-sm text-neutral-500 mt-0.5">Gérez vos demandes de rendez-vous</p>
         </div>
@@ -234,7 +253,6 @@ export default function ReservationsPage() {
           </div>
         )}
       </div>
-      <DashboardNav />
-    </AppShell>
+    </div>
   );
 }

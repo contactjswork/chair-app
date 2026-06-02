@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { interactions, type SavedHairdresser } from '@/lib/api';
 import { Heart, MapPin, Star, BadgeCheck, LogIn } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/types';
+import PageHeader from '@/components/layout/PageHeader';
 
 export default function FavorisPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -65,11 +66,8 @@ export default function FavorisPage() {
 
   return (
     <AppShell>
+      <PageHeader title="Favoris" backHref="/" />
       <div className="max-w-6xl mx-auto px-4 md:px-6 pt-6 md:pt-8">
-        <div className="flex items-center gap-2 mb-6">
-          <Heart size={20} className="text-neutral-900" fill="currentColor" />
-          <h1 className="text-xl font-bold text-neutral-900">Favoris</h1>
-        </div>
 
         {loading ? (
           <div className="space-y-3">

@@ -1,269 +1,569 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState, use } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import AppShell from '@/components/layout/AppShell';
+import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { appointments } from '@/lib/api';
-import { resolveMediaUrl } from '@/lib/types';
-import type { ApiHairdresserProfile } from '@/lib/types';
-import { ChevronLeft, CheckCircle2, Calendar, Clock } from 'lucide-react';
+import type { ApiServiceCategory, ApiService } from '@/lib/types';
+import { ChevronLeft, ChevronRight, Check, Clock, MapPin } from 'lucide-react';
 
-const API = 'http://localhost:8000/api';
+type Step = 'category' | 'service' | 'date' | 'slot' | 'info' | 'confirm' | 'success';
 
-const SLOTS = ['Matin', 'Après-midi', 'Soir'] as const;
-type Slot = typeof SLOTS[number];
+const MONTH_NAMES = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+];
+const DAY_SHORT = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
-// Date minimum = demain
-function tomorrow(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-}
-
-export default function ReserverPage() {
-  const params = useParams<{ slug: string }>();
-  const slug   = params.slug;
-  const router = useRouter();
+export default function ReserverPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const { user } = useAuth();
+  const router = useRouter();
 
-  const [hairdresser, setHairdresser] = useState<ApiHairdresserProfile | null>(null);
-  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [step, setStep] = useState<Step>('category');
+  const [categories, setCategories] = useState<ApiServiceCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const [clientName,  setClientName]  = useState('');
+  // Selections
+  const [selectedCategory, setSelectedCategory] = useState<ApiServiceCategory | null>(null);
+  const [selectedService, setSelectedService] = useState<ApiService | null>(null);
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState('');
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  // Calendar
+  const today = new Date();
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+
+  // Client info
+  const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [service,     setService]     = useState('');
-  const [desiredDate, setDesiredDate] = useState('');
-  const [desiredSlot, setDesiredSlot] = useState<Slot>('Matin');
-  const [message,     setMessage]     = useState('');
+  const [message, setMessage] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [success,   setSuccess]   = useState(false);
-  const [error,     setError]     = useState('');
+  // Load categories on mount
+  useEffect(() => {
+    servicesApi.publicList(slug)
+      .then((data) => {
+        const cats = data as ApiServiceCategory[];
+        setCategories(cats.filter((c) => (c.services ?? []).length > 0));
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Impossible de charger les services de ce coiffeur.');
+        setLoading(false);
+      });
+  }, [slug]);
 
-  // Pré-remplir avec les infos de l'utilisateur connecté
+  // Pre-fill user info
   useEffect(() => {
     if (user) {
-      setClientName(user.name || '');
-      setClientEmail(user.email || '');
+      setClientName(user.name ?? '');
+      setClientEmail(user.email ?? '');
     }
   }, [user]);
 
-  // Charger le profil du coiffeur
+  // Load available dates when service or month changes
   useEffect(() => {
-    fetch(`${API}/hairdressers/${slug}`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then(setHairdresser)
-      .catch(() => {})
-      .finally(() => setLoadingProfile(false));
-  }, [slug]);
+    if (!selectedService) return;
+    const month = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+    availabilityApi.availableDates(slug, selectedService.id, month)
+      .then((data) => {
+        const d = data as { dates: string[] };
+        setAvailableDates(d.dates);
+      })
+      .catch(() => setAvailableDates([]));
+  }, [selectedService, viewMonth, viewYear, slug]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!hairdresser) return;
-    setError('');
-    setIsLoading(true);
-    try {
-      await appointments.create({
-        hairdresser_id: hairdresser.id,
-        client_name:    clientName,
-        client_email:   clientEmail,
-        client_phone:   clientPhone || undefined,
-        service,
-        desired_date:   desiredDate,
-        desired_slot:   desiredSlot,
-        message:        message || undefined,
+  // Load slots when date selected
+  useEffect(() => {
+    if (!selectedService || !selectedDate) return;
+    setLoadingSlots(true);
+    setAvailableSlots([]);
+    availabilityApi.slots(slug, selectedDate, selectedService.id)
+      .then((data) => {
+        const d = data as { slots: string[] };
+        setAvailableSlots(d.slots);
+        setLoadingSlots(false);
+      })
+      .catch(() => {
+        setAvailableSlots([]);
+        setLoadingSlots(false);
       });
-      setSuccess(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
+  }, [selectedService, selectedDate, slug]);
+
+  async function handleSubmit() {
+    if (!selectedService || !selectedDate || !selectedSlot) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      await appointmentsApi.book({
+        hairdresser_id: selectedService.hairdresser_id,
+        client_name: clientName,
+        client_email: clientEmail,
+        client_phone: clientPhone || undefined,
+        service_id: selectedService.id,
+        appointment_date: selectedDate,
+        appointment_time: selectedSlot,
+        message: message || undefined,
+      });
+      setStep('success');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erreur lors de la réservation.';
+      setError(msg);
     } finally {
-      setIsLoading(false);
+      setSubmitting(false);
     }
   }
 
-  const avatarUrl = resolveMediaUrl(hairdresser?.user.avatar ?? null);
+  function formatDate(dateStr: string) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
 
-  if (success) {
+  function getDaysInMonth(y: number, m: number) {
+    return new Date(y, m + 1, 0).getDate();
+  }
+  function getFirstDay(y: number, m: number) {
+    return new Date(y, m, 1).getDay();
+  }
+
+  if (loading) {
     return (
-      <AppShell>
-        <div className="max-w-sm mx-auto px-4 py-16 text-center">
-          <CheckCircle2 size={48} className="text-neutral-900 mx-auto mb-5" strokeWidth={1.5} />
-          <h1 className="text-xl font-bold text-neutral-900 mb-2">Demande envoyée</h1>
-          <p className="text-sm text-neutral-500 leading-relaxed mb-8">
-            {hairdresser?.user.name} a reçu votre demande de rendez-vous. Vous serez
-            contacté(e) dès qu'elle sera confirmée.
-          </p>
-          <Link
-            href={`/coiffeur/${slug}`}
-            className="inline-flex items-center gap-2 bg-neutral-900 text-white font-semibold px-6 py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors"
-          >
-            Retour au profil
-          </Link>
-        </div>
-      </AppShell>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-pulse text-neutral-400 text-sm">Chargement...</div>
+      </div>
     );
   }
 
-  return (
-    <AppShell>
-      <div className="max-w-lg mx-auto pb-16">
-
-        {/* Header */}
-        <div className="px-4 py-4 flex items-center gap-3 border-b border-neutral-100">
-          <Link href={`/coiffeur/${slug}`} className="text-neutral-500 hover:text-neutral-900 transition-colors">
-            <ChevronLeft size={22} />
-          </Link>
-          {loadingProfile ? (
-            <div className="h-5 w-40 bg-neutral-100 rounded animate-pulse" />
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-8 h-8 rounded-full overflow-hidden bg-neutral-200 flex-shrink-0">
-                {avatarUrl ? (
-                  <Image src={avatarUrl} alt={hairdresser?.user.name ?? ''} fill className="object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-xs font-bold text-neutral-500">
-                      {hairdresser?.user.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-neutral-900 leading-tight">{hairdresser?.user.name}</p>
-                {hairdresser?.city && <p className="text-xs text-neutral-400">{hairdresser.city}</p>}
-              </div>
-            </div>
-          )}
+  // ── Step: success ─────────────────────────────────────────────────
+  if (step === 'success') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 text-center">
+        <div className="w-16 h-16 bg-neutral-900 rounded-full flex items-center justify-center mb-6">
+          <Check size={28} className="text-white" />
         </div>
+        <h1 className="text-2xl font-bold text-neutral-900 mb-2">Rendez-vous confirmé</h1>
+        {selectedService && (
+          <p className="text-neutral-500 text-sm mb-1">{selectedService.name}</p>
+        )}
+        <p className="text-neutral-500 text-sm mb-1 capitalize">{formatDate(selectedDate)}</p>
+        <p className="text-neutral-900 font-semibold text-sm mb-6">{selectedSlot}</p>
+        <p className="text-xs text-neutral-400 mb-8">
+          Confirmation envoyée à {clientEmail}
+        </p>
+        <Link
+          href={`/coiffeur/${slug}`}
+          className="bg-neutral-900 text-white px-6 py-3 rounded-xl text-sm font-medium"
+        >
+          Retour au profil
+        </Link>
+      </div>
+    );
+  }
 
-        <div className="px-4 pt-6">
-          <h1 className="text-xl font-bold text-neutral-900 mb-1">Demander un rendez-vous</h1>
-          <p className="text-sm text-neutral-500 mb-6">
-            Le coiffeur vous confirmera la disponibilité sous 24–48h.
-          </p>
+  const progressSteps: Step[] = ['category', 'service', 'date', 'slot', 'info', 'confirm'];
+  const stepIndex = progressSteps.indexOf(step);
 
-          {error && (
-            <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* Coordonnées */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Vos coordonnées</p>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom complet</label>
-                <input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} required
-                  placeholder="Sophie Martin"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Email</label>
-                <input type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} required
-                  placeholder="votre@email.fr"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                  Téléphone <span className="font-normal text-neutral-400">(optionnel)</span>
-                </label>
-                <input type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="06 00 00 00 00"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-            </div>
-
-            {/* Prestation */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">La prestation</p>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Service souhaité</label>
-                <input type="text" value={service} onChange={(e) => setService(e.target.value)} required
-                  placeholder="Balayage, coupe femme, coloration..."
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              {/* Spécialités du coiffeur comme suggestions */}
-              {hairdresser && hairdresser.specialties.length > 0 && !service && (
-                <div className="flex flex-wrap gap-1.5">
-                  {hairdresser.specialties.map((s) => (
-                    <button
-                      key={s.slug}
-                      type="button"
-                      onClick={() => setService(s.name)}
-                      className="text-xs text-neutral-600 bg-neutral-50 border border-neutral-200 px-2.5 py-1 rounded-full hover:border-neutral-400 hover:text-neutral-900 transition-all"
-                    >
-                      {s.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Date & créneau */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
-                Date souhaitée
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5 flex items-center gap-1">
-                  <Calendar size={13} />
-                  Date
-                </label>
-                <input type="date" value={desiredDate} onChange={(e) => setDesiredDate(e.target.value)}
-                  min={tomorrow()} required
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5 flex items-center gap-1">
-                  <Clock size={13} />
-                  Créneau préféré
-                </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {SLOTS.map((slot) => (
-                    <button
-                      key={slot}
-                      type="button"
-                      onClick={() => setDesiredSlot(slot)}
-                      className={`py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        desiredSlot === slot
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
-                      }`}
-                    >
-                      {slot}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Message optionnel */}
-            <div>
-              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                Message <span className="font-normal text-neutral-400">(optionnel)</span>
-              </label>
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3}
-                placeholder="Précisez vos attentes, photos de référence, etc."
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none" />
-            </div>
-
-            <button type="submit" disabled={isLoading}
-              className="w-full bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              {isLoading ? 'Envoi en cours...' : 'Envoyer la demande'}
-            </button>
-
-            <p className="text-[11px] text-neutral-400 text-center">
-              Cette demande n'est pas une confirmation. Le coiffeur vous répondra sous 24–48h.
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <div className="sticky top-0 bg-white border-b border-neutral-100 z-10">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => {
+              if (step === 'category') router.push(`/coiffeur/${slug}`);
+              else {
+                const prev = progressSteps[stepIndex - 1];
+                if (prev) setStep(prev);
+              }
+            }}
+            className="p-2 -ml-2"
+          >
+            <ChevronLeft size={20} className="text-neutral-700" />
+          </button>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-neutral-900">
+              {step === 'category' && 'Choisir une catégorie'}
+              {step === 'service' && 'Choisir un service'}
+              {step === 'date' && 'Choisir une date'}
+              {step === 'slot' && 'Choisir un créneau'}
+              {step === 'info' && 'Vos coordonnées'}
+              {step === 'confirm' && 'Récapitulatif'}
             </p>
-          </form>
+            <p className="text-xs text-neutral-400">{stepIndex + 1} / {progressSteps.length}</p>
+          </div>
+          <div className="w-8" />
+        </div>
+        {/* Progress bar */}
+        <div className="h-0.5 bg-neutral-100">
+          <div
+            className="h-full bg-neutral-900 transition-all duration-300"
+            style={{ width: `${((stepIndex + 1) / progressSteps.length) * 100}%` }}
+          />
         </div>
       </div>
-    </AppShell>
+
+      {/* Service preview (when service selected and past step 2) */}
+      {selectedService && step !== 'category' && step !== 'service' && (
+        <div className="px-4 py-3 bg-neutral-50 border-b border-neutral-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-neutral-900">{selectedService.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-neutral-500 flex items-center gap-1">
+                  <Clock size={11} />
+                  {selectedService.duration_minutes} min
+                </span>
+                <span className="text-xs font-semibold text-neutral-900">
+                  {parseFloat(selectedService.price ?? '0').toFixed(0)} €
+                </span>
+              </div>
+            </div>
+            {selectedDate && (
+              <div className="text-right">
+                <p className="text-xs text-neutral-500 capitalize">{formatDate(selectedDate)}</p>
+                {selectedSlot && <p className="text-sm font-semibold text-neutral-900">{selectedSlot}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-6">
+        {error && (
+          <div className="mb-4 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
+        )}
+
+        {/* ── STEP: CATEGORY ── */}
+        {step === 'category' && (
+          <div className="space-y-3">
+            {categories.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-neutral-500 text-sm">Ce coiffeur n'a pas encore configure ses services.</p>
+                <Link href={`/coiffeur/${slug}`} className="text-sm text-neutral-900 underline mt-2 block">
+                  Retour au profil
+                </Link>
+              </div>
+            ) : (
+              categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => { setSelectedCategory(cat); setSelectedService(null); setStep('service'); }}
+                  className="w-full flex items-center justify-between px-4 py-4 border border-neutral-200 rounded-xl hover:border-neutral-400 hover:bg-neutral-50 transition-colors text-left"
+                >
+                  <div>
+                    <p className="font-semibold text-neutral-900 text-sm">{cat.name}</p>
+                    {cat.description && <p className="text-xs text-neutral-400 mt-0.5">{cat.description}</p>}
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <p className="text-xs text-neutral-400">
+                        {(cat.services ?? []).length} service{(cat.services ?? []).length !== 1 ? 's' : ''}
+                      </p>
+                      {cat.visits_count > 0 && (
+                        <p className="text-xs font-medium text-neutral-500">
+                          {cat.visits_count} reservation{cat.visits_count > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-neutral-400 shrink-0" />
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── STEP: SERVICE ── */}
+        {step === 'service' && selectedCategory && (
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-4">
+              {selectedCategory.name}
+            </p>
+            {(selectedCategory.services ?? []).map((svc) => (
+              <button
+                key={svc.id}
+                onClick={() => { setSelectedService(svc); setSelectedDate(''); setSelectedSlot(''); setStep('date'); }}
+                className="w-full flex items-start justify-between px-4 py-4 border border-neutral-200 rounded-xl hover:border-neutral-400 hover:bg-neutral-50 transition-colors text-left"
+              >
+                <div className="flex-1 min-w-0 pr-4">
+                  <p className="font-semibold text-neutral-900 text-sm">{svc.name}</p>
+                  {svc.description && (
+                    <p className="text-xs text-neutral-400 mt-0.5 line-clamp-2">{svc.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <span className="text-xs text-neutral-500 flex items-center gap-1">
+                      <Clock size={11} />
+                      {svc.duration_minutes} min
+                    </span>
+                    {svc.visits_count > 0 && (
+                      <span className="text-xs font-medium text-neutral-500">
+                        {svc.visits_count} reservation{svc.visits_count > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold text-neutral-900 text-sm">{parseFloat(svc.price ?? '0').toFixed(0)} €</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── STEP: DATE ── */}
+        {step === 'date' && selectedService && (
+          <div>
+            <p className="text-sm text-neutral-500 mb-4">
+              Les jours disponibles sont mis en evidence.
+            </p>
+
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  if (viewMonth === 0) { setViewMonth(11); setViewYear((y) => y - 1); }
+                  else setViewMonth((m) => m - 1);
+                }}
+                disabled={viewYear === today.getFullYear() && viewMonth === today.getMonth()}
+                className="p-2 hover:bg-neutral-100 rounded-lg disabled:opacity-30"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <span className="font-semibold text-neutral-900">
+                {MONTH_NAMES[viewMonth]} {viewYear}
+              </span>
+              <button
+                onClick={() => {
+                  if (viewMonth === 11) { setViewMonth(0); setViewYear((y) => y + 1); }
+                  else setViewMonth((m) => m + 1);
+                }}
+                className="p-2 hover:bg-neutral-100 rounded-lg"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {DAY_SHORT.map((d) => (
+                <div key={d} className="text-[11px] text-center text-neutral-400 font-medium py-1">{d}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: getFirstDay(viewYear, viewMonth) }).map((_, i) => (
+                <div key={`e-${i}`} />
+              ))}
+              {Array.from({ length: getDaysInMonth(viewYear, viewMonth) }).map((_, i) => {
+                const dayNum = i + 1;
+                const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                const isAvailable = availableDates.includes(dateStr);
+                const isSelected = dateStr === selectedDate;
+                const todayStr = today.toISOString().split('T')[0];
+                const isPast = dateStr < todayStr;
+
+                return (
+                  <button
+                    key={dayNum}
+                    onClick={() => {
+                      if (isAvailable && !isPast) {
+                        setSelectedDate(dateStr);
+                        setSelectedSlot('');
+                        setStep('slot');
+                      }
+                    }}
+                    disabled={!isAvailable || isPast}
+                    className={`text-sm py-2.5 rounded-xl font-medium transition-colors ${
+                      isSelected
+                        ? 'bg-neutral-900 text-white'
+                        : isAvailable && !isPast
+                        ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
+                        : 'text-neutral-300 cursor-default'
+                    }`}
+                  >
+                    {dayNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {availableDates.length === 0 && (
+              <p className="text-center text-sm text-neutral-400 mt-6">
+                Aucune disponibilite ce mois-ci.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP: SLOT ── */}
+        {step === 'slot' && selectedService && selectedDate && (
+          <div>
+            <p className="text-sm font-semibold text-neutral-900 mb-1 capitalize">{formatDate(selectedDate)}</p>
+            <p className="text-xs text-neutral-400 mb-4">{selectedService.duration_minutes} min par créneau</p>
+
+            {loadingSlots ? (
+              <div className="text-center py-8 text-neutral-400 text-sm">Chargement des créneaux...</div>
+            ) : availableSlots.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-neutral-500 text-sm mb-3">Aucun créneau disponible ce jour.</p>
+                <button
+                  onClick={() => setStep('date')}
+                  className="text-sm border border-neutral-200 px-4 py-2 rounded-xl"
+                >
+                  Choisir une autre date
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {availableSlots.map((slot) => (
+                  <button
+                    key={slot}
+                    onClick={() => { setSelectedSlot(slot); setStep('info'); }}
+                    className="py-3 rounded-xl text-sm font-medium border border-neutral-200 text-neutral-900 hover:border-neutral-400 hover:bg-neutral-50 transition-colors"
+                  >
+                    {slot}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── STEP: INFO ── */}
+        {step === 'info' && (
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-500">
+              Renseignez vos coordonnées pour confirmer le rendez-vous.
+            </p>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">Nom complet *</label>
+              <input
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Votre nom"
+                className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">Email *</label>
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                placeholder="votre@email.com"
+                className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">Téléphone (optionnel)</label>
+              <input
+                type="tel"
+                value={clientPhone}
+                onChange={(e) => setClientPhone(e.target.value)}
+                placeholder="06 XX XX XX XX"
+                className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neutral-400"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-500 mb-1 block">Message (optionnel)</label>
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Précisions sur votre demande..."
+                rows={3}
+                className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neutral-400 resize-none"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                if (!clientName.trim() || !clientEmail.trim()) {
+                  setError('Nom et email sont obligatoires.');
+                  return;
+                }
+                setError('');
+                setStep('confirm');
+              }}
+              className="w-full bg-neutral-900 text-white py-3.5 rounded-xl font-medium text-sm"
+            >
+              Continuer
+            </button>
+          </div>
+        )}
+
+        {/* ── STEP: CONFIRM ── */}
+        {step === 'confirm' && selectedService && (
+          <div className="space-y-4">
+            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+              Recapitulatif
+            </p>
+
+            <div className="border border-neutral-200 rounded-xl divide-y divide-neutral-100">
+              <div className="px-4 py-3">
+                <p className="text-xs text-neutral-400 mb-0.5">Service</p>
+                <p className="text-sm font-semibold text-neutral-900">{selectedService.name}</p>
+                {selectedService.description && (
+                  <p className="text-xs text-neutral-400 mt-0.5">{selectedService.description}</p>
+                )}
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-xs text-neutral-500">{selectedService.duration_minutes} min</span>
+                  <span className="text-xs font-semibold text-neutral-900">
+                    {parseFloat(selectedService.price ?? '0').toFixed(0)} €
+                  </span>
+                </div>
+              </div>
+
+              <div className="px-4 py-3">
+                <p className="text-xs text-neutral-400 mb-0.5">Date et heure</p>
+                <p className="text-sm font-semibold text-neutral-900 capitalize">{formatDate(selectedDate)}</p>
+                <p className="text-sm text-neutral-700">{selectedSlot}</p>
+              </div>
+
+              <div className="px-4 py-3">
+                <p className="text-xs text-neutral-400 mb-0.5">Client</p>
+                <p className="text-sm text-neutral-900">{clientName}</p>
+                <p className="text-xs text-neutral-500">{clientEmail}</p>
+                {clientPhone && <p className="text-xs text-neutral-500">{clientPhone}</p>}
+              </div>
+
+              <div className="px-4 py-3 flex items-center justify-between">
+                <span className="text-sm font-semibold text-neutral-900">Montant total</span>
+                <span className="text-lg font-bold text-neutral-900">
+                  {parseFloat(selectedService.price ?? '0').toFixed(0)} €
+                </span>
+              </div>
+
+              <div className="px-4 py-3 flex items-center gap-2">
+                <MapPin size={13} className="text-neutral-400" />
+                <span className="text-xs text-neutral-500">Paiement sur place</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="w-full bg-neutral-900 text-white py-3.5 rounded-xl font-medium text-sm disabled:opacity-50"
+            >
+              {submitting ? 'Confirmation...' : 'Confirmer le rendez-vous'}
+            </button>
+
+            <button
+              onClick={() => setStep('info')}
+              className="w-full text-sm text-neutral-500 py-2"
+            >
+              Modifier
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
