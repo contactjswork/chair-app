@@ -4,18 +4,23 @@ import AppShell from '@/components/layout/AppShell';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveMediaUrl, apptDateStr, formatApptDate, type ApiAppointment } from '@/lib/types';
-import { appointments as appointmentsApi } from '@/lib/api';
+import { resolveMediaUrl, apptDateStr, formatApptDate, type ApiAppointment, type ApiPost } from '@/lib/types';
+import { appointments as appointmentsApi, interactions, savedPosts as savedPostsApi } from '@/lib/api';
+import type { SavedHairdresser } from '@/lib/api';
 import { useEffect, useState } from 'react';
-import { User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut, Clock, CalendarDays, Bell } from 'lucide-react';
+import {
+  User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
+  Clock, CalendarDays, Bell, Bookmark, Heart, Settings, Lock,
+  MapPin, Edit3,
+} from 'lucide-react';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'En attente',
-  confirmed: 'Confirme',
-  completed: 'Termine',
-  declined: 'Refuse',
-  cancelled: 'Annule',
+  confirmed: 'Confirmé',
+  completed: 'Terminé',
+  declined: 'Refusé',
+  cancelled: 'Annulé',
   no_show: 'Absent',
   pending_payment: 'Paiement en attente',
 };
@@ -34,26 +39,40 @@ export default function ComptePage() {
   const { user, isLoading, logout } = useAuth();
   const { unreadCount } = useNotificationCount();
   const [myAppointments, setMyAppointments] = useState<ApiAppointment[]>([]);
-  const [apptLoading, setApptLoading] = useState(false);
+  const [followedHairdressers, setFollowedHairdressers] = useState<SavedHairdresser[]>([]);
+  const [inspirations, setInspirations] = useState<ApiPost[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role !== 'client') return;
-    setApptLoading(true);
-    appointmentsApi.myList()
-      .then((data) => setMyAppointments(data as ApiAppointment[]))
-      .catch(() => {})
-      .finally(() => setApptLoading(false));
+    if (!user) return;
+    setDataLoading(true);
+
+    const promises: Promise<void>[] = [];
+
+    if (user.role === 'client') {
+      promises.push(
+        appointmentsApi.myList()
+          .then((data) => setMyAppointments(data as ApiAppointment[]))
+          .catch(() => {}),
+        interactions.followedList()
+          .then((data) => setFollowedHairdressers(data as SavedHairdresser[]))
+          .catch(() => {}),
+        savedPostsApi.list()
+          .then((data) => setInspirations(data as ApiPost[]))
+          .catch(() => {}),
+      );
+    }
+
+    Promise.all(promises).finally(() => setDataLoading(false));
   }, [user]);
 
   if (isLoading) {
     return (
       <AppShell>
-        <div className="max-w-lg mx-auto px-4 pt-6">
-          <div className="h-8 w-32 bg-neutral-100 rounded-lg animate-pulse mb-6" />
-          <div className="space-y-3">
-            <div className="h-32 bg-neutral-100 rounded-2xl animate-pulse" />
-            <div className="h-14 bg-neutral-100 rounded-xl animate-pulse" />
-          </div>
+        <div className="max-w-lg mx-auto px-4 pt-6 space-y-3">
+          <div className="h-40 bg-neutral-100 rounded-2xl animate-pulse" />
+          <div className="h-14 bg-neutral-100 rounded-xl animate-pulse" />
+          <div className="h-14 bg-neutral-100 rounded-xl animate-pulse" />
         </div>
       </AppShell>
     );
@@ -61,19 +80,18 @@ export default function ComptePage() {
 
   return (
     <AppShell>
-      <div className="max-w-lg mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-24">
-        <h1 className="text-xl font-bold text-neutral-900 mb-6">Mon compte</h1>
+      <div className="max-w-lg mx-auto pb-28">
 
+        {/* ── Non connecté ── */}
         {!user ? (
-          <div className="space-y-4">
-            <div className="bg-neutral-50 rounded-2xl p-6 text-center mb-6">
-              <div className="w-16 h-16 rounded-full bg-neutral-200 flex items-center justify-center mx-auto mb-4">
-                <User size={28} className="text-neutral-400" />
+          <div className="px-4 pt-6 space-y-4">
+            <div className="bg-neutral-50 rounded-2xl p-8 text-center mb-2">
+              <div className="w-20 h-20 rounded-full bg-neutral-200 flex items-center justify-center mx-auto mb-4">
+                <User size={32} className="text-neutral-400" />
               </div>
-              <h3 className="font-semibold text-neutral-900 mb-2">Connectez-vous à CHAIR</h3>
-              <p className="text-sm text-neutral-500">Accédez à votre profil, vos favoris et bien plus.</p>
+              <h3 className="font-bold text-neutral-900 mb-1.5">Connectez-vous à CHAIR</h3>
+              <p className="text-sm text-neutral-500">Accédez à votre profil, vos inspirations et vos réservations.</p>
             </div>
-
             <Link
               href="/connexion"
               className="flex items-center justify-between w-full bg-neutral-900 text-white px-5 py-4 rounded-xl hover:bg-neutral-700 transition-colors"
@@ -84,7 +102,6 @@ export default function ComptePage() {
               </div>
               <ChevronRight size={18} />
             </Link>
-
             <Link
               href="/inscription"
               className="flex items-center justify-between w-full bg-white border border-neutral-200 text-neutral-900 px-5 py-4 rounded-xl hover:border-neutral-400 transition-colors"
@@ -95,7 +112,6 @@ export default function ComptePage() {
               </div>
               <ChevronRight size={18} />
             </Link>
-
             <div className="border-t border-neutral-100 pt-4 mt-6">
               <p className="text-xs text-neutral-400 text-center mb-4">Vous êtes coiffeur ?</p>
               <Link
@@ -109,80 +125,192 @@ export default function ComptePage() {
                     <p className="text-xs text-neutral-400">Développez votre visibilité sur CHAIR</p>
                   </div>
                 </div>
-                <ChevronRight size={18} />
+                <ChevronRight size={16} className="text-neutral-300" />
               </Link>
             </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Profile card */}
-            <div className="bg-neutral-50 rounded-2xl p-6 flex items-center gap-4">
-              <div className="relative w-14 h-14 rounded-full overflow-hidden bg-neutral-200 flex-shrink-0 flex items-center justify-center">
-                {resolveMediaUrl(user.avatar) ? (
-                  <Image src={resolveMediaUrl(user.avatar)!} alt={user.name} fill className="object-cover" sizes="56px" />
-                ) : (
-                  <User size={24} className="text-neutral-400" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-neutral-900 truncate">{user.name}</p>
-                <p className="text-sm text-neutral-500 truncate">{user.email}</p>
-                <span className="inline-block mt-1 text-[11px] font-semibold tracking-wide uppercase text-neutral-400">
-                  {user.role === 'client' ? 'Client' : user.role === 'hairdresser' ? 'Coiffeur' : 'Salon'}
-                  {user.city ? ` — ${user.city}` : ''}
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50">
-              {user.role === 'hairdresser' && (
-                <Link
-                  href="/dashboard"
-                  className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 text-neutral-900">
-                    <LayoutDashboard size={18} className="text-neutral-400" />
-                    <span className="font-semibold text-sm">Mon tableau de bord</span>
-                  </div>
-                  <ChevronRight size={16} className="text-neutral-300" />
-                </Link>
-              )}
-              <Link
-                href="/notifications"
-                className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
-              >
-                <div className="flex items-center gap-3 text-neutral-900">
-                  <Bell size={18} className="text-neutral-400" />
-                  <span className="font-semibold text-sm">Notifications</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {unreadCount > 0 && (
-                    <span className="min-w-[20px] h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+          <>
+            {/* ══════════════════════════════════════
+                BLOC PROFIL
+            ══════════════════════════════════════ */}
+            <div className="relative bg-neutral-50 pt-10 pb-6 px-5">
+              {/* Avatar */}
+              <div className="relative w-[88px] h-[88px] mx-auto mb-4">
+                <div className="w-full h-full rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center">
+                  {resolveMediaUrl(user.avatar) ? (
+                    <Image
+                      src={resolveMediaUrl(user.avatar)!}
+                      alt={user.name}
+                      fill
+                      className="object-cover"
+                      sizes="88px"
+                    />
+                  ) : (
+                    <span className="text-[32px] font-bold text-neutral-400 select-none">
+                      {user.name.charAt(0).toUpperCase()}
                     </span>
                   )}
-                  <ChevronRight size={16} className="text-neutral-300" />
                 </div>
-              </Link>
+              </div>
+
+              {/* Nom */}
+              <div className="text-center mb-5">
+                <h1 className="text-[22px] font-bold text-neutral-900 leading-tight">{user.name}</h1>
+                {user.city && (
+                  <p className="flex items-center justify-center gap-1 text-sm text-neutral-400 mt-1">
+                    <MapPin size={12} />
+                    {user.city}
+                  </p>
+                )}
+                {user.role === 'hairdresser' && (
+                  <span className="inline-block mt-1.5 text-[10px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+                    Coiffeur
+                  </span>
+                )}
+              </div>
+
+              {/* Bouton modifier */}
+              <div className="flex justify-center gap-3">
+                <Link
+                  href="/compte/modifier"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-700 transition-colors"
+                >
+                  <Edit3 size={14} />
+                  Modifier mon profil
+                </Link>
+                {user.role === 'hairdresser' && (
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 transition-colors"
+                  >
+                    <LayoutDashboard size={14} />
+                    Dashboard
+                  </Link>
+                )}
+              </div>
             </div>
 
-            {/* Mes réservations (clients uniquement) */}
+            {/* ══════════════════════════════════════
+                MES ABONNEMENTS (clients uniquement)
+            ══════════════════════════════════════ */}
             {user.role === 'client' && (
-              <div>
+              <section className="mt-6 px-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+                    Mes abonnements
+                  </p>
+                  {followedHairdressers.length > 0 && (
+                    <span className="text-[11px] text-neutral-400">{followedHairdressers.length}</span>
+                  )}
+                </div>
+
+                {dataLoading ? (
+                  <div className="flex gap-3 overflow-x-hidden">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="flex-shrink-0 w-[72px] h-[72px] rounded-full bg-neutral-100 animate-pulse" />
+                    ))}
+                  </div>
+                ) : followedHairdressers.length === 0 ? (
+                  <div className="border border-dashed border-neutral-200 rounded-2xl p-6 text-center">
+                    <p className="text-sm text-neutral-400">Aucun abonnement</p>
+                    <Link href="/rechercher" className="text-xs font-medium text-neutral-900 mt-1 block hover:underline">
+                      Découvrir des coiffeurs
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="flex gap-4 overflow-x-auto pb-1 no-scrollbar">
+                    {followedHairdressers.map((h) => (
+                      <Link
+                        key={h.id}
+                        href={`/coiffeur/${h.slug}`}
+                        className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[68px]"
+                      >
+                        <div className="relative w-[60px] h-[60px] rounded-full overflow-hidden bg-neutral-100 ring-2 ring-neutral-100">
+                          {h.user.avatar && resolveMediaUrl(h.user.avatar) ? (
+                            <Image
+                              src={resolveMediaUrl(h.user.avatar)!}
+                              alt={h.user.name}
+                              fill
+                              className="object-cover"
+                              sizes="60px"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+                              <span className="text-[18px] font-bold text-neutral-500">
+                                {h.user.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[10px] font-medium text-neutral-600 text-center leading-tight line-clamp-2 w-full">
+                          {h.user.name.split(' ')[0]}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════
+                MES INSPIRATIONS (clients uniquement)
+            ══════════════════════════════════════ */}
+            {user.role === 'client' && (
+              <section className="mt-6 px-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+                    Mes inspirations
+                  </p>
+                  {inspirations.length > 0 && (
+                    <Link
+                      href="/mes-inspirations"
+                      className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
+                    >
+                      Voir tout <ChevronRight size={11} />
+                    </Link>
+                  )}
+                </div>
+
+                {dataLoading ? (
+                  <div className="grid grid-cols-3 gap-1">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="aspect-square bg-neutral-100 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : inspirations.length === 0 ? (
+                  <div className="border border-dashed border-neutral-200 rounded-2xl p-6 text-center">
+                    <Heart size={24} className="mx-auto text-neutral-300 mb-2" />
+                    <p className="text-sm text-neutral-400">Aucune inspiration</p>
+                    <p className="text-xs text-neutral-300 mt-1">Sauvegardez des réalisations qui vous inspirent</p>
+                    <Link href="/" className="text-xs font-medium text-neutral-900 mt-2 block hover:underline">
+                      Explorer le feed
+                    </Link>
+                  </div>
+                ) : (
+                  <InspirationGrid inspirations={inspirations.slice(0, 9)} />
+                )}
+              </section>
+            )}
+
+            {/* ══════════════════════════════════════
+                MES RÉSERVATIONS (clients uniquement)
+            ══════════════════════════════════════ */}
+            {user.role === 'client' && (
+              <section className="mt-6 px-4">
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
                   Mes réservations
                 </p>
 
-                {apptLoading ? (
+                {dataLoading ? (
                   <div className="space-y-3">
                     {[1, 2].map((i) => (
                       <div key={i} className="h-24 bg-neutral-100 rounded-2xl animate-pulse" />
                     ))}
                   </div>
                 ) : myAppointments.length === 0 ? (
-                  <div className="text-center py-10 border border-dashed border-neutral-200 rounded-2xl">
-                    <CalendarDays size={28} className="mx-auto text-neutral-300 mb-2" />
+                  <div className="text-center py-8 border border-dashed border-neutral-200 rounded-2xl">
+                    <CalendarDays size={26} className="mx-auto text-neutral-300 mb-2" />
                     <p className="text-sm text-neutral-400">Aucune réservation</p>
                     <p className="text-xs text-neutral-300 mt-1">Vos prochains rendez-vous apparaîtront ici</p>
                   </div>
@@ -193,25 +321,124 @@ export default function ComptePage() {
                     ))}
                   </div>
                 )}
-              </div>
+              </section>
             )}
 
-            {/* Logout */}
-            <button
-              onClick={logout}
-              className="flex items-center gap-3 w-full px-5 py-4 rounded-xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 transition-colors"
-            >
-              <LogOut size={18} />
-              <span className="font-semibold text-sm">Se déconnecter</span>
-            </button>
-          </div>
+            {/* ══════════════════════════════════════
+                PARAMÈTRES
+            ══════════════════════════════════════ */}
+            <section className="mt-6 px-4">
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
+                Paramètres
+              </p>
+              <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
+                <Link
+                  href="/notifications"
+                  className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-neutral-900">
+                    <Bell size={17} className="text-neutral-400" />
+                    <span className="font-medium text-sm">Notifications</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                    <ChevronRight size={15} className="text-neutral-300" />
+                  </div>
+                </Link>
+
+                <Link
+                  href="/mes-inspirations"
+                  className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-neutral-900">
+                    <Bookmark size={17} className="text-neutral-400" />
+                    <span className="font-medium text-sm">Mes inspirations</span>
+                  </div>
+                  {inspirations.length > 0 && (
+                    <span className="text-xs text-neutral-400 mr-1">{inspirations.length}</span>
+                  )}
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+
+                <Link
+                  href="/confidentialite"
+                  className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-neutral-900">
+                    <Lock size={17} className="text-neutral-400" />
+                    <span className="font-medium text-sm">Confidentialité</span>
+                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+
+                <Link
+                  href="/cgu"
+                  className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 text-neutral-900">
+                    <Settings size={17} className="text-neutral-400" />
+                    <span className="font-medium text-sm">Conditions d&apos;utilisation</span>
+                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+              </div>
+            </section>
+
+            {/* Déconnexion */}
+            <div className="mt-4 px-4">
+              <button
+                onClick={logout}
+                className="flex items-center gap-3 w-full px-5 py-4 rounded-xl border border-neutral-200 text-neutral-500 hover:border-neutral-400 hover:text-neutral-900 transition-colors"
+              >
+                <LogOut size={17} />
+                <span className="font-medium text-sm">Se déconnecter</span>
+              </button>
+            </div>
+          </>
         )}
       </div>
     </AppShell>
   );
 }
 
-// ── Client Appointment Card ───────────────────────────────────────────
+// ── Grille inspirations ───────────────────────────────────────────────
+
+function InspirationGrid({ inspirations }: { inspirations: ApiPost[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-[2px]">
+      {inspirations.map((post) => {
+        const url = resolveMediaUrl(
+          post.images.find((i) => i.type === 'after' || i.type === 'result')?.url ?? post.cover_image
+        );
+        return (
+          <Link
+            key={post.id}
+            href={`/realisation/${post.id}`}
+            className="relative aspect-square overflow-hidden rounded-sm bg-neutral-100 group"
+          >
+            {url ? (
+              <Image
+                src={url}
+                alt={post.specialty?.name ?? ''}
+                fill
+                className="object-cover group-hover:scale-[1.05] transition-transform duration-500"
+                sizes="33vw"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-neutral-200" />
+            )}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Carte réservation client ─────────────────────────────────────────
 
 function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
   const hairdresserName = appt.hairdresser?.user?.name ?? 'Coiffeur';
@@ -230,27 +457,18 @@ function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
   return (
     <div className="border border-neutral-200 rounded-2xl overflow-hidden">
       <div className="px-4 py-4">
-        {/* Hairdresser + status */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="min-w-0">
             <p className="text-sm font-bold text-neutral-900 truncate">{hairdresserName}</p>
-            {hairdresserCity && (
-              <p className="text-xs text-neutral-400">{hairdresserCity}</p>
-            )}
+            {hairdresserCity && <p className="text-xs text-neutral-400">{hairdresserCity}</p>}
           </div>
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${STATUS_COLOR[appt.status] ?? 'bg-neutral-100 text-neutral-500 border-neutral-200'}`}>
             {STATUS_LABEL[appt.status] ?? appt.status}
           </span>
         </div>
-
-        {/* Service */}
         <p className="text-sm text-neutral-700 font-medium">{appt.service}</p>
-
-        {/* Date + heure */}
         <div className="flex items-center gap-3 mt-2 flex-wrap">
-          {dateLabel && (
-            <span className="text-xs text-neutral-500 capitalize">{dateLabel}</span>
-          )}
+          {dateLabel && <span className="text-xs text-neutral-500 capitalize">{dateLabel}</span>}
           {startTime && (
             <span className="flex items-center gap-1 text-xs font-semibold text-neutral-900">
               <Clock size={11} />
@@ -258,26 +476,17 @@ function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
             </span>
           )}
         </div>
-
-        {/* Durée + prix */}
         <div className="flex items-center gap-3 mt-1.5">
-          {appt.duration_minutes && (
-            <span className="text-xs text-neutral-400">{appt.duration_minutes} min</span>
-          )}
-          {appt.price && (
-            <span className="text-xs font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>
-          )}
+          {appt.duration_minutes && <span className="text-xs text-neutral-400">{appt.duration_minutes} min</span>}
+          {appt.price && <span className="text-xs font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>}
         </div>
-
-        {/* Voir le profil */}
         {hairdresserSlug && (
           <div className="mt-3 pt-3 border-t border-neutral-100">
             <Link
               href={`/coiffeur/${hairdresserSlug}`}
               className="text-xs font-medium text-neutral-700 hover:text-neutral-900 flex items-center gap-1"
             >
-              Voir le profil du coiffeur
-              <ChevronRight size={12} />
+              Voir le profil du coiffeur <ChevronRight size={12} />
             </Link>
           </div>
         )}

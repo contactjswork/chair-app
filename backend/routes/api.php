@@ -17,6 +17,9 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\SalonController;
 use App\Http\Controllers\Api\AvailableHairdressersController;
+use App\Http\Controllers\Api\PreferenceController;
+use App\Http\Controllers\Api\SavedPostController;
+use App\Http\Controllers\Api\UserController;
 
 // Auth
 Route::post('/register', [AuthController::class, 'register']);
@@ -49,12 +52,17 @@ Route::get('/available-hairdressers', [AvailableHairdressersController::class, '
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/preferences', [PreferenceController::class, 'store']);
 
     // Profil coiffeur (édition)
     Route::get('/profile',               [ProfileController::class, 'show']);
     Route::put('/profile',               [ProfileController::class, 'update']);
     Route::post('/profile/avatar',       [ProfileController::class, 'uploadAvatar']);
     Route::post('/profile/banner',       [ProfileController::class, 'uploadBanner']);
+
+    // Profil utilisateur (tous rôles)
+    Route::put('/user/profile',          [UserController::class, 'updateProfile']);
+    Route::post('/user/avatar',          [UserController::class, 'uploadAvatar']);
 
     // Géolocalisation utilisateur
     Route::put('/user/location',         [ProfileController::class, 'updateLocation']);
@@ -66,8 +74,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/posts/{postId}',        [PostController::class, 'destroy']);
     Route::post('/posts/{postId}/like',     [PostController::class, 'toggleLike']);
 
+    // Inspirations (saved posts)
+    Route::get('/saved-posts',                  [SavedPostController::class, 'index']);
+    Route::post('/saved-posts/{postId}',        [SavedPostController::class, 'save']);
+    Route::delete('/saved-posts/{postId}',      [SavedPostController::class, 'unsave']);
+    Route::get('/saved-posts/{postId}/status',  [SavedPostController::class, 'status']);
+
     // Saved profiles
     Route::get('/saved-profiles',                           [InteractionController::class, 'savedIndex']);
+    Route::get('/followed-hairdressers',                    [InteractionController::class, 'followedIndex']);
     Route::post('/saved-profiles/{hairdresserId}',          [InteractionController::class, 'save']);
     Route::delete('/saved-profiles/{hairdresserId}',        [InteractionController::class, 'unsave']);
 

@@ -11,6 +11,7 @@ import {
   User, Image as ImageIcon, FileText, Tag, Scissors,
   Calendar, Camera, ChevronRight, Check, Eye, ArrowRight, X
 } from 'lucide-react';
+import ImageCropModal from '@/components/ui/ImageCropModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -85,19 +86,21 @@ function StepCard({ step, children }: { step: OnboardingStep; children: React.Re
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function OnboardingPage() {
-  const { user, isLoading, updateUser } = useAuth();
+  const { user, isLoading, updateUser, logout } = useAuth();
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [profileSlug, setProfileSlug] = useState<string | null>(null);
 
   // Step 1 — Avatar
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarCropSrc,  setAvatarCropSrc]  = useState<string | null>(null);
 
   // Step 2 — Banner
-  const [bannerUrl, setBannerUrl] = useState<string | null>(null);
+  const [bannerUrl,      setBannerUrl]      = useState<string | null>(null);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerCropSrc,  setBannerCropSrc]  = useState<string | null>(null);
 
   // Step 3 — Bio & Tagline
   const [bio, setBio] = useState('');
@@ -162,14 +165,17 @@ export default function OnboardingPage() {
 
   // ── Step handlers ─────────────────────────────────────────────────────────
 
-  async function uploadAvatar(file: File) {
-    // Aperçu instantané avant même l'upload
-    const localPreview = URL.createObjectURL(file);
-    setAvatarUrl(localPreview);
+  function selectAvatar(file: File) {
+    setAvatarCropSrc(URL.createObjectURL(file));
+  }
+
+  async function uploadAvatarBlob(blob: Blob, previewUrl: string) {
+    setAvatarCropSrc(null);
+    setAvatarUrl(previewUrl);
     setAvatarUploading(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
+      formData.append('avatar', blob, 'avatar.jpg');
       const token = localStorage.getItem('chair_token');
       const res = await fetch(`${API_BASE}/profile/avatar`, {
         method: 'POST',
@@ -178,7 +184,7 @@ export default function OnboardingPage() {
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      const url = data.url ?? data.avatar_url ?? data.path ?? localPreview;
+      const url = data.url ?? data.avatar_url ?? data.path ?? previewUrl;
       setAvatarUrl(url);
       updateUser({ avatar: url });
     } catch {
@@ -188,14 +194,17 @@ export default function OnboardingPage() {
     }
   }
 
-  async function uploadBanner(file: File) {
-    // Aperçu instantané avant même l'upload
-    const localPreview = URL.createObjectURL(file);
-    setBannerUrl(localPreview);
+  function selectBanner(file: File) {
+    setBannerCropSrc(URL.createObjectURL(file));
+  }
+
+  async function uploadBannerBlob(blob: Blob, previewUrl: string) {
+    setBannerCropSrc(null);
+    setBannerUrl(previewUrl);
     setBannerUploading(true);
     try {
       const formData = new FormData();
-      formData.append('banner', file);
+      formData.append('banner', blob, 'banner.jpg');
       const token = localStorage.getItem('chair_token');
       const res = await fetch(`${API_BASE}/profile/banner`, {
         method: 'POST',
@@ -204,7 +213,7 @@ export default function OnboardingPage() {
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setBannerUrl(data.url ?? data.banner_url ?? data.path ?? localPreview);
+      setBannerUrl(data.url ?? data.banner_url ?? data.path ?? previewUrl);
     } catch {
       // garde le preview local si upload échoue
     } finally {
@@ -304,7 +313,7 @@ export default function OnboardingPage() {
     if (currentStep < STEPS.length) {
       setCurrentStep((s) => s + 1);
     } else {
-      router.push('/dashboard');
+      router.push(profileSlug ? `/coiffeur/${profileSlug}` : '/dashboard');
     }
   }
 
@@ -312,7 +321,7 @@ export default function OnboardingPage() {
     if (currentStep < STEPS.length) {
       setCurrentStep((s) => s + 1);
     } else {
-      router.push('/dashboard');
+      router.push(profileSlug ? `/coiffeur/${profileSlug}` : '/dashboard');
     }
   }
 
@@ -353,10 +362,10 @@ export default function OnboardingPage() {
             </Link>
           )}
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => { logout(); router.push('/'); }}
             className="text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
           >
-            Passer
+            Se déconnecter
           </button>
         </div>
       </div>
@@ -426,7 +435,7 @@ export default function OnboardingPage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) selectAvatar(f); e.target.value = ''; }}
               />
               <p className="text-sm text-neutral-500 text-center">
                 Cliquez pour choisir votre photo de profil.<br />
@@ -474,7 +483,7 @@ export default function OnboardingPage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => e.target.files?.[0] && uploadBanner(e.target.files[0])}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) selectBanner(f); e.target.value = ''; }}
               />
               <p className="text-xs text-neutral-400 text-center">
                 Recommandé : 1200 × 400 px. JPG ou PNG, 10 Mo max.
@@ -545,36 +554,99 @@ export default function OnboardingPage() {
         {/* ── STEP 4 — Spécialités ── */}
         {currentStep === 4 && (
           <StepCard step={step}>
-            <p className="text-sm text-neutral-500 mb-3">Sélectionnez au moins 2 spécialités.</p>
-            <div className="flex flex-wrap gap-2">
-              {allSpecialties.map((sp) => {
-                const active = selectedSpecialties.includes(sp.id);
-                return (
-                  <button
-                    key={sp.id}
-                    type="button"
-                    onClick={() =>
-                      setSelectedSpecialties((prev) =>
-                        prev.includes(sp.id) ? prev.filter((x) => x !== sp.id) : [...prev, sp.id]
-                      )
-                    }
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                      active
-                        ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
-                    }`}
-                  >
-                    {active && <Check size={10} className="inline mr-1" />}
-                    {sp.name}
-                  </button>
-                );
-              })}
+            {/* Intro SEO */}
+            <div className="bg-neutral-50 rounded-xl px-4 py-3 mb-4 border border-neutral-100">
+              <p className="text-[11px] font-semibold text-neutral-700 mb-0.5">Votre visibilité dépend de vos spécialités</p>
+              <p className="text-[11px] text-neutral-500 leading-relaxed">
+                Les clients recherchent par technique : <em>"Balayage Paris"</em>, <em>"Barber Lyon"</em>…
+                Chaque spécialité cochée vous fait apparaître dans ces recherches sur CHAIR et sur Google.
+              </p>
             </div>
-            {selectedSpecialties.length >= 2 && (
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mt-3">
+
+            {/* Groupes par catégorie */}
+            {(() => {
+              const GROUPS: { label: string; desc: string; slugs: string[] }[] = [
+                {
+                  label: 'Couleur',
+                  desc: 'Très recherchées — fort potentiel de visibilité locale.',
+                  slugs: ['balayage','blond','coloration','ombre-hair','hair-contouring','tie-dye','roux','couleur-homme'],
+                },
+                {
+                  label: 'Coupe Femme',
+                  desc: 'Secteur dominant — ciblez la clientèle féminine de votre zone.',
+                  slugs: ['coupe-femme','coupe-courte','coupe-longue','frange'],
+                },
+                {
+                  label: 'Coupe Homme & Barber',
+                  desc: 'Barber et dégradé sont parmi les termes les plus recherchés en France.',
+                  slugs: ['coupe-homme','barber','degrade','taper','fade','buzz-cut','barbe'],
+                },
+                {
+                  label: 'Texture & Soin',
+                  desc: 'Niche à fort engagement — les clients cherchent des experts spécifiques.',
+                  slugs: ['boucles','extensions','lissage','keratine','ondulations'],
+                },
+                {
+                  label: 'Style & Créativité',
+                  desc: 'Différenciez-vous avec des techniques rares et demandées.',
+                  slugs: ['dreads','braid'],
+                },
+                {
+                  label: 'Occasion',
+                  desc: 'Mariage et soirée génèrent les prestations les mieux rémunérées.',
+                  slugs: ['chignon','mariage','coiffure-soiree'],
+                },
+              ];
+
+              const bySlug = Object.fromEntries(allSpecialties.map((s) => [s.slug, s]));
+
+              return GROUPS.map((group) => {
+                const items = group.slugs.map((slug) => bySlug[slug]).filter(Boolean);
+                if (items.length === 0) return null;
+                return (
+                  <div key={group.label} className="mb-4">
+                    <div className="flex items-baseline gap-2 mb-1.5">
+                      <p className="text-[11px] font-bold text-neutral-800 uppercase tracking-wide">{group.label}</p>
+                      <p className="text-[10px] text-neutral-400 leading-tight">{group.desc}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {items.map((sp) => {
+                        const active = selectedSpecialties.includes(sp.id);
+                        return (
+                          <button
+                            key={sp.id}
+                            type="button"
+                            onClick={() =>
+                              setSelectedSpecialties((prev) =>
+                                prev.includes(sp.id) ? prev.filter((x) => x !== sp.id) : [...prev, sp.id]
+                              )
+                            }
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                              active
+                                ? 'bg-neutral-900 text-white border-neutral-900'
+                                : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
+                            }`}
+                          >
+                            {active && <Check size={9} />}
+                            {sp.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+
+            {selectedSpecialties.length >= 2 ? (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mt-2 pt-2 border-t border-neutral-100">
                 <Check size={13} />
-                {selectedSpecialties.length} spécialités sélectionnées
+                {selectedSpecialties.length} spécialités — vous serez visible dans autant de recherches
               </div>
+            ) : (
+              <p className="text-[11px] text-neutral-400 mt-2 pt-2 border-t border-neutral-100">
+                Sélectionnez au moins 2 spécialités pour continuer.
+              </p>
             )}
           </StepCard>
         )}
@@ -805,6 +877,26 @@ export default function OnboardingPage() {
           </div>
         )}
       </div>
+
+      {/* Modals de recadrage */}
+      {avatarCropSrc && (
+        <ImageCropModal
+          imageSrc={avatarCropSrc}
+          aspect={1}
+          shape="round"
+          onConfirm={uploadAvatarBlob}
+          onCancel={() => setAvatarCropSrc(null)}
+        />
+      )}
+      {bannerCropSrc && (
+        <ImageCropModal
+          imageSrc={bannerCropSrc}
+          aspect={3}
+          shape="rect"
+          onConfirm={uploadBannerBlob}
+          onCancel={() => setBannerCropSrc(null)}
+        />
+      )}
     </div>
   );
 }

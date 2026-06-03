@@ -97,6 +97,60 @@ function PhotoGrid({
 
 // ── Formulaire d'ajout ─────────────────────────────────────────────
 
+// ── Sélecteur multi-tags ──────────────────────────────────────────
+
+function TagSelector({
+  specialties,
+  selectedIds,
+  onChange,
+  label = 'Tags',
+  max = 6,
+}: {
+  specialties: ApiSpecialty[];
+  selectedIds: number[];
+  onChange: (ids: number[]) => void;
+  label?: string;
+  max?: number;
+}) {
+  function toggle(id: number) {
+    if (selectedIds.includes(id)) {
+      onChange(selectedIds.filter((x) => x !== id));
+    } else if (selectedIds.length < max) {
+      onChange([...selectedIds, id]);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-semibold text-neutral-600">{label}</label>
+        <span className="text-[10px] text-neutral-400">{selectedIds.length}/{max} sélectionnés</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {specialties.map((s) => {
+          const active = selectedIds.includes(s.id);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => toggle(s.id)}
+              className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                active
+                  ? 'bg-neutral-900 text-white border-neutral-900'
+                  : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
+              }`}
+            >
+              {s.name}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Formulaire d'ajout ─────────────────────────────────────────────
+
 function AddPostForm({
   specialties,
   onSuccess,
@@ -108,9 +162,25 @@ function AddPostForm({
 }) {
   const [photos,      setPhotos]      = useState<PhotoFile[]>([]);
   const [description, setDescription] = useState('');
+  const [gender,      setGender]      = useState<'homme' | 'femme' | ''>('');
   const [specialtyId, setSpecialtyId] = useState('');
+  const [tagIds,      setTagIds]      = useState<number[]>([]);
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState('');
+
+  // Suggérer les tags selon le genre sélectionné
+  const suggestedSpecialties = gender === 'homme'
+    ? specialties.filter(s => ['barber', 'coupe-homme', 'taper', 'fade', 'degrade', 'buzz-cut'].includes(s.slug))
+    : gender === 'femme'
+    ? specialties.filter(s => ['balayage', 'blond', 'coloration', 'ombre-hair', 'boucles', 'extensions', 'lissage', 'coupe-femme', 'mariage', 'hair-contouring', 'chignon', 'tie-dye'].includes(s.slug))
+    : specialties;
+
+  // Quand on change le genre, on réinitialise les tags
+  function handleGenderChange(g: 'homme' | 'femme' | '') {
+    setGender(g);
+    setTagIds([]);
+    setSpecialtyId('');
+  }
 
   function addPhotos(files: File[]) {
     const newPhotos: PhotoFile[] = files.map((f) => ({
@@ -138,7 +208,10 @@ function AddPostForm({
     const form = new FormData();
     photos.forEach((p) => form.append('images[]', p.file));
     if (description)  form.append('description',  description);
-    if (specialtyId)  form.append('specialty_id', specialtyId);
+    if (gender)       form.append('gender',        gender);
+    if (specialtyId)  form.append('specialty_id',  specialtyId);
+    // Envoyer tag_ids comme JSON
+    if (tagIds.length > 0) form.append('tag_ids', JSON.stringify(tagIds));
 
     try {
       const token = getStoredToken();
@@ -164,7 +237,10 @@ function AddPostForm({
     <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-6">
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
-        <h3 className="font-semibold text-neutral-900 text-sm">Nouvelle réalisation</h3>
+        <div>
+          <h3 className="font-semibold text-neutral-900 text-sm">Nouvelle réalisation</h3>
+          <p className="text-[11px] text-neutral-400 mt-0.5">Taguez précisément pour apparaître dans le bon feed</p>
+        </div>
         <button type="button" onClick={onCancel} className="text-neutral-400 hover:text-neutral-700 transition-colors">
           <X size={18} />
         </button>
@@ -175,12 +251,8 @@ function AddPostForm({
           <div className="text-sm text-red-500 bg-red-50 border border-red-100 px-4 py-2.5 rounded-xl">{error}</div>
         )}
 
-        {/* Sélecteur photos */}
-        {photos.length === 0 ? (
-          <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
-        ) : (
-          <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
-        )}
+        {/* Photos */}
+        <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
 
         {/* Description */}
         <div>
@@ -190,25 +262,68 @@ function AddPostForm({
             onChange={(e) => setDescription(e.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder="Balayage beige froid réalisé avec contouring lumineux et gloss de finition. Technique : mèches au balai + shampoing violet neutralisant."
+            placeholder="Décrivez la technique, les produits utilisés, le résultat…"
             className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none placeholder:text-neutral-300"
           />
         </div>
 
-        {/* Spécialité */}
+        {/* Genre — Homme / Femme / Unisexe */}
         <div>
-          <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Spécialité</label>
-          <select
-            value={specialtyId}
-            onChange={(e) => setSpecialtyId(e.target.value)}
-            className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400"
-          >
-            <option value="">— Sélectionner</option>
-            {specialties.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+          <label className="block text-xs font-semibold text-neutral-600 mb-2">Genre</label>
+          <div className="flex gap-2">
+            {(['homme', 'femme', ''] as const).map((g) => (
+              <button
+                key={g || 'unisex'}
+                type="button"
+                onClick={() => handleGenderChange(g)}
+                className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all ${
+                  gender === g
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
+                {g === 'homme' ? 'Homme' : g === 'femme' ? 'Femme' : 'Unisexe'}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
+
+        {/* Tags techniques — plusieurs choix possibles */}
+        <TagSelector
+          specialties={suggestedSpecialties}
+          selectedIds={tagIds}
+          onChange={setTagIds}
+          label="Techniques & spécialités"
+          max={6}
+        />
+
+        {/* Spécialité principale (pour l'affichage sur la carte) */}
+        {tagIds.length > 0 && (
+          <div>
+            <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Tag principal affiché sur la carte</label>
+            <div className="flex flex-wrap gap-1.5">
+              {tagIds.map((id) => {
+                const sp = specialties.find((s) => s.id === id);
+                if (!sp) return null;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setSpecialtyId(String(id))}
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                      specialtyId === String(id)
+                        ? 'bg-neutral-900 text-white border-neutral-900'
+                        : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                    }`}
+                  >
+                    {sp.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-neutral-400 mt-1">Sélectionnez le tag le plus représentatif à afficher</p>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 pt-1">
@@ -248,7 +363,9 @@ function PostItem({
 }) {
   const [editing,       setEditing]       = useState(false);
   const [description,   setDescription]   = useState(post.description ?? '');
+  const [gender,        setGender]        = useState<'homme' | 'femme' | ''>(post.gender ?? '');
   const [specialtyId,   setSpecialtyId]   = useState(String(post.specialty?.id ?? ''));
+  const [tagIds,        setTagIds]        = useState<number[]>((post.tags ?? []).map((t) => t.id));
   const [saving,        setSaving]        = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -261,7 +378,9 @@ function PostItem({
     try {
       const updated = await api.put<ApiPost>(`/posts/${post.id}`, {
         description:  description || null,
+        gender:       gender || null,
         specialty_id: specialtyId ? parseInt(specialtyId) : null,
+        tag_ids:      JSON.stringify(tagIds),
       });
       onUpdate(updated);
       setEditing(false);
@@ -295,16 +414,28 @@ function PostItem({
       <div className="p-4">
         {!editing ? (
           <>
-            <div className="flex items-start justify-between gap-2 mb-1">
+            {/* Infos du post */}
+            <div className="flex items-start gap-2 mb-2">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {post.specialty && (
-                    <span className="text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400">
-                      {post.specialty.name}
+                {/* Genre + tags */}
+                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+                  {post.gender && (
+                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
+                      post.gender === 'homme' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
+                    }`}>
+                      {post.gender}
                     </span>
                   )}
+                  {(post.tags ?? []).slice(0, 4).map((t) => (
+                    <span key={t.id} className="text-[9px] font-semibold tracking-[0.12em] uppercase text-neutral-400 bg-neutral-50 border border-neutral-100 px-2 py-0.5 rounded-full">
+                      {t.name}
+                    </span>
+                  ))}
+                  {(post.tags ?? []).length === 0 && !post.specialty && (
+                    <span className="text-[10px] text-amber-500 font-medium">Aucun tag — ajouter pour le feed</span>
+                  )}
                   {allImages.length > 1 && (
-                    <span className="text-[10px] text-neutral-300 flex items-center gap-0.5">
+                    <span className="text-[10px] text-neutral-300 flex items-center gap-0.5 ml-1">
                       <ImageIcon size={10} />
                       {allImages.length}
                     </span>
@@ -314,12 +445,12 @@ function PostItem({
                   <p className="text-sm text-neutral-600 line-clamp-2">{post.description}</p>
                 )}
                 <div className="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-400">
-                  <span>{post.likes_count} j'aime</span>
+                  <span>{post.likes_count} j&apos;aime</span>
                   <span>{post.views_count} vues</span>
                 </div>
               </div>
             </div>
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-2">
               <button
                 onClick={() => setEditing(true)}
                 className="flex items-center gap-1.5 text-xs text-neutral-500 border border-neutral-200 px-3 py-1.5 rounded-lg hover:border-neutral-400 hover:text-neutral-900 transition-colors"
@@ -358,14 +489,36 @@ function PostItem({
                 className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none"
               />
             </div>
+
+            {/* Genre */}
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1">Spécialité</label>
-              <select value={specialtyId} onChange={(e) => setSpecialtyId(e.target.value)}
-                className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400">
-                <option value="">—</option>
-                {specialties.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Genre</label>
+              <div className="flex gap-2">
+                {(['homme', 'femme', ''] as const).map((g) => (
+                  <button
+                    key={g || 'unisex'}
+                    type="button"
+                    onClick={() => setGender(g)}
+                    className={`flex-1 py-1.5 text-xs font-semibold rounded-xl border transition-all ${
+                      gender === g
+                        ? 'bg-neutral-900 text-white border-neutral-900'
+                        : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                    }`}
+                  >
+                    {g === 'homme' ? 'Homme' : g === 'femme' ? 'Femme' : 'Unisexe'}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Tags */}
+            <TagSelector
+              specialties={specialties}
+              selectedIds={tagIds}
+              onChange={setTagIds}
+              label="Techniques & spécialités"
+            />
+
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)}
                 className="flex-1 py-2 border border-neutral-200 text-neutral-600 text-xs font-semibold rounded-xl hover:border-neutral-400 transition-colors">

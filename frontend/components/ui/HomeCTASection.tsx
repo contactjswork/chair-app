@@ -30,23 +30,23 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
                 Vous êtes coiffeur ?
               </h3>
               <p className="text-[13px] text-neutral-400 leading-relaxed max-w-sm">
-                Développez votre visibilité, publiez votre portfolio,
-                remplissez votre agenda. Gratuit, à vie.
+                Créez votre profil, publiez votre portfolio et développez votre audience.
+                Passez à Pro pour la réservation en ligne et l&apos;agenda professionnel.
               </p>
               <div className="flex items-center gap-5 mt-4 text-white">
                 <div>
-                  <p className="text-[18px] font-bold leading-none">100%</p>
+                  <p className="text-[15px] font-bold leading-none">Profil</p>
                   <p className="text-[10px] text-neutral-500 mt-0.5">Gratuit</p>
                 </div>
                 <div className="w-px h-6 bg-neutral-700" />
                 <div>
-                  <p className="text-[18px] font-bold leading-none">Illimité</p>
-                  <p className="text-[10px] text-neutral-500 mt-0.5">Portfolio</p>
+                  <p className="text-[15px] font-bold leading-none">Portfolio</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">Illimité</p>
                 </div>
                 <div className="w-px h-6 bg-neutral-700" />
                 <div>
-                  <p className="text-[18px] font-bold leading-none">Certifiés</p>
-                  <p className="text-[10px] text-neutral-500 mt-0.5">Avis</p>
+                  <p className="text-[15px] font-bold leading-none">Pro</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">dès 29€/mois</p>
                 </div>
               </div>
             </div>

@@ -10,7 +10,7 @@ class Post extends Model
     use HasFactory;
 
     protected $fillable = [
-        'hairdresser_id', 'specialty_id', 'type', 'description',
+        'hairdresser_id', 'specialty_id', 'type', 'description', 'gender',
         'duration_minutes', 'price_indication', 'is_published',
         'views_count', 'likes_count', 'cover_image',
     ];
@@ -33,5 +33,14 @@ class Post extends Model
     public function images()
     {
         return $this->hasMany(PostImage::class)->orderBy('order');
+    }
+
+    /**
+     * Tags multi-spécialités de la réalisation (pivot post_tags).
+     * Permet le matching Utilisateur ↔ Réalisation dans le feed intelligent.
+     */
+    public function tags()
+    {
+        return $this->belongsToMany(Specialty::class, 'post_tags', 'post_id', 'specialty_id');
     }
 }

@@ -49,6 +49,8 @@ export interface ApiPost {
   id: number;
   type: 'before_after' | 'result' | 'technique';
   description: string;
+  /** 'homme' | 'femme' | null (unisexe) — champ propre à la réalisation */
+  gender: 'homme' | 'femme' | null;
   duration_minutes: number | null;
   price_indication: number | null;
   cover_image: string | null;
@@ -56,8 +58,12 @@ export interface ApiPost {
   views_count: number;
   is_published: boolean;
   liked_by_user?: boolean;
+  saved_by_user?: boolean;
+  /** Tags multi-spécialités de la réalisation (post_tags pivot) */
+  tags?: ApiSpecialty[];
   created_at: string;
   hairdresser?: ApiHairdresserProfile & { user: ApiUser };
+  /** Spécialité primaire/display — conservée pour compatibilité */
   specialty: ApiSpecialty | null;
   images: ApiPostImage[];
 }

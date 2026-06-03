@@ -61,5 +61,6 @@ export function getStoredUser(): AuthUser | null {
 
 export function redirectPathForRole(role: UserRole, isNewUser = false): string {
   if (role === 'hairdresser') return isNewUser ? '/onboarding' : '/dashboard';
-  return '/compte';
+  // Nouveaux clients → onboarding, existants → home
+  return isNewUser ? '/onboarding-client' : '/';
 }

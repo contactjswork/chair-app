@@ -167,29 +167,19 @@ export default function DashboardPage() {
         {/* Mobile header */}
         <div className="flex items-center justify-between mb-5 md:hidden">
           <Link href="/" className="text-xl font-bold tracking-[0.1em] uppercase">Chair</Link>
-          <div className="flex items-center gap-3">
-            <Link href="/notifications" className="relative p-1.5 rounded-xl hover:bg-neutral-100 transition-colors">
-              <Bell size={20} strokeWidth={1.5} className="text-neutral-600" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </span>
-              )}
-            </Link>
-            <button onClick={logout} className="text-xs text-neutral-400 hover:text-neutral-700 flex items-center gap-1.5">
-              <LogOut size={15} />
-              Quitter
-            </button>
-          </div>
+          <button onClick={logout} className="text-xs text-neutral-400 hover:text-neutral-700 flex items-center gap-1.5">
+            <LogOut size={15} />
+            Se déconnecter
+          </button>
         </div>
 
         {/* Onboarding banner si profil incomplet */}
         {isProfileIncomplete && (
           <div className="bg-neutral-900 text-white rounded-2xl p-5 mb-6">
-            <p className="text-xs font-semibold tracking-wide uppercase text-neutral-400 mb-1">Demarrer</p>
-            <h2 className="font-bold text-base mb-1">Completez votre profil</h2>
+            <p className="text-xs font-semibold tracking-wide uppercase text-neutral-400 mb-1">Démarrer</p>
+            <h2 className="font-bold text-base mb-1">Complétez votre profil</h2>
             <p className="text-sm text-neutral-400 mb-4">
-              Un profil complet attire 3x plus de clients. Ajoutez votre photo, une accroche et votre premiere realisation.
+              Un profil complet attire 3x plus de clients. Ajoutez votre photo, une accroche et votre première réalisation.
             </p>
             <div className="flex flex-wrap gap-2">
               {!user.avatar && (

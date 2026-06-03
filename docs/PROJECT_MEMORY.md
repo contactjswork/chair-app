@@ -1,6 +1,6 @@
 # CHAIR — Project Memory
 > Source de vérité du projet. À relire au début de chaque session.  
-> Dernière mise à jour : 2026-06-01 (session — Planning vue jour + Invalid Date + Réservations client)
+> Dernière mise à jour : 2026-06-03 (session — UX Découverte, Feed TikTok, Onboarding client, Préférences)
 
 ---
 
@@ -122,7 +122,7 @@ Instagram + LinkedIn + Planity + Airbnb
 - Recherche par : ville, spécialité, distance, prix, note
 - Exemples de requêtes cibles : "Balayage Strasbourg", "Barber Paris", "Boucles Lyon"
 
-### Les Spécialités (12 au lancement)
+### Les Spécialités (29 en base)
 | Spécialité | Catégorie |
 |---|---|
 | Balayage | Couleur |
@@ -130,13 +130,30 @@ Instagram + LinkedIn + Planity + Airbnb
 | Coloration | Couleur |
 | Ombré Hair | Couleur |
 | Hair Contouring | Couleur |
+| Tie & Dye | Couleur |
+| Roux | Couleur |
+| Couleur Homme | Couleur |
 | Coupe Femme | Coupe |
 | Coupe Homme | Coupe |
+| Coupe Courte | Coupe |
+| Coupe Longue | Coupe |
+| Frange | Coupe |
 | Barber | Coupe |
+| Dégradé | Coupe |
+| Taper | Coupe |
+| Fade | Coupe |
+| Buzz Cut | Coupe |
 | Boucles | Texture |
 | Extensions | Texture |
 | Lissage | Texture |
+| Kératine | Texture |
+| Ondulations | Texture |
+| Dreads & Locks | Style |
+| Barbe | Homme |
+| Braid | Style |
+| Chignon | Occasion |
 | Mariage | Occasion |
+| Coiffure Soirée | Occasion |
 
 ---
 
@@ -414,21 +431,21 @@ notifications
 └── created_at, updated_at
 ```
 
-### Données en base (seed de démo)
-| Table | Quantité |
-|---|---|
-| users | 20 (5 coiffeurs + 15 clients de test) |
-| hairdresser_profiles | 5 |
-| specialties | 12 |
-| hairdresser_specialties | 14 |
-| posts | 15 (3 par coiffeur) |
-| post_images | 0 (non peuplé — posts seedés utilisent cover_image) |
-| reviews | 15 (3 par coiffeur, is_verified=false, appointment_id=null) |
-| appointments | 0 (créés en cours d'utilisation) |
-| follows | 0 |
-| saved_profiles | 0 |
+### Données en base (comptes réels — seed fictif supprimé)
+| Table | Quantité | Notes |
+|---|---|---|
+| users | 17+ | Comptes réels uniquement |
+| hairdresser_profiles | 14+ | Profils réels |
+| specialties | 29 | 10 ajoutées session 2026-06-03 |
+| posts | 8+ | Posts publiés réels avec tags |
+| post_tags | actif | Pivot posts ↔ specialties — table créée 2026-06-03 |
+| reviews | 5+ | Avis réels |
+| saved_posts | actif | Inspirations clients |
+| user_preferences | actif | genre + interests[] par user |
+| appointments | selon utilisation | |
+| follows | selon utilisation | |
 
-**Note :** Les avis seedés ont `is_verified=false` car antérieurs au système de certification. Nouveaux avis passent par `/review-by-token/{token}` avec `is_verified=true`.
+**Note :** Les données fictives (sophie@chair.fr etc.) ont été supprimées en Sprint Beta. La DB ne contient que des comptes créés manuellement pendant les tests.
 
 ---
 
@@ -566,15 +583,18 @@ notifications
 |---|---|---|
 | `AppShell` | `components/layout/AppShell.tsx` | Wrapper global : TopNav + children + BottomNav. Prop `noPaddingTop` pour le hero homepage |
 | `TopNav` | `components/layout/TopNav.tsx` | Desktop fixe, auth-aware, avatar réel. **Transparent scroll-aware sur `/`** — devient blanc après 60px de scroll |
-| `BottomNav` | `components/layout/BottomNav.tsx` | Navigation mobile fixe, icônes + point actif, Dashboard pour coiffeurs |
+| `BottomNav` | `components/layout/BottomNav.tsx` | Navigation mobile fixe, icônes + point actif. Icônes : Découvrir / Recherche / **Feed** (Clapperboard carré) / Favoris / Compte ou Dashboard. z-[60] pour passer au-dessus du feed TikTok. |
 | `DashboardNav` | `components/layout/DashboardNav.tsx` | Nav mobile fixe dans le dashboard (Accueil / Profil / Portfolio / Aperçu) |
 
 ### UI
 | Composant | Fichier | Description |
 |---|---|---|
-| `HairdresserCard` | `components/ui/HairdresserCard.tsx` | Carte coiffeur 3:4, overlay, `avg_rating` "—" si 0 avis |
+| `HairdresserCard` | `components/ui/HairdresserCard.tsx` | Carte coiffeur 3:4 — bannière floue en fond + avatar rond centré avec ring, spécialités, note pill |
 | `PostCard` | `components/ui/PostCard.tsx` | Carte réalisation (avant/après ou image seule). Prop `hairdresser` optionnelle. Optional chaining défensif. |
 | `FeedPostCard` | `components/ui/FeedPostCard.tsx` | Carte compacte homepage : image seule + overlay gradient (pas de section blanche). Prop `aspect` portrait/square. |
+| `PersonalizedSection` | `components/ui/PersonalizedSection.tsx` | Section "Pour toi — Spécialistes X" : coiffeurs matchant l'intérêt aléatoire du user. CTA inscription pour visiteurs non connectés. |
+| `PersonalizedFeedSection` | `components/ui/PersonalizedFeedSection.tsx` | Section "Inspirations X" : posts filtrés par préférences. Double filtre backend+client. "Voir tout" → `/rechercher?specialty=`. |
+| `NearbySection` | `components/ui/NearbySection.tsx` | Coiffeurs proches (géolocalisation, sort=scored) |
 | `HeroSearch` | `components/ui/HeroSearch.tsx` | Barre de recherche dans le hero → navigue vers `/rechercher?q=...` |
 | `StarRating` | `components/ui/StarRating.tsx` | Étoiles SVG, configurable en taille |
 | `ProfileActions` | `components/ui/ProfileActions.tsx` | Suivre/Sauvegarder (API) — "Modifier mon profil" si profil propre |
@@ -866,6 +886,23 @@ notifications
 - [ x ] **Disponibilités dans la recherche** — `AvailableHairdressersController`, filtre Aujourd'hui/Demain/Cette semaine/Week-end dans `/rechercher`, section homepage "Disponible aujourd'hui"
 - [ x ] **Salons complets** — table `salon_join_requests`, `SalonController`, page `/salon/[slug]`, dashboard salon, page "Rejoindre un salon"
 
+### Terminé ✓ (Sprint Découverte — 2026-06-03)
+- [ x ] **Bug critique** : `vendor/composer/platform_check.php` bypassé (PHP 8.0 ≠ vendor 8.4.1) — re-appliquer après `composer install`
+- [ x ] **CORS fix** : `HandleCors` déplacé avant `TrustProxies` dans `Kernel.php`
+- [ x ] **Migration `post_tags`** : table pivot posts ↔ specialties créée et opérationnelle
+- [ x ] **10 nouvelles spécialités** : barbe, coupe-courte, coupe-longue, keratine, ondulations, frange, coiffure-soiree, dreads, roux, couleur-homme → 29 total
+- [ x ] **HairdresserCard + FeaturedCard redesign** : bannière floue + assombrie en fond, avatar rond centré avec ring
+- [ x ] **Feed TikTok scroll snap** : structure `fixed top-0 left-0 right-0 bottom:60px` + `h-full` sur container + cartes. Snap natif parfaitement aligné.
+- [ x ] **BottomNav Feed** : icône Clapperboard entre Recherche et Favoris, carré arrondi, z-[60]
+- [ x ] **BottomNav dans /feed** : rendue directement (feed n'utilise pas AppShell)
+- [ x ] **Algorithme feed personnalisé** : match `post.specialty.slug` ET `post_tags`, `_match_count > 0` obligatoire, récence 150pts dominant, double filtre client-side
+- [ x ] **Hybride trending+perso** : posts perso en premier, trending sans doublons pour compléter
+- [ x ] **PersonalizedSection** : CTA premium pour visiteurs non connectés, rotation aléatoire de l'intérêt
+- [ x ] **PersonalizedFeedSection** : "Voir tout" → `/rechercher?specialty=`, filtre client-side robuste
+- [ x ] **Onboarding client** : refonte complète — 4 genres, grille 3col par groupe, done screen chips
+- [ x ] **compte/modifier** : section "Mes goûts & inspirations" — sélecteur genre + 29 styles, sync localStorage+API
+- [ x ] **Homepage** : "Réalisations tendance" masquée si aucun post
+
 ### Terminé ✓ (Sprint Beta — 2026-06-02)
 - [ x ] **Variable d'env `NEXT_PUBLIC_API_URL`** — `.env.local` créé, tous les `localhost:8000` remplacés (16 fichiers)
 - [ x ] **Bug onboarding photos** — aperçu instantané avatar/bannière via `URL.createObjectURL()` avant réponse API
@@ -880,7 +917,9 @@ notifications
 
 ### Bugs actifs 🐛
 
-**Aucun bug bloquant connu.**
+**B40 — `chair_preferences` localStorage peut être désyncronisé avec la DB** : à la connexion, si localStorage est vide mais que la DB a des préférences, la section "Pour toi" ne s'affiche pas. Fix prévu : écrire les prefs DB dans localStorage dans `AuthContext::login()`.
+
+**B41 — PHP 8.0 / vendor 8.4** : `vendor/composer/platform_check.php` doit être bypassé manuellement après chaque `composer install` (le vendor a été généré sur une machine PHP 8.4).
 
 ### Bugs résolus (historique complet)
 | # | Symptôme | Fix |

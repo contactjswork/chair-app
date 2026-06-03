@@ -4,10 +4,10 @@ import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import ProfileActions from '@/components/ui/ProfileActions';
 import ReviewsSection from '@/components/ui/ReviewsSection';
-import StarRating from '@/components/ui/StarRating';
+import PortfolioGrid from '@/components/ui/PortfolioGrid';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
-import { MapPin, BadgeCheck, ChevronLeft, Calendar, Briefcase, ExternalLink, Tag } from 'lucide-react';
+import { MapPin, BadgeCheck, ChevronLeft, Calendar, Briefcase, ExternalLink, Star } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -31,47 +31,19 @@ async function getHairdresserServices(slug: string): Promise<ApiServiceCategory[
   } catch { return []; }
 }
 
-// ── Statut salon ─────────────────────────────────────────────────────
-function getSalonStatus(hairdresser: ApiHairdresserProfile): string {
-  if (hairdresser.salon) return `Chez ${hairdresser.salon.name}`;
-  if (hairdresser.is_independent) return 'Indépendant(e)';
+function getSalonStatus(h: ApiHairdresserProfile): string {
+  if (h.salon) return `Chez ${h.salon.name}`;
+  if (h.is_independent) return 'Indépendant(e)';
   return 'Professionnel(le)';
 }
 
-// ── Item portfolio (grille dense) ────────────────────────────────────
-function PortfolioItem({ post }: { post: ApiPost }) {
-  const imageUrl = resolveMediaUrl(getAfterImage(post));
-  if (!imageUrl) return null;
-  return (
-    <Link href={`/realisation/${post.id}`} className="relative aspect-square overflow-hidden bg-neutral-100 group block">
-      <Image
-        src={imageUrl}
-        alt={post.description || 'Réalisation'}
-        fill
-        className="object-cover group-hover:scale-105 transition-transform duration-500"
-        sizes="(max-width: 768px) 33vw, 25vw"
-      />
-      {post.specialty && (
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-          <span className="text-[10px] text-white font-semibold tracking-[0.12em] uppercase leading-tight">
-            {post.specialty.name}
-          </span>
-        </div>
-      )}
-      {/* Indicateur avant/après */}
-      {post.type === 'before_after' && (
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="text-[9px] text-white/80 font-medium bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded">
-            Avant/Après
-          </span>
-        </div>
-      )}
-    </Link>
-  );
-}
-
-export default async function HairdresserProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function HairdresserProfilePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
+
   const [hairdresser, posts, serviceCategories] = await Promise.all([
     getHairdresser(slug),
     getHairdresserPosts(slug),
@@ -80,29 +52,35 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
   if (!hairdresser) notFound();
 
-  const hairdresserSlug = hairdresser.slug;
-  const reviews = hairdresser.reviews ?? [];
-  const avatarUrl = resolveMediaUrl(hairdresser.user.avatar);
-  const bannerUrl = resolveMediaUrl(hairdresser.banner_image);
-  const hasRating = hairdresser.reviews_count > 0;
-  const salonStatus = getSalonStatus(hairdresser);
+  const slug_hd         = hairdresser.slug;
+  const reviews         = hairdresser.reviews ?? [];
+  const avatarUrl       = resolveMediaUrl(hairdresser.user.avatar);
+  const bannerUrl       = resolveMediaUrl(hairdresser.banner_image);
+  const hasRating       = hairdresser.reviews_count > 0;
+  const salonStatus     = getSalonStatus(hairdresser);
+  const portfolioPosts  = posts.filter((p) => getAfterImage(p));
 
-  const stats = [
-    { label: 'Abonnés', value: hairdresser.followers_count },
-    { label: 'Avis',    value: hairdresser.reviews_count },
-    { label: 'Note',    value: hasRating ? parseFloat(hairdresser.avg_rating).toFixed(1) : '—' },
-    { label: 'Visites', value: hairdresser.visits_count ?? 0 },
-  ];
+  // Spécialité principale (première de la liste)
+  const mainSpecialty = hairdresser.specialties?.[0]?.name ?? null;
 
-  const portfolioPosts = posts.filter((p) => getAfterImage(p));
+  // Stats — n'afficher que les valeurs > 0
+  const statItems: { label: string; value: string | number }[] = [];
+  if (hairdresser.followers_count > 0)
+    statItems.push({ label: hairdresser.followers_count === 1 ? 'abonné' : 'abonnés', value: hairdresser.followers_count });
+  if (hasRating)
+    statItems.push({ label: hairdresser.reviews_count === 1 ? 'avis' : 'avis', value: `${parseFloat(hairdresser.avg_rating).toFixed(1)} ★` });
+  if ((hairdresser.visits_count ?? 0) > 0)
+    statItems.push({ label: hairdresser.visits_count === 1 ? 'visite' : 'visites', value: hairdresser.visits_count! });
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto pb-16">
+      <div className="max-w-2xl mx-auto pb-24">
 
-        {/* ── Bannière ── */}
-        <div className="relative h-48 md:h-64 w-full overflow-hidden md:rounded-2xl md:mx-0 md:mt-4 bg-neutral-900">
-          {bannerUrl && (
+        {/* ══════════════════════════════════════
+            BANNIÈRE — taller, plein-largeur
+        ══════════════════════════════════════ */}
+        <div className="relative h-52 md:h-72 w-full overflow-hidden bg-neutral-900">
+          {bannerUrl ? (
             <Image
               src={bannerUrl}
               alt={hairdresser.user.name}
@@ -111,28 +89,34 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 672px"
             />
+          ) : (
+            /* Pas de bannière : fond sombre avec texture */
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
 
-          {/* Retour mobile */}
+          {/* Bouton retour — mobile */}
           <Link
             href="/"
-            className="absolute top-4 left-4 flex items-center gap-1 text-sm text-white/80 hover:text-white transition-colors md:hidden"
+            className="absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors md:hidden"
           >
-            <ChevronLeft size={18} />
+            <ChevronLeft size={19} />
           </Link>
         </div>
 
+        {/* ══════════════════════════════════════
+            IDENTITÉ — overlap bannière
+        ══════════════════════════════════════ */}
         <div className="px-4 md:px-0">
 
-          {/* ── Avatar + Nom ── */}
-          <div className="flex items-end justify-between -mt-12 mb-5 relative z-10">
-            <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md flex-shrink-0 bg-neutral-200 overflow-hidden">
+          {/* Avatar — déborde sur la bannière */}
+          <div className="relative -mt-14 mb-4 z-10">
+            <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md flex-shrink-0 overflow-hidden bg-neutral-200">
               {avatarUrl ? (
                 <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
               ) : (
-                <div className="w-full h-full bg-neutral-300 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-neutral-500">
+                <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                  <span className="text-[26px] font-bold text-white/35 select-none">
                     {hairdresser.user.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -140,216 +124,234 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             </div>
           </div>
 
-          {/* ── Identité ── */}
-          <div className="mb-5">
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-bold text-neutral-900 leading-tight">{hairdresser.user.name}</h1>
-              {hairdresser.is_verified && (
-                <BadgeCheck size={20} className="text-neutral-900 flex-shrink-0" />
-              )}
-            </div>
-
-            {hairdresser.tagline && (
-              <p className="text-sm text-neutral-500 italic mb-2">"{hairdresser.tagline}"</p>
+          {/* Nom + badge vérifié */}
+          <div className="flex items-center gap-2 mb-0.5">
+            <h1 className="text-[22px] md:text-[24px] font-bold text-neutral-900 leading-tight">
+              {hairdresser.user.name}
+            </h1>
+            {hairdresser.is_verified && (
+              <BadgeCheck size={20} className="text-neutral-900 flex-shrink-0" />
             )}
-
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-500">
-              {hairdresser.city && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={13} />
-                  {hairdresser.city}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Briefcase size={13} />
-                {salonStatus}
-              </span>
-            </div>
           </div>
 
-          {/* ── CTA principal — Réservation dynamique ── */}
-          <div className="mb-3">
+          {/* Spécialité principale */}
+          {mainSpecialty && (
+            <p className="text-[14px] text-neutral-500 font-medium mb-0.5">
+              {mainSpecialty}
+            </p>
+          )}
+
+          {/* Tagline */}
+          {hairdresser.tagline && (
+            <p className="text-[13px] text-neutral-400 italic mb-1.5 leading-snug">
+              &ldquo;{hairdresser.tagline}&rdquo;
+            </p>
+          )}
+
+          {/* Ville + statut salon */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-neutral-400 mb-3">
+            {hairdresser.city && (
+              <span className="flex items-center gap-1">
+                <MapPin size={11} />
+                {hairdresser.city}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Briefcase size={11} />
+              {salonStatus}
+            </span>
+          </div>
+
+          {/* Stats inline — seulement les valeurs > 0 */}
+          {statItems.length > 0 && (
+            <div className="flex items-center gap-3 mb-4 text-[13px]">
+              {statItems.map((s, i) => (
+                <span key={i} className="flex items-center gap-1 text-neutral-600">
+                  <span className="font-bold text-neutral-900">{s.value}</span>
+                  <span className="text-neutral-400">{s.label}</span>
+                  {i < statItems.length - 1 && (
+                    <span className="ml-3 w-px h-3 bg-neutral-200 inline-block" />
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* ── CTA Réservation ── */}
+          <div className="mb-2.5">
             {hairdresser.is_independent ? (
-              /* Indépendant → formulaire CHAIR */
               <Link
-                href={`/coiffeur/${hairdresserSlug}/reserver`}
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-sm hover:bg-neutral-700 transition-colors"
+                href={`/coiffeur/${slug_hd}/reserver`}
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-[14px] hover:bg-neutral-700 transition-colors"
               >
-                <Calendar size={16} strokeWidth={2} />
-                Réserver
+                <Calendar size={15} strokeWidth={2} />
+                Réserver un rendez-vous
               </Link>
             ) : hairdresser.booking_url ? (
-              /* Salarié avec lien externe */
               <a
                 href={hairdresser.booking_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-sm hover:bg-neutral-700 transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-[14px] hover:bg-neutral-700 transition-colors"
               >
-                <ExternalLink size={16} strokeWidth={2} />
+                <ExternalLink size={15} strokeWidth={2} />
                 Réserver au salon
               </a>
             ) : (
-              /* Salarié sans lien */
               <button
                 disabled
-                className="w-full flex items-center justify-center gap-2 bg-neutral-100 text-neutral-400 font-semibold py-3.5 rounded-xl text-sm cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 bg-neutral-100 text-neutral-400 font-semibold py-3.5 rounded-xl text-[14px] cursor-not-allowed"
               >
-                <Calendar size={16} strokeWidth={2} />
-                Lien de réservation indisponible
+                <Calendar size={15} strokeWidth={2} />
+                Réservation indisponible
               </button>
             )}
           </div>
 
-          {/* ── Actions secondaires : Suivre / Sauvegarder / Instagram ── */}
-          <div className="mb-6">
+          {/* ── S'abonner / Sauvegarder / Partager ── */}
+          <div className="mb-2">
             <ProfileActions
               hairdresserId={hairdresser.id}
+              hairdresserName={hairdresser.user.name}
               instagramUrl={hairdresser.instagram_url}
               initialFollowersCount={hairdresser.followers_count}
             />
           </div>
 
-          {/* ── Stats ── */}
-          <div className="grid grid-cols-4 gap-2 mb-6">
-            {stats.map(({ label, value }) => (
-              <div key={label} className="bg-neutral-50 rounded-xl p-3 text-center">
-                <p className="text-lg font-bold text-neutral-900 leading-none mb-1">{value}</p>
-                <p className="text-[10px] text-neutral-400 leading-tight">{label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Signaux de confiance ── */}
-          {(hairdresser.is_verified || hairdresser.years_experience || portfolioPosts.length > 0) && (
-            <div className="flex flex-wrap gap-2 mb-6">
-              {hairdresser.is_verified && (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full">
-                  <BadgeCheck size={13} />
-                  Profil vérifié
-                </span>
-              )}
-              {hairdresser.years_experience && hairdresser.years_experience > 0 && (
-                <span className="text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full">
-                  {hairdresser.years_experience} ans d'expérience
-                </span>
-              )}
-              {portfolioPosts.length > 0 && (
-                <span className="text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full">
-                  Portfolio actif
-                </span>
-              )}
-              {hairdresser.reviews_count >= 3 && (
-                <span className="text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full">
-                  {hairdresser.reviews_count} avis clients
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* ── Bio ── */}
-          {hairdresser.user.bio && (
-            <p className="text-sm text-neutral-600 leading-relaxed mb-6">
-              {hairdresser.user.bio}
-            </p>
-          )}
-
-          {/* ── Spécialités ── */}
-          {hairdresser.specialties.length > 0 && (
-            <div className="mb-8">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
-                Spécialités
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {hairdresser.specialties.map((s) => (
-                  <Link
-                    key={s.slug}
-                    href={`/rechercher?specialty=${s.slug}`}
-                    className="text-xs font-semibold tracking-wide uppercase bg-neutral-900 text-white px-3 py-1.5 rounded-full hover:bg-neutral-700 transition-colors"
-                  >
-                    {s.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Services ── */}
-          {serviceCategories.length > 0 && (
-            <div className="mb-8">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3 flex items-center gap-1.5">
-                <Tag size={11} />
-                Services
-              </p>
-              <div className="space-y-3">
-                {serviceCategories.map((cat) => {
-                  const activeServices = (cat.services ?? []).filter((s) => s.is_active);
-                  if (activeServices.length === 0) return null;
-                  return (
-                    <div key={cat.id}>
-                      <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-1.5">
-                        {cat.name}
-                      </p>
-                      <div className="flex flex-col gap-1">
-                        {activeServices.map((svc) => (
-                          <div key={svc.id} className="flex items-center justify-between py-1.5 border-b border-neutral-50 last:border-0">
-                            <div className="flex-1 min-w-0">
-                              <span className="text-sm text-neutral-900">{svc.name}</span>
-                              {svc.description && (
-                                <span className="text-xs text-neutral-400 ml-2">{svc.description}</span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                              {svc.duration_minutes != null && (
-                                <span className="text-xs text-neutral-400">{svc.duration_minutes} min</span>
-                              )}
-                              {svc.price != null && parseFloat(String(svc.price)) > 0
-                                ? <span className="text-xs font-semibold text-neutral-700">{parseFloat(String(svc.price)).toFixed(0)} €</span>
-                                : !hairdresser.is_independent
-                                  ? <span className="text-[11px] text-neutral-400 italic">Tarifs au salon</span>
-                                  : null
-                              }
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* ── Portfolio ── */}
-        {portfolioPosts.length > 0 && (
-          <section className="mb-8">
-            <div className="px-4 md:px-0 flex items-baseline justify-between mb-3">
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
-                Portfolio
-              </p>
+        {/* ══════════════════════════════════════
+            PORTFOLIO — élément principal
+        ══════════════════════════════════════ */}
+        <section className="mt-7">
+          <div className="px-4 md:px-0 flex items-baseline justify-between mb-3">
+            <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400">
+              Portfolio
+            </p>
+            {portfolioPosts.length > 0 && (
               <span className="text-[11px] text-neutral-400">
                 {portfolioPosts.length} réalisation{portfolioPosts.length > 1 ? 's' : ''}
               </span>
-            </div>
-            {/* Grille dense 3 colonnes — style Instagram */}
-            <div className="grid grid-cols-3 gap-px bg-neutral-100 md:rounded-xl overflow-hidden">
-              {portfolioPosts.map((post) => (
-                <PortfolioItem key={post.id} post={post} />
-              ))}
-            </div>
-          </section>
+            )}
+          </div>
+          <PortfolioGrid posts={portfolioPosts} />
+        </section>
+
+        {/* ══════════════════════════════════════
+            PRÉSENTATION — bio + spécialités
+        ══════════════════════════════════════ */}
+        {(hairdresser.user.bio || hairdresser.specialties.length > 0) && (
+          <div className="px-4 md:px-0 mt-8 space-y-6">
+
+            {hairdresser.user.bio && (
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-2.5">
+                  À propos
+                </p>
+                <p className="text-[14px] text-neutral-600 leading-relaxed">
+                  {hairdresser.user.bio}
+                </p>
+              </div>
+            )}
+
+            {hairdresser.specialties.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-3">
+                  Spécialités
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {hairdresser.specialties.map((s) => (
+                    <Link
+                      key={s.slug}
+                      href={`/rechercher?specialty=${s.slug}`}
+                      className="text-[11px] font-semibold tracking-wide uppercase bg-neutral-900 text-white px-3 py-1.5 rounded-full hover:bg-neutral-700 transition-colors"
+                    >
+                      {s.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
         )}
 
-        {/* ── Avis ── */}
-        <div className="px-4 md:px-0">
-          {hasRating && (
-            <div className="flex items-center gap-2 mb-4">
-              <StarRating rating={parseFloat(hairdresser.avg_rating)} size={16} />
-              <span className="text-sm font-bold text-neutral-900">{hairdresser.avg_rating}</span>
-              <span className="text-sm text-neutral-400">· {hairdresser.reviews_count} avis</span>
+        {/* ══════════════════════════════════════
+            SERVICES — après le contenu visuel
+        ══════════════════════════════════════ */}
+        {serviceCategories.length > 0 && (
+          <div className="px-4 md:px-0 mt-8">
+            <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-4">
+              Services
+            </p>
+            <div className="space-y-4">
+              {serviceCategories.map((cat) => {
+                const active = (cat.services ?? []).filter((s) => s.is_active);
+                if (active.length === 0) return null;
+                return (
+                  <div key={cat.id}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-2">
+                      {cat.name}
+                    </p>
+                    <div className="bg-neutral-50 rounded-2xl overflow-hidden divide-y divide-neutral-100">
+                      {active.map((svc) => (
+                        <div key={svc.id} className="flex items-center justify-between px-4 py-3.5">
+                          <div className="flex-1 min-w-0 pr-4">
+                            <p className="text-[14px] font-medium text-neutral-900 leading-snug">
+                              {svc.name}
+                            </p>
+                            {svc.description && (
+                              <p className="text-[12px] text-neutral-400 mt-0.5 leading-snug">
+                                {svc.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {svc.duration_minutes != null && (
+                              <span className="text-[12px] text-neutral-400">
+                                {svc.duration_minutes} min
+                              </span>
+                            )}
+                            {svc.price != null && parseFloat(String(svc.price)) > 0 ? (
+                              <span className="text-[14px] font-semibold text-neutral-900">
+                                {parseFloat(String(svc.price)).toFixed(0)} €
+                              </span>
+                            ) : !hairdresser.is_independent ? (
+                              <span className="text-[11px] text-neutral-400 italic">Au salon</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            AVIS — preuve sociale
+        ══════════════════════════════════════ */}
+        <div className="px-4 md:px-0 mt-10">
+
+          {/* En-tête avis avec note globale bien visible */}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400">
+              Avis clients
+            </p>
+            {hasRating && (
+              <div className="flex items-center gap-1.5">
+                <Star size={13} className="fill-neutral-900 stroke-neutral-900" />
+                <span className="text-[14px] font-bold text-neutral-900">
+                  {parseFloat(hairdresser.avg_rating).toFixed(1)}
+                </span>
+                <span className="text-[12px] text-neutral-400">
+                  ({hairdresser.reviews_count})
+                </span>
+              </div>
+            )}
+          </div>
 
           <ReviewsSection
             hairdresserId={hairdresser.id}

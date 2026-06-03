@@ -1,10 +1,125 @@
 # NEXT SESSION — Reprise de contexte CHAIR
 > Lire ce fichier en premier au début de chaque session.
-> Dernière mise à jour : 2026-06-02 (session — Beta Stabilisation : env var, onboarding, données fake, navigation, légal, feed, typos)
+> Dernière mise à jour : 2026-06-03 (session — UX Découverte, Feed TikTok, Onboarding client)
 
 ---
 
 ## OÙ EN SOMMES-NOUS ?
+
+**Sprint Découverte (session 2026-06-03 — DERNIÈRE SESSION) — UX Feed, Cartes coiffeurs, Onboarding client, Préférences**
+
+### Nouveautés de cette session
+
+**1. Bug critique résolu — Backend 500 sur toutes les routes :**
+- `vendor/composer/platform_check.php` bypassé : vendor généré avec PHP 8.4 mais XAMPP tourne PHP 8.0. À re-appliquer après chaque `composer install`.
+- `HandleCors` déplacé AVANT `TrustProxies` dans `Kernel.php` (fix CORS sur OPTIONS preflight)
+- Migration `post_tags` dupliquée supprimée (double déclaration de classe PHP bloquait `migrate`)
+
+**2. Nouvelles spécialités (migration) — 29 au total :**
+- Ajout : barbe, coupe-courte, coupe-longue, keratine, ondulations, frange, coiffure-soiree, dreads, roux, couleur-homme
+
+**3. Cartes coiffeurs redesignées (HairdresserCard + FeaturedCard) :**
+- Bannière floue + assombrie en fond sur toute la carte
+- Photo de profil ronde centrée avec ring blanc
+- Appliqué à : "Coiffeurs à la une", "Nouveaux talents", "Spécialistes X"
+
+**4. Feed TikTok (/feed) — scroll snap fonctionnel :**
+- Structure fixe : `fixed top-0 left-0 right-0 bottom:60px` + scroll container `h-full`
+- Chaque carte `height: 100%` — les 3 hauteurs sont alignées = snap natif
+- BottomNav rendue directement dans la page (pas dans AppShell) avec z-[60]
+- Algorithme hybride : posts personnalisés EN PREMIER + trending pour compléter, sans doublons
+
+**5. BottomNav — icône Feed :**
+- Clapperboard entre Recherche et Favoris
+- Carré arrondi noir/gris (style TikTok) pour le différencier
+- z-[60] pour passer au-dessus du fond noir du feed
+
+**6. Algorithme personnalisé renforcé :**
+- Backend : match sur `post.specialty.slug` (tag affiché) ET `post_tags` (tags secondaires)
+- Backend : `_match_count > 0` obligatoire — aucun post hors-sujet ne passe
+- Récence fortement pondérée (150 pts max décroissant sur 30j) — post récent prime naturellement
+- Frontend : double filtre client-side dans `PersonalizedFeedSection` (sécurité désync localStorage/DB)
+- "Voir tout" → `/rechercher?specialty={slug}` (actif le chip dans la recherche)
+- `PersonalizedSection` : rotation aléatoire de l'intérêt affiché à chaque visite
+
+**7. Onboarding client (/onboarding-client) — refonte complète :**
+- Étape 1 : 4 genres (Femme, Homme, Non-binaire, Je préfère ne pas dire)
+- Étape 2 : grille 3 colonnes avec photos, catégories groupées (Couleur, Coupe, Dégradé, Texture, Occasion), 20+ options par genre
+- Étape 3 : done screen avec chips récap des styles choisis
+- Progress dots en haut, CTA sticky en bas (grisé si 0 sélection)
+
+**8. /compte/modifier — section "Mes goûts & inspirations" :**
+- Sélecteur genre (4 options)
+- Grille photo 3 colonnes TOUS styles (29 options, sans restriction genre)
+- Sauvegarde : localStorage + API simultanément → feed et homepage mis à jour immédiatement
+- Compteur "X styles sélectionnés · Ton feed sera mis à jour"
+
+**9. PersonalizedSection — CTA visiteurs non connectés :**
+- Carte noire premium "Trouve les coiffeurs faits pour toi"
+- Boutons "Créer un compte" + "Se connecter"
+
+**10. Homepage "Réalisations tendance" :**
+- Section masquée si aucun post disponible (plus de header vide)
+
+---
+
+**Sprint Plateforme (session 2026-06-03) — Scoring algorithmes + TikTok feed + Homepage**
+
+### Nouveautés de cette session (sprint Plateforme)
+
+**Backend — Algorithmes de scoring :**
+- `sort=featured` (coiffeurs) : score composite is_featured×100 + note×avis×4 + abonnés + visites + complétion profil
+- `sort=new_quality` (coiffeurs) : récents ≤60j avec seuil complétion profil ≥5pts
+- `sort=trending` (feed) : likes×3 + saves×9 + views×0.8 + qualité coiffeur + décroissance temporelle 45j — saves 3× plus forts que les likes
+- `sort=personalized` (feed) : +70 spécialité préférée, +50 coiffeur suivi — préchargement saves N+1 optimisé
+- `sort=scored` (nearby) : distance + qualité + complétion profil
+- Fonction `profileCompletionScore()` : avatar+12, bannière+10, tagline+6, ville+4, spécialités+16, verified+20
+- Migration `is_featured` sur `hairdresser_profiles` (flag sponsorisé — préparation premium)
+- `saved_by_user` propagé sur toutes les réponses feed (quand user connecté)
+
+**Frontend — Feed TikTok amélioré (`/feed`) :**
+- Bouton sauvegarder (Bookmark) en plus du like — style TikTok vertical droit
+- Like animé avec pop scale + rouge sur cœur
+- CTA "Réserver" inline sur chaque carte
+- Auto-sélection trending vs personalized selon token + préférences localStorage
+
+**Frontend — Homepage pilotée par les scores :**
+- "Coiffeurs à la une" → `sort=featured` (plus de random)
+- "Réalisations tendance" → cliquer ouvre le feed TikTok (`/feed?from=id`)
+- "Pour toi" (PersonalizedSection) → après les featured
+- "Nouveaux talents" → `sort=new_quality` avec seuil qualité
+
+---
+
+**Sprint Engagement (session 2026-06-03) — Compte client + Inspirations + Feed intelligent**
+
+### Nouveautés de cette session
+
+**1. Compte client refonte complète :**
+- `/compte` — design premium : avatar 88px, nom, ville, modifier profil
+- Sections : Abonnements (scroll coiffeurs), Inspirations (grille 3col), Réservations, Paramètres
+- `/compte/modifier` — page édition profil client (nom, ville, bio, avatar)
+- `/mes-inspirations` — page galerie complète avec bouton retirer
+
+**2. Système d'inspirations :**
+- DB : table `saved_posts` (user_id, post_id)
+- Backend : `SavedPostController` (list, save, unsave, status)
+- Routes : GET/POST/DELETE `/api/saved-posts`, GET `/api/saved-posts/{id}/status`
+- `FeedPostCard` : bouton coeur `showSave={true}` — sauvegarde/retire optimistique
+- `PersonalizedFeedSection` : feed avec coeurs sur la homepage (clients connectés)
+
+**3. Feed intelligent personnalisé :**
+- Backend : `/feed?sort=personalized` (auth optionnel) — scoring préférences + follows + qualité + récence
+- Backend : `saved_by_user` ajouté sur tous les posts du feed (quand user connecté)
+- `PersonalizedFeedSection` : section homepage "Pour vous" — apparaît si user a des préférences
+
+**4. Abonnements dans le compte :**
+- Backend : GET `/api/followed-hairdressers` (nouveau endpoint)
+- Compte client : section "Mes abonnements" avec avatars scroll horizontal
+
+**5. UserController — profil client éditable :**
+- Backend : PUT `/api/user/profile` (nom, ville, bio)
+- Backend : POST `/api/user/avatar` (upload photo)
 
 **Sprint Beta (session 2026-06-02) — Préparation bêta publique getchair.app**
 
@@ -63,48 +178,48 @@ Toutes les corrections listées ci-dessous ont été appliquées. CHAIR est prê
 
 ---
 
-## BASE DE DONNÉES — ÉTAT APRÈS NETTOYAGE
+## BASE DE DONNÉES — ÉTAT ACTUEL
 
-| Table | Quantité |
-|---|---|
-| users | 17 |
-| hairdresser_profiles | 14 |
-| posts | 4 |
-| reviews | 5 |
-| specialties | 12 |
+| Table | Quantité | Notes |
+|---|---|---|
+| users | 17+ | Comptes réels |
+| hairdresser_profiles | 14+ | Profils réels |
+| posts | 8+ | Posts publiés réels |
+| reviews | 5+ | Avis réels |
+| specialties | 29 | 10 nouvelles ajoutées cette session |
+| post_tags | active | Table pivot posts ↔ specialties (migration exécutée) |
+| saved_posts | active | Inspirations clients |
+| user_preferences | active | Préférences genre + intérêts |
 
-Tous les profils sont des comptes réels créés manuellement pendant les tests.
+**Attention :** `vendor/composer/platform_check.php` contient un bypass PHP 8.0 (commentaire remplace le check). À re-appliquer manuellement si `composer install` est relancé :
+```php
+// Remplacer le if (!(PHP_VERSION_ID >= 80401)) par :
+// PHP version check bypassed — vendor generated on PHP 8.4, packages support PHP 8.0+
+```
 
 ---
 
 ## PRIORITÉS POUR LA PROCHAINE SESSION
 
-### PRIORITÉ 1 — Avant lancement public (getchair.app)
+### PRIORITÉ 1 — UX Coiffeur (dashboard publication)
+
+- [ ] **Formulaire de publication** : s'assurer que le coiffeur voit clairement les 29 spécialités groupées et peut en sélectionner plusieurs (post_tags)
+- [ ] **Vérifier le flux complet** : post créé → tag barber → apparaît dans feed client barber
+- [ ] **Synchronisation `chair_preferences` localStorage ↔ DB** : à la connexion, écrire les prefs DB dans localStorage si localStorage vide
+
+### PRIORITÉ 2 — Avant lancement public (getchair.app)
 
 - [ ] **Configurer `NEXT_PUBLIC_API_URL` en production** (Railway/Render : `https://api.getchair.app/api`)
 - [ ] **SEO** — `generateMetadata()` sur `/coiffeur/[slug]` (title, description, og:image)
 - [ ] **sitemap.xml** dynamique (routes coiffeurs + spécialités)
 - [ ] **Structured data JSON-LD** sur les profils (`@type: Person` ou `@type: LocalBusiness`)
 
-### PRIORITÉ 2 — Inscription améliorée
+### PRIORITÉ 3 — Production checklist
 
-- [ ] `/inscription` step 2 coiffeur indépendant : ajouter "Type de lieu" (`work_status`) + "Adresse pro" (`work_address`)
-- [ ] `AuthController::register()` : accepter `work_status` + `work_address`
-- [ ] Redirect `/onboarding` après inscription (déjà implémenté dans `redirectPathForRole()`)
-
-### PRIORITÉ 3 — Améliorations UX post-beta
-
-- [ ] Recalcul automatique `avg_rating` / `reviews_count` sur les profils après suppression d'un avis
-- [ ] Photos de profil des coiffeurs existants (14 profils manquent de photos)
-- [ ] Seeder mis à jour : ne plus créer de coiffeurs fictifs (garder juste les spécialités)
-- [ ] Notifications push Firebase/OneSignal (table `push_subscriptions` prête)
-
-### PRIORITÉ 4 — Production checklist
-
-- [ ] `.env.production` avec vraies URLs (API Railway, Cloudinary configuré)
+- [ ] `.env.production` avec vraies URLs
 - [ ] `next.config.ts` : remplacer `localhost:8000` dans `remotePatterns` par domaine prod
-- [ ] Certificat SSL + domaine `getchair.app` configuré
-- [ ] Monitoring erreurs (Sentry ou similar)
+- [ ] Re-générer vendor avec PHP 8.4 en prod (plus besoin du bypass platform_check)
+- [ ] Monitoring erreurs (Sentry)
 
 ---
 

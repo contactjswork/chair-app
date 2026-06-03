@@ -43,6 +43,16 @@ class InteractionController extends Controller
 
     // ── FOLLOWS ───────────────────────────────────────────────────────
 
+    public function followedIndex(Request $request)
+    {
+        $followed = $request->user()
+            ->follows()
+            ->with(['user', 'specialties'])
+            ->get();
+
+        return response()->json($followed);
+    }
+
     public function follow(Request $request, int $hairdresserId)
     {
         $hairdresser = HairdresserProfile::findOrFail($hairdresserId);

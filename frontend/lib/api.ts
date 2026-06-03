@@ -95,11 +95,25 @@ export const search = {
     api.get<{ suggestions: ApiSearchSuggestion[] }>(`/search/suggestions?q=${encodeURIComponent(q)}`),
 };
 
-// ── Posts / Likes ────────────────────────────────────────────────────
+// ── Posts / Likes / Inspirations ─────────────────────────────────────
 
 export const posts = {
   toggleLike: (postId: number) =>
     api.post<{ liked: boolean; likes_count: number }>(`/posts/${postId}/like`, {}),
+};
+
+export const savedPosts = {
+  list: () =>
+    api.get<import('./types').ApiPost[]>('/saved-posts'),
+
+  save: (postId: number) =>
+    api.post<{ saved: boolean }>(`/saved-posts/${postId}`, {}),
+
+  unsave: (postId: number) =>
+    api.delete<{ saved: boolean }>(`/saved-posts/${postId}`),
+
+  status: (postId: number) =>
+    api.get<{ saved: boolean }>(`/saved-posts/${postId}/status`),
 };
 
 // ── Interactions ────────────────────────────────────────────────────
@@ -132,6 +146,9 @@ export const interactions = {
 
   savedList: () =>
     api.get<SavedHairdresser[]>('/saved-profiles'),
+
+  followedList: () =>
+    api.get<SavedHairdresser[]>('/followed-hairdressers'),
 };
 
 // ── Appointments ────────────────────────────────────────────────────

@@ -11,29 +11,33 @@ use Illuminate\Support\Facades\DB;
 
 class PostController extends Controller
 {
-    /**
-     * Afficher une réalisation publique avec son contexte.
-     * Inclut liked_by_user si un token Sanctum est présent.
-     */
+    // ════════════════════════════════════════════════════════════════
+    // AFFICHAGE PUBLIC
+    // ════════════════════════════════════════════════════════════════
+
     public function show(int $postId)
     {
-        $post = Post::with(['hairdresser.user', 'hairdresser.salon', 'specialty', 'images'])
+        $post = Post::with(['hairdresser.user', 'hairdresser.salon', 'specialty', 'tags', 'images'])
             ->where('id', $postId)
             ->where('is_published', true)
             ->firstOrFail();
 
-        $user   = \Auth::guard('sanctum')->user();
-        $data   = $post->toArray();
+        $user = \Auth::guard('sanctum')->user();
+        $data = $post->toArray();
         $data['liked_by_user'] = $user
             ? DB::table('post_likes')->where('post_id', $postId)->where('user_id', $user->id)->exists()
+            : false;
+        $data['saved_by_user'] = $user
+            ? DB::table('saved_posts')->where('post_id', $postId)->where('user_id', $user->id)->exists()
             : false;
 
         return response()->json($data);
     }
 
-    /**
-     * Liste des réalisations du coiffeur connecté.
-     */
+    // ════════════════════════════════════════════════════════════════
+    // LISTE (dashboard coiffeur)
+    // ════════════════════════════════════════════════════════════════
+
     public function index(Request $request)
     {
         $profile = $request->user()->hairdresserProfile;
@@ -41,7 +45,7 @@ class PostController extends Controller
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
         }
 
-        $posts = Post::with(['specialty', 'images'])
+        $posts = Post::with(['specialty', 'tags', 'images'])
             ->where('hairdresser_id', $profile->id)
             ->orderByDesc('created_at')
             ->get();
@@ -49,10 +53,10 @@ class PostController extends Controller
         return response()->json($posts);
     }
 
-    /**
-     * Créer une réalisation.
-     * Accepte images[] (1–10 fichiers) OU after_image + before_image (compat legacy).
-     */
+    // ════════════════════════════════════════════════════════════════
+    // CRÉER
+    // ════════════════════════════════════════════════════════════════
+
     public function store(Request $request)
     {
         $profile = $request->user()->hairdresserProfile;
@@ -68,20 +72,23 @@ class PostController extends Controller
                 'images'       => 'required|array|min:1|max:10',
                 'images.*'     => 'image|mimes:jpeg,png,webp|max:5120',
                 'description'  => 'nullable|string|max:1000',
+                'gender'       => 'nullable|string|in:homme,femme',
                 'specialty_id' => 'nullable|integer|exists:specialties,id',
+                'tag_ids'      => 'nullable|string', // JSON array ou CSV
             ]);
 
             $post = Post::create([
-                'hairdresser_id' => $profile->id,
-                'specialty_id'   => $request->input('specialty_id'),
-                'type'           => 'result',
-                'description'    => $request->input('description'),
+                'hairdresser_id'   => $profile->id,
+                'specialty_id'     => $request->input('specialty_id'),
+                'gender'           => $request->input('gender'),
+                'type'             => 'result',
+                'description'      => $request->input('description'),
                 'duration_minutes' => null,
                 'price_indication' => null,
-                'cover_image'    => null,
-                'is_published'   => true,
-                'views_count'    => 0,
-                'likes_count'    => 0,
+                'cover_image'      => null,
+                'is_published'     => true,
+                'views_count'      => 0,
+                'likes_count'      => 0,
             ]);
 
             foreach ($request->file('images') as $index => $file) {
@@ -97,8 +104,10 @@ class PostController extends Controller
                 ]);
             }
 
+            $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
             $profile->increment('posts_count');
-            return response()->json($post->load(['specialty', 'images']), 201);
+
+            return response()->json($post->load(['specialty', 'tags', 'images']), 201);
         }
 
         // ── Ancien format : after_image (compat) ────────────────────
@@ -106,7 +115,9 @@ class PostController extends Controller
             'after_image'      => 'required|image|mimes:jpeg,png,webp|max:5120',
             'before_image'     => 'nullable|image|mimes:jpeg,png,webp|max:5120',
             'description'      => 'nullable|string|max:1000',
+            'gender'           => 'nullable|string|in:homme,femme',
             'specialty_id'     => 'nullable|integer|exists:specialties,id',
+            'tag_ids'          => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:0|max:480',
             'price_indication' => 'nullable|numeric|min:0|max:9999',
         ]);
@@ -118,6 +129,7 @@ class PostController extends Controller
         $post = Post::create([
             'hairdresser_id'   => $profile->id,
             'specialty_id'     => $request->input('specialty_id'),
+            'gender'           => $request->input('gender'),
             'type'             => $type,
             'description'      => $request->input('description'),
             'duration_minutes' => $request->input('duration_minutes'),
@@ -135,13 +147,16 @@ class PostController extends Controller
             PostImage::create(['post_id' => $post->id, 'url' => $beforeUrl, 'type' => 'before', 'order' => 0]);
         }
 
+        $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
         $profile->increment('posts_count');
-        return response()->json($post->load(['specialty', 'images']), 201);
+
+        return response()->json($post->load(['specialty', 'tags', 'images']), 201);
     }
 
-    /**
-     * Modifier description et spécialité d'une réalisation.
-     */
+    // ════════════════════════════════════════════════════════════════
+    // MODIFIER
+    // ════════════════════════════════════════════════════════════════
+
     public function update(Request $request, int $postId)
     {
         $profile = $request->user()->hairdresserProfile;
@@ -151,17 +166,32 @@ class PostController extends Controller
 
         $validated = $request->validate([
             'description'  => 'nullable|string|max:1000',
+            'gender'       => 'nullable|string|in:homme,femme',
             'specialty_id' => 'nullable|integer|exists:specialties,id',
+            'tag_ids'      => 'nullable|string',
         ]);
 
-        $post->update($validated);
+        $post->update([
+            'description'  => $validated['description'] ?? $post->description,
+            'gender'       => array_key_exists('gender', $validated) ? $validated['gender'] : $post->gender,
+            'specialty_id' => array_key_exists('specialty_id', $validated) ? $validated['specialty_id'] : $post->specialty_id,
+        ]);
 
-        return response()->json($post->fresh()->load(['specialty', 'images']));
+        if (array_key_exists('specialty_id', $validated) || array_key_exists('tag_ids', $validated)) {
+            $this->syncTags(
+                $post,
+                $validated['specialty_id'] ?? $post->specialty_id,
+                $request->input('tag_ids')
+            );
+        }
+
+        return response()->json($post->fresh()->load(['specialty', 'tags', 'images']));
     }
 
-    /**
-     * Supprimer une réalisation + ses fichiers (Cloudinary ou local).
-     */
+    // ════════════════════════════════════════════════════════════════
+    // SUPPRIMER
+    // ════════════════════════════════════════════════════════════════
+
     public function destroy(Request $request, int $postId)
     {
         $profile = $request->user()->hairdresserProfile;
@@ -170,12 +200,11 @@ class PostController extends Controller
             ->firstOrFail();
 
         $cloudinary = new CloudinaryService();
-
         foreach ($post->images as $image) {
             $cloudinary->deleteOldMedia($image->url);
         }
-
         $post->images()->delete();
+        $post->tags()->detach();
         $post->delete();
 
         if ($profile && $profile->posts_count > 0) {
@@ -185,36 +214,65 @@ class PostController extends Controller
         return response()->json(['message' => 'Réalisation supprimée']);
     }
 
-    /**
-     * Basculer le like d'une réalisation (authentifié requis).
-     */
+    // ════════════════════════════════════════════════════════════════
+    // LIKE
+    // ════════════════════════════════════════════════════════════════
+
     public function toggleLike(Request $request, int $postId)
     {
-        $post = Post::where('is_published', true)->findOrFail($postId);
+        $post   = Post::where('is_published', true)->findOrFail($postId);
         $userId = $request->user()->id;
 
         $liked = DB::table('post_likes')
-            ->where('post_id', $postId)
-            ->where('user_id', $userId)
-            ->exists();
+            ->where('post_id', $postId)->where('user_id', $userId)->exists();
 
         if ($liked) {
-            DB::table('post_likes')
-                ->where('post_id', $postId)
-                ->where('user_id', $userId)
-                ->delete();
+            DB::table('post_likes')->where('post_id', $postId)->where('user_id', $userId)->delete();
             $post->decrement('likes_count');
-            $newCount = max(0, $post->fresh()->likes_count);
-            return response()->json(['liked' => false, 'likes_count' => $newCount]);
+            return response()->json(['liked' => false, 'likes_count' => max(0, $post->fresh()->likes_count)]);
         }
 
-        DB::table('post_likes')->insert([
-            'post_id'    => $postId,
-            'user_id'    => $userId,
-            'created_at' => now(),
-        ]);
+        DB::table('post_likes')->insert(['post_id' => $postId, 'user_id' => $userId, 'created_at' => now()]);
         $post->increment('likes_count');
-
         return response()->json(['liked' => true, 'likes_count' => $post->fresh()->likes_count]);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // HELPER — synchronisation des tags
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * Synchronise post_tags à partir de :
+     *  - specialty_id (tag primaire/display)
+     *  - tag_ids (JSON array ou CSV d'IDs supplémentaires)
+     *
+     * Le résultat = union des deux, dédupliqué.
+     */
+    private function syncTags(Post $post, $specialtyId, $tagIdsRaw): void
+    {
+        $ids = [];
+
+        if ($specialtyId) {
+            $ids[] = (int) $specialtyId;
+        }
+
+        if ($tagIdsRaw) {
+            $parsed = is_array($tagIdsRaw)
+                ? $tagIdsRaw
+                : (json_decode($tagIdsRaw, true) ?? explode(',', $tagIdsRaw));
+            foreach ($parsed as $id) {
+                $int = (int) $id;
+                if ($int > 0) $ids[] = $int;
+            }
+        }
+
+        $ids = array_unique(array_filter($ids));
+
+        if (empty($ids)) {
+            $post->tags()->detach();
+            return;
+        }
+
+        $post->tags()->sync($ids);
     }
 }

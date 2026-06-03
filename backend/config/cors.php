@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['https://getchair.app', 'https://www.getchair.app'],
+    'allowed_origins' => ['https://getchair.app', 'https://www.getchair.app', 'http://localhost:3000'],
 
     'allowed_origins_patterns' => [],
 

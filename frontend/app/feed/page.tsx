@@ -1,18 +1,19 @@
 'use client';
 
-import { useEffect, useState, useRef, Suspense } from 'react';
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, Heart, Tag, MapPin, ImageIcon, X } from 'lucide-react';
+import { ChevronLeft, Heart, Bookmark, Tag, MapPin, ImageIcon, X, Share2 } from 'lucide-react';
+import BottomNav from '@/components/layout/BottomNav';
 import type { ApiPost, ApiHairdresserProfile, ApiUser, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAllImagesRaw, formatDate } from '@/lib/types';
-import { posts as postsApi } from '@/lib/api';
+import { posts as postsApi, savedPosts as savedPostsApi } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
-// ── Carrousel interne (horizontal, sans indicateur externe) ─────────
+// ── Carrousel horizontal interne ─────────────────────────────────────
 
 function InlineCarousel({ images, alt }: { images: string[]; alt: string }) {
   const [current, setCurrent] = useState(0);
@@ -25,7 +26,6 @@ function InlineCarousel({ images, alt }: { images: string[]; alt: string }) {
   }
 
   if (images.length === 0) return null;
-
   if (images.length === 1) {
     return (
       <div className="relative w-full h-full">
@@ -48,10 +48,12 @@ function InlineCarousel({ images, alt }: { images: string[]; alt: string }) {
           </div>
         ))}
       </div>
-      <div className="absolute top-3 right-3 z-10 bg-black/50 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full tabular-nums flex items-center gap-1">
+      {/* Compteur */}
+      <div className="absolute top-3 right-3 z-10 bg-black/50 backdrop-blur-sm text-white text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
         <ImageIcon size={10} />
         {current + 1}/{images.length}
       </div>
+      {/* Dots */}
       <div className="absolute bottom-3 left-0 right-0 z-10 flex justify-center gap-1">
         {images.map((_, i) => (
           <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === current ? 'bg-white' : 'bg-white/35'}`} />
@@ -61,12 +63,13 @@ function InlineCarousel({ images, alt }: { images: string[]; alt: string }) {
   );
 }
 
-// ── Bouton like par carte ────────────────────────────────────────────
+// ── Bouton like ───────────────────────────────────────────────────────
 
-function CardLikeButton({ postId, initialLikes }: { postId: number; initialLikes: number }) {
-  const [liked,   setLiked]   = useState(false);
+function CardLikeButton({ postId, initialLikes, initialLiked = false }: { postId: number; initialLikes: number; initialLiked?: boolean }) {
+  const [liked,   setLiked]   = useState(initialLiked);
   const [count,   setCount]   = useState(initialLikes);
   const [pending, setPending] = useState(false);
+  const [pop,     setPop]     = useState(false);
 
   async function toggle(e: React.MouseEvent) {
     e.preventDefault();
@@ -77,6 +80,7 @@ function CardLikeButton({ postId, initialLikes }: { postId: number; initialLikes
     const wasLiked = liked;
     setLiked(!wasLiked);
     setCount((c) => wasLiked ? Math.max(0, c - 1) : c + 1);
+    if (!wasLiked) { setPop(true); setTimeout(() => setPop(false), 400); }
     try {
       const res = await postsApi.toggleLike(postId);
       setLiked(res.liked);
@@ -90,47 +94,110 @@ function CardLikeButton({ postId, initialLikes }: { postId: number; initialLikes
   }
 
   return (
-    <button onClick={toggle} disabled={pending} className="flex items-center gap-1.5">
-      <Heart
-        size={22}
-        strokeWidth={1.5}
-        className={`transition-all ${liked ? 'fill-white stroke-white' : 'stroke-white'}`}
-      />
-      {count > 0 && <span className="text-white text-xs font-medium">{count}</span>}
+    <button
+      onClick={toggle}
+      disabled={pending}
+      className="flex flex-col items-center gap-1"
+    >
+      <div className={`transition-transform duration-200 ${pop ? 'scale-[1.4]' : 'scale-100'}`}>
+        <Heart
+          size={26}
+          strokeWidth={1.5}
+          className={`transition-all duration-200 drop-shadow-md ${liked ? 'fill-red-500 stroke-red-500' : 'stroke-white'}`}
+        />
+      </div>
+      {count > 0 && <span className="text-white text-[11px] font-semibold drop-shadow-sm">{count}</span>}
     </button>
   );
 }
 
-// ── Carte verticale d'un post (plein écran) ──────────────────────────
+// ── Bouton sauvegarder ───────────────────────────────────────────────
 
-function FeedCard({
-  post,
-  onClose,
-}: {
-  post: ApiPost;
-  onClose: () => void;
-}) {
-  const hd = post.hairdresser as (ApiHairdresserProfile & { user: ApiUser }) | undefined;
-  const images = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
-  const avatarUrl = resolveMediaUrl(hd?.user?.avatar ?? null);
+function CardSaveButton({ postId, initialSaved = false }: { postId: number; initialSaved?: boolean }) {
+  const [saved,   setSaved]   = useState(initialSaved);
+  const [pending, setPending] = useState(false);
+  const [pop,     setPop]     = useState(false);
+
+  async function toggle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!getStoredToken()) { window.location.href = '/connexion'; return; }
+    if (pending) return;
+    setPending(true);
+    const wasSaved = saved;
+    setSaved(!wasSaved);
+    if (!wasSaved) { setPop(true); setTimeout(() => setPop(false), 400); }
+    try {
+      if (!wasSaved) await savedPostsApi.save(postId);
+      else           await savedPostsApi.unsave(postId);
+    } catch {
+      setSaved(wasSaved);
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
-    <div className="relative w-full h-[100svh] bg-black flex flex-col overflow-hidden snap-start flex-shrink-0">
-      {/* Image zone (takes ~65% of height) */}
+    <button
+      onClick={toggle}
+      disabled={pending}
+      className="flex flex-col items-center gap-1"
+    >
+      <div className={`transition-transform duration-200 ${pop ? 'scale-[1.4]' : 'scale-100'}`}>
+        <Bookmark
+          size={24}
+          strokeWidth={1.5}
+          className={`transition-all duration-200 drop-shadow-md ${saved ? 'fill-white stroke-white' : 'stroke-white'}`}
+        />
+      </div>
+      <span className="text-[10px] text-white/70 font-medium drop-shadow-sm">
+        {saved ? 'Sauvé' : 'Sauver'}
+      </span>
+    </button>
+  );
+}
+
+// ── Carte verticale plein écran ───────────────────────────────────────
+
+function FeedCard({ post }: { post: ApiPost }) {
+  const hd       = post.hairdresser as (ApiHairdresserProfile & { user: ApiUser }) | undefined;
+  const images   = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
+  const avatarUrl = resolveMediaUrl(hd?.user?.avatar ?? null);
+  const specialty = post.specialty;
+
+  return (
+    <div className="relative w-full flex-shrink-0 bg-black flex flex-col overflow-hidden" style={{ height: '100%', scrollSnapAlign: 'start' }}>
+
+      {/* ── Zone image — occupe tout l'espace disponible ── */}
       <div className="relative flex-1 overflow-hidden">
         <InlineCarousel images={images} alt={post.description || hd?.user?.name || ''} />
-        {/* Gradient overlay bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
-      </div>
 
-      {/* Info zone */}
-      <div className="flex-none px-4 pt-3 pb-4 bg-black">
-        {/* Hairdresser */}
+        {/* Gradient de protection */}
+        <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
+
+        {/* Actions verticales à droite (style TikTok) */}
+        <div className="absolute right-3 bottom-4 flex flex-col items-center gap-5 z-10">
+          <CardLikeButton
+            postId={post.id}
+            initialLikes={post.likes_count}
+            initialLiked={post.liked_by_user ?? false}
+          />
+          <CardSaveButton
+            postId={post.id}
+            initialSaved={post.saved_by_user ?? false}
+          />
+        </div>
+
+        {/* Info coiffeur flottante (bas gauche) */}
         {hd && (
-          <Link href={`/coiffeur/${hd.slug}`} className="flex items-center gap-2.5 mb-3">
-            <div className="relative w-9 h-9 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0">
+          <Link
+            href={`/coiffeur/${hd.slug}`}
+            className="absolute bottom-4 left-3 flex items-center gap-2.5 z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-700 flex-shrink-0 ring-1 ring-white/20">
               {avatarUrl ? (
-                <Image src={avatarUrl} alt={hd.user.name} fill className="object-cover" />
+                <Image src={avatarUrl} alt={hd.user.name} fill className="object-cover" sizes="40px" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-sm font-bold text-neutral-300">
                   {hd.user.name.charAt(0).toUpperCase()}
@@ -138,44 +205,62 @@ function FeedCard({
               )}
             </div>
             <div>
-              <p className="text-[13px] font-semibold text-white leading-tight">{hd.user.name}</p>
+              <p className="text-[13px] font-bold text-white leading-tight drop-shadow-md">{hd.user.name}</p>
               {hd.city && (
-                <p className="text-[11px] text-white/50 flex items-center gap-0.5 mt-0.5">
-                  <MapPin size={10} />
+                <p className="text-[11px] text-white/55 flex items-center gap-0.5 mt-0.5">
+                  <MapPin size={9} />
                   {hd.city}
                 </p>
               )}
             </div>
           </Link>
         )}
+      </div>
 
-        {/* Specialty + description */}
+      {/* ── Zone infos basse ── */}
+      <div className="flex-none px-4 pt-3 pb-5 bg-black">
         <div className="flex items-start gap-3">
           <div className="flex-1 min-w-0">
-            {post.specialty && (
-              <Link href={`/rechercher?specialty=${post.specialty.slug}`}
-                className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-white/60 mb-1.5">
+            {specialty && (
+              <Link
+                href={`/rechercher?specialty=${specialty.slug}`}
+                className="inline-flex items-center gap-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-white/60 mb-1.5"
+              >
                 <Tag size={9} />
-                {post.specialty.name}
+                {specialty.name}
               </Link>
             )}
             {post.description && (
               <p className="text-[13px] text-white/80 leading-relaxed line-clamp-2">{post.description}</p>
             )}
-            <p className="text-[10px] text-white/35 mt-1.5">{formatDate(post.created_at)}</p>
+            <div className="flex items-center gap-3 mt-2">
+              <p className="text-[10px] text-white/30">{formatDate(post.created_at)}</p>
+              {post.price_indication && (
+                <span className="text-[10px] font-semibold text-white/50">~{post.price_indication} €</span>
+              )}
+              {post.duration_minutes && (
+                <span className="text-[10px] text-white/40">{post.duration_minutes} min</span>
+              )}
+            </div>
           </div>
 
-          {/* Like */}
-          <div className="flex-shrink-0 pt-1">
-            <CardLikeButton postId={post.id} initialLikes={post.likes_count} />
-          </div>
+          {/* CTA réserver */}
+          {hd && (
+            <Link
+              href={`/coiffeur/${hd.slug}/reserver`}
+              className="flex-shrink-0 bg-white text-neutral-900 text-[11px] font-bold px-3.5 py-2 rounded-full hover:bg-neutral-100 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Réserver
+            </Link>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ── Page feed ────────────────────────────────────────────────────────
+// ── Page Feed ─────────────────────────────────────────────────────────
 
 function FeedContent() {
   const searchParams = useSearchParams();
@@ -187,23 +272,58 @@ function FeedContent() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${API}/feed?per_page=50`, { cache: 'no-store' })
-      .then((r) => r.json())
-      .then((data: PaginatedResponse<ApiPost>) => setFeedPosts(data.data))
+    const token   = getStoredToken();
+    const headers: HeadersInit = { Accept: 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let hasPrefs = false;
+    if (token) {
+      try {
+        const prefs = JSON.parse(localStorage.getItem('chair_preferences') ?? '{}');
+        hasPrefs = (prefs.interests ?? []).length > 0;
+      } catch { /* ignore */ }
+    }
+
+    // Algo hybride : si préférences → perso EN PREMIER + trending pour compléter
+    // Sinon : trending seul
+    const fetchTrending   = fetch(`${API}/feed?per_page=30&sort=trending`,      { headers });
+    const fetchPersonal   = hasPrefs
+      ? fetch(`${API}/feed?per_page=30&sort=personalized`, { headers })
+      : Promise.resolve(null);
+
+    Promise.all([fetchTrending, fetchPersonal])
+      .then(async ([tRes, pRes]) => {
+        const trending = await tRes.json() as PaginatedResponse<ApiPost>;
+        const personal = pRes ? await pRes.json() as PaginatedResponse<ApiPost> : null;
+
+        const personalPosts = (personal?.data ?? []).filter(
+          (p) => (p.images?.length > 0 || p.cover_image) && p.hairdresser
+        );
+        const trendingPosts = (trending.data ?? []).filter(
+          (p) => (p.images?.length > 0 || p.cover_image) && p.hairdresser
+        );
+
+        // Fusion : perso d'abord, puis trending sans doublons
+        const seenIds = new Set(personalPosts.map((p) => p.id));
+        const merged  = [
+          ...personalPosts,
+          ...trendingPosts.filter((p) => !seenIds.has(p.id)),
+        ];
+
+        setFeedPosts(merged);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // Scroll to the starting post
+  // Scroll vers le post d'entrée
   useEffect(() => {
     if (!fromId || feedPosts.length === 0) return;
     const index = feedPosts.findIndex((p) => String(p.id) === fromId);
     if (index <= 0) return;
     requestAnimationFrame(() => {
       const container = containerRef.current;
-      if (container) {
-        container.scrollTop = index * window.innerHeight;
-      }
+      if (container) container.scrollTop = index * window.innerHeight;
     });
   }, [fromId, feedPosts]);
 
@@ -214,46 +334,56 @@ function FeedContent() {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-        <div className="text-white/40 text-sm">Chargement...</div>
-      </div>
+      <>
+        <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+          <div className="text-white/40 text-sm">Chargement…</div>
+        </div>
+        <BottomNav />
+      </>
     );
   }
 
   if (feedPosts.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 gap-4">
-        <p className="text-white/50 text-sm">Aucune publication</p>
-        <button onClick={handleClose} className="text-white text-sm underline">Retour</button>
-      </div>
+      <>
+        <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-50 gap-4">
+          <p className="text-white/50 text-sm">Aucune publication disponible</p>
+          <button onClick={handleClose} className="text-white text-sm underline">Retour</button>
+        </div>
+        <BottomNav />
+      </>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50">
-      {/* Header overlay */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-safe pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent">
-        <button
-          onClick={handleClose}
-          className="flex items-center gap-1.5 text-white/80 hover:text-white transition-colors"
+    <>
+      {/* Conteneur fixe qui s'arrête pile au-dessus de la BottomNav (bottom: 60px) */}
+      <div className="fixed top-0 left-0 right-0 bg-black z-50" style={{ bottom: '60px' }}>
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
+          <span className="text-[13px] font-bold tracking-[0.18em] uppercase text-white/70">CHAIR</span>
+          {fromId && (
+            <button onClick={handleClose} className="text-white/60 hover:text-white transition-colors pointer-events-auto">
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        {/* Scroll container — h-full = exactement la hauteur du parent fixe */}
+        <div
+          ref={containerRef}
+          className="w-full h-full overflow-y-scroll no-scrollbar"
+          style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}
         >
-          <ChevronLeft size={20} />
-          <span className="text-sm font-medium">Découvrir</span>
-        </button>
-        <span className="text-[11px] font-semibold tracking-[0.2em] uppercase text-white/40">CHAIR</span>
+          {feedPosts.map((post) => (
+            <FeedCard key={post.id} post={post} />
+          ))}
+        </div>
       </div>
 
-      {/* Vertical scroll feed */}
-      <div
-        ref={containerRef}
-        className="w-full h-full overflow-y-auto no-scrollbar"
-        style={{ scrollSnapType: 'y mandatory' }}
-      >
-        {feedPosts.map((post) => (
-          <FeedCard key={post.id} post={post} onClose={handleClose} />
-        ))}
-      </div>
-    </div>
+      {/* BottomNav rendue directement — z-[60] pour passer au-dessus du feed */}
+      <BottomNav />
+    </>
   );
 }
 
@@ -261,7 +391,7 @@ export default function FeedPage() {
   return (
     <Suspense fallback={
       <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
-        <div className="text-white/40 text-sm">Chargement...</div>
+        <div className="text-white/40 text-sm">Chargement…</div>
       </div>
     }>
       <FeedContent />
