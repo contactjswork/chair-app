@@ -13,14 +13,14 @@ class VisitController extends Controller
     // ── QR Code coiffeur ─────────────────────────────────────────────────────
 
     /**
-     * GET /api/hairdresser/qr-token  [auth:hairdresser]
+     * GET /api/hairdresser/qr-token  [auth]
      * Retourne le token QR actif (ou en crée un si aucun valide).
      */
     public function getQrToken(Request $request)
     {
-        $profile = $request->user()->hairdresserProfile;
+        $profile = $this->resolveHairdresserProfile($request);
         if (!$profile) {
-            return response()->json(['message' => 'Profil coiffeur introuvable.'], 404);
+            return response()->json(['message' => 'Profil coiffeur introuvable. Assurez-vous d\'avoir un compte coiffeur.'], 403);
         }
 
         $token = QrTokenService::getOrCreateToken($profile);
@@ -28,18 +28,56 @@ class VisitController extends Controller
     }
 
     /**
-     * POST /api/hairdresser/qr-token/refresh  [auth:hairdresser]
+     * POST /api/hairdresser/qr-token/refresh  [auth]
      * Force la création d'un nouveau QR, même si l'actuel est encore valide.
      */
     public function refreshQrToken(Request $request)
     {
-        $profile = $request->user()->hairdresserProfile;
+        $profile = $this->resolveHairdresserProfile($request);
         if (!$profile) {
-            return response()->json(['message' => 'Profil coiffeur introuvable.'], 404);
+            return response()->json(['message' => 'Profil coiffeur introuvable. Assurez-vous d\'avoir un compte coiffeur.'], 403);
         }
 
         $token = QrTokenService::createToken($profile);
         return response()->json($this->buildQrResponse($token), 201);
+    }
+
+    /**
+     * Charge ou auto-crée le profil coiffeur de l'utilisateur connecté.
+     */
+    private function resolveHairdresserProfile(Request $request)
+    {
+        $user = $request->user();
+
+        // Client ou autre rôle → pas de profil coiffeur
+        if ($user->role !== 'hairdresser') {
+            return null;
+        }
+
+        $profile = $user->hairdresserProfile;
+
+        // Auto-créer si inexistant (cohérent avec ProfileController)
+        if (!$profile) {
+            $base = \Illuminate\Support\Str::slug($user->name ?: 'coiffeur-' . $user->id);
+            $slug = $base;
+            $i    = 1;
+            while (\App\Models\HairdresserProfile::where('slug', $slug)->exists()) {
+                $slug = $base . '-' . $i++;
+            }
+            $profile = \App\Models\HairdresserProfile::create([
+                'user_id'         => $user->id,
+                'slug'            => $slug,
+                'city'            => $user->city,
+                'is_independent'  => true,
+                'is_verified'     => false,
+                'followers_count' => 0,
+                'posts_count'     => 0,
+                'avg_rating'      => 0,
+                'reviews_count'   => 0,
+            ]);
+        }
+
+        return $profile;
     }
 
     // ── Scan client ──────────────────────────────────────────────────────────
