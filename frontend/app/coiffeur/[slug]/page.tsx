@@ -8,6 +8,8 @@ import PortfolioGrid from '@/components/ui/PortfolioGrid';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 import { MapPin, BadgeCheck, ChevronLeft, Calendar, Briefcase, ExternalLink, Star } from 'lucide-react';
+import { LEVEL_STYLES, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { Crown } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -110,19 +112,43 @@ export default async function HairdresserProfilePage({
         <div className="px-4 md:px-0">
 
           {/* Avatar — déborde sur la bannière */}
-          <div className="relative -mt-14 mb-4 z-10">
-            <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-white shadow-md flex-shrink-0 overflow-hidden bg-neutral-200">
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
-                  <span className="text-[26px] font-bold text-white/35 select-none">
-                    {hairdresser.user.name.charAt(0).toUpperCase()}
-                  </span>
+          {(() => {
+            const levelColor = hairdresser.chair_level?.color ?? 'neutral';
+            const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+            return (
+              <div className="relative -mt-14 mb-5 z-10 inline-block">
+                {/* Outer ring wrapper */}
+                <div
+                  className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full p-[3px] ${ring.show ? '' : ''}`}
+                  style={ring.glow ? { boxShadow: ring.glow } : undefined}
+                >
+                  {/* Ring gradient ou couleur */}
+                  {ring.show && (
+                    <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />
+                  )}
+                  {/* Avatar avec marge intérieure pour laisser voir le ring */}
+                  <div className={`relative rounded-full overflow-hidden bg-neutral-200 ${ring.show ? 'w-[calc(100%-6px)] h-[calc(100%-6px)] m-[3px]' : 'w-full h-full border-4 border-white shadow-md'}`}>
+                    {avatarUrl ? (
+                      <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                        <span className="text-[26px] font-bold text-white/35 select-none">
+                          {hairdresser.user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
+
+                {/* Badge niveau sous la photo */}
+                {ring.show && hairdresser.chair_level && (
+                  <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-[0.12em] uppercase whitespace-nowrap shadow-sm ${ring.pill}`}>
+                    {hairdresser.chair_level.name}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Nom + badge vérifié */}
           <div className="flex items-center gap-2 mb-0.5">
@@ -147,6 +173,19 @@ export default async function HairdresserProfilePage({
               &ldquo;{hairdresser.tagline}&rdquo;
             </p>
           )}
+
+          {/* Niveau CHAIR — badge discret uniquement */}
+          {hairdresser.chair_level && hairdresser.chair_level.level > 0 && (() => {
+            const ls = LEVEL_STYLES[hairdresser.chair_level!.color] ?? LEVEL_STYLES.neutral;
+            return (
+              <div className="mb-3">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-[0.12em] uppercase border ${ls.bg} ${ls.text}`}>
+                  <Crown size={9} strokeWidth={2.5} />
+                  {hairdresser.chair_level!.name}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Ville + statut salon */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12px] text-neutral-400 mb-3">

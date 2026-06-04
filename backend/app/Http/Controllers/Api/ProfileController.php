@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
+use App\Services\BadgeService;
 use App\Services\CloudinaryService;
 use App\Services\GeocodingService;
 use Illuminate\Http\Request;
@@ -39,9 +40,16 @@ class ProfileController extends Controller
             $profile->load('specialties');
         }
 
+        $profile->loadMissing('user');
+        $points = BadgeService::computePoints($profile);
+
         return response()->json([
-            'user'    => $user,
-            'profile' => $profile,
+            'user'          => $user,
+            'profile'       => $profile,
+            'chair_badges'  => BadgeService::getVisibleBadges($profile),
+            'chair_badges_all' => BadgeService::getUnlockedBadges($profile),
+            'chair_points'  => $points,
+            'chair_level'   => BadgeService::getLevel($points),
         ]);
     }
 

@@ -2,16 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User, CalendarDays, BarChart2, Scissors, Bell, Compass } from 'lucide-react';
+import { LayoutDashboard, User, CalendarDays, Scissors, Bell, Compass, Crown, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 
 const tabs = [
-  { href: '/dashboard',              label: 'Accueil',  icon: LayoutDashboard },
-  { href: '/dashboard/profil',       label: 'Profil',   icon: User },
-  { href: '/dashboard/services',     label: 'Services', icon: Scissors },
-  { href: '/dashboard/planning',     label: 'Planning', icon: CalendarDays },
-  { href: '/dashboard/statistiques', label: 'Stats',    icon: BarChart2 },
+  { href: '/dashboard',        label: 'Accueil',  icon: LayoutDashboard },
+  { href: '/dashboard/profil', label: 'Profil',   icon: User },
+  { href: '/dashboard/services',label: 'Services', icon: Scissors },
+  { href: '/dashboard/planning',label: 'Planning', icon: CalendarDays },
+  { href: '/dashboard/badges', label: 'Badges',   icon: Crown },
 ];
 
 export default function DashboardNav() {
@@ -59,6 +59,20 @@ export default function DashboardNav() {
           </div>
           <span className="text-[9px] font-medium">Alertes</span>
           {pathname === '/notifications' && (
+            <span className="absolute bottom-1 w-1 h-1 rounded-full bg-neutral-900" />
+          )}
+        </Link>
+
+        {/* Mon QR Code */}
+        <Link
+          href="/dashboard/mon-qr"
+          className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative ${
+            pathname === '/dashboard/mon-qr' ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-600'
+          }`}
+        >
+          <QrCode size={20} strokeWidth={pathname === '/dashboard/mon-qr' ? 2.5 : 1.5} />
+          <span className="text-[9px] font-medium">QR</span>
+          {pathname === '/dashboard/mon-qr' && (
             <span className="absolute bottom-1 w-1 h-1 rounded-full bg-neutral-900" />
           )}
         </Link>

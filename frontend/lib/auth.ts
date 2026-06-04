@@ -12,6 +12,8 @@ export interface HairdresserProfile {
   is_independent: boolean;
   city: string | null;
   salon_id: number | null;
+  verified_visits_count: number;
+  salon?: { id: number; name: string; slug: string } | null;
 }
 
 export interface AuthUser {

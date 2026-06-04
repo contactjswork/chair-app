@@ -33,9 +33,47 @@ export interface ApiReview {
   rating: number;
   comment: string;
   is_verified: boolean;
+  is_certified: boolean;
   specialty: string | null;
   created_at: string;
   client: ApiUser;
+}
+
+export interface ApiQrTokenResponse {
+  token: string;
+  scan_url: string;
+  valid_until: string;
+  valid_from: string;
+  ttl_minutes: number;
+}
+
+export interface ApiScanInfo {
+  hairdresser_id: number;
+  hairdresser_name: string;
+  hairdresser_slug: string;
+  avatar: string | null;
+  salon_name: string | null;
+  city: string | null;
+  verified_visits_count: number;
+  token_valid_until: string;
+  services: { id: number; name: string }[];
+}
+
+export interface ApiVisitConfirmed {
+  visit_id: number;
+  hairdresser_id: number;
+  hairdresser_name: string;
+  hairdresser_slug: string;
+  service_type: string | null;
+}
+
+export interface ApiVerifiedVisit {
+  id: number;
+  hairdresser_id: number;
+  service_type: string | null;
+  scanned_at: string;
+  client: ApiUser | null;
+  review: { id: number; rating: number; comment: string } | null;
 }
 
 export interface ApiPostImage {
@@ -68,6 +106,26 @@ export interface ApiPost {
   images: ApiPostImage[];
 }
 
+// ── Badge & Level system ───────────────────────────────────────────
+export interface ApiChairBadge {
+  code: string;
+  name: string;
+  desc: string;
+  category: string;
+  pts: number;
+  tier: 1 | 2 | 3 | 4;
+  visible: boolean;
+}
+
+export interface ApiChairLevel {
+  level: number;
+  name: string;
+  color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
+  points: number;
+  progress: number;
+  next: { name: string; min: number } | null;
+}
+
 export interface ApiHairdresserProfile {
   id: number;
   slug: string;
@@ -86,6 +144,7 @@ export interface ApiHairdresserProfile {
   avg_rating: string;
   reviews_count: number;
   visits_count: number;
+  verified_visits_count: number;
   instagram_url: string | null;
   tiktok_url: string | null;
   booking_url: string | null;
@@ -96,6 +155,11 @@ export interface ApiHairdresserProfile {
   specialties: ApiSpecialty[];
   salon: ApiSalon | null;
   reviews?: ApiReview[];
+  // Gamification
+  chair_badges?: ApiChairBadge[];
+  chair_badges_all?: ApiChairBadge[];
+  chair_points?: number;
+  chair_level?: ApiChairLevel;
 }
 
 export type AppointmentStatus =

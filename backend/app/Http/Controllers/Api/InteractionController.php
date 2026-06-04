@@ -16,6 +16,7 @@ class InteractionController extends Controller
         $saved = $request->user()
             ->savedProfiles()
             ->with(['user', 'specialties'])
+            ->withCount('posts')
             ->get();
 
         return response()->json($saved);

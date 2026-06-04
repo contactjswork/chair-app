@@ -13,7 +13,7 @@ class HairdresserProfile extends Model
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
         'years_experience', 'diploma', 'city', 'postal_code',
         'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'is_verified',
-        'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count',
+        'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
         'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
     ];
 
@@ -71,5 +71,15 @@ class HairdresserProfile extends Model
     public function unavailabilities()
     {
         return $this->hasMany(HairdresserUnavailability::class, 'hairdresser_id');
+    }
+
+    public function verifiedVisits()
+    {
+        return $this->hasMany(VerifiedVisit::class, 'hairdresser_id');
+    }
+
+    public function qrTokens()
+    {
+        return $this->hasMany(QrToken::class, 'hairdresser_id');
     }
 }

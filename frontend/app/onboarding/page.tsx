@@ -118,6 +118,7 @@ export default function OnboardingPage() {
   const [serviceName, setServiceName] = useState('');
   const [servicePrice, setServicePrice] = useState('');
   const [serviceDuration, setServiceDuration] = useState('60');
+  const isIndependent = user?.hairdresser_profile?.is_independent ?? true;
   const [serviceSaving, setServiceSaving] = useState(false);
   const [serviceSaved, setServiceSaved] = useState(false);
 
@@ -251,11 +252,13 @@ export default function OnboardingPage() {
       // Crée catégorie
       const cat = await api.post<{ id: number }>('/service-categories', { name: categoryName, display_order: 1 });
       // Crée service
+      const parsedPrice = parseFloat(servicePrice);
+      const parsedDuration = parseInt(serviceDuration);
       await api.post('/services', {
         category_id:      cat.id,
         name:             serviceName,
-        price:            parseFloat(servicePrice) || 0,
-        duration_minutes: parseInt(serviceDuration) || 60,
+        price:            isNaN(parsedPrice) ? null : parsedPrice,
+        duration_minutes: isNaN(parsedDuration) ? null : parsedDuration,
         is_active:        true,
       });
       setServiceSaved(true);
@@ -307,21 +310,29 @@ export default function OnboardingPage() {
 
   // ── Navigation ────────────────────────────────────────────────────────────
 
+  const totalSteps = isIndependent ? STEPS.length : STEPS.length - 1;
+
+  function nextStep(current: number): number {
+    // Les salons sautent l'étape 6 (horaires)
+    if (!isIndependent && current === 5) return 7;
+    return current + 1;
+  }
+
   async function handleNext() {
     if (currentStep === 3) await saveBioStep();
     if (currentStep === 4) await saveSpecialtiesStep();
     if (currentStep < STEPS.length) {
-      setCurrentStep((s) => s + 1);
+      setCurrentStep(nextStep(currentStep));
     } else {
-      router.push(profileSlug ? `/coiffeur/${profileSlug}` : '/dashboard');
+      router.push('/');
     }
   }
 
   function handleSkip() {
     if (currentStep < STEPS.length) {
-      setCurrentStep((s) => s + 1);
+      setCurrentStep(nextStep(currentStep));
     } else {
-      router.push(profileSlug ? `/coiffeur/${profileSlug}` : '/dashboard');
+      router.push('/');
     }
   }
 
@@ -385,7 +396,7 @@ export default function OnboardingPage() {
 
         {/* Progress */}
         <div className="mb-5">
-          <ProgressBar current={currentStep} total={STEPS.length} />
+          <ProgressBar current={isIndependent || currentStep < 6 ? currentStep : currentStep - 1} total={totalSteps} />
         </div>
 
         {/* Profil public banner (à partir de l'étape 2) */}
@@ -664,6 +675,21 @@ export default function OnboardingPage() {
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Bandeau info salon */}
+                {!isIndependent && (
+                  <div className="bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                    <div className="w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-[9px] font-bold text-neutral-600">i</span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-800 mb-0.5">Prix et durée gérés par votre salon</p>
+                      <p className="text-[11px] text-neutral-500 leading-relaxed">
+                        Les réservations passent par votre système externe — inutile de renseigner tarifs et durées ici. Nommez simplement vos prestations pour qu&apos;elles apparaissent sur votre profil.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom de la catégorie</label>
                   <input
@@ -684,31 +710,36 @@ export default function OnboardingPage() {
                     className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Prix (€)</label>
-                    <input
-                      type="number"
-                      value={servicePrice}
-                      onChange={(e) => setServicePrice(e.target.value)}
-                      placeholder="50"
-                      min="0"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
-                    />
+
+                {/* Prix + Durée : obligatoires pour indépendant, masqués pour salon */}
+                {isIndependent ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Prix (€)</label>
+                      <input
+                        type="number"
+                        value={servicePrice}
+                        onChange={(e) => setServicePrice(e.target.value)}
+                        placeholder="50"
+                        min="0"
+                        className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Durée (min)</label>
+                      <select
+                        value={serviceDuration}
+                        onChange={(e) => setServiceDuration(e.target.value)}
+                        className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
+                      >
+                        {[30, 45, 60, 75, 90, 120, 150, 180].map((d) => (
+                          <option key={d} value={d}>{d} min</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Durée (min)</label>
-                    <select
-                      value={serviceDuration}
-                      onChange={(e) => setServiceDuration(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
-                    >
-                      {[30, 45, 60, 75, 90, 120, 150, 180].map((d) => (
-                        <option key={d} value={d}>{d} min</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                ) : null}
+
                 <button
                   type="button"
                   onClick={saveService}

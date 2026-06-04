@@ -201,6 +201,39 @@ export const appointments = {
     api.get('/my-appointments'),
 };
 
+// ── Visites vérifiées (QR) ────────────────────────────────────────────
+
+import type {
+  ApiQrTokenResponse, ApiScanInfo,
+  ApiVisitConfirmed, ApiVerifiedVisit,
+} from './types';
+
+export const visits = {
+  /** Coiffeur : récupère ou génère le token QR actif */
+  getQrToken: () =>
+    api.get<ApiQrTokenResponse>('/hairdresser/qr-token'),
+
+  /** Coiffeur : force la génération d'un nouveau QR même si l'actuel est encore valide */
+  refreshQrToken: () =>
+    api.post<ApiQrTokenResponse>('/hairdresser/qr-token/refresh', {}),
+
+  /** Public : infos du coiffeur avant confirmation du scan */
+  getScanInfo: (token: string) =>
+    api.get<ApiScanInfo>(`/scan/${token}`),
+
+  /** Auth requis : confirme la visite, retourne visit_id */
+  confirmVisit: (token: string, serviceType: string) =>
+    api.post<ApiVisitConfirmed>(`/scan/${token}`, { service_type: serviceType }),
+
+  /** Auth requis : soumet un avis certifié */
+  submitReview: (data: { visit_id: number; rating: number; comment: string }) =>
+    api.post('/scan/review', data),
+
+  /** Coiffeur : liste ses visites vérifiées */
+  myVisits: () =>
+    api.get<{ data: ApiVerifiedVisit[] }>('/hairdresser/visits'),
+};
+
 // ── Notifications ─────────────────────────────────────────────────────
 
 import type { ApiNotificationsResponse, ApiSearchResponse, ApiSearchSuggestion } from './types';
@@ -310,10 +343,13 @@ export interface SavedHairdresser {
   slug: string;
   tagline: string | null;
   city: string | null;
+  banner_image: string | null;
   avg_rating: string;
   reviews_count: number;
   followers_count: number;
+  posts_count: number;
   is_verified: boolean;
+  is_independent: boolean;
   user: {
     id: number;
     name: string;

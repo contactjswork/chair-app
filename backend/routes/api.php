@@ -20,10 +20,14 @@ use App\Http\Controllers\Api\AvailableHairdressersController;
 use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\SavedPostController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\VisitController;
 
 // Auth
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Scan QR — info publique (affichage avant connexion)
+Route::get('/scan/{token}', [VisitController::class, 'getTokenInfo']);
 
 // Public
 Route::get('/feed', [HairdresserController::class, 'feed']);
@@ -127,6 +131,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/unavailabilities',           [ScheduleController::class, 'indexUnavailabilities']);
     Route::post('/unavailabilities',          [ScheduleController::class, 'storeUnavailability']);
     Route::delete('/unavailabilities/{id}',   [ScheduleController::class, 'destroyUnavailability']);
+
+    // Scan QR — confirmation visite + avis (auth client requise)
+    // /scan/review AVANT /scan/{token} pour éviter le conflit de route wildcard
+    Route::post('/scan/review',          [VisitController::class, 'submitReview']);
+    Route::post('/scan/{token}',         [VisitController::class, 'confirmVisit']);
+
+    // QR Code coiffeur
+    Route::get('/hairdresser/qr-token',          [VisitController::class, 'getQrToken']);
+    Route::post('/hairdresser/qr-token/refresh', [VisitController::class, 'refreshQrToken']);
+    Route::get('/hairdresser/visits',            [VisitController::class, 'myVisits']);
 
     // Salons (gestion)
     Route::get('/my-salon',                            [SalonController::class, 'mySalon']);

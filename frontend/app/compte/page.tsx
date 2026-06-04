@@ -11,8 +11,10 @@ import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, Bookmark, Heart, Settings, Lock,
-  MapPin, Edit3,
+  MapPin, Edit3, Check,
 } from 'lucide-react';
+import { computeClientAchievements } from '@/components/ui/ChairBadges';
+import { LEVEL_STYLES } from '@/lib/chairLevel';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -323,6 +325,64 @@ export default function ComptePage() {
                 )}
               </section>
             )}
+
+            {/* ══════════════════════════════════════
+                ACHIEVEMENTS CLIENT
+            ══════════════════════════════════════ */}
+            {user.role === 'client' && !dataLoading && (() => {
+              const completedBookings = myAppointments.filter((a) => a.status === 'completed').length;
+              const reviewsLeft = myAppointments.filter((a) => a.review != null).length;
+              const { achievements, points, level } = computeClientAchievements({
+                hasAvatar: !!user.avatar,
+                hasCity: !!user.city,
+                savedCount: 0, // uses followedHairdressers as proxy
+                followsCount: followedHairdressers.length,
+                reviewsCount: reviewsLeft,
+                bookingsCount: completedBookings,
+              });
+              const levelStyle = LEVEL_STYLES[
+                level === 'Expert CHAIR' ? 'gold' : level === 'Régulier' ? 'silver' : level === 'Découvreur' ? 'bronze' : 'neutral'
+              ];
+              const doneCount = achievements.filter((a) => a.done).length;
+              return (
+                <section className="mt-6 px-4">
+                  <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
+                    Mon parcours CHAIR
+                  </p>
+                  <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+                    {/* Level header */}
+                    <div className={`px-5 py-4 flex items-center justify-between border-b border-neutral-50 ${levelStyle.bg}`}>
+                      <div>
+                        <p className={`text-xs font-bold ${levelStyle.text}`}>{level}</p>
+                        <p className="text-[11px] text-neutral-500">{points} pts · {doneCount}/{achievements.length} objectifs</p>
+                      </div>
+                      <div className={`text-lg font-bold ${levelStyle.text}`}>{points} pts</div>
+                    </div>
+                    {/* Achievement list */}
+                    {achievements.map((a) => {
+                      const Icon = a.icon;
+                      return (
+                        <div key={a.name} className="flex items-center gap-3 px-5 py-3.5 border-b border-neutral-50 last:border-0">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border-2 ${a.done ? 'bg-neutral-900 border-neutral-900' : 'border-neutral-200'}`}>
+                            {a.done ? <Check size={10} className="text-white" strokeWidth={3} /> : null}
+                          </div>
+                          <div className={`w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 ${a.done ? 'bg-neutral-900' : 'bg-neutral-50'}`}>
+                            <Icon size={13} className={a.done ? 'text-white' : 'text-neutral-400'} strokeWidth={1.5} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${a.done ? 'text-neutral-900' : 'text-neutral-400'}`}>{a.name}</p>
+                            <p className="text-[11px] text-neutral-400">{a.desc}</p>
+                          </div>
+                          <span className={`text-[11px] font-bold flex-shrink-0 ${a.done ? 'text-green-600' : 'text-neutral-300'}`}>
+                            +{a.pts} pts
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
 
             {/* ══════════════════════════════════════
                 PARAMÈTRES

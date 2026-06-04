@@ -4,6 +4,7 @@ import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { Star } from 'lucide-react';
+import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 export default function HairdresserCard({
   hairdresser,
@@ -12,10 +13,12 @@ export default function HairdresserCard({
   hairdresser: ApiHairdresserProfile;
   distanceKm?: number;
 }) {
-  const banner = resolveMediaUrl(hairdresser.banner_image);
-  const avatar = resolveMediaUrl(hairdresser.user.avatar);
-  const name   = hairdresser.user.name;
-  const hasRating = hairdresser.reviews_count > 0;
+  const banner     = resolveMediaUrl(hairdresser.banner_image);
+  const avatar     = resolveMediaUrl(hairdresser.user.avatar);
+  const name       = hairdresser.user.name;
+  const hasRating  = hairdresser.reviews_count > 0;
+  const levelColor = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
+  const ring       = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
 
   return (
     <Link href={`/coiffeur/${hairdresser.slug}`} className="block group">
@@ -59,23 +62,34 @@ export default function HairdresserCard({
 
         {/* ── Photo de profil en rond — centre de la carte ── */}
         <div className="absolute inset-0 flex items-center justify-center pb-10">
-          {avatar ? (
-            <div className="relative w-20 h-20 rounded-full overflow-hidden ring-2 ring-white/30 shadow-2xl group-hover:ring-white/60 group-hover:scale-105 transition-all duration-400">
-              <Image
-                src={avatar}
-                alt={name}
-                fill
-                sizes="80px"
-                className="object-cover"
-              />
+          <div
+            className="relative w-20 h-20 rounded-full p-[2.5px] group-hover:scale-105 transition-transform duration-300"
+            style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
+          >
+            {/* Ring coloré */}
+            {ring.show && (
+              <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />
+            )}
+            {/* Avatar */}
+            <div className={`relative rounded-full overflow-hidden shadow-2xl ${ring.show ? 'w-[calc(100%-5px)] h-[calc(100%-5px)] m-[2.5px]' : 'w-full h-full ring-2 ring-white/30'}`}>
+              {avatar ? (
+                <Image src={avatar} alt={name} fill sizes="80px" className="object-cover" />
+              ) : (
+                <div className="w-full h-full bg-neutral-700 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-white/40 select-none">
+                    {name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-neutral-700 ring-2 ring-white/20 shadow-2xl flex items-center justify-center">
-              <span className="text-3xl font-bold text-white/40 select-none">
-                {name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
+
+            {/* Micro badge niveau sur la carte */}
+            {ring.show && (
+              <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-px rounded-full text-[7px] font-bold tracking-[0.1em] uppercase whitespace-nowrap ${ring.pill}`}>
+                {levelColor === 'bronze' ? 'Actif' : levelColor === 'silver' ? 'Confirmé' : levelColor === 'gold' ? 'Expert' : levelColor === 'purple' ? 'Elite' : 'Légende'}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Contenu bas ── */}

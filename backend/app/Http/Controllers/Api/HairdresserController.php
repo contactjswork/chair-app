@@ -7,6 +7,7 @@ use App\Models\HairdresserProfile;
 use App\Models\Post;
 use App\Models\SavedPost;
 use App\Models\UserPreference;
+use App\Services\BadgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -158,7 +159,14 @@ class HairdresserController extends Controller
             ->where('slug', $slug)
             ->firstOrFail();
 
-        return response()->json($hairdresser);
+        $points = BadgeService::computePoints($hairdresser);
+        $data   = $hairdresser->toArray();
+        $data['chair_badges']        = BadgeService::getVisibleBadges($hairdresser);
+        $data['chair_points']        = $points;
+        $data['chair_level']         = BadgeService::getLevel($points);
+        $data['chair_badges_all']    = BadgeService::getUnlockedBadges($hairdresser);
+
+        return response()->json($data);
     }
 
     // ════════════════════════════════════════════════════════════════
