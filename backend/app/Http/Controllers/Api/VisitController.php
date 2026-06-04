@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\HairdresserProfile;
 use App\Models\Review;
 use App\Models\VerifiedVisit;
 use App\Services\QrTokenService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class VisitController extends Controller
 {
@@ -58,13 +60,13 @@ class VisitController extends Controller
 
         // Auto-créer si inexistant (cohérent avec ProfileController)
         if (!$profile) {
-            $base = \Illuminate\Support\Str::slug($user->name ?: 'coiffeur-' . $user->id);
+            $base = Str::slug($user->name ?: 'coiffeur-' . $user->id);
             $slug = $base;
             $i    = 1;
-            while (\App\Models\HairdresserProfile::where('slug', $slug)->exists()) {
+            while (HairdresserProfile::where('slug', $slug)->exists()) {
                 $slug = $base . '-' . $i++;
             }
-            $profile = \App\Models\HairdresserProfile::create([
+            $profile = HairdresserProfile::create([
                 'user_id'         => $user->id,
                 'slug'            => $slug,
                 'city'            => $user->city,
