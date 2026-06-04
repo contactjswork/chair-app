@@ -20,15 +20,19 @@ export default function MonQrPage() {
   const [refreshing,  setRefreshing]  = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [copied,      setCopied]      = useState(false);
+  const [fetchError,  setFetchError]  = useState('');
 
   const fetchToken = useCallback(async (silent = false, forceNew = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
+    setFetchError('');
     try {
       const data = forceNew ? await visits.refreshQrToken() : await visits.getQrToken();
       setQr(data);
       const until = new Date(data.valid_until).getTime();
       setSecondsLeft(Math.max(0, Math.round((until - Date.now()) / 1000)));
+    } catch (err: unknown) {
+      setFetchError(err instanceof Error ? err.message : 'Erreur lors du chargement du QR Code.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -124,6 +128,17 @@ export default function MonQrPage() {
         {loading ? (
           <div className="bg-white rounded-2xl border border-neutral-100 p-10 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
+          </div>
+        ) : fetchError ? (
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center space-y-3">
+            <p className="text-sm font-bold text-red-700">Impossible de charger le QR Code</p>
+            <p className="text-xs text-red-500 leading-relaxed">{fetchError}</p>
+            <button
+              onClick={() => fetchToken()}
+              className="text-xs font-semibold text-red-600 underline hover:text-red-800"
+            >
+              Réessayer
+            </button>
           </div>
         ) : qr ? (
           <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
