@@ -6,8 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/layout/AppShell';
 import { appointments as appointmentsApi, interactions } from '@/lib/api';
 import type { SavedHairdresser } from '@/lib/api';
-
-type ApiAppointment = { status: string; review?: unknown };
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
 import { ArrowLeft, Lock, Check, ChevronRight } from 'lucide-react';
@@ -24,7 +22,7 @@ const LEVEL_MIN_PTS: Record<string, number> = {
 export default function ObjectifsPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
-  const [appts, setAppts] = useState<ApiAppointment[]>([]);
+  const [appts, setAppts] = useState<{ status: string; review?: unknown }[]>([]);
   const [follows, setFollows] = useState<SavedHairdresser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -34,7 +32,7 @@ export default function ObjectifsPage() {
     if (user.role !== 'client') { router.replace('/app'); return; }
     setLoading(true);
     Promise.all([
-      appointmentsApi.myList().then((d) => setAppts(d as ApiAppointment[])).catch(() => {}),
+      appointmentsApi.myList().then((d) => setAppts(d as { status: string; review?: unknown }[])).catch(() => {}),
       interactions.followedList().then((d) => setFollows(d as SavedHairdresser[])).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [user, isLoading, router]);
