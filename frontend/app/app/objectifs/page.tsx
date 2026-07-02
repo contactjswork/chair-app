@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/layout/AppShell';
 import { appointments as appointmentsApi, interactions } from '@/lib/api';
-import type { ApiAppointment, SavedHairdresser } from '@/lib/api';
+import type { SavedHairdresser } from '@/lib/api';
+
+type ApiAppointment = { status: string; review?: unknown };
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
 import { ArrowLeft, Lock, Check, ChevronRight } from 'lucide-react';
