@@ -15,6 +15,8 @@ class Review extends Model
         'appointment_id',
         'rating',
         'comment',
+        'hairdresser_reply',
+        'replied_at',
         'specialty',
         'is_verified',
     ];

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -147,7 +147,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!isLoading && user) {
       if (user.role !== 'hairdresser') {
-        router.push('/compte');
+        router.push('/app/compte');
         return;
       }
       const slug = user.hairdresser_profile?.slug;
@@ -900,7 +900,7 @@ export default function OnboardingPage() {
         {currentStep === STEPS.length && (
           <div className="mt-4 text-center">
             <Link
-              href="/dashboard"
+              href="/pro"
               className="text-xs text-neutral-500 hover:text-neutral-900 underline transition-colors"
             >
               Aller directement à mon dashboard

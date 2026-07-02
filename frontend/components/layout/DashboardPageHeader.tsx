@@ -1,5 +1,6 @@
-'use client';
+﻿'use client';
 
+import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Bell } from 'lucide-react';
@@ -8,11 +9,13 @@ import { useNotificationCount } from '@/contexts/NotificationContext';
 interface DashboardPageHeaderProps {
   title: string;
   backHref?: string;
+  right?: ReactNode;
 }
 
 export default function DashboardPageHeader({
   title,
-  backHref = '/dashboard',
+  backHref = '/pro',
+  right,
 }: DashboardPageHeaderProps) {
   const router = useRouter();
   const { unreadCount } = useNotificationCount();
@@ -40,14 +43,16 @@ export default function DashboardPageHeader({
         {title}
       </h1>
 
-      <Link href="/notifications" className="relative p-1.5 rounded-xl hover:bg-neutral-100 transition-colors">
-        <Bell size={18} strokeWidth={1.5} className="text-neutral-600" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </Link>
+      {right ?? (
+        <Link href="/pro/notifications" className="relative p-1.5 rounded-xl hover:bg-neutral-100 transition-colors">
+          <Bell size={18} strokeWidth={1.5} className="text-neutral-600" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
+      )}
     </header>
   );
 }

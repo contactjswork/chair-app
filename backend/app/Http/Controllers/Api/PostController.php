@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\PostImage;
 use App\Services\CloudinaryService;
+use App\Services\StreakService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -106,6 +107,7 @@ class PostController extends Controller
 
             $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
             $profile->increment('posts_count');
+            StreakService::record($profile);
 
             return response()->json($post->load(['specialty', 'tags', 'images']), 201);
         }
@@ -149,6 +151,7 @@ class PostController extends Controller
 
         $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
         $profile->increment('posts_count');
+        StreakService::record($profile);
 
         return response()->json($post->load(['specialty', 'tags', 'images']), 201);
     }

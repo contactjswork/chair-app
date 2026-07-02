@@ -29,7 +29,11 @@ class HairdresserController extends Controller
             ->when($request->specialty, fn($q) => $q->whereHas('specialties', fn($sq) =>
                 $sq->where('slug', $request->specialty)
             ))
-            ->when($request->city, fn($q) => $q->where('city', 'like', '%' . $request->city . '%'));
+            ->when($request->city, fn($q) => $q->where('city', 'like', '%' . $request->city . '%'))
+            ->when($request->looking, fn($q) => $q->whereIn('work_availability', ['looking_salon', 'looking_gig']))
+            ->when($request->q, fn($q) => $q->whereHas('user', fn($sq) =>
+                $sq->where('name', 'like', '%' . $request->q . '%')
+            )->orWhere('city', 'like', '%' . $request->q . '%'));
 
         // ── Mode géolocalisation (nearby scored) ──────────────────────────────
         if ($lat !== null && $lng !== null) {
@@ -155,7 +159,7 @@ class HairdresserController extends Controller
 
     public function show(string $slug)
     {
-        $hairdresser = HairdresserProfile::with(['user', 'specialties', 'salon', 'reviews.client'])
+        $hairdresser = HairdresserProfile::with(['user', 'specialties', 'salon', 'reviews.client', 'trainingBadges'])
             ->where('slug', $slug)
             ->firstOrFail();
 
@@ -360,6 +364,42 @@ class HairdresserController extends Controller
                 'current_page' => 1,
                 'per_page'     => $perPage,
                 'last_page'    => 1,
+            ]);
+        }
+
+        // ── FOLLOWING — réalisations des coiffeurs suivis ────────────────────
+        if ($request->sort === 'following') {
+            if (!$authUser) {
+                return response()->json([
+                    'data' => [], 'total' => 0, 'current_page' => 1, 'per_page' => $perPage, 'last_page' => 1,
+                ]);
+            }
+            $followedIds = $authUser->follows()->pluck('hairdresser_id')->toArray();
+            if (empty($followedIds)) {
+                return response()->json([
+                    'data' => [], 'total' => 0, 'current_page' => 1, 'per_page' => $perPage, 'last_page' => 1,
+                ]);
+            }
+
+            $paginated = $query->whereIn('hairdresser_id', $followedIds)
+                ->orderByDesc('created_at')
+                ->paginate($perPage);
+
+            $postIds = collect($paginated->items())->pluck('id')->toArray();
+            $savedPostIds = SavedPost::where('user_id', $authUser->id)
+                ->whereIn('post_id', $postIds)->pluck('post_id')->toArray();
+
+            $items = collect($paginated->items())->map(function ($post) use ($savedPostIds) {
+                $post->saved_by_user = in_array($post->id, $savedPostIds);
+                return $post;
+            });
+
+            return response()->json([
+                'data'         => $items,
+                'total'        => $paginated->total(),
+                'current_page' => $paginated->currentPage(),
+                'per_page'     => $paginated->perPage(),
+                'last_page'    => $paginated->lastPage(),
             ]);
         }
 

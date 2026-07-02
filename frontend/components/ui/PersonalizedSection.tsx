@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Sparkles, UserPlus } from 'lucide-react';
+import { ChevronRight, Sparkles, UserPlus } from 'lucide-react';
 import HairdresserCard from './HairdresserCard';
 import type { ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
 
@@ -119,10 +119,10 @@ export default function PersonalizedSection() {
           </h2>
         </div>
         <Link
-          href={`/rechercher?specialty=${primarySlug}`}
-          className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
+          href={`/app/recherche?specialty=${primarySlug}`}
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
         >
-          Voir tout <ArrowRight size={12} />
+          <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
         </Link>
       </div>
 

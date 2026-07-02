@@ -12,15 +12,18 @@ class HairdresserProfile extends Model
     protected $fillable = [
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
         'years_experience', 'diploma', 'city', 'postal_code',
-        'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'is_verified',
+        'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'work_availability', 'is_verified',
         'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
         'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
+        'identity_verified', 'pro_active_badge',
     ];
 
     protected $casts = [
-        'is_independent' => 'boolean',
-        'is_verified' => 'boolean',
-        'avg_rating' => 'decimal:2',
+        'is_independent'    => 'boolean',
+        'is_verified'       => 'boolean',
+        'identity_verified' => 'boolean',
+        'pro_active_badge'  => 'boolean',
+        'avg_rating'        => 'decimal:2',
     ];
 
     public function user()
@@ -81,5 +84,11 @@ class HairdresserProfile extends Model
     public function qrTokens()
     {
         return $this->hasMany(QrToken::class, 'hairdresser_id');
+    }
+
+    public function trainingBadges()
+    {
+        return $this->belongsToMany(TrainingBadge::class, 'hairdresser_training_badges', 'hairdresser_profile_id', 'training_badge_id')
+                    ->withPivot('year', 'is_verified', 'created_at');
     }
 }

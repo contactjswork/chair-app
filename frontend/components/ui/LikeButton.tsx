@@ -60,9 +60,11 @@ export default function LikeButton({ postId, initialLikes, initialLiked = false,
             : 'stroke-neutral-500 group-hover:stroke-neutral-900'
         }`}
       />
-      <span className={`${textCls} text-neutral-500 group-hover:text-neutral-900 transition-colors`}>
-        {count > 0 ? `${count} j'aime` : "J'aimer"}
-      </span>
+      {count > 0 && (
+        <span className={`${textCls} text-neutral-500 group-hover:text-neutral-900 transition-colors tabular-nums`}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }

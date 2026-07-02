@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\HairdresserProfile;
+use App\Services\StreakService;
+use Illuminate\Support\Facades\DB;
 
 class BadgeService
 {
@@ -44,6 +46,16 @@ class BadgeService
         ['code' => 'verified',      'name' => 'Certifié CHAIR',       'desc' => 'Profil vérifié par CHAIR',              'category' => 'spécial',      'pts' => 100, 'tier' => 3, 'visible' => true],
         ['code' => 'new_talent',    'name' => 'Nouveau talent',       'desc' => 'Nouveau sur la plateforme',             'category' => 'spécial',      'pts' => 0,   'tier' => 1, 'visible' => true],
         ['code' => 'top_10',        'name' => 'Top 10%',              'desc' => 'Parmi les meilleurs coiffeurs CHAIR',   'category' => 'spécial',      'pts' => 150, 'tier' => 4, 'visible' => true],
+        // ── Vérification ──
+        ['code' => 'identity_verified', 'name' => 'Identité vérifiée', 'desc' => 'Identité confirmée par CHAIR',        'category' => 'vérification', 'pts' => 80,  'tier' => 3, 'visible' => true],
+        ['code' => 'siret_verified',    'name' => 'SIRET vérifié',     'desc' => 'Numéro SIRET salon validé',            'category' => 'vérification', 'pts' => 100, 'tier' => 3, 'visible' => true],
+        ['code' => 'formation_badge',   'name' => 'Formation certifiée','desc' => 'Au moins une formation reconnue',     'category' => 'vérification', 'pts' => 60,  'tier' => 2, 'visible' => true],
+        ['code' => 'pro_active',        'name' => 'Professionnel actif','desc' => 'Activité régulière sur CHAIR',        'category' => 'vérification', 'pts' => 50,  'tier' => 2, 'visible' => true],
+        // ── Streak ──
+        ['code' => 'streak_7',    'name' => 'Sur un rythme',        'desc' => '7 jours d\'activité consécutifs',        'category' => 'streak',       'pts' => 50,  'tier' => 2, 'visible' => true],
+        ['code' => 'streak_30',   'name' => 'Inarrêtable',          'desc' => '30 jours d\'activité consécutifs',       'category' => 'streak',       'pts' => 150, 'tier' => 3, 'visible' => true],
+        ['code' => 'streak_100',  'name' => 'Légende du quotidien', 'desc' => '100 jours d\'activité consécutifs',      'category' => 'streak',       'pts' => 400, 'tier' => 4, 'visible' => true],
+        ['code' => 'weekly_4',    'name' => 'Mois parfait',         'desc' => '4 semaines consécutives actives',        'category' => 'streak',       'pts' => 100, 'tier' => 3, 'visible' => true],
     ];
 
     // ── Niveaux ──────────────────────────────────────────────────────────────
@@ -103,11 +115,34 @@ class BadgeService
                 $days = $profile->created_at ? now()->diffInDays($profile->created_at) : 999;
                 return $days <= 90 && $posts >= 1;
             case 'top_10':
-                // Placeholder — à implémenter avec scoring global
                 $score = (float)($profile->avg_rating ?? 0) * min($reviews, 50) * 3
                        + min($followers, 500) * 0.2
                        + min($visits, 300) * 0.5;
                 return $score >= 300;
+            // Vérification
+            case 'identity_verified': return (bool) $profile->identity_verified;
+            case 'siret_verified':
+                return DB::table('salons')
+                    ->where('id', $profile->salon_id)
+                    ->where('verification_status', 'verified')
+                    ->exists();
+            case 'formation_badge':
+                return DB::table('hairdresser_training_badges')
+                    ->where('hairdresser_profile_id', $profile->id)
+                    ->exists();
+            case 'pro_active':
+                return $posts >= 3 && $visits >= 5;
+            // Streak
+            case 'streak_7':
+            case 'streak_30':
+            case 'streak_100':
+            case 'weekly_4': {
+                $streak = StreakService::get($profile->id);
+                if ($code === 'streak_7')   return $streak['longest_streak'] >= 7;
+                if ($code === 'streak_30')  return $streak['longest_streak'] >= 30;
+                if ($code === 'streak_100') return $streak['longest_streak'] >= 100;
+                if ($code === 'weekly_4')   return $streak['weekly_streak'] >= 4;
+            }
         }
         return false;
     }
@@ -173,6 +208,53 @@ class BadgeService
             'progress' => $progress,
             'next'     => $next ? ['name' => $next['name'], 'min' => $next['min']] : null,
         ];
+    }
+
+    // ── Recalcul des compteurs depuis la DB réelle ───────────────────────────
+    // Appelé avant chaque lecture de badges pour garantir la cohérence.
+    public static function syncCounters(HairdresserProfile $profile): void
+    {
+        $id = $profile->id;
+
+        $postsCount = DB::table('posts')
+            ->where('hairdresser_id', $id)
+            ->where('is_published', true)
+            ->count();
+
+        $followersCount = DB::table('follows')
+            ->where('hairdresser_id', $id)
+            ->count();
+
+        $reviews = DB::table('reviews')
+            ->where('hairdresser_id', $id)
+            ->selectRaw('COUNT(*) as cnt, COALESCE(AVG(rating), 0) as avg')
+            ->first();
+
+        $visitsCount = DB::table('appointments')
+            ->where('hairdresser_id', $id)
+            ->where('status', 'completed')
+            ->count();
+
+        $verifiedCount = DB::table('verified_visits')
+            ->where('hairdresser_id', $id)
+            ->count();
+
+        $profile->posts_count        = $postsCount;
+        $profile->followers_count    = $followersCount;
+        $profile->reviews_count      = (int) $reviews->cnt;
+        $profile->avg_rating         = round((float) $reviews->avg, 2);
+        $profile->visits_count       = $visitsCount;
+        $profile->verified_visits_count = $verifiedCount;
+
+        // Persist silently (no events, no timestamps update)
+        DB::table('hairdresser_profiles')->where('id', $id)->update([
+            'posts_count'          => $postsCount,
+            'followers_count'      => $followersCount,
+            'reviews_count'        => (int) $reviews->cnt,
+            'avg_rating'           => round((float) $reviews->avg, 2),
+            'visits_count'         => $visitsCount,
+            'verified_visits_count'=> $verifiedCount,
+        ]);
     }
 
     // ── Score de complétion profil (0-100) ───────────────────────────────────

@@ -35,6 +35,7 @@ interface RegisterData {
   salon_city?: string;
   booking_url?: string;
   salon_instagram?: string;
+  siret?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);

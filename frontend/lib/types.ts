@@ -1,5 +1,59 @@
 // ── Types API — shape exacte des réponses Laravel ─────────────────
 
+export interface ApiStreak {
+  current_streak: number;
+  longest_streak: number;
+  weekly_streak: number;
+  total_active_days: number;
+  last_activity_date: string | null;
+  is_active_today: boolean;
+}
+
+export interface ApiLeaderboardEntry {
+  rank: number;
+  id: number;
+  slug: string;
+  name: string;
+  avatar: string | null;
+  city: string | null;
+  specialty: string | null;
+  specialty_slug: string | null;
+  avg_rating: number;
+  reviews_count: number;
+  followers_count: number;
+  posts_count: number;
+  is_verified: boolean;
+  identity_verified: boolean;
+  score: number;
+}
+
+export interface ApiLeaderboard {
+  type: string;
+  city: string | null;
+  results: ApiLeaderboardEntry[];
+}
+
+export interface ApiAnalyticsTrend {
+  pct: number;
+  direction: 'up' | 'down' | 'stable';
+}
+
+export interface ApiAnalytics {
+  posts: { this_week: number; last_week: number; trend: ApiAnalyticsTrend };
+  appointments: {
+    this_week: number; last_week: number;
+    this_month: number; last_month: number;
+    trend_week: ApiAnalyticsTrend; trend_month: ApiAnalyticsTrend;
+  };
+  followers: { this_week: number; last_week: number; trend: ApiAnalyticsTrend; total: number };
+  reviews: { this_month: number; total: number; avg: number };
+  top_specialty: { name: string; slug: string; score: number } | null;
+  recommendations: Array<{
+    type: string; title: string; desc: string; cta: string; href: string; urgency: 'high' | 'medium' | 'low';
+  }>;
+}
+
+
 export interface ApiUser {
   id: number;
   name: string;
@@ -32,6 +86,8 @@ export interface ApiReview {
   id: number;
   rating: number;
   comment: string;
+  hairdresser_reply: string | null;
+  replied_at: string | null;
   is_verified: boolean;
   is_certified: boolean;
   specialty: string | null;
@@ -132,6 +188,7 @@ export interface ApiHairdresserProfile {
   banner_image: string | null;
   tagline: string | null;
   years_experience: number | null;
+  diploma: string | null;
   city: string | null;
   postal_code: string | null;
   latitude: number | string | null;
@@ -139,6 +196,8 @@ export interface ApiHairdresserProfile {
   distance_km?: number;
   is_independent: boolean;
   is_verified: boolean;
+  identity_verified: boolean;
+  pro_active_badge: boolean;
   followers_count: number;
   posts_count: number;
   avg_rating: string;
@@ -151,6 +210,8 @@ export interface ApiHairdresserProfile {
   keywords: string | null;
   work_status: 'home' | 'private_salon' | 'rented_chair' | 'studio' | null;
   work_address: string | null;
+  work_availability: 'employed' | 'looking_salon' | 'looking_gig' | 'not_available' | null;
+  training_badges?: ApiTrainingBadge[];
   user: ApiUser;
   specialties: ApiSpecialty[];
   salon: ApiSalon | null;
@@ -364,6 +425,31 @@ export interface ApiSearchResponse {
   current_page: number;
 }
 
+// ── Training badges ─────────────────────────────────────────────────
+
+export interface ApiTrainingBadge {
+  id: number;
+  institution: string;
+  name: string;
+  slug: string;
+  category: 'formation' | 'certification';
+  pivot?: { year: number | null; is_verified: boolean };
+}
+
+export interface ApiJobOffer {
+  id: number;
+  salon_id: number;
+  title: string;
+  job_type: 'hairdresser' | 'colorist' | 'barber' | 'stylist' | 'apprentice' | 'other';
+  level?: 'cap1' | 'cap2' | 'bp1' | 'bp2' | 'bm_bts1' | 'bm_bts2' | null;
+  contract_type: 'cdi' | 'cdd' | 'alternance' | 'apprentissage' | 'freelance';
+  description: string | null;
+  city: string | null;
+  status: 'open' | 'closed';
+  created_at: string;
+  salon?: ApiSalon & { logo?: string | null; slug?: string };
+}
+
 // ── Salon ───────────────────────────────────────────────────────────
 
 export interface ApiSalonFull {
@@ -380,6 +466,8 @@ export interface ApiSalonFull {
   cover_image: string | null;
   logo: string | null;
   is_verified: boolean;
+  siret: string | null;
+  verification_status: 'unverified' | 'pending_review' | 'verified' | 'rejected';
   hairdressers_count?: number;
   hairdressers: (ApiHairdresserProfile & { user: ApiUser })[];
   owner?: ApiUser;

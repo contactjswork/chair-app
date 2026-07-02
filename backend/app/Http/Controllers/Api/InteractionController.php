@@ -16,8 +16,14 @@ class InteractionController extends Controller
         $saved = $request->user()
             ->savedProfiles()
             ->with(['user', 'specialties'])
-            ->withCount('posts')
-            ->get();
+            ->withCount(['posts', 'reviews'])
+            ->withAvg('reviews', 'rating')
+            ->get()
+            ->map(function ($h) {
+                $h->avg_rating   = round((float) $h->reviews_avg_rating, 1);
+                $h->reviews_count = $h->reviews_count ?? 0;
+                return $h;
+            });
 
         return response()->json($saved);
     }

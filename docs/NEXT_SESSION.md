@@ -1,6 +1,65 @@
 # NEXT SESSION — Reprise de contexte CHAIR
 > Lire ce fichier en premier au début de chaque session.
-> Dernière mise à jour : 2026-06-03 (session — UX Découverte, Feed TikTok, Onboarding client)
+> Dernière mise à jour : 2026-06-07 (session — Sprint B : Disponibilité, Recrutement, Badges Formation)
+
+---
+
+## OÙ EN SOMMES-NOUS ?
+
+**Sprint B — Disponibilité, Recrutement, Formations (session 2026-06-07) — TERMINÉ**
+
+### Nouveautés de cette session (Sprint B)
+
+**Backend :**
+- Migration `job_offers` : salon_id, title, job_type (hairdresser/colorist/barber/stylist/apprentice/other), contract_type (cdi/cdd/alternance/freelance), description, city, status (open/closed)
+- Migration `training_badges` + `hairdresser_training_badges` : catalogue 15 institutions (Toni & Guy, Wella, L'Oréal, Schwarzkopf, etc.) + pivot coiffeur ↔ badge
+- `HairdresserProfile` : `work_availability` dans `$fillable`, relation `trainingBadges()`
+- `HairdresserController::show` : charge `trainingBadges` avec le profil public
+- `HairdresserController::index` : filtre `?looking=true` (work_availability = looking_salon/looking_gig)
+- `ProfileController::update` : accepte `work_availability`
+- `JobOfferController` : CRUD complet (public list + salon_owner CRUD)
+- `TrainingController` : catalogue, mes badges, ajouter, retirer
+- Routes ajoutées : `GET /job-offers`, `GET /training-badges`, `GET/POST/DELETE /my-job-offers|/my-training-badges`
+
+**Frontend :**
+- `lib/types.ts` : `ApiTrainingBadge`, `ApiJobOffer`, `work_availability` dans `ApiHairdresserProfile`
+- `lib/api.ts` : `training` + `jobOffers` modules
+- `/coiffeur/[slug]` : lien cliquable "Chez X" → /salon/[slug], badge "Ouvert aux opportunités"/"Recherche des missions", chips formations
+- `/dashboard/profil` : section "Disponibilité" (4 statuts radio), section "Formations" (catalogue searchable + chips retirables)
+- `/recrutement` : page publique avec offres salons + coiffeurs disponibles
+- `/dashboard/recrutement` : CRUD offres (salon_owner) — créer, modifier, clôturer, supprimer
+- `DashboardNav` : onglet "Recruter" pour salon_owner
+
+---
+
+**Sprint A — Gérant Salon (session 2026-06-07) — TERMINÉ**
+
+### Nouveautés de cette session
+
+**Nouveau rôle `salon_owner` — Architecture complète :**
+
+**Backend :**
+- Migration `siret` (string 14) + `verification_status` (enum : unverified/pending_review/verified/rejected) sur `salons`
+- Migration `work_availability` (enum : employed/looking_salon/looking_gig/not_available) sur `hairdresser_profiles`
+- `User::salon()` — relation `hasOne` Salon (en plus de `salons()` hasMany)
+- `Salon::$fillable` — ajout `siret` et `verification_status`
+- `AuthController::register` — pour `salon_owner` : crée un `Salon` automatiquement, charge `salon` au lieu de `hairdresserProfile` dans la réponse
+- `AuthController::me` — charge `salon` pour `salon_owner`, `hairdresserProfile` pour les autres
+- `AuthController::login` — idem
+- `SalonController::verifySiret` — appel API Sirene INSEE (annuaire-entreprises.data.gouv.fr), retourne business_name, city, is_hairdresser (NAF 9602A)
+- `SalonController::createMySalon` (POST /my-salon) — création salon post-inscription
+- `SalonController::removeHairdresser` (DELETE /my-salon/hairdressers/{id}) — retirer un coiffeur + notification
+- Routes ajoutées : `GET /verify-siret`, `POST /my-salon`, `DELETE /my-salon/hairdressers/{id}`
+
+**Frontend :**
+- `lib/auth.ts` — `AuthSalon` type, `AuthUser.salon` field, `redirectPathForRole` → salon_owner va sur `/dashboard/salon`
+- `hooks/useRequireAuth.ts` — redirect vers `redirectPathForRole(user.role)` au lieu de `/compte` fixe
+- `contexts/AuthContext.tsx` — `siret` dans `RegisterData`
+- `lib/types.ts` — `ApiSalonFull` : ajout `siret` + `verification_status`
+- `lib/api.ts` — `salons.createMySalon`, `salons.removeHairdresser`, `salons.verifySiret`
+- `app/inscription/page.tsx` — 3 rôles (Client/Coiffeur/Gérant Salon), step 2 spécifique gérant avec nom salon + SIRET + vérification live
+- `components/layout/DashboardNav.tsx` — menu `salon_owner` (Mon Salon + Badges + Alertes + App)
+- `app/dashboard/salon/page.tsx` — autorise `hairdresser` + `salon_owner`, formulaire de création si pas de salon, badge statut vérification, bouton "Retirer" coiffeur (owner only), bouton déconnexion
 
 ---
 
@@ -201,20 +260,56 @@ Toutes les corrections listées ci-dessous ont été appliquées. CHAIR est prê
 
 ## PRIORITÉS POUR LA PROCHAINE SESSION
 
-### PRIORITÉ 1 — UX Coiffeur (dashboard publication)
+### FAIT session 2026-06-04 — Système de badges refait
 
-- [ ] **Formulaire de publication** : s'assurer que le coiffeur voit clairement les 29 spécialités groupées et peut en sélectionner plusieurs (post_tags)
+**Backend :**
+- `BadgeService::syncCounters()` ajouté — recompute posts/followers/reviews/visits/verifiedVisits depuis la DB réelle à chaque appel `/profile`
+- Appelé automatiquement dans `ProfileController::show()` avant tout calcul de badges
+- Les badges sont donc toujours synchronisés avec les stats réelles
+
+**Frontend `/dashboard/badges` — Refonte gamification complète :**
+- Hero niveau : grand titre coloré + barre progression + pts restants
+- Section "Badges obtenus" : grille 2 colonnes avec cards colorées par tier
+- Section "En cours" : 4 badges les plus proches, arc SVG de progression circulaire
+- Section "Prochains objectifs" : 3 badges à 0% de progression, les plus accessibles
+- Section "À débloquer" : repliée par défaut, tous les badges verrouillés en liste discrète
+
+### PRIORITÉ 0 — Architecture types de comptes (FAIT session 2026-06-04)
+
+**Séparation stricte Indépendant vs Salon — tout est conditionné par `is_independent`.**
+
+Résumé des changements appliqués :
+- `DashboardNav.tsx` — 2 menus mobiles distincts (Independent: Accueil/Profil/Services/Planning/Badges ; Salon: Accueil/Profil/Portfolio/QR/Badges)
+- `dashboard/page.tsx` — Score, Checklist, Action prioritaire, Rendez-vous, Accès rapides tous conditionnés
+- `dashboard/services/page.tsx` — Redirect vers /dashboard si salon hairdresser
+- `dashboard/planning/page.tsx` — Redirect vers /dashboard si salon hairdresser
+- `dashboard/reservations/page.tsx` — Redirect vers /dashboard si salon hairdresser
+- `dashboard/mon-qr/page.tsx` — Redirect vers /dashboard si indépendant (QR = salon seulement)
+- `dashboard/statistiques/page.tsx` — Section RDV/revenus déjà conditionnée par `is_independent`
+
+**Système d'avis :**
+- Indépendant : marquer RDV "Terminé" → notification automatique au client → avis
+- Salon : QR Code obligatoire → scan par le client → avis débloqué + visite comptabilisée
+
+### PRIORITÉ 1 — Flux d'avis Indépendant (à implémenter)
+
+Aujourd'hui l'endpoint `PUT /api/appointments/{id}/status` avec `status=completed` envoie déjà une notification `review_request` au client. Le flux est donc **fonctionnel**.
+À vérifier : la notification contient-elle un lien cliquable vers le formulaire d'avis ?
+
+### PRIORITÉ 2 — UX Coiffeur
+
+- [ ] **Formulaire de publication** : coiffeur voit les 29 spécialités groupées, peut en sélectionner plusieurs (post_tags)
 - [ ] **Vérifier le flux complet** : post créé → tag barber → apparaît dans feed client barber
 - [ ] **Synchronisation `chair_preferences` localStorage ↔ DB** : à la connexion, écrire les prefs DB dans localStorage si localStorage vide
 
-### PRIORITÉ 2 — Avant lancement public (getchair.app)
+### PRIORITÉ 3 — Avant lancement public (getchair.app)
 
 - [ ] **Configurer `NEXT_PUBLIC_API_URL` en production** (Railway/Render : `https://api.getchair.app/api`)
 - [ ] **SEO** — `generateMetadata()` sur `/coiffeur/[slug]` (title, description, og:image)
 - [ ] **sitemap.xml** dynamique (routes coiffeurs + spécialités)
 - [ ] **Structured data JSON-LD** sur les profils (`@type: Person` ou `@type: LocalBusiness`)
 
-### PRIORITÉ 3 — Production checklist
+### PRIORITÉ 4 — Production checklist
 
 - [ ] `.env.production` avec vraies URLs
 - [ ] `next.config.ts` : remplacer `localhost:8000` dans `remotePatterns` par domaine prod

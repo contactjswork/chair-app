@@ -21,10 +21,20 @@ use App\Http\Controllers\Api\PreferenceController;
 use App\Http\Controllers\Api\SavedPostController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\VisitController;
+use App\Http\Controllers\Api\JobOfferController;
+use App\Http\Controllers\Api\TrainingController;
+use App\Http\Controllers\Api\StreakController;
+use App\Http\Controllers\Api\LeaderboardController;
+use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\ChairRentalController;
+use App\Http\Controllers\Api\JobApplicationController;
+use App\Http\Controllers\Api\SalonInvitationController;
 
 // Auth
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Scan QR — info publique (affichage avant connexion)
 Route::get('/scan/{token}', [VisitController::class, 'getTokenInfo']);
@@ -44,10 +54,14 @@ Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
 Route::get('/posts/{postId}', [PostController::class, 'show']);
 Route::post('/appointments', [AppointmentController::class, 'store']);
 Route::post('/review-by-token/{token}', [AppointmentController::class, 'reviewByToken']);
+Route::get('/leaderboard', [LeaderboardController::class, 'index']);
 
 // Salons publics
 Route::get('/salons', [SalonController::class, 'index']);
 Route::get('/salons/{slug}', [SalonController::class, 'show']);
+Route::get('/verify-siret', [SalonController::class, 'verifySiret']);
+Route::get('/job-offers', [JobOfferController::class, 'index']);
+Route::get('/training-badges', [TrainingController::class, 'catalogue']);
 
 // Coiffeurs disponibles
 Route::get('/available-hairdressers', [AvailableHairdressersController::class, 'index']);
@@ -106,6 +120,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-appointments',                      [AppointmentController::class, 'clientAppointments']);
     Route::post('/appointments/{id}/review',            [AppointmentController::class, 'submitReview']);
 
+    // Réponses aux avis (coiffeur)
+    Route::post('/reviews/{id}/reply',                  [ReviewController::class, 'reply']);
+
     // Notifications
     Route::get('/notifications',              [NotificationController::class, 'index']);
     Route::post('/notifications/read-all',   [NotificationController::class, 'markAllRead']);
@@ -142,11 +159,24 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/hairdresser/qr-token/refresh', [VisitController::class, 'refreshQrToken']);
     Route::get('/hairdresser/visits',            [VisitController::class, 'myVisits']);
 
+    // Offres de recrutement (salon_owner)
+    Route::get('/my-job-offers',             [JobOfferController::class, 'mySalonOffers']);
+    Route::post('/job-offers',               [JobOfferController::class, 'store']);
+    Route::put('/job-offers/{id}',           [JobOfferController::class, 'update']);
+    Route::delete('/job-offers/{id}',        [JobOfferController::class, 'destroy']);
+
+    // Formations (coiffeur)
+    Route::get('/my-training-badges',              [TrainingController::class, 'myBadges']);
+    Route::post('/my-training-badges',             [TrainingController::class, 'add']);
+    Route::delete('/my-training-badges/{badgeId}', [TrainingController::class, 'remove']);
+
     // Salons (gestion)
-    Route::get('/my-salon',                            [SalonController::class, 'mySalon']);
-    Route::put('/my-salon',                            [SalonController::class, 'updateMySalon']);
-    Route::post('/my-salon/logo',                      [SalonController::class, 'uploadLogo']);
-    Route::post('/my-salon/cover',                     [SalonController::class, 'uploadCover']);
+    Route::post('/my-salon',                               [SalonController::class, 'createMySalon']);
+    Route::get('/my-salon',                                [SalonController::class, 'mySalon']);
+    Route::put('/my-salon',                                [SalonController::class, 'updateMySalon']);
+    Route::post('/my-salon/logo',                          [SalonController::class, 'uploadLogo']);
+    Route::post('/my-salon/cover',                         [SalonController::class, 'uploadCover']);
+    Route::delete('/my-salon/hairdressers/{id}',           [SalonController::class, 'removeHairdresser']);
 
     // Demandes de rejoindre un salon
     Route::post('/join-salon',                         [SalonController::class, 'requestJoin']);
@@ -154,4 +184,45 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/join-requests/{id}/accept',          [SalonController::class, 'acceptJoinRequest']);
     Route::post('/join-requests/{id}/decline',         [SalonController::class, 'declineJoinRequest']);
     Route::delete('/leave-salon',                      [SalonController::class, 'leaveSalon']);
+
+    // Fauteuils (salon_owner)
+    Route::get('/my-salon/rentals',                          [ChairRentalController::class, 'myRentals']);
+    Route::post('/my-salon/rentals',                         [ChairRentalController::class, 'store']);
+    Route::put('/my-salon/rentals/{id}',                     [ChairRentalController::class, 'update']);
+    Route::delete('/my-salon/rentals/{id}',                  [ChairRentalController::class, 'destroy']);
+    Route::post('/my-salon/rentals/{id}/photos',             [ChairRentalController::class, 'uploadPhoto']);
+    Route::delete('/my-salon/rentals/{id}/photos',           [ChairRentalController::class, 'deletePhoto']);
+    Route::get('/my-salon/rental-requests',                  [ChairRentalController::class, 'myRequests']);
+    Route::post('/my-salon/rental-requests/{id}/accept',     [ChairRentalController::class, 'acceptRequest']);
+    Route::post('/my-salon/rental-requests/{id}/decline',    [ChairRentalController::class, 'declineRequest']);
+
+    // Invitations (salon_owner → coiffeur)
+    Route::post('/my-salon/invite',                          [SalonInvitationController::class, 'invite']);
+    Route::get('/my-salon/invitations',                      [SalonInvitationController::class, 'sentInvitations']);
+    Route::delete('/my-salon/invitations/{id}',              [SalonInvitationController::class, 'cancel']);
+
+    // Invitations (coiffeur)
+    Route::get('/my-invitations',                            [SalonInvitationController::class, 'myInvitations']);
+    Route::post('/my-invitations/{id}/accept',               [SalonInvitationController::class, 'accept']);
+    Route::post('/my-invitations/{id}/decline',              [SalonInvitationController::class, 'decline']);
+
+    // Fauteuils (coiffeur indépendant)
+    Route::get('/chair-rentals',                             [ChairRentalController::class, 'publicList']);
+    Route::post('/chair-rentals/{id}/request',               [ChairRentalController::class, 'sendRequest']);
+    Route::get('/my-chair-requests',                         [ChairRentalController::class, 'myRequests_hairdresser']);
+
+    // Candidatures (salon_owner)
+    Route::get('/my-salon/applications',                     [JobApplicationController::class, 'myApplications']);
+    Route::get('/my-salon/applications/pending-count',       [JobApplicationController::class, 'pendingCount']);
+    Route::put('/my-salon/applications/{id}',                [JobApplicationController::class, 'updateStatus']);
+
+    // Candidatures (coiffeur)
+    Route::post('/job-offers/{id}/apply',                    [JobApplicationController::class, 'apply']);
+    Route::get('/my-applications',                           [JobApplicationController::class, 'myApplications_hairdresser']);
+
+    // Streak
+    Route::get('/my-streak', [StreakController::class, 'show']);
+
+    // Analytics
+    Route::get('/my-analytics', [AnalyticsController::class, 'show']);
 });

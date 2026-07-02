@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -100,7 +100,7 @@ export default function ProfileActions({
     return (
       <div className="flex gap-2">
         <Link
-          href="/dashboard/profil"
+          href="/pro/profil"
           className="flex-1 flex items-center justify-center gap-2 bg-neutral-100 text-neutral-700 font-semibold py-3 rounded-xl text-[13px] hover:bg-neutral-200 transition-colors"
         >
           <Edit2 size={15} strokeWidth={2} />

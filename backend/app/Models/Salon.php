@@ -13,6 +13,7 @@ class Salon extends Model
         'owner_id', 'name', 'slug', 'description', 'address', 'city',
         'postal_code', 'latitude', 'longitude', 'phone', 'website',
         'instagram_url', 'cover_image', 'logo', 'is_verified',
+        'siret', 'verification_status',
     ];
 
     protected $casts = [

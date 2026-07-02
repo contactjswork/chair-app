@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
@@ -101,7 +101,7 @@ export default function FeedPostCard({ post, hairdresser: hdProp, aspect = 'port
   // Par défaut : ouvre le feed vertical TikTok. Depuis un profil coiffeur,
   // les PostCard (non FeedPostCard) gardent leur lien vers /realisation/[id].
   return (
-    <Link href={`/feed?from=${post.id}`} className="block">
+    <Link href={`/app/feed?from=${post.id}`} className="block">
       {card}
     </Link>
   );

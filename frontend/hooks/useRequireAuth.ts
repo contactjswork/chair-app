@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserRole } from '@/lib/auth';
+import { redirectPathForRole } from '@/lib/auth';
 
 export function useRequireAuth(allowedRoles?: UserRole[]) {
   const { user, isLoading } = useAuth();
@@ -16,7 +17,7 @@ export function useRequireAuth(allowedRoles?: UserRole[]) {
       return;
     }
     if (allowedRoles && !allowedRoles.includes(user.role)) {
-      router.replace('/compte');
+      router.replace(redirectPathForRole(user.role));
     }
   }, [user, isLoading, allowedRoles, router]);
 

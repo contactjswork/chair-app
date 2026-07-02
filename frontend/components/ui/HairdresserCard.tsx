@@ -1,9 +1,9 @@
-import Link from 'next/link';
+﻿import Link from 'next/link';
 import Image from 'next/image';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
-import { Star } from 'lucide-react';
+import { Star, Award } from 'lucide-react';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 export default function HairdresserCard({
@@ -13,15 +13,16 @@ export default function HairdresserCard({
   hairdresser: ApiHairdresserProfile;
   distanceKm?: number;
 }) {
-  const banner     = resolveMediaUrl(hairdresser.banner_image);
-  const avatar     = resolveMediaUrl(hairdresser.user.avatar);
-  const name       = hairdresser.user.name;
-  const hasRating  = hairdresser.reviews_count > 0;
-  const levelColor = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
-  const ring       = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const banner      = resolveMediaUrl(hairdresser.banner_image);
+  const avatar      = resolveMediaUrl(hairdresser.user.avatar);
+  const name        = hairdresser.user.name;
+  const hasRating   = hairdresser.reviews_count > 0;
+  const levelColor  = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
+  const ring        = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const badgeCount  = hairdresser.chair_badges?.length ?? hairdresser.chair_badges_all?.length ?? 0;
 
   return (
-    <Link href={`/coiffeur/${hairdresser.slug}`} className="block group">
+    <Link href={`/app/coiffeur/${hairdresser.slug}`} className="block group">
       <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-900">
 
         {/* ── Fond : bannière floutée (ou couleur neutre si absente) ── */}
@@ -86,7 +87,7 @@ export default function HairdresserCard({
             {/* Micro badge niveau sur la carte */}
             {ring.show && (
               <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-px rounded-full text-[7px] font-bold tracking-[0.1em] uppercase whitespace-nowrap ${ring.pill}`}>
-                {levelColor === 'bronze' ? 'Actif' : levelColor === 'silver' ? 'Confirmé' : levelColor === 'gold' ? 'Expert' : levelColor === 'purple' ? 'Elite' : 'Légende'}
+                {ring.label}
               </div>
             )}
           </div>
@@ -118,14 +119,22 @@ export default function HairdresserCard({
                 <p className="text-white/50 text-[10px] mt-0.5 truncate">{hairdresser.city}</p>
               ) : null}
             </div>
-            {hasRating && (
-              <div className="flex-shrink-0 flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2 py-1 rounded-full">
-                <Star size={9} className="fill-white stroke-none" />
-                <span className="text-white font-bold text-[11px] leading-none">
-                  {parseFloat(hairdresser.avg_rating).toFixed(1)}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {badgeCount >= 3 && (
+                <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2 py-1 rounded-full">
+                  <Award size={8} className="text-white/70" strokeWidth={2} />
+                  <span className="text-white/80 font-bold text-[10px] leading-none">{badgeCount}</span>
+                </div>
+              )}
+              {hasRating && (
+                <div className="flex items-center gap-1 bg-white/10 backdrop-blur-sm px-2 py-1 rounded-full">
+                  <Star size={9} className="fill-white stroke-none" />
+                  <span className="text-white font-bold text-[11px] leading-none">
+                    {parseFloat(hairdresser.avg_rating).toFixed(1)}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

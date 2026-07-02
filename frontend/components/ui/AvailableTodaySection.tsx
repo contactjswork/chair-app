@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -48,7 +48,7 @@ export default function AvailableTodaySection() {
             <h2 className="text-xl font-bold text-neutral-900">Créneaux libres — {today}</h2>
           </div>
           <Link
-            href="/rechercher?when=today"
+            href="/app/recherche?when=today"
             className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-neutral-600 hover:text-neutral-900 transition-colors"
           >
             Voir tout
@@ -130,7 +130,7 @@ export default function AvailableTodaySection() {
         {/* CTA mobile */}
         <div className="mt-4 md:hidden">
           <Link
-            href="/rechercher?when=today"
+            href="/app/recherche?when=today"
             className="flex items-center justify-center gap-2 w-full py-3 border border-neutral-200 rounded-xl text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
             Voir tous les disponibles

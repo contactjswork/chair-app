@@ -34,6 +34,11 @@ class User extends Authenticatable
         return $this->hasOne(HairdresserProfile::class);
     }
 
+    public function salon()
+    {
+        return $this->hasOne(Salon::class, 'owner_id');
+    }
+
     public function salons()
     {
         return $this->hasMany(Salon::class, 'owner_id');

@@ -41,6 +41,10 @@ class ProfileController extends Controller
         }
 
         $profile->loadMissing('user');
+
+        // Resync counters from DB to ensure badge accuracy
+        BadgeService::syncCounters($profile);
+
         $points = BadgeService::computePoints($profile);
 
         return response()->json([
@@ -66,14 +70,15 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate([
-            'bio'              => 'nullable|string|max:1000',
-            'tagline'          => 'nullable|string|max:255',
-            'city'             => 'nullable|string|max:100',
-            'instagram_url'    => 'nullable|url|max:255',
-            'booking_url'      => 'nullable|url|max:500',
-            'years_experience' => 'nullable|integer|min:0|max:50',
-            'specialties'      => 'nullable|array',
-            'specialties.*'    => 'integer|exists:specialties,id',
+            'bio'               => 'nullable|string|max:1000',
+            'tagline'           => 'nullable|string|max:255',
+            'city'              => 'nullable|string|max:100',
+            'instagram_url'     => 'nullable|url|max:255',
+            'booking_url'       => 'nullable|url|max:500',
+            'years_experience'  => 'nullable|integer|min:0|max:50',
+            'work_availability' => 'nullable|in:employed,looking_salon,looking_gig,not_available',
+            'specialties'       => 'nullable|array',
+            'specialties.*'     => 'integer|exists:specialties,id',
         ]);
 
         $user->update([
@@ -89,11 +94,12 @@ class ProfileController extends Controller
         }
 
         $profileData = [
-            'tagline'          => array_key_exists('tagline',          $validated) ? $validated['tagline']          : $profile->tagline,
-            'city'             => $newCity,
-            'instagram_url'    => array_key_exists('instagram_url',    $validated) ? $validated['instagram_url']    : $profile->instagram_url,
-            'booking_url'      => array_key_exists('booking_url',      $validated) ? $validated['booking_url']      : $profile->booking_url,
-            'years_experience' => array_key_exists('years_experience', $validated) ? $validated['years_experience'] : $profile->years_experience,
+            'tagline'           => array_key_exists('tagline',           $validated) ? $validated['tagline']           : $profile->tagline,
+            'city'              => $newCity,
+            'instagram_url'     => array_key_exists('instagram_url',     $validated) ? $validated['instagram_url']     : $profile->instagram_url,
+            'booking_url'       => array_key_exists('booking_url',       $validated) ? $validated['booking_url']       : $profile->booking_url,
+            'years_experience'  => array_key_exists('years_experience',  $validated) ? $validated['years_experience']  : $profile->years_experience,
+            'work_availability' => array_key_exists('work_availability', $validated) ? $validated['work_availability'] : $profile->work_availability,
         ];
 
         // Mise à jour des coordonnées si géocodage réussi

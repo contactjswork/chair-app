@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -75,7 +75,7 @@ export default function SpecialtiesSection({ specialties }: Props) {
           </h2>
         </div>
         <Link
-          href="/rechercher"
+          href="/app/recherche"
           className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
         >
           Voir tout <ArrowRight size={12} />
@@ -89,7 +89,7 @@ export default function SpecialtiesSection({ specialties }: Props) {
           return (
             <Link
               key={s.slug}
-              href={`/rechercher?specialty=${s.slug}`}
+              href={`/app/recherche?specialty=${s.slug}`}
               className="flex-shrink-0 group"
             >
               <div className="relative w-[84px] h-[84px] md:w-[100px] md:h-[100px] rounded-2xl overflow-hidden bg-neutral-900">

@@ -29,7 +29,7 @@ export default function AppShell({ children, noPaddingTop = false }: Props) {
   return (
     <>
       <TopNav />
-      <main className={`min-h-screen pb-20 md:pb-0 ${noPaddingTop ? '' : 'md:pt-[60px]'}`}>
+      <main className={`min-h-screen pb-24 md:pb-0 ${noPaddingTop ? '' : 'pt-14 md:pt-[60px]'}`}>
         {children}
         <Footer />
       </main>

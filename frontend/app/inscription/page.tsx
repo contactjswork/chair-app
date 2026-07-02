@@ -2,272 +2,166 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { User, Scissors, Building2, MapPin } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Role = 'client' | 'hairdresser';
-type HairdresserType = 'independent' | 'salon';
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 export default function InscriptionPage() {
   const { register } = useAuth();
 
-  const [role, setRole] = useState<Role>(() => {
-    if (typeof window === 'undefined') return 'client';
-    return new URLSearchParams(window.location.search).get('role') === 'hairdresser'
-      ? 'hairdresser'
-      : 'client';
-  });
-
-  // Step 1 — commun
-  const [name, setName]       = useState('');
-  const [email, setEmail]     = useState('');
-  const [password, setPassword] = useState('');
-
-  // Step 2 — coiffeur uniquement
-  const [hairdresserType, setHairdresserType] = useState<HairdresserType>('independent');
-  const [city, setCity]                 = useState('');
-  const [postalCode, setPostalCode]     = useState('');
-  const [salonName, setSalonName]       = useState('');
-  const [salonCity, setSalonCity]       = useState('');
-  const [bookingUrl, setBookingUrl]     = useState('');
-  const [salonInstagram, setSalonInstagram] = useState('');
-
-  const [step, setStep]         = useState(1); // 1 = base, 2 = détails coiffeur
-  const [error, setError]       = useState('');
+  const [name,      setName]      = useState('');
+  const [email,     setEmail]     = useState('');
+  const [phone,     setPhone]     = useState('');
+  const [password,  setPassword]  = useState('');
+  const [showPwd,   setShowPwd]   = useState(false);
+  const [error,     setError]     = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [googleMsg, setGoogleMsg] = useState(false);
 
-  function handleNextStep(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
-    if (role === 'hairdresser') {
-      setStep(2);
-    } else {
-      submitForm();
-    }
-  }
-
-  async function submitForm() {
-    setError('');
     setIsLoading(true);
     try {
-      const payload: Record<string, string | undefined> = {
+      await register({
         name,
         email,
+        phone: phone || undefined,
         password,
         password_confirmation: password,
-        role,
-      };
-
-      if (role === 'hairdresser') {
-        payload.hairdresser_type = hairdresserType;
-        if (hairdresserType === 'independent') {
-          payload.city = city || undefined;
-          payload.postal_code = postalCode || undefined;
-        } else {
-          payload.salon_name      = salonName || undefined;
-          payload.salon_city      = salonCity || undefined;
-          payload.booking_url     = bookingUrl || undefined;
-          payload.salon_instagram = salonInstagram || undefined;
-        }
-      } else {
-        payload.city        = city || undefined;
-        payload.postal_code = postalCode || undefined;
-      }
-
-      await register(payload as unknown as Parameters<typeof register>[0]);
+        role: 'client',
+      } as Parameters<typeof register>[0]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
+    } finally {
       setIsLoading(false);
     }
   }
 
-  return (
-    <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
+  const inputCls = 'w-full px-4 py-3.5 bg-neutral-50 rounded-xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all';
 
-        <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold tracking-tight text-neutral-900">CHAIR</Link>
-          <p className="text-sm text-neutral-500 mt-2">Créez votre compte gratuitement</p>
+  return (
+    <div className="min-h-[100svh] bg-white flex flex-col items-center justify-center px-5 py-10">
+      <div className="w-full max-w-[360px] flex flex-col gap-8">
+
+        {/* Logo */}
+        <div className="text-center">
+          <Link href="/" className="text-[28px] font-bold tracking-tight text-neutral-900">CHAIR</Link>
+          <p className="text-[14px] text-neutral-400 mt-1.5">Crée ton compte gratuit.</p>
         </div>
 
-        {/* ══ ÉTAPE 1 — Infos de base ══ */}
-        {step === 1 && (
-          <form onSubmit={handleNextStep} className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6 mb-4">
-            {error && (
-              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>
-            )}
+        {/* Google */}
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => { setGoogleMsg(true); setTimeout(() => setGoogleMsg(false), 2500); }}
+            className="w-full flex items-center justify-center gap-3 py-3.5 rounded-xl border border-neutral-200 bg-white text-[14px] font-medium text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
+          >
+            <GoogleIcon />
+            Continuer avec Google
+          </button>
+          {googleMsg && (
+            <p className="text-center text-[12px] text-neutral-400">Bientôt disponible.</p>
+          )}
+        </div>
 
-            <p className="text-xs font-semibold text-neutral-700 mb-3">Je suis...</p>
-            <div className="grid grid-cols-2 gap-2 mb-6">
-              {([['client', 'Client', User], ['hairdresser', 'Coiffeur', Scissors]] as const).map(([value, label, Icon]) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => setRole(value as Role)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-sm font-medium ${
-                    role === value
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900'
-                  }`}
-                >
-                  <Icon size={20} strokeWidth={1.5} />
-                  <span className="text-xs">{label}</span>
-                </button>
-              ))}
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-neutral-100" />
+          <span className="text-[12px] text-neutral-400 font-medium">ou</span>
+          <div className="flex-1 h-px bg-neutral-100" />
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {error && (
+            <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">
+              {error}
             </div>
+          )}
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom complet</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sophie Martin" required
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.fr" required
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Mot de passe</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8 caractères minimum" required
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-              </div>
-              {/* Ville + Code postal pour les clients */}
-              {role === 'client' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Ville <span className="font-normal text-neutral-400">(optionnelle)</span>
-                    </label>
-                    <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Strasbourg"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Code postal <span className="font-normal text-neutral-400">(optionnel)</span>
-                    </label>
-                    <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="67000" maxLength={5}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                </>
-              )}
-              <button type="submit"
-                className="w-full bg-neutral-900 text-white font-semibold py-3 rounded-xl hover:bg-neutral-700 transition-colors text-sm mt-2">
-                {role === 'hairdresser' ? 'Continuer' : 'Créer mon compte'}
-              </button>
-            </div>
-
-            <p className="text-[11px] text-neutral-400 text-center mt-4">
-              En créant un compte, vous acceptez nos{' '}
-              <a href="/cgu" className="underline hover:text-neutral-700">Conditions d'utilisation</a>
-              {' '}et notre{' '}
-              <a href="/confidentialite" className="underline hover:text-neutral-700">Politique de confidentialité</a>.
-            </p>
-          </form>
-        )}
-
-        {/* ══ ÉTAPE 2 — Détails coiffeur ══ */}
-        {step === 2 && (
-          <form onSubmit={(e) => { e.preventDefault(); submitForm(); }}
-            className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-6 mb-4">
-
-            {error && (
-              <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>
-            )}
-
-            <button type="button" onClick={() => setStep(1)}
-              className="text-xs text-neutral-400 hover:text-neutral-700 mb-5 flex items-center gap-1 transition-colors">
-              ← Retour
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nom complet"
+            required
+            autoComplete="name"
+            className={inputCls}
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Adresse e-mail"
+            required
+            autoComplete="email"
+            className={inputCls}
+          />
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Numéro de téléphone (optionnel)"
+            autoComplete="tel"
+            className={inputCls}
+          />
+          <div className="relative">
+            <input
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mot de passe (8 caractères min.)"
+              required
+              autoComplete="new-password"
+              className={`${inputCls} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              {showPwd ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
+          </div>
 
-            <p className="text-xs font-semibold text-neutral-700 mb-3">Mon activité</p>
-            <div className="grid grid-cols-2 gap-2 mb-6">
-              {([
-                ['independent', 'Indépendant(e)', MapPin],
-                ['salon', 'En salon', Building2],
-              ] as const).map(([value, label, Icon]) => (
-                <button
-                  type="button"
-                  key={value}
-                  onClick={() => setHairdresserType(value as HairdresserType)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-sm font-medium ${
-                    hairdresserType === value
-                      ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900'
-                  }`}
-                >
-                  <Icon size={20} strokeWidth={1.5} />
-                  <span className="text-xs">{label}</span>
-                </button>
-              ))}
-            </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-[14px] hover:bg-neutral-700 active:bg-black transition-colors disabled:opacity-50 mt-1"
+          >
+            {isLoading ? 'Création…' : 'Créer mon compte'}
+          </button>
 
-            <div className="space-y-3">
-              {hairdresserType === 'independent' ? (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Ville principale <span className="font-normal text-neutral-400">(optionnelle)</span>
-                    </label>
-                    <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Strasbourg"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                  <div className="bg-neutral-50 rounded-xl p-3 text-xs text-neutral-500 leading-relaxed">
-                    En tant qu'indépendant(e), vous pouvez recevoir des demandes de rendez-vous directement via CHAIR.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom du salon</label>
-                    <input type="text" value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder="Salon Elégance"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Ville du salon <span className="font-normal text-neutral-400">(optionnelle)</span>
-                    </label>
-                    <input type="text" value={salonCity} onChange={(e) => setSalonCity(e.target.value)} placeholder="Strasbourg"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Lien de réservation
-                    </label>
-                    <input type="url" value={bookingUrl} onChange={(e) => setBookingUrl(e.target.value)}
-                      placeholder="https://planity.com/votre-salon"
-                      required
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                    <p className="text-[11px] text-neutral-400 mt-1 leading-relaxed">
-                      Planity, Shortcuts, Treatwell, site du salon ou Instagram.
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
-                      Instagram du salon <span className="font-normal text-neutral-400">(optionnel)</span>
-                    </label>
-                    <input type="url" value={salonInstagram} onChange={(e) => setSalonInstagram(e.target.value)} placeholder="https://instagram.com/votre-salon"
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all" />
-                  </div>
-                </>
-              )}
+          <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
+            En continuant, tu acceptes nos{' '}
+            <a href="/cgu" className="underline hover:text-neutral-600">CGU</a>
+            {' '}et notre{' '}
+            <a href="/confidentialite" className="underline hover:text-neutral-600">Politique de confidentialité</a>.
+          </p>
+        </form>
 
-              <button type="submit" disabled={isLoading}
-                className="w-full bg-neutral-900 text-white font-semibold py-3 rounded-xl hover:bg-neutral-700 transition-colors text-sm mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                {isLoading ? 'Création...' : 'Créer mon compte'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        <p className="text-center text-sm text-neutral-500">
+        {/* Footer */}
+        <p className="text-center text-[13px] text-neutral-400">
           Déjà un compte ?{' '}
-          <Link href="/connexion" className="font-semibold text-neutral-900 hover:underline">Se connecter</Link>
+          <Link href="/connexion" className="font-semibold text-neutral-900 hover:underline">
+            Se connecter
+          </Link>
         </p>
+
       </div>
     </div>
   );

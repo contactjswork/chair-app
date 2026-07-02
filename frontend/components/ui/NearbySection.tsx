@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -100,7 +100,7 @@ export default function NearbySection() {
             Coiffeurs autour de vous
           </h2>
         </div>
-        <Link href="/rechercher" className="text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors flex-shrink-0 mt-0.5">
+        <Link href="/app/recherche" className="text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors flex-shrink-0 mt-0.5">
           Voir tout
         </Link>
       </div>

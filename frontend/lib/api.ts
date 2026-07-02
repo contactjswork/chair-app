@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+﻿const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -28,6 +28,12 @@ async function request<T>(
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
+    // Expose first field error for 422 validation failures
+    if (res.status === 422 && error.errors) {
+      const firstField = Object.keys(error.errors)[0];
+      const firstMsg   = error.errors[firstField]?.[0];
+      throw new Error(firstMsg ?? error.message ?? 'Données invalides');
+    }
     throw new Error(error.message || `Erreur ${res.status}`);
   }
 
@@ -149,6 +155,37 @@ export const interactions = {
 
   followedList: () =>
     api.get<SavedHairdresser[]>('/followed-hairdressers'),
+};
+
+// ── Reviews ─────────────────────────────────────────────────────────
+
+export const reviews = {
+  reply: (reviewId: number, reply: string) =>
+    api.post(`/reviews/${reviewId}/reply`, { reply }),
+};
+
+// ── Streak ───────────────────────────────────────────────────────────
+
+export const streak = {
+  get: () => api.get('/my-streak'),
+};
+
+// ── Analytics ────────────────────────────────────────────────────────
+
+export const analytics = {
+  get: () => api.get('/my-analytics'),
+};
+
+// ── Leaderboard ──────────────────────────────────────────────────────
+
+export const leaderboard = {
+  get: (params: { city?: string; type?: string; limit?: number } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.city)  qs.set('city', params.city);
+    if (params.type)  qs.set('type', params.type);
+    if (params.limit) qs.set('limit', String(params.limit));
+    return api.get(`/leaderboard?${qs.toString()}`);
+  },
 };
 
 // ── Appointments ────────────────────────────────────────────────────
@@ -303,7 +340,7 @@ export const availability = {
 
 // ── Salons ───────────────────────────────────────────────────────────
 
-import type { ApiAvailableHairdresser, ApiSalonFull, ApiSalonJoinRequest } from './types';
+import type { ApiAvailableHairdresser, ApiSalonFull, ApiSalonJoinRequest, ApiTrainingBadge, ApiJobOffer } from './types';
 
 export const salons = {
   list: (params?: { q?: string; city?: string }) => {
@@ -315,11 +352,43 @@ export const salons = {
   show: (slug: string) => api.get<ApiSalonFull>(`/salons/${slug}`),
   mySalon: () => api.get<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] }>('/my-salon'),
   updateMySalon: (data: Partial<ApiSalonFull>) => api.put<ApiSalonFull>('/my-salon', data),
+  createMySalon: (data: { name: string; city?: string; siret?: string }) =>
+    api.post<ApiSalonFull>('/my-salon', data),
+  removeHairdresser: (profileId: number) =>
+    api.delete<{ message: string }>(`/my-salon/hairdressers/${profileId}`),
+  verifySiret: (siret: string) =>
+    api.get<{ valid: boolean; business_name?: string; city?: string; activity_code?: string; is_hairdresser?: boolean; is_active?: boolean; message?: string }>(`/verify-siret?siret=${siret}`),
   requestJoin: (salonId: number, message?: string) => api.post<ApiSalonJoinRequest>('/join-salon', { salon_id: salonId, message }),
   myJoinRequests: () => api.get<ApiSalonJoinRequest[]>('/my-join-requests'),
   acceptRequest: (requestId: number) => api.post<{ message: string }>(`/join-requests/${requestId}/accept`, {}),
   declineRequest: (requestId: number) => api.post<{ message: string }>(`/join-requests/${requestId}/decline`, {}),
   leaveSalon: () => api.delete<{ message: string }>('/leave-salon'),
+};
+
+// ── Training badges ────────────────────────────────────────────────────
+
+export const training = {
+  catalogue: () => api.get<ApiTrainingBadge[]>('/training-badges'),
+  myBadges:  () => api.get<ApiTrainingBadge[]>('/my-training-badges'),
+  add:       (training_badge_id: number, year?: number) =>
+    api.post<ApiTrainingBadge[]>('/my-training-badges', { training_badge_id, year }),
+  remove:    (badgeId: number) => api.delete<{ message: string }>(`/my-training-badges/${badgeId}`),
+};
+
+// ── Job offers ─────────────────────────────────────────────────────────
+
+export const jobOffers = {
+  list: (params?: { city?: string; job_type?: string; contract_type?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.city)          qs.set('city', params.city);
+    if (params?.job_type)      qs.set('job_type', params.job_type);
+    if (params?.contract_type) qs.set('contract_type', params.contract_type);
+    return api.get<import('./types').PaginatedResponse<ApiJobOffer>>(`/job-offers?${qs}`);
+  },
+  myOffers:  () => api.get<ApiJobOffer[]>('/my-job-offers'),
+  create:    (data: Partial<ApiJobOffer>) => api.post<ApiJobOffer>('/job-offers', data),
+  update:    (id: number, data: Partial<ApiJobOffer>) => api.put<ApiJobOffer>(`/job-offers/${id}`, data),
+  remove:    (id: number) => api.delete<{ message: string }>(`/job-offers/${id}`),
 };
 
 // ── Available hairdressers ────────────────────────────────────────────

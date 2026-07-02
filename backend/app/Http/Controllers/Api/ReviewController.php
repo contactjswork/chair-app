@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
 use App\Models\Review;
+use App\Services\StreakService;
 use Illuminate\Http\Request;
 
 class ReviewController extends Controller
@@ -43,5 +44,29 @@ class ReviewController extends Controller
         $hairdresser->update(['avg_rating' => round($avg, 2), 'reviews_count' => $count]);
 
         return response()->json($review->load('client'), 201);
+    }
+
+    public function reply(Request $request, int $reviewId)
+    {
+        $request->validate([
+            'reply' => 'required|string|min:1|max:1000',
+        ]);
+
+        $review = Review::findOrFail($reviewId);
+        $user   = $request->user();
+
+        $hairdresser = HairdresserProfile::where('user_id', $user->id)->first();
+        if (!$hairdresser || $hairdresser->id !== $review->hairdresser_id) {
+            return response()->json(['message' => 'Non autorisé.'], 403);
+        }
+
+        $review->update([
+            'hairdresser_reply' => $request->reply,
+            'replied_at'        => now(),
+        ]);
+
+        StreakService::record($hairdresser);
+
+        return response()->json($review->load('client'));
     }
 }

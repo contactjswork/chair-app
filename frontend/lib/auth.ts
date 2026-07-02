@@ -16,6 +16,17 @@ export interface HairdresserProfile {
   salon?: { id: number; name: string; slug: string } | null;
 }
 
+export interface AuthSalon {
+  id: number;
+  name: string;
+  slug: string;
+  city: string | null;
+  logo: string | null;
+  is_verified: boolean;
+  siret: string | null;
+  verification_status: 'unverified' | 'pending_review' | 'verified' | 'rejected';
+}
+
 export interface AuthUser {
   id: number;
   name: string;
@@ -25,6 +36,7 @@ export interface AuthUser {
   avatar: string | null;
   bio: string | null;
   hairdresser_profile?: HairdresserProfile | null;
+  salon?: AuthSalon | null;
 }
 
 export interface AuthResponse {
@@ -62,7 +74,7 @@ export function getStoredUser(): AuthUser | null {
 }
 
 export function redirectPathForRole(role: UserRole, isNewUser = false): string {
-  if (role === 'hairdresser') return isNewUser ? '/onboarding' : '/dashboard';
-  // Nouveaux clients → onboarding, existants → home
-  return isNewUser ? '/onboarding-client' : '/';
+  if (role === 'hairdresser') return isNewUser ? '/onboarding' : '/pro';
+  if (role === 'salon_owner') return isNewUser ? '/pro/salon' : '/pro/salon-owner';
+  return isNewUser ? '/app/onboarding' : '/app';
 }

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,12 +58,6 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
               >
                 Créer mon profil gratuit
               </Link>
-              <Link
-                href="/inscription?role=hairdresser"
-                className="inline-flex items-center justify-center text-neutral-400 text-sm font-medium px-6 py-3.5 rounded-full border border-neutral-700 hover:border-neutral-500 hover:text-white transition-all text-center"
-              >
-                Découvrir CHAIR Premium
-              </Link>
             </div>
           </div>
         </div>
@@ -94,7 +88,7 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
               Créer un compte
             </Link>
             <Link
-              href="/rechercher"
+              href="/app/recherche"
               className="inline-flex items-center justify-center text-neutral-600 text-sm font-medium px-5 py-3 rounded-full border border-neutral-200 hover:border-neutral-400 transition-colors"
             >
               Explorer

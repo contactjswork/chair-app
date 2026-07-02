@@ -10,18 +10,27 @@ class SpecialtySeeder extends Seeder
     public function run()
     {
         $specialties = [
-            ['name' => 'Balayage',       'slug' => 'balayage',       'icon' => '', 'category' => 'Couleur'],
-            ['name' => 'Blond',          'slug' => 'blond',          'icon' => '', 'category' => 'Couleur'],
-            ['name' => 'Coloration',     'slug' => 'coloration',     'icon' => '', 'category' => 'Couleur'],
-            ['name' => 'Ombré Hair',     'slug' => 'ombre-hair',     'icon' => '', 'category' => 'Couleur'],
-            ['name' => 'Hair Contouring','slug' => 'hair-contouring','icon' => '', 'category' => 'Couleur'],
-            ['name' => 'Coupe Femme',    'slug' => 'coupe-femme',    'icon' => '', 'category' => 'Coupe'],
-            ['name' => 'Coupe Homme',    'slug' => 'coupe-homme',    'icon' => '', 'category' => 'Coupe'],
-            ['name' => 'Barber',         'slug' => 'barber',         'icon' => '', 'category' => 'Coupe'],
-            ['name' => 'Boucles',        'slug' => 'boucles',        'icon' => '', 'category' => 'Texture'],
-            ['name' => 'Extensions',     'slug' => 'extensions',     'icon' => '', 'category' => 'Texture'],
-            ['name' => 'Lissage',        'slug' => 'lissage',        'icon' => '', 'category' => 'Texture'],
-            ['name' => 'Mariage',        'slug' => 'mariage',        'icon' => '', 'category' => 'Occasion'],
+            // ── HOMME (6) ──────────────────────────────────────────
+            ['name' => 'Barber',          'slug' => 'barber',        'icon' => '', 'category' => 'Homme'],
+            ['name' => 'Coupe Classique', 'slug' => 'coupe-homme',   'icon' => '', 'category' => 'Homme'],
+            ['name' => 'Cheveux Longs',   'slug' => 'coupe-longue',  'icon' => '', 'category' => 'Homme'],
+            ['name' => 'Barbe',           'slug' => 'barbe',         'icon' => '', 'category' => 'Homme'],
+            ['name' => 'Couleur Créative','slug' => 'couleur-homme', 'icon' => '', 'category' => 'Homme'],
+            ['name' => 'Dreads & Locks',  'slug' => 'dreads',        'icon' => '', 'category' => 'Homme'],
+
+            // ── FEMME (6) ──────────────────────────────────────────
+            ['name' => 'Balayage',        'slug' => 'balayage',      'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Coupe & Frange',  'slug' => 'coupe-femme',   'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Boucles',         'slug' => 'boucles',       'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Lissage',         'slug' => 'lissage',       'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Coloration',      'slug' => 'coloration',    'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Chignon & Soirée','slug' => 'chignon',       'icon' => '', 'category' => 'Femme'],
+
+            // ── LEGACY (gardés pour compatibilité) ────────────────
+            ['name' => 'Blond',           'slug' => 'blond',         'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Ombré Hair',      'slug' => 'ombre-hair',    'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Extensions',      'slug' => 'extensions',    'icon' => '', 'category' => 'Femme'],
+            ['name' => 'Mariage',         'slug' => 'mariage',       'icon' => '', 'category' => 'Occasion'],
         ];
 
         foreach ($specialties as $s) {

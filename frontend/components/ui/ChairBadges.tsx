@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { LEVEL_STYLES } from '@/lib/chairLevel';
 

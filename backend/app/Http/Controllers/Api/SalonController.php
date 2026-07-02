@@ -51,7 +51,84 @@ class SalonController extends Controller
         return response()->json($salon);
     }
 
+    // ── PUBLIC — Vérification SIRET ──────────────────────────────────────────
+
+    /** GET /verify-siret?siret=12345678901234 */
+    public function verifySiret(Request $request)
+    {
+        $request->validate(['siret' => 'required|string|size:14|regex:/^\d{14}$/']);
+        $siret = $request->siret;
+
+        $ch = curl_init("https://api.annuaire-entreprises.data.gouv.fr/api/v3/etablissement/{$siret}");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: CHAIR-App/1.0'],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            return response()->json(['valid' => false, 'message' => 'SIRET introuvable.'], 404);
+        }
+
+        $data         = json_decode($response, true);
+        $activityCode = $data['activite_principale'] ?? '';
+        $isActive     = ($data['etat_administratif'] ?? '') === 'A';
+        $isHairdresser = str_starts_with($activityCode, '9602A');
+        $businessName  = $data['nom_commercial'] ?? $data['nom_complet'] ?? '';
+        $city          = $data['libelle_commune'] ?? '';
+
+        return response()->json([
+            'valid'          => true,
+            'siret'          => $siret,
+            'business_name'  => $businessName,
+            'city'           => $city,
+            'activity_code'  => $activityCode,
+            'is_hairdresser' => $isHairdresser,
+            'is_active'      => $isActive,
+        ]);
+    }
+
     // ── PROTECTED ─────────────────────────────────────────────────────────────
+
+    /** POST /my-salon — créer un salon (salon_owner sans salon existant) */
+    public function createMySalon(Request $request)
+    {
+        $user = $request->user();
+
+        if (Salon::where('owner_id', $user->id)->exists()) {
+            return response()->json(['message' => 'Vous possédez déjà un salon.'], 422);
+        }
+
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'city'         => 'nullable|string|max:100',
+            'siret'        => 'nullable|string|size:14|regex:/^\d{14}$/',
+        ]);
+
+        $baseSlug = Str::slug($validated['name']);
+        $slug     = $baseSlug;
+        $i        = 1;
+        while (Salon::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$i}";
+            $i++;
+        }
+
+        $hasSiret = !empty($validated['siret']);
+        $salon = Salon::create([
+            'owner_id'            => $user->id,
+            'name'                => $validated['name'],
+            'slug'                => $slug,
+            'city'                => $validated['city'] ?? null,
+            'siret'               => $validated['siret'] ?? null,
+            'verification_status' => $hasSiret ? 'pending_review' : 'unverified',
+            'is_verified'         => false,
+        ]);
+
+        return response()->json($salon, 201);
+    }
 
     /** GET /my-salon — salon du coiffeur connecté (si owner) */
     public function mySalon(Request $request)
@@ -224,6 +301,32 @@ class SalonController extends Controller
         }
 
         return response()->json(['message' => 'Demande refusée.']);
+    }
+
+    /** DELETE /my-salon/hairdressers/{profileId} — owner retire un coiffeur */
+    public function removeHairdresser(Request $request, int $profileId)
+    {
+        $user   = $request->user();
+        $salon  = Salon::where('owner_id', $user->id)->firstOrFail();
+        $profile = HairdresserProfile::where('id', $profileId)
+                     ->where('salon_id', $salon->id)
+                     ->firstOrFail();
+
+        $profile->update(['salon_id' => null]);
+
+        SalonJoinRequest::where('hairdresser_id', $profileId)
+            ->where('salon_id', $salon->id)
+            ->delete();
+
+        NotificationService::send(
+            $profile->user_id,
+            'removed_from_salon',
+            'Retiré du salon',
+            "Vous avez été retiré de l'équipe {$salon->name}.",
+            ['salon_id' => $salon->id, 'salon_name' => $salon->name]
+        );
+
+        return response()->json(['message' => 'Coiffeur retiré du salon.']);
     }
 
     /** DELETE /leave-salon — le coiffeur quitte son salon */

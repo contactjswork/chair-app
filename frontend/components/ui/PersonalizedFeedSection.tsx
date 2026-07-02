@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
@@ -90,7 +90,7 @@ export default function PersonalizedFeedSection() {
           </p>
         </div>
         <Link
-          href={primarySlug ? `/rechercher?specialty=${primarySlug}` : '/rechercher'}
+          href={primarySlug ? `/app/recherche?specialty=${primarySlug}` : '/app/recherche'}
           className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
         >
           Voir tout <ArrowRight size={12} />

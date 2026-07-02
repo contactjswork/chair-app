@@ -7,6 +7,7 @@ use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Review;
 use App\Services\NotificationService;
+use App\Services\StreakService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -193,6 +194,11 @@ class AppointmentController extends Controller
         // Visite réelle : 1 RDV terminé = 1 visite sur le profil public
         if ($newStatus === 'completed') {
             $appointment->hairdresser->increment('visits_count');
+        }
+
+        // Streak : confirmer ou terminer un RDV = action active
+        if (in_array($newStatus, ['confirmed', 'completed']) && $profile) {
+            StreakService::record($profile);
         }
 
         $hairdresserName = $appointment->hairdresser->user->name ?? 'votre coiffeur';
