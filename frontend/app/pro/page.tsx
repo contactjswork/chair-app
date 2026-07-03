@@ -19,7 +19,7 @@ import {
   ArrowLeft, User, ImageIcon, Camera, Scissors, CalendarDays, BarChart2,
   ChevronRight, Bell, Building2, Eye, Plus,
   Clock, Star, Users, Bookmark, TrendingUp, LogOut, Crown, QrCode,
-  Share2, Check, Mail,
+  Pencil, Check, Mail,
 } from 'lucide-react';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 import DashboardNav from '@/components/layout/DashboardNav';
@@ -285,6 +285,7 @@ export default function DashboardPage() {
 
         {/* ── Mobile header ── */}
         <div className="md:hidden sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 pt-safe flex items-center justify-between">
+          <div className="w-9" />
           <ChairLogo href="/pro" size="md" pro />
           <Link href="/pro/notifications" className="relative w-9 h-9 flex items-center justify-center">
             <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
@@ -351,8 +352,8 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
               <div className="px-5 py-4 flex items-center justify-between">
                 <p className="text-sm font-bold text-neutral-900">Aujourd&apos;hui</p>
-                <Link href="/pro/agenda" className="text-xs text-neutral-400 hover:text-neutral-700 font-medium transition-colors">
-                  Agenda →
+                <Link href="/pro/agenda" className="text-neutral-300 hover:text-neutral-600 transition-colors">
+                  <ChevronRight size={16} />
                 </Link>
               </div>
 
@@ -411,7 +412,7 @@ export default function DashboardPage() {
               <p className="text-xs font-semibold text-neutral-700 leading-tight">Ajouter<br />réalisation</p>
             </Link>
             {profile && (
-              <Link href={`/app/coiffeur/${profile.slug}`}
+              <Link href={`/app/coiffeur/${profile.slug}`} target="_blank" rel="noopener noreferrer"
                 className="bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col items-center gap-2 hover:border-neutral-200 hover:shadow-sm transition-all text-center"
               >
                 <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
@@ -424,7 +425,7 @@ export default function DashboardPage() {
               className="bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col items-center gap-2 hover:border-neutral-200 hover:shadow-sm transition-all text-center"
             >
               <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-                <Share2 size={18} className="text-neutral-600" />
+                <Pencil size={18} className="text-neutral-600" />
               </div>
               <p className="text-xs font-semibold text-neutral-700 leading-tight">Modifier<br />profil</p>
             </Link>
@@ -473,8 +474,8 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
               <div className="px-5 py-4 flex items-center justify-between border-b border-neutral-50">
                 <p className="text-sm font-bold text-neutral-900">Portfolio</p>
-                <Link href="/pro/portfolio" className="text-xs text-neutral-400 hover:text-neutral-700 font-medium transition-colors">
-                  Tout voir →
+                <Link href="/pro/portfolio" className="text-neutral-300 hover:text-neutral-600 transition-colors">
+                  <ChevronRight size={16} />
                 </Link>
               </div>
               <div className="p-3 grid grid-cols-3 gap-2">
