@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ProTopBar from '@/components/layout/ProTopBar';
+import SplashScreen from '@/components/ui/SplashScreen';
 
 const PUBLIC_PRO_ROUTES = ['/pro/connexion', '/pro/inscription'];
 
@@ -31,6 +32,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <SplashScreen pro />
       <ProTopBar />
       <div className="md:pt-0 pt-14">
         {children}

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import SplashScreen from '@/components/ui/SplashScreen';
 
 // Pages publiques : accessibles à tous y compris aux coiffeurs/gérants connectés
 const PUBLIC_PREFIXES = [
@@ -32,5 +33,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (user && (user.role === 'hairdresser' || user.role === 'salon_owner')) return null;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <SplashScreen />
+      {children}
+    </>
+  );
 }
