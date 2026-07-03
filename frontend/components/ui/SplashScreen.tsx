@@ -10,17 +10,9 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
   const [phase, setPhase] = useState<'in' | 'hold' | 'out' | 'done'>('in');
 
   useEffect(() => {
-    // Vérifie si le splash a déjà été montré dans cette session
-    const key = pro ? 'chair_splash_pro' : 'chair_splash';
-    if (sessionStorage.getItem(key)) {
-      setPhase('done');
-      return;
-    }
-    sessionStorage.setItem(key, '1');
-
-    const t1 = setTimeout(() => setPhase('hold'), 400);   // logo visible
-    const t2 = setTimeout(() => setPhase('out'),  1200);  // début du fade out
-    const t3 = setTimeout(() => setPhase('done'), 1700);  // terminé
+    const t1 = setTimeout(() => setPhase('hold'), 400);
+    const t2 = setTimeout(() => setPhase('out'),  1200);
+    const t3 = setTimeout(() => setPhase('done'), 1700);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [pro]);
 
