@@ -27,7 +27,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   }, [user, isLoading, router, isPublic, pathname]);
 
   if (isPublic) return <>{children}</>;
-  if (isLoading) return null;
+  if (isLoading) return <SplashScreen pro />;
   if (!user || user.role === 'client') return null;
 
   return (

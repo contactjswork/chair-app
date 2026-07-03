@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import SplashScreen from '@/components/ui/SplashScreen';
 
-// Pages publiques : accessibles à tous y compris aux coiffeurs/gérants connectés
 const PUBLIC_PREFIXES = [
   '/app/coiffeur/',
   '/app/salon/',
@@ -28,8 +27,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, router, isPublic]);
 
+  // Splash toujours rendu en premier, avant tout check d'auth
   if (!isPublic) {
-    if (isLoading) return null;
+    if (isLoading) return <SplashScreen />;
     if (user && (user.role === 'hairdresser' || user.role === 'salon_owner')) return null;
   }
 
