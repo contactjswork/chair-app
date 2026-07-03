@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import ProTopBar from '@/components/layout/ProTopBar';
 
 const PUBLIC_PRO_ROUTES = ['/pro/connexion', '/pro/inscription'];
 
@@ -28,5 +29,12 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   if (isLoading) return null;
   if (!user || user.role === 'client') return null;
 
-  return <>{children}</>;
+  return (
+    <>
+      <ProTopBar />
+      <div className="md:pt-0 pt-14">
+        {children}
+      </div>
+    </>
+  );
 }
