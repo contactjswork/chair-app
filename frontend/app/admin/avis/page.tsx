@@ -206,7 +206,7 @@ export default function AvisPage() {
 
       <ConfirmModal
         open={!!confirm}
-        title={confirm?.type === 'delete' ? 'Supprimer l'avis' : confirm?.review.status === 'visible' ? 'Masquer l'avis' : 'Afficher l'avis'}
+        title={confirm?.type === 'delete' ? "Supprimer l'avis" : confirm?.review.status === 'visible' ? "Masquer l'avis" : "Afficher l'avis"}
         message={confirm?.type === 'delete' ? 'Supprimer définitivement cet avis ?' : confirm?.review.status === 'visible' ? 'Masquer cet avis aux utilisateurs ?' : 'Rendre cet avis visible ?'}
         onCancel={() => setConfirm(null)}
         onConfirm={handleAction}

@@ -106,7 +106,7 @@ export default function NotificationsPage() {
       setSuccess('Notification envoyée avec succès !');
       setTitle(''); setMessage(''); setTarget('all'); setUserId(null); setSelectedUser(null); setUserSearch('');
       fetchHistory();
-    } catch { setSendError('Erreur lors de l'envoi'); }
+    } catch { setSendError("Erreur lors de l'envoi"); }
     finally { setSending(false); setConfirm(false); }
   }
 

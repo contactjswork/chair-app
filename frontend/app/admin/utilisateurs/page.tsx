@@ -404,10 +404,10 @@ export default function UtilisateursPage() {
         open={!!confirm}
         title={
           confirm?.type === 'delete'
-            ? 'Supprimer l'utilisateur'
+            ? "Supprimer l'utilisateur"
             : confirm?.user?.status === 'suspended'
-            ? 'Réactiver l'utilisateur'
-            : 'Suspendre l'utilisateur'
+            ? "Réactiver l'utilisateur"
+            : "Suspendre l'utilisateur"
         }
         message={
           confirm?.type === 'delete'

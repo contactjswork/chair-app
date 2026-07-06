@@ -431,7 +431,7 @@ export default function UserDetailPage() {
 
       <ConfirmModal
         open={!!confirm}
-        title={confirm === 'delete' ? 'Supprimer l'utilisateur' : isSuspended ? 'Réactiver l'utilisateur' : 'Suspendre l'utilisateur'}
+        title={confirm === 'delete' ? "Supprimer l'utilisateur" : isSuspended ? "Réactiver l'utilisateur" : "Suspendre l'utilisateur"}
         message={
           confirm === 'delete'
             ? `Supprimer définitivement ${user.name} ? Cette action est irréversible.`

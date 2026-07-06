@@ -119,7 +119,7 @@ export default function SignalementsPage() {
   const modalTitles: Record<string, string> = {
     ignore: 'Ignorer le signalement',
     delete_content: 'Supprimer le contenu',
-    suspend_author: 'Suspendre l'auteur',
+    suspend_author: "Suspendre l'auteur",
   };
   const modalMessages: Record<string, string> = {
     ignore: 'Marquer ce signalement comme traité (ignoré) ?',
