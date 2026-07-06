@@ -29,6 +29,31 @@ use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\ChairRentalController;
 use App\Http\Controllers\Api\JobApplicationController;
 use App\Http\Controllers\Api\SalonInvitationController;
+use App\Http\Controllers\Api\AdminController;
+
+// Admin (token statique via Bearer)
+Route::prefix('admin')->group(function () {
+    Route::get('/stats',                        [AdminController::class, 'stats']);
+    Route::get('/top-hairdressers',             [AdminController::class, 'topHairdressers']);
+    Route::get('/activity',                     [AdminController::class, 'recentActivity']);
+    Route::get('/users',                        [AdminController::class, 'users']);
+    Route::get('/users/{id}',                   [AdminController::class, 'showUser']);
+    Route::post('/users/{id}/suspend',          [AdminController::class, 'suspendUser']);
+    Route::post('/users/{id}/unsuspend',        [AdminController::class, 'unsuspendUser']);
+    Route::delete('/users/{id}',                [AdminController::class, 'deleteUser']);
+    Route::get('/hairdressers',                 [AdminController::class, 'hairdressers']);
+    Route::get('/appointments',                 [AdminController::class, 'appointments']);
+    Route::get('/reviews',                      [AdminController::class, 'reviews']);
+    Route::post('/reviews/{id}/hide',           [AdminController::class, 'hideReview']);
+    Route::post('/reviews/{id}/show',           [AdminController::class, 'showReview']);
+    Route::delete('/reviews/{id}',              [AdminController::class, 'deleteReview']);
+    Route::get('/reports',                      [AdminController::class, 'reports']);
+    Route::post('/reports/{id}/ignore',         [AdminController::class, 'ignoreReport']);
+    Route::get('/subscriptions',                [AdminController::class, 'subscriptions']);
+    Route::get('/analytics',                    [AdminController::class, 'analyticsStats']);
+    Route::post('/notifications/send',          [AdminController::class, 'sendNotification']);
+    Route::get('/notifications/history',        [AdminController::class, 'notificationHistory']);
+});
 
 // Auth
 Route::post('/register', [AuthController::class, 'register']);

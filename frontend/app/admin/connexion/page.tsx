@@ -28,6 +28,8 @@ export default function AdminConnexionPage() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? 'Identifiants invalides');
       }
+      // Token fixe pour les appels API Laravel admin
+      localStorage.setItem('chair_admin_token', 'chair_admin_secret_2026');
       router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
