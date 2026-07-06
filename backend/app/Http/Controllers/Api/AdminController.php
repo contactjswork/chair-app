@@ -31,13 +31,16 @@ class AdminController extends Controller
         $totalAppointments = Appointment::count();
         $totalReviews     = Review::count();
 
-        $newUsersThisMonth = User::where('created_at', '>=', now()->startOfMonth())->count();
-        $newUsersLastMonth = User::whereBetween('created_at', [
-            now()->subMonth()->startOfMonth(),
-            now()->subMonth()->endOfMonth(),
-        ])->count();
-
-        $newAppointmentsThisMonth = Appointment::where('created_at', '>=', now()->startOfMonth())->count();
+        try {
+            $newUsersThisMonth = User::where('created_at', '>=', now()->startOfMonth())->count();
+            $newUsersLastMonth = User::whereBetween('created_at', [
+                now()->subMonth()->startOfMonth(),
+                now()->subMonth()->endOfMonth(),
+            ])->count();
+            $newAppointmentsThisMonth = Appointment::where('created_at', '>=', now()->startOfMonth())->count();
+        } catch (\Exception $e) {
+            $newUsersThisMonth = 0; $newUsersLastMonth = 0; $newAppointmentsThisMonth = 0;
+        }
 
         return response()->json([
             'total_users'               => $totalUsers,
@@ -79,24 +82,28 @@ class AdminController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $users = User::latest()->limit(5)->get()->map(fn($u) => [
-            'type'       => 'user',
-            'message'    => "Nouvel utilisateur : {$u->name}",
-            'created_at' => $u->created_at,
-        ]);
+        try {
+            $users = User::latest()->limit(5)->get()->map(fn($u) => [
+                'type'       => 'user',
+                'message'    => "Nouvel utilisateur : {$u->name}",
+                'created_at' => $u->created_at?->toISOString(),
+            ]);
 
-        $appointments = Appointment::with('hairdresser:id,name')->latest()->limit(5)->get()->map(fn($a) => [
-            'type'       => 'appointment',
-            'message'    => "Nouveau RDV #{$a->id}",
-            'created_at' => $a->created_at,
-        ]);
+            $appointments = Appointment::latest()->limit(5)->get()->map(fn($a) => [
+                'type'       => 'appointment',
+                'message'    => "Nouveau RDV #{$a->id}",
+                'created_at' => $a->created_at?->toISOString(),
+            ]);
 
-        $activity = $users->concat($appointments)
-            ->sortByDesc('created_at')
-            ->values()
-            ->take(10);
+            $activity = $users->concat($appointments)
+                ->sortByDesc('created_at')
+                ->values()
+                ->take(10);
 
-        return response()->json(['activity' => $activity]);
+            return response()->json(['activity' => $activity]);
+        } catch (\Exception $e) {
+            return response()->json(['activity' => []]);
+        }
     }
 
     public function users(Request $request)
