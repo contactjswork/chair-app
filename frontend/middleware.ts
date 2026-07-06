@@ -5,14 +5,26 @@ import type { NextRequest } from 'next/server';
 const BETA_ENABLED = process.env.NEXT_PUBLIC_BETA_ENABLED === 'true';
 
 export function middleware(request: NextRequest) {
-  if (!BETA_ENABLED) return NextResponse.next();
-
   const { pathname } = request.nextUrl;
+
+  // Protection admin
+  if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/connexion') && !pathname.startsWith('/api/admin-auth')) {
+    const adminCookie = request.cookies.get('chair_admin');
+    if (!adminCookie || adminCookie.value !== '1') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/admin/connexion';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (!BETA_ENABLED) return NextResponse.next();
 
   // Toujours laisser passer
   if (
     pathname.startsWith('/beta') ||
     pathname.startsWith('/api/beta-auth') ||
+    pathname.startsWith('/api/admin-auth') ||
+    pathname.startsWith('/admin') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/mockups') ||
