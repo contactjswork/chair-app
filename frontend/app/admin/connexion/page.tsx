@@ -19,28 +19,15 @@ export default function AdminConnexionPage() {
     setError('');
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}/admin/login`, {
+      const res = await fetch('/api/admin-auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.message ?? 'Identifiants invalides');
+        throw new Error(data.error ?? 'Identifiants invalides');
       }
-      const data = await res.json();
-      const token = data.token ?? data.access_token;
-      if (!token) throw new Error('Token manquant dans la réponse');
-
-      localStorage.setItem('chair_admin_token', token);
-
-      // Set cookie via API route
-      await fetch('/api/admin-auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-
       router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');

@@ -1,28 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'admin.chair@gmail.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'Chair@Admin2026!';
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json();
-    if (!token) {
-      return NextResponse.json({ error: 'Token manquant' }, { status: 400 });
-    }
+    const { email, password } = await request.json();
 
-    // Vérifier le token via /admin/me
-    const res = await fetch(`${API_URL}/admin/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Token invalide' }, { status: 401 });
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      return NextResponse.json({ error: 'Identifiants invalides' }, { status: 401 });
     }
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set('chair_admin', '1', {
       httpOnly: true,
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 jours
+      maxAge: 60 * 60 * 24 * 30,
       sameSite: 'lax',
     });
     return response;

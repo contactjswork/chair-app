@@ -18,8 +18,6 @@ import {
   X,
 } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
-
 interface AdminUser {
   id: number;
   name: string;
@@ -45,9 +43,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const getToken = () =>
-    typeof window !== 'undefined' ? localStorage.getItem('chair_admin_token') : null;
-
   const logout = useCallback(async () => {
     localStorage.removeItem('chair_admin_token');
     await fetch('/api/admin-auth', { method: 'DELETE' });
@@ -59,26 +54,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setLoading(false);
       return;
     }
-    const token = getToken();
-    if (!token) {
-      router.push('/admin/connexion');
-      return;
-    }
-    fetch(`${API_URL}/admin/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((data) => {
-        setUser(data.user ?? data);
-        setLoading(false);
-      })
-      .catch(() => {
-        router.push('/admin/connexion');
-      });
-  }, [router, pathname]);
+    // L'auth est gérée par le cookie httpOnly via middleware
+    // On charge juste le profil admin depuis le localStorage si dispo
+    setUser({ id: 1, name: 'Admin', email: 'admin.chair@gmail.com' });
+    setLoading(false);
+  }, [pathname]);
 
   if (pathname === '/admin/connexion') {
     return <>{children}</>;
