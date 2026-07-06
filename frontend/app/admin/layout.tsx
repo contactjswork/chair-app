@@ -55,6 +55,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   useEffect(() => {
+    if (pathname === '/admin/connexion') {
+      setLoading(false);
+      return;
+    }
     const token = getToken();
     if (!token) {
       router.push('/admin/connexion');
@@ -74,7 +78,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .catch(() => {
         router.push('/admin/connexion');
       });
-  }, [router]);
+  }, [router, pathname]);
+
+  if (pathname === '/admin/connexion') {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
