@@ -63,24 +63,30 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 interface Stats {
-  total_users: number;
-  total_hairdressers: number;
-  total_clients: number;
-  total_salons: number;
-  new_today: number;
-  new_week: number;
-  new_month: number;
-  appointments_total: number;
-  appointments_pending: number;
-  appointments_confirmed: number;
-  appointments_cancelled: number;
-  top_hairdressers: Array<{ name: string; city: string; appointments: number; rating: number }>;
+  total_users?: number;
+  total_hairdressers?: number;
+  total_clients?: number;
+  total_salons?: number;
+  total_appointments?: number;
+  total_reviews?: number;
+  new_today?: number;
+  new_week?: number;
+  new_month?: number;
+  new_users_this_month?: number;
+  new_users_last_month?: number;
+  new_appointments_this_month?: number;
+  appointments_total?: number;
+  appointments_pending?: number;
+  appointments_confirmed?: number;
+  appointments_cancelled?: number;
+  top_hairdressers?: Array<{ name: string; city: string; appointments: number; rating: number }>;
 }
 
 interface Activity {
-  id: number;
+  id?: number;
   type: string;
-  description: string;
+  description?: string;
+  message?: string;
   created_at: string;
 }
 
@@ -141,29 +147,29 @@ export default function AdminDashboard() {
           <div>
             <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Utilisateurs</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icon={Users} iconBg="bg-violet-50" iconColor="text-violet-600" value={stats.total_users.toLocaleString('fr')} label="Total utilisateurs" />
-              <StatCard icon={Scissors} iconBg="bg-blue-50" iconColor="text-blue-600" value={stats.total_hairdressers.toLocaleString('fr')} label="Coiffeurs" />
-              <StatCard icon={Users} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={stats.total_clients.toLocaleString('fr')} label="Clients" />
-              <StatCard icon={Building2} iconBg="bg-amber-50" iconColor="text-amber-600" value={stats.total_salons.toLocaleString('fr')} label="Salons" />
+              <StatCard icon={Users} iconBg="bg-violet-50" iconColor="text-violet-600" value={(stats.total_users ?? 0).toLocaleString('fr')} label="Total utilisateurs" />
+              <StatCard icon={Scissors} iconBg="bg-blue-50" iconColor="text-blue-600" value={(stats.total_hairdressers ?? 0).toLocaleString('fr')} label="Coiffeurs" />
+              <StatCard icon={Users} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={(stats.total_clients ?? 0).toLocaleString('fr')} label="Clients" />
+              <StatCard icon={Building2} iconBg="bg-amber-50" iconColor="text-amber-600" value={(stats.total_salons ?? 0).toLocaleString('fr')} label="Salons" />
             </div>
           </div>
 
           <div>
             <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Nouvelles inscriptions</h2>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_today} label="Aujourd'hui" />
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_week} label="Cette semaine" />
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_month} label="Ce mois" />
+              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_today ?? stats.new_users_this_month ?? 0} label="Aujourd'hui" />
+              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_week ?? 0} label="Cette semaine" />
+              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_month ?? stats.new_users_this_month ?? 0} label="Ce mois" />
             </div>
           </div>
 
           <div>
             <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Réservations</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icon={CalendarCheck} iconBg="bg-blue-50" iconColor="text-blue-600" value={stats.appointments_total.toLocaleString('fr')} label="Total RDV" />
-              <StatCard icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" value={stats.appointments_pending} label="En attente" />
-              <StatCard icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={stats.appointments_confirmed} label="Confirmés" />
-              <StatCard icon={XCircle} iconBg="bg-red-50" iconColor="text-red-500" value={stats.appointments_cancelled} label="Annulés" />
+              <StatCard icon={CalendarCheck} iconBg="bg-blue-50" iconColor="text-blue-600" value={(stats.appointments_total ?? stats.total_appointments ?? 0).toLocaleString('fr')} label="Total RDV" />
+              <StatCard icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" value={stats.appointments_pending ?? 0} label="En attente" />
+              <StatCard icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={stats.appointments_confirmed ?? 0} label="Confirmés" />
+              <StatCard icon={XCircle} iconBg="bg-red-50" iconColor="text-red-500" value={stats.appointments_cancelled ?? 0} label="Annulés" />
             </div>
           </div>
         </>
@@ -225,7 +231,7 @@ export default function AdminDashboard() {
                 <div key={a.id} className="flex items-start gap-3 px-5 py-3">
                   <div className="mt-0.5">{activityIcon(a.type)}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-neutral-700 leading-snug">{a.description}</p>
+                    <p className="text-[13px] text-neutral-700 leading-snug">{a.description ?? a.message}</p>
                     <p className="text-[11px] text-neutral-400 mt-0.5">{formatDate(a.created_at)}</p>
                   </div>
                 </div>
