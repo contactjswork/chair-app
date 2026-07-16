@@ -1,0 +1,154 @@
+definitions:
+  npm_cache: &npm_cache
+    cache_paths:
+      - $HOME/.npm
+
+  # CHAIR charge le site en direct (server.url dans capacitor.*.config.ts —
+  # l'app utilise du middleware Next.js, incompatible avec un export statique)
+  # donc il n'y a pas de build web à embarquer. On configure juste les
+  # permissions iOS (usage descriptions) et la version, une seule fois après
+  # génération/sync du projet.
+  #
+  # NSLocationWhenInUseUsageDescription n'est déclarée QUE côté client (CHAIR) :
+  # PRO n'a aucun code de géolocalisation (pas de "coiffeurs près de moi"),
+  # déclarer une permission inutilisée est un risque de rejet App Review.
+  configure_ios_common: &configure_ios_common
+    name: Configurer permissions iOS communes + version
+    script: |
+      cd frontend
+      PLIST="ios/App/App/Info.plist"
+
+      /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
+      /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+
+      /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
+      /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
+
+      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" 2>/dev/null || true
+
+      cd ios/App
+      agvtool new-marketing-version 1.0.0
+
+  configure_ios_location: &configure_ios_location
+    name: Configurer permission localisation (client uniquement)
+    script: |
+      cd frontend
+      PLIST="ios/App/App/Info.plist"
+
+      /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST" 2>/dev/null || \
+      /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST"
+
+workflows:
+  chair-client-ios:
+    name: CHAIR (client) — iOS TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: chair_asc_key   # nom de la clé API App Store Connect, à créer dans Codemagic > Teams > Integrations
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.getchair.client
+      vars:
+        BUNDLE_ID: "app.getchair.client"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      node: 20
+      xcode: latest
+    <<: *npm_cache
+    scripts:
+      - name: Installer les dépendances npm
+        script: |
+          cd frontend
+          npm ci
+      - name: Copier la config Capacitor CHAIR client
+        script: |
+          cd frontend
+          npm run cap:chair:sync
+      - name: Générer le projet iOS si absent + sync
+        script: |
+          cd frontend
+          test -d ios || npx cap add ios
+          npx cap sync ios
+      - <<: *configure_ios_common
+      - <<: *configure_ios_location
+      - name: Récupérer les profils de signature App Store Connect
+        script: |
+          cd frontend/ios/App
+          xcode-project use-profiles
+      - name: Incrémenter le build number (dernier TestFlight + 1)
+        script: |
+          cd frontend/ios/App
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
+          agvtool new-version -all $(($LATEST + 1))
+      - name: Build .ipa
+        script: |
+          cd frontend
+          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Ajouter ton Apple ID à ce groupe dans App Store Connect > TestFlight
+        # avant le premier build pour recevoir l'invitation automatiquement.
+        beta_groups:
+          - "Internal Testers"
+
+  chair-pro-ios:
+    name: CHAIR PRO — iOS TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: chair_asc_key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.getchair.pro
+      vars:
+        BUNDLE_ID: "app.getchair.pro"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+      node: 20
+      xcode: latest
+    <<: *npm_cache
+    scripts:
+      - name: Installer les dépendances npm
+        script: |
+          cd frontend
+          npm ci
+      - name: Copier la config Capacitor CHAIR PRO
+        script: |
+          cd frontend
+          npm run cap:pro:sync
+      - name: Générer le projet iOS si absent + sync
+        script: |
+          cd frontend
+          test -d ios || npx cap add ios
+          npx cap sync ios
+      - <<: *configure_ios_common
+      - name: Récupérer les profils de signature App Store Connect
+        script: |
+          cd frontend/ios/App
+          xcode-project use-profiles
+      - name: Incrémenter le build number
+        script: |
+          cd frontend/ios/App
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
+          agvtool new-version -all $(($LATEST + 1))
+      - name: Build .ipa
+        script: |
+          cd frontend
+          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers"
