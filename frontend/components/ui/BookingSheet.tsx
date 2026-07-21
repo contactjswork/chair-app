@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Link from 'next/link';
 import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ApiServiceCategory, ApiService } from '@/lib/types';
-import { ChevronLeft, ChevronRight, Check, Clock, MapPin, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Clock, MapPin, X, LogIn, UserPlus } from 'lucide-react';
 
 type Step = 'category' | 'service' | 'date' | 'slot' | 'info' | 'confirm' | 'success';
 
@@ -207,7 +208,7 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
                   {step === 'service' && 'Choisir une prestation'}
                   {step === 'date' && 'Choisir une date'}
                   {step === 'slot' && 'Choisir un créneau'}
-                  {step === 'info' && 'Vos coordonnées'}
+                  {step === 'info' && (user ? 'Vos coordonnées' : 'Connexion requise')}
                   {step === 'confirm' && 'Récapitulatif'}
                 </p>
                 <p className="text-xs text-neutral-400">{stepIndex + 1} / {progressSteps.length}</p>
@@ -445,7 +446,35 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
               )}
 
               {/* ── INFO ── */}
-              {step === 'info' && (
+              {step === 'info' && !user && (
+                <div className="flex flex-col items-center text-center py-6">
+                  <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
+                    <LogIn size={22} className="text-neutral-400" />
+                  </div>
+                  <h3 className="text-[17px] font-bold text-neutral-900 mb-2">Dernière étape</h3>
+                  <p className="text-[13px] text-neutral-500 leading-relaxed mb-6 max-w-xs">
+                    Connecte-toi ou crée un compte gratuit pour confirmer ton rendez-vous.
+                  </p>
+                  <div className="w-full space-y-2">
+                    <Link
+                      href="/connexion"
+                      onClick={() => { if (typeof window !== 'undefined') sessionStorage.setItem('chair_redirect', window.location.pathname); }}
+                      className="flex items-center justify-center gap-2 w-full bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-sm"
+                    >
+                      <LogIn size={15} /> Se connecter
+                    </Link>
+                    <Link
+                      href="/inscription"
+                      onClick={() => { if (typeof window !== 'undefined') sessionStorage.setItem('chair_redirect', window.location.pathname); }}
+                      className="flex items-center justify-center gap-2 w-full border border-neutral-200 text-neutral-700 font-semibold py-3.5 rounded-xl text-sm"
+                    >
+                      <UserPlus size={15} /> Créer un compte
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {step === 'info' && user && (
                 <div className="space-y-4">
                   <p className="text-sm text-neutral-500">Renseignez vos coordonnées pour confirmer le rendez-vous.</p>
                   <div>

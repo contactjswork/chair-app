@@ -112,19 +112,21 @@ export default function ComptePage() {
             </Link>
             <div className="border-t border-neutral-100 pt-4 mt-6">
               <p className="text-xs text-neutral-400 text-center mb-4">Vous êtes coiffeur ?</p>
-              <Link
-                href="/pro/inscription"
+              <a
+                href="https://getchair.app/pro/inscription"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center justify-between w-full border border-neutral-200 text-neutral-700 px-5 py-4 rounded-xl hover:border-neutral-400 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <LayoutDashboard size={18} />
                   <div>
                     <p className="font-semibold text-sm">Créer mon profil professionnel</p>
-                    <p className="text-xs text-neutral-400">Développez votre visibilité sur CHAIR</p>
+                    <p className="text-xs text-neutral-400">Sur l&apos;app CHAIR PRO, séparée</p>
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-neutral-300" />
-              </Link>
+              </a>
             </div>
           </div>
         ) : (
@@ -395,16 +397,21 @@ export default function ComptePage() {
                   <ChevronRight size={15} className="text-neutral-300" />
                 </Link>
                 {user.role === 'client' && (
-                  <Link href="/pro/inscription" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                  <a
+                    href="https://getchair.app/pro/inscription"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <Scissors size={17} className="text-neutral-400" />
                       <div>
                         <p className="font-medium text-[14px] text-neutral-900">Devenir coiffeur sur CHAIR</p>
-                        <p className="text-[11px] text-neutral-400 mt-0.5">Créer un profil pro gratuit</p>
+                        <p className="text-[11px] text-neutral-400 mt-0.5">Sur l&apos;app CHAIR PRO, séparée</p>
                       </div>
                     </div>
                     <ChevronRight size={15} className="text-neutral-300" />
-                  </Link>
+                  </a>
                 )}
               </div>
             </section>

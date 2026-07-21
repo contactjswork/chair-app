@@ -52,12 +52,14 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
             </div>
 
             <div className="flex flex-col gap-3 md:min-w-[200px]">
-              <Link
-                href="/inscription?role=hairdresser"
+              <a
+                href="https://getchair.app/pro/inscription"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center bg-white text-neutral-900 text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-neutral-100 transition-colors text-center"
               >
                 Créer mon profil gratuit
-              </Link>
+              </a>
             </div>
           </div>
         </div>

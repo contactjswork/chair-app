@@ -412,8 +412,6 @@ function RechercheContent() {
   const [sortBy,           setSortBy]           = useState('relevance');
   const [radius,           setRadius]           = useState(999);
   const [geoRequesting,    setGeoRequesting]    = useState(false);
-  const [showGeoDialog,    setShowGeoDialog]    = useState(false);
-  const [pendingRadius,    setPendingRadius]    = useState<number | null>(null);
 
   // ── Données ───────────────────────────────────────────────────────────────
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>([]);
@@ -655,20 +653,10 @@ function RechercheContent() {
   async function handleSetRadius(value: number) {
     setRadius(value);
     if (value < 999 && geoCenter === null && !geoRequesting) {
-      // Montrer le dialog d'explication avant de demander la permission GPS
-      setPendingRadius(value);
-      setShowGeoDialog(true);
-      return;
-    }
-    if (value < 999 && geoCenter === null && !geoRequesting) {
-      setGeoRequesting(true);
-      try {
-        const coords = await requestBrowserGeolocation();
-        storeLocation({ latitude: coords.latitude, longitude: coords.longitude });
-        setGeoCenter({ lat: coords.latitude, lng: coords.longitude, display: 'Ma position', source: 'gps' });
-        setSortBy('distance');
-      } catch { /* user denied — keep radius set, applyGeoFilter stays false */ }
-      finally { setGeoRequesting(false); }
+      // La permission a déjà été demandée une fois via GeoPermissionModal
+      // (accueil) — pas de nouveau dialogue d'explication ici, on redemande
+      // juste au navigateur (silencieux si déjà accordée/refusée).
+      await doRequestGeo(value);
     }
   }
 
@@ -723,37 +711,6 @@ function RechercheContent() {
 
   return (
     <AppShell>
-
-      {/* Dialog GPS — explication avant demande de permission */}
-      {showGeoDialog && (
-        <div className="fixed inset-0 z-[999] flex items-end justify-center bg-black/40 px-4 pb-8">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl">
-            <div className="w-12 h-12 bg-neutral-900 rounded-2xl flex items-center justify-center mb-4">
-              <Navigation size={22} className="text-white" />
-            </div>
-            <h3 className="text-[17px] font-bold text-neutral-900 mb-2">Activer la localisation</h3>
-            <p className="text-[14px] text-neutral-500 leading-relaxed mb-5">
-              CHAIR utilise ta position uniquement pour trier les coiffeurs par distance. Elle n'est jamais partagée avec des tiers.
-            </p>
-            <button
-              onClick={async () => {
-                setShowGeoDialog(false);
-                if (pendingRadius !== null) await doRequestGeo(pendingRadius);
-                setPendingRadius(null);
-              }}
-              className="w-full py-3.5 bg-neutral-900 text-white font-semibold rounded-2xl text-[14px] mb-2"
-            >
-              Autoriser la localisation
-            </button>
-            <button
-              onClick={() => { setShowGeoDialog(false); setRadius(999); setPendingRadius(null); }}
-              className="w-full py-3 text-neutral-400 text-[14px] font-medium"
-            >
-              Non merci
-            </button>
-          </div>
-        </div>
-      )}
 
       <FilterSheet
         open={showFilterSheet}
