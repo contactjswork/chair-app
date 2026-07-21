@@ -73,7 +73,14 @@ workflows:
           npx cap sync ios
       - <<: *configure_ios_common
       - <<: *configure_ios_location
-      - name: Récupérer les profils de signature App Store Connect
+      - name: Récupérer/générer le certificat + profil App Store Connect
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Charger le certificat dans le trousseau de build
+        script: |
+          keychain initialize
+          keychain add-certificates
+      - name: Appliquer les profils de signature au projet Xcode
         script: |
           cd frontend/ios/App
           xcode-project use-profiles
@@ -131,7 +138,14 @@ workflows:
           test -d ios || npx cap add ios
           npx cap sync ios
       - <<: *configure_ios_common
-      - name: Récupérer les profils de signature App Store Connect
+      - name: Récupérer/générer le certificat + profil App Store Connect
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Charger le certificat dans le trousseau de build
+        script: |
+          keychain initialize
+          keychain add-certificates
+      - name: Appliquer les profils de signature au projet Xcode
         script: |
           cd frontend/ios/App
           xcode-project use-profiles
