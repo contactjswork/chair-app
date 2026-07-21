@@ -13,6 +13,7 @@
     "cap:pro:ios": "cp capacitor.pro.config.ts capacitor.config.ts && npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/geolocation": "^8.2.0",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.17.0",

@@ -7,28 +7,14 @@ import {
   markGeoAsked,
   requestBrowserGeolocation,
   storeLocation,
+  isNativeApp,
 } from '@/hooks/useGeolocation';
 import { api } from '@/lib/api';
 
 export default function GeoPermissionModal() {
   const [visible, setVisible] = useState(false);
 
-  useEffect(() => {
-    // Montrer uniquement si jamais demandé et pas déjà de position
-    if (!hasGeoBeenAsked()) {
-      const timer = setTimeout(() => setVisible(true), 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  function dismiss() {
-    markGeoAsked();
-    setVisible(false);
-  }
-
-  async function allow() {
-    markGeoAsked();
-    setVisible(false);
+  async function requestAndStore() {
     try {
       const coords = await requestBrowserGeolocation();
       storeLocation({ latitude: coords.latitude, longitude: coords.longitude });
@@ -41,8 +27,36 @@ export default function GeoPermissionModal() {
         });
       }
     } catch {
-      // Silencieux — l'utilisateur a peut-être refusé dans la popup navigateur
+      // Silencieux — l'utilisateur a peut-être refusé la popup système
     }
+  }
+
+  useEffect(() => {
+    // Montrer uniquement si jamais demandé et pas déjà de position
+    if (!hasGeoBeenAsked()) {
+      const timer = setTimeout(() => {
+        markGeoAsked();
+        if (isNativeApp()) {
+          // App native : la popup système iOS suffit, pas d'écran maison
+          // avant — sinon ça fait deux demandes pour une seule action.
+          requestAndStore();
+        } else {
+          setVisible(true);
+        }
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  function dismiss() {
+    markGeoAsked();
+    setVisible(false);
+  }
+
+  async function allow() {
+    markGeoAsked();
+    setVisible(false);
+    await requestAndStore();
   }
 
   if (!visible) return null;

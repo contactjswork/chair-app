@@ -6,13 +6,20 @@ interface SplashScreenProps {
   pro?: boolean;
 }
 
+// Ne joue l'animation qu'une fois par session d'app — sinon elle rejoue à
+// chaque fois qu'on quitte /app ou /pro puis qu'on y revient (ex: retour
+// depuis la connexion/inscription), ce qui donne l'impression que l'app
+// redémarre alors qu'on vient juste de naviguer en arrière.
+let hasPlayedOnce = false;
+
 export default function SplashScreen({ pro = false }: SplashScreenProps) {
-  const [phase, setPhase] = useState<'in' | 'hold' | 'out' | 'done'>('in');
+  const [phase, setPhase] = useState<'in' | 'hold' | 'out' | 'done'>(hasPlayedOnce ? 'done' : 'in');
 
   useEffect(() => {
+    if (hasPlayedOnce) return;
     const t1 = setTimeout(() => setPhase('hold'), 400);
     const t2 = setTimeout(() => setPhase('out'),  1200);
-    const t3 = setTimeout(() => setPhase('done'), 1700);
+    const t3 = setTimeout(() => { hasPlayedOnce = true; setPhase('done'); }, 1700);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [pro]);
 

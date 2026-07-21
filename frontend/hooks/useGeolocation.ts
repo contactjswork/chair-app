@@ -1,7 +1,17 @@
 // Gestion de la géolocalisation navigateur + cache localStorage
 
+import { Geolocation } from '@capacitor/geolocation';
+
 export const GEO_LOCATION_KEY = 'chair_user_location';
 export const GEO_ASKED_KEY    = 'chair_geo_asked';
+
+/**
+ * Vrai uniquement dans le shell natif Capacitor (iOS/Android) — jamais dans
+ * un navigateur web classique.
+ */
+export function isNativeApp(): boolean {
+  return typeof window !== 'undefined' && !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+}
 
 export interface UserLocation {
   latitude: number;
@@ -44,15 +54,24 @@ export function markGeoAsked(): void {
   localStorage.setItem(GEO_ASKED_KEY, '1');
 }
 
-/** Demande la position GPS du navigateur. */
-export function requestBrowserGeolocation(): Promise<GeolocationCoordinates> {
+/**
+ * Demande la position GPS. Sur l'app native, passe par le plugin Capacitor
+ * (bridge natif direct) plutôt que navigator.geolocation — sinon WKWebView
+ * déclenche EN PLUS sa propre popup "ce site veut votre position" après la
+ * vraie popup système, ce qui fait deux demandes pour une seule action.
+ */
+export async function requestBrowserGeolocation(): Promise<{ latitude: number; longitude: number }> {
+  if (isNativeApp()) {
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 10_000 });
+    return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+  }
   return new Promise((resolve, reject) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
       reject(new Error('Géolocalisation non disponible'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(pos.coords),
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
       (err) => reject(err),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 300_000 }
     );

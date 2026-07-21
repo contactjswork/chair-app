@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { isNativeApp } from '@/hooks/useGeolocation';
 
 const COOKIE_KEY = 'chair_cookies_consent';
 
@@ -9,6 +10,9 @@ export default function CookieBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // Le consentement cookies est une notion web (RGPD) — pas pertinente
+    // dans l'app native, qui n'utilise pas de cookies tiers/publicitaires.
+    if (isNativeApp()) return;
     try {
       if (!localStorage.getItem(COOKIE_KEY)) setVisible(true);
     } catch {}
