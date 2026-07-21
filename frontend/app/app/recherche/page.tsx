@@ -769,7 +769,7 @@ function RechercheContent() {
       <div className="max-w-3xl mx-auto">
 
         {/* ── STICKY HEADER ── */}
-        <div className="sticky top-14 z-30 bg-white/95 backdrop-blur-sm">
+        <div className="sticky top-content-mobile z-30 bg-white/95 backdrop-blur-sm">
 
           {/* Search row */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-2" ref={searchBarRef}>
@@ -956,7 +956,7 @@ export default function RecherchePage() {
     <Suspense fallback={
       <AppShell>
         <div className="max-w-3xl mx-auto">
-          <div className="sticky top-0 z-30 bg-white px-4 pt-3 pb-3">
+          <div className="sticky top-content-mobile z-30 bg-white px-4 pt-3 pb-3">
             <div className="h-12 bg-neutral-100 rounded-2xl animate-pulse mb-3" />
             <div className="flex gap-2 overflow-hidden pb-3">
               {[1,2,3,4,5].map((i) => (

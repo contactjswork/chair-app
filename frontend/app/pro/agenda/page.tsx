@@ -896,7 +896,7 @@ export default function AgendaPage() {
       <DashboardNav/>
 
       {/* Header */}
-      <div className="sticky top-14 md:top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100">
+      <div className="sticky top-content-mobile-pro md:top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100">
         <div className="flex items-center gap-1 px-3 h-12">
           <button onClick={()=>navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
             <ChevronLeft size={17}/>

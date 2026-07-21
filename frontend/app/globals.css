@@ -37,6 +37,14 @@ body {
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 /* Header plein écran (ex: feed) — encoche + un peu d'air visuel en plus */
 .pt-safe-header { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+/* Decalage du contenu sous le header mobile fixe (h-14 + pt-safe-header) —
+   doit rester en phase avec TopNav.tsx, sinon le contenu passe sous le header */
+.pt-content-mobile { padding-top: calc(3.5rem + env(safe-area-inset-top, 0px) + 8px); }
+/* Idem pour le header CHAIR PRO (ProTopBar : h-14 + pt-safe, sans le +8px) */
+.pt-content-mobile-pro { padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
+/* Version "top" pour les barres sticky sous le header (mêmes valeurs) */
+.top-content-mobile { top: calc(3.5rem + env(safe-area-inset-top, 0px) + 8px); }
+.top-content-mobile-pro { top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
 /* Version réduite pour les barres de navigation fixes — la valeur brute de
    l'inset laisse trop d'espace vide sous les icônes sur certains iPhone */
 .pb-safe-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.4); }

@@ -118,7 +118,7 @@ export default async function HomePage() {
     <AppShell>
 
       {/* Recherche sticky */}
-      <div className="sticky top-14 md:top-[60px] z-40 bg-white border-b border-neutral-100">
+      <div className="sticky top-content-mobile md:top-[60px] z-40 bg-white border-b border-neutral-100">
         <div className="px-4 py-3 max-w-2xl md:max-w-3xl md:mx-auto">
           <HeroSearch compact />
         </div>

@@ -34,7 +34,7 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
     <>
       <SplashScreen pro />
       <ProTopBar />
-      <div className="md:pt-0 pt-14">
+      <div className="md:pt-0 pt-content-mobile-pro">
         {children}
       </div>
     </>
