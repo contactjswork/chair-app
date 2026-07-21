@@ -213,7 +213,7 @@ function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void 
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
 
         {/* Actions verticales droite */}
-        <div className="absolute right-3 bottom-4 flex flex-col items-center gap-5 z-10">
+        <div className="absolute right-3 bottom-10 flex flex-col items-center gap-5 z-10">
           <CardLikeButton
             postId={post.id}
             initialLikes={post.likes_count}
@@ -234,7 +234,7 @@ function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void 
 
         {/* Info coiffeur bas gauche */}
         {hd && (
-          <div className="absolute bottom-4 left-3 right-16 flex items-center gap-2.5 z-10">
+          <div className="absolute bottom-10 left-3 right-16 flex items-center gap-2.5 z-10">
             <Link
               href={`/app/coiffeur/${hd.slug}`}
               className="flex-shrink-0"
@@ -466,11 +466,11 @@ function FeedContent() {
         {/* ── Header avec tabs ── */}
         <div className="absolute top-0 left-0 right-0 z-20 flex flex-col pointer-events-none">
           {/* Fermer */}
-          <div className="relative flex items-center justify-center px-4 pt-4 pb-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+          <div className="flex items-center justify-end px-4 pt-safe-header pb-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
             {fromId && (
               <button
                 onClick={handleClose}
-                className="absolute right-4 top-4 text-white/60 hover:text-white transition-colors pointer-events-auto"
+                className="text-white/60 hover:text-white transition-colors pointer-events-auto"
               >
                 <X size={18} />
               </button>
