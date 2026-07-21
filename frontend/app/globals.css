@@ -23,6 +23,32 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Comportement "app native", pas "site web" dans la WebView Capacitor :
+   pas de sélection de texte ni de menu copier/partager au appui long,
+   pas de flash gris au tap, pas de drag d'image. Les champs de formulaire
+   restent sélectionnables pour permettre la saisie/le collage normal. */
+html, body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+img {
+  -webkit-user-drag: none;
+}
+
+/* Evite le zoom automatique iOS quand on tape dans un champ de moins de 16px */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
 /* Masquer la scrollbar horizontale sur les filtres */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -37,14 +63,14 @@ body {
 .top-safe { top: env(safe-area-inset-top, 0px); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 /* Header plein écran (ex: feed) — encoche + un peu d'air visuel en plus */
-.pt-safe-header { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }
+.pt-safe-header { padding-top: calc(env(safe-area-inset-top, 0px) + 4px); }
 /* Decalage du contenu sous le header mobile fixe (h-14 + pt-safe-header) —
    doit rester en phase avec TopNav.tsx, sinon le contenu passe sous le header */
-.pt-content-mobile { padding-top: calc(3.5rem + env(safe-area-inset-top, 0px) + 8px); }
-/* Idem pour le header CHAIR PRO (ProTopBar : h-14 + pt-safe, sans le +8px) */
+.pt-content-mobile { padding-top: calc(3.5rem + env(safe-area-inset-top, 0px) + 4px); }
+/* Idem pour le header CHAIR PRO (ProTopBar : h-14 + pt-safe, sans le +4px) */
 .pt-content-mobile-pro { padding-top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
 /* Version "top" pour les barres sticky sous le header (mêmes valeurs) */
-.top-content-mobile { top: calc(3.5rem + env(safe-area-inset-top, 0px) + 8px); }
+.top-content-mobile { top: calc(3.5rem + env(safe-area-inset-top, 0px) + 4px); }
 .top-content-mobile-pro { top: calc(3.5rem + env(safe-area-inset-top, 0px)); }
 /* Version réduite pour les barres de navigation fixes — la valeur brute de
    l'inset laisse trop d'espace vide sous les icônes sur certains iPhone */
