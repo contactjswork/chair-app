@@ -33,6 +33,7 @@ body {
 ::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 3px; }
 
 /* Safe area mobile (iPhone notch / home bar) */
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* Transitions globales — seulement les propriétés nécessaires */
