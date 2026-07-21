@@ -2,12 +2,22 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 
 export default function InscriptionPage() {
   const { register } = useAuth();
+  const router = useRouter();
+
+  function handleBack() {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/app');
+    }
+  }
 
   const [name,      setName]      = useState('');
   const [email,     setEmail]     = useState('');
@@ -44,6 +54,14 @@ export default function InscriptionPage() {
 
   return (
     <div className="min-h-[100svh] bg-white flex flex-col items-center justify-center px-5 py-10">
+      <button
+        onClick={handleBack}
+        aria-label="Retour"
+        className="fixed left-4 top-safe mt-2 w-9 h-9 flex items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors z-10"
+      >
+        <ArrowLeft size={19} strokeWidth={1.75} />
+      </button>
+
       <div className="w-full max-w-[360px] flex flex-col gap-8">
 
         {/* Logo */}

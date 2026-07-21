@@ -34,6 +34,7 @@ body {
 
 /* Safe area mobile (iPhone notch / home bar) */
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.top-safe { top: env(safe-area-inset-top, 0px); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 /* Header plein écran (ex: feed) — encoche + un peu d'air visuel en plus */
 .pt-safe-header { padding-top: calc(env(safe-area-inset-top, 0px) + 8px); }

@@ -26,7 +26,8 @@ export default function TopNav() {
     <>
       {/* ── Header mobile ── */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-100">
-        <div className="flex items-center justify-between px-4 min-h-14 pt-safe-header">
+        <div className="pt-safe-header" />
+        <div className="flex items-center justify-between px-4 h-14">
           <ChairLogo href="/app" size="md" />
           {!isLoading && (
             <Link href="/app/notifications" className="relative w-9 h-9 flex items-center justify-center rounded-full -mr-2">

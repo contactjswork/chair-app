@@ -1,4 +1,5 @@
 import AppShell from '@/components/layout/AppShell';
+import HideOnScrollBar from '@/components/layout/HideOnScrollBar';
 import HeroSearch from '@/components/ui/HeroSearch';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import HomePersonalized from '@/components/ui/HomePersonalized';
@@ -117,12 +118,12 @@ export default async function HomePage() {
   return (
     <AppShell>
 
-      {/* Recherche sticky */}
-      <div className="sticky top-content-mobile md:top-[60px] z-40 bg-white border-b border-neutral-100">
+      {/* Recherche — se cache au scroll vers le bas, réapparaît vers le haut (mobile) */}
+      <HideOnScrollBar>
         <div className="px-4 py-3 max-w-2xl md:max-w-3xl md:mx-auto">
           <HeroSearch compact />
         </div>
-      </div>
+      </HideOnScrollBar>
 
       {/* ① Pour vous — catégories inspirations */}
       <HomePersonalized />
