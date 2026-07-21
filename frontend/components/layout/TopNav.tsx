@@ -26,12 +26,12 @@ export default function TopNav() {
     <>
       {/* ── Header mobile ── */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-100">
-        <div className="flex items-center justify-between px-4 h-14 pt-safe">
+        <div className="flex items-center justify-between px-4 h-14 pt-safe-header">
           <ChairLogo href="/app" size="md" />
-          {!isLoading && user && (
+          {!isLoading && (
             <Link href="/app/notifications" className="relative w-9 h-9 flex items-center justify-center rounded-full -mr-2">
               <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
-              {unreadCount > 0 && (
+              {user && unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
               )}
             </Link>

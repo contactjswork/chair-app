@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Calendar, Star, UserPlus } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, LogIn } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -76,8 +76,7 @@ function NotifCard({
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
-  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const { refresh: refreshBadge } = useNotificationCount();
   const [notifications, setNotifications] = useState<ApiNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -96,12 +95,9 @@ export default function NotificationsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user) {
-      router.replace('/connexion');
-      return;
-    }
+    if (!user) return;
     load();
-  }, [user, load, router]);
+  }, [user, load]);
 
   const handleMarkRead = async (id: number) => {
     try {
@@ -128,6 +124,31 @@ export default function NotificationsPage() {
 
   const unread = notifications.filter((n) => !n.read_at);
   const read = notifications.filter((n) => !!n.read_at);
+
+  if (!authLoading && !user) {
+    return (
+      <AppShell>
+        <div className="px-4 pt-4">
+          <PageHeader title="Notifications" />
+        </div>
+        <div className="min-h-[65vh] flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
+            <Bell size={22} className="text-neutral-300" />
+          </div>
+          <h2 className="text-[18px] font-bold text-neutral-900 mb-2">Reste informé</h2>
+          <p className="text-[13px] text-neutral-400 mb-6 max-w-xs leading-relaxed">
+            Connecte-toi pour voir tes notifications : réservations, avis et nouveaux abonnés.
+          </p>
+          <Link href="/connexion" className="flex items-center gap-2 bg-neutral-900 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-neutral-700 transition-colors">
+            <LogIn size={15} /> Se connecter
+          </Link>
+          <Link href="/inscription" className="mt-3 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
+            Créer un compte
+          </Link>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
