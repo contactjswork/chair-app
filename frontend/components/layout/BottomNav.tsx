@@ -19,7 +19,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-[60] bg-white md:hidden pb-safe"
+      className="fixed bottom-0 left-0 right-0 z-[60] bg-white md:hidden pb-safe-nav"
       style={{ boxShadow: '0 -1px 0 rgba(0,0,0,0.06)' }}
     >
       <div className="flex items-stretch h-[60px]">

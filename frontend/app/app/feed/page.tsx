@@ -8,7 +8,6 @@ import {
   Heart, Bookmark, Tag, MapPin, ImageIcon, X, Share2,
 } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
-import ChairLogo from '@/components/ui/ChairLogo';
 import SignupPromptModal from '@/components/ui/SignupPromptModal';
 import type { ApiPost, ApiHairdresserProfile, ApiUser, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAllImagesRaw } from '@/lib/types';
@@ -466,11 +465,8 @@ function FeedContent() {
 
         {/* ── Header avec tabs ── */}
         <div className="absolute top-0 left-0 right-0 z-20 flex flex-col pointer-events-none">
-          {/* Logo + fermer */}
+          {/* Fermer */}
           <div className="relative flex items-center justify-center px-4 pt-4 pb-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
-            <div className="pointer-events-auto">
-              <ChairLogo dark={true} href="/app" size="md" />
-            </div>
             {fromId && (
               <button
                 onClick={handleClose}

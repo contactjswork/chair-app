@@ -35,6 +35,9 @@ body {
 /* Safe area mobile (iPhone notch / home bar) */
 .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Version réduite pour les barres de navigation fixes — la valeur brute de
+   l'inset laisse trop d'espace vide sous les icônes sur certains iPhone */
+.pb-safe-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) * 0.4); }
 
 /* Transitions globales — seulement les propriétés nécessaires */
 a, button { transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease; }
