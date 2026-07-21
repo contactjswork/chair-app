@@ -29,6 +29,17 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/mockups') ||
     pathname.startsWith('/onboarding') ||
+    // Apps natives CHAIR (client) et CHAIR PRO — déjà protégées par
+    // l'invitation TestFlight, pas besoin du mot de passe bêta en plus.
+    // Inclut les pages hors /app et /pro que ces apps utilisent quand même
+    // (connexion, inscription...).
+    pathname.startsWith('/app') ||
+    pathname.startsWith('/pro') ||
+    pathname.startsWith('/connexion') ||
+    pathname.startsWith('/inscription') ||
+    pathname.startsWith('/mot-de-passe-oublie') ||
+    pathname.startsWith('/cgu') ||
+    pathname.startsWith('/confidentialite') ||
     pathname.endsWith('.png') ||
     pathname.endsWith('.jpg') ||
     pathname.endsWith('.svg') ||
