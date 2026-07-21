@@ -136,7 +136,7 @@ export default function ClientOnboardingPage() {
     <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="flex-shrink-0 flex items-center gap-3 px-5 pt-5 pb-4">
+      <div className="flex-shrink-0 flex items-center gap-3 px-5 pb-4 pt-safe-5">
         {/* Retour / placeholder */}
         <div className="w-8 flex justify-start">
           {step === 'styles' ? (

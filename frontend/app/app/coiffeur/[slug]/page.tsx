@@ -8,8 +8,9 @@ import PortfolioGrid from '@/components/ui/PortfolioGrid';
 import BioExpander from '@/components/ui/BioExpander';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
-import { MapPin, BadgeCheck, Calendar, ExternalLink, Star, Clock } from 'lucide-react';
+import { MapPin, BadgeCheck, Star, Clock } from 'lucide-react';
 import BackButton from '@/components/ui/BackButton';
+import BookingCTA from '@/components/ui/BookingCTA';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -251,25 +252,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
       {canBook && (
         <div className="fixed bottom-[66px] left-0 right-0 z-40 md:hidden pointer-events-none">
           <div className="bg-gradient-to-t from-white via-white/96 to-transparent pt-5 pb-3 px-4 pointer-events-auto">
-            {hairdresser.is_independent ? (
-              <Link
-                href={`/app/coiffeur/${slug_hd}/reserver`}
-                className="flex items-center justify-center gap-2 w-full bg-neutral-900 text-white font-semibold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-transform"
-              >
-                <Calendar size={16} strokeWidth={2} />
-                Réserver un rendez-vous
-              </Link>
-            ) : (
-              <a
-                href={hairdresser.booking_url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-neutral-900 text-white font-semibold py-4 rounded-2xl text-[15px] shadow-lg active:scale-[0.98] transition-transform"
-              >
-                <ExternalLink size={16} strokeWidth={2} />
-                Réserver au salon
-              </a>
-            )}
+            <BookingCTA
+              slug={slug_hd}
+              isIndependent={hairdresser.is_independent}
+              bookingUrl={hairdresser.booking_url ?? null}
+            />
           </div>
         </div>
       )}
