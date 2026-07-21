@@ -334,11 +334,6 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
                           <span className="text-xs text-neutral-500 flex items-center gap-1">
                             <Clock size={11} />{svc.duration_minutes} min
                           </span>
-                          {svc.specialty && (
-                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
-                              {svc.specialty.name}
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
