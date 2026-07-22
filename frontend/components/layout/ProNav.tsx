@@ -2,33 +2,27 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Building2, Users, Briefcase, User } from 'lucide-react';
+import { useProNav } from '@/hooks/useProNav';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 
-const TABS = [
-  { href: '/pro/salon-owner',  label: 'Accueil',     icon: Home },
-  { href: '/pro/salon',        label: 'Salon',       icon: Building2 },
-  { href: '/pro/equipe',       label: 'Équipe',      icon: Users },
-  { href: '/pro/recrutement',  label: 'Recrutement', icon: Briefcase },
-  { href: '/pro/profil',       label: 'Profil',      icon: User },
-];
-
-export default function SalonOwnerNav() {
-  const pathname  = usePathname();
+export default function ProNav() {
+  const pathname = usePathname();
   const { unreadCount } = useNotificationCount();
+  const { primary, homeHref } = useProNav();
 
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-neutral-100 pb-safe">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-neutral-100 pb-safe-nav">
       <div className="flex items-stretch h-[66px]">
-        {TABS.map(({ href, label, icon: Icon }) => {
-          const active = href === '/pro/salon-owner' ? (pathname === '/pro/salon-owner' || pathname === '/pro') : pathname.startsWith(href);
-          const navHref = href === '/pro/salon-owner' && unreadCount > 0 ? '/pro/notifications' : href;
-          const badge   = href === '/pro/salon-owner' && unreadCount > 0 ? unreadCount : 0;
+        {primary.map(({ href, label, icon: Icon }) => {
+          const active = href === homeHref
+            ? (pathname === homeHref || pathname === '/pro')
+            : pathname.startsWith(href);
+          const isHome = href === homeHref;
+          const badge = isHome && unreadCount > 0 ? unreadCount : 0;
+          const navHref = badge > 0 ? '/pro/notifications' : href;
 
           return (
-            <Link
-              key={href}
-              href={navHref}
+            <Link key={href} href={navHref}
               className={`flex-1 flex flex-col items-center justify-center gap-1 pt-1 transition-colors relative ${
                 active ? 'text-neutral-900' : 'text-neutral-400'
               }`}

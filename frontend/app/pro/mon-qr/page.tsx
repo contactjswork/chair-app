@@ -4,14 +4,13 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { visits } from '@/lib/api';
+import { visits, specialtyProgress } from '@/lib/api';
 import type { ApiQrTokenResponse } from '@/lib/types';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, RefreshCw, Clock, Shield, CheckCircle2,
-  Smartphone, Copy, Check,
+  Smartphone, Copy, Check, Scissors,
 } from 'lucide-react';
-import DashboardNav from '@/components/layout/DashboardNav';
 
 export default function MonQrPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
@@ -23,14 +22,23 @@ export default function MonQrPage() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [copied,      setCopied]      = useState(false);
   const [fetchError,  setFetchError]  = useState('');
+  const [mySpecialties, setMySpecialties] = useState<{ specialty_id: number; specialty_name: string | null }[]>([]);
+  const [specialtyId,   setSpecialtyId]   = useState<number | null>(null);
 
-  const fetchToken = useCallback(async (silent = false, forceNew = false) => {
+  useEffect(() => {
+    specialtyProgress.mine()
+      .then((data) => setMySpecialties(data.specialties.map((s) => ({ specialty_id: s.specialty_id, specialty_name: s.specialty_name }))))
+      .catch(() => {});
+  }, []);
+
+  const fetchToken = useCallback(async (silent = false, forceNew = false, forSpecialtyId?: number | null) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     setFetchError('');
     try {
-      const data = forceNew ? await visits.refreshQrToken() : await visits.getQrToken();
+      const data = forceNew ? await visits.refreshQrToken(forSpecialtyId) : await visits.getQrToken();
       setQr(data);
+      setSpecialtyId(data.specialty_id ?? null);
       const until = new Date(data.valid_until).getTime();
       setSecondsLeft(Math.max(0, Math.round((until - Date.now()) / 1000)));
     } catch (err: unknown) {
@@ -40,6 +48,11 @@ export default function MonQrPage() {
       setRefreshing(false);
     }
   }, []);
+
+  async function handlePickSpecialty(id: number | null) {
+    setSpecialtyId(id);
+    await fetchToken(true, true, id);
+  }
 
   // Guard: QR Code is only for salon hairdressers
   useEffect(() => {
@@ -101,7 +114,6 @@ export default function MonQrPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <DashboardNav />
 
       {/* Mobile top bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
@@ -131,9 +143,43 @@ export default function MonQrPage() {
           <p className="text-sm font-bold mb-1">Comment ça marche</p>
           <p className="text-xs text-neutral-300 leading-relaxed">
             Après chaque prestation, montrez ce QR à votre client. Il le scanne, confirme sa visite,
-            et peut laisser un avis certifié. Chaque visite validée alimente votre score CHAIR.
+            et peut laisser un avis certifié. Chaque visite validée alimente le score de la spécialité concernée.
           </p>
         </div>
+
+        {/* Sélection de la spécialité — la visite/l'avis qui en découle sont
+            rattachés à cette spécialité, pas juste au score global. */}
+        {mySpecialties.length > 0 && (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Scissors size={13} className="text-neutral-400" />
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+                Quelle prestation ?
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {mySpecialties.map((s) => (
+                <button
+                  key={s.specialty_id}
+                  onClick={() => handlePickSpecialty(s.specialty_id)}
+                  disabled={refreshing}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-50 ${
+                    specialtyId === s.specialty_id
+                      ? 'bg-neutral-900 text-white border-neutral-900'
+                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                  }`}
+                >
+                  {s.specialty_name}
+                </button>
+              ))}
+            </div>
+            {!specialtyId && (
+              <p className="text-[11px] text-neutral-400 mt-2">
+                Optionnel, mais recommandé — sans ça, la visite n&apos;alimente aucune spécialité précise.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* QR Code card */}
         {loading ? (
@@ -181,6 +227,11 @@ export default function MonQrPage() {
                 {user.hairdresser_profile?.salon && (
                   <p className="text-xs text-neutral-400 mt-0.5">{user.hairdresser_profile.salon.name}</p>
                 )}
+                {qr.specialty_name && (
+                  <span className="inline-block mt-1.5 text-[10px] font-bold uppercase tracking-wide bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">
+                    {qr.specialty_name}
+                  </span>
+                )}
               </div>
 
               {/* Countdown */}
@@ -195,7 +246,7 @@ export default function MonQrPage() {
               {/* Actions */}
               <div className="flex gap-2 w-full">
                 <button
-                  onClick={() => fetchToken(true, true)}
+                  onClick={() => fetchToken(true, true, specialtyId)}
                   disabled={refreshing}
                   className="flex-1 flex items-center justify-center gap-2 border border-neutral-200 rounded-xl py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors disabled:opacity-50"
                 >

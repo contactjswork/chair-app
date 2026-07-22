@@ -33,6 +33,43 @@ export interface ApiLeaderboard {
   results: ApiLeaderboardEntry[];
 }
 
+// ── Classement par spécialité (voir docs/REPUTATION_ARCHITECTURE.md) ──
+export interface ApiSpecialtyLeaderboardEntry {
+  rank: number;
+  id: number;
+  slug: string;
+  name: string;
+  avatar: string | null;
+  city: string | null;
+  score: number;
+  level: number;
+  level_name: string;
+  level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
+  is_reference: boolean;
+  is_verified: boolean;
+}
+
+export interface ApiSpecialtyLeaderboard {
+  type: 'specialty';
+  specialty_id: number;
+  specialty_name: string | null;
+  geo: 'city' | 'department' | 'region' | 'country';
+  geo_value: string | null;
+  results: ApiSpecialtyLeaderboardEntry[];
+}
+
+export interface ApiSpecialtyHighlight {
+  specialty_id: number;
+  specialty_name: string | null;
+  level: number;
+  level_name: string;
+  level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
+  is_reference: boolean;
+  local_rank: number | null;
+  local_total: number | null;
+  fast_progress: boolean;
+}
+
 export interface ApiAnalyticsTrend {
   pct: number;
   direction: 'up' | 'down' | 'stable';
@@ -71,7 +108,8 @@ export interface ApiSpecialty {
   id: number;
   name: string;
   slug: string;
-  category: string;
+  category: string | null;
+  icon?: string | null;
 }
 
 export interface ApiSalon {
@@ -101,6 +139,104 @@ export interface ApiQrTokenResponse {
   valid_until: string;
   valid_from: string;
   ttl_minutes: number;
+  specialty_id: number | null;
+  specialty_name: string | null;
+}
+
+// ── Abonnements CHAIR+ / CHAIR BUSINESS (voir docs/CHAIR_PLUS.md) ──
+export interface ApiSubscriptionDetail {
+  plan: 'chair_plus' | 'chair_business';
+  status: 'trialing' | 'active' | 'past_due' | 'canceled';
+  trial_ends_at: string | null;
+  current_period_end: string | null;
+  canceled_at: string | null;
+  covers_today: boolean;
+}
+
+export interface ApiMySubscription {
+  has_chair_plus: boolean;
+  subscription: ApiSubscriptionDetail | null;
+  salon_subscription: ApiSubscriptionDetail | null;
+}
+
+// ── Stories CHAIR+ (voir docs/CHAIR_PLUS.md) ──
+export interface ApiStoryBubble {
+  hairdresser_id: number;
+  slug: string;
+  name: string;
+  avatar: string | null;
+  stories_count: number;
+  has_unseen: boolean;
+}
+
+export interface ApiStory {
+  id: number;
+  user_id: number;
+  media_url: string;
+  type: 'image' | 'video';
+  expires_at: string;
+  views_count: number;
+  created_at: string;
+}
+
+// ── Programme ambassadeur (voir docs/GROWTH.md) ──
+export interface ApiReferral {
+  code: string;
+  link: string;
+  referral_count: number;
+  points_earned: number;
+  next_milestone: number | null;
+  milestones: number[];
+  chair_plus_until: string | null;
+  boost_until: string | null;
+}
+
+export type ShareActionType =
+  | 'share_profile' | 'share_post' | 'social_post'
+  | 'invite_hairdresser' | 'invite_salon' | 'invite_client'
+  | 'first_review' | 'first_favorite';
+
+export type ShareChannel = 'copy_link' | 'qr' | 'instagram' | 'whatsapp' | 'snapchat' | 'tiktok' | 'native';
+
+// ── Réputation par spécialité (voir docs/REPUTATION_ARCHITECTURE.md) ──
+export interface ApiSpecialtyNextStepGap {
+  type: 'content' | 'visits' | 'reviews';
+  missing: number;
+  label: string;
+}
+
+export interface ApiSpecialtyNextStep {
+  specialty_id: number;
+  specialty_name: string | null;
+  next_level_name: string;
+  next_level_min: number;
+  type: 'content' | 'visits' | 'reviews';
+  missing: number;
+  label: string;
+  gaps: ApiSpecialtyNextStepGap[];
+}
+
+export interface ApiSpecialtyProgress {
+  specialty_id: number;
+  specialty_name: string | null;
+  score: number;
+  level: number;
+  level_name: string;
+  level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
+  is_reference: boolean;
+  posts_count: number;
+  reviews_count: number;
+  avg_rating: number;
+  visits_count: number;
+  local_rank: number | null;
+  local_total: number | null;
+  next_step: ApiSpecialtyNextStep | null;
+}
+
+export interface ApiSpecialtyProgressResponse {
+  specialties: ApiSpecialtyProgress[];
+  weighted_aggregate: number;
+  chair_score: number;
 }
 
 export interface ApiScanInfo {
@@ -168,6 +304,7 @@ export interface ApiChairBadge {
   name: string;
   desc: string;
   category: string;
+  family: 'carriere' | 'exceptionnel';
   pts: number;
   tier: 1 | 2 | 3 | 4;
   visible: boolean;
@@ -211,6 +348,7 @@ export interface ApiHairdresserProfile {
   work_status: 'home' | 'private_salon' | 'rented_chair' | 'studio' | null;
   work_address: string | null;
   work_availability: 'employed' | 'looking_salon' | 'looking_gig' | 'not_available' | null;
+  booking_window_days?: number | null;
   training_badges?: ApiTrainingBadge[];
   user: ApiUser;
   specialties: ApiSpecialty[];
@@ -221,6 +359,9 @@ export interface ApiHairdresserProfile {
   chair_badges_all?: ApiChairBadge[];
   chair_points?: number;
   chair_level?: ApiChairLevel;
+  chair_streak?: { current_streak: number; is_active_today: boolean };
+  specialty_highlights?: ApiSpecialtyHighlight[];
+  chair_plus_until?: string | null;
 }
 
 export type AppointmentStatus =
@@ -250,6 +391,7 @@ export interface ApiService {
   id: number;
   hairdresser_id: number;
   category_id: number;
+  specialty_id?: number | null;
   name: string;
   description: string | null;
   price: string | null;
@@ -258,6 +400,7 @@ export interface ApiService {
   visits_count: number;
   image_url: string | null;
   category?: ApiServiceCategory;
+  specialty?: ApiSpecialty | null;
 }
 
 export interface ApiScheduleDay {
@@ -384,6 +527,12 @@ export function resolveMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   if (url.startsWith('/storage/')) return `${BACKEND}${url}`;
   return url;
+}
+
+/** CHAIR+ actif — payé ou banqué (récompenses ambassadeur), même champ. */
+export function hasChairPlus(profile: ApiHairdresserProfile | null | undefined): boolean {
+  if (!profile?.chair_plus_until) return false;
+  return new Date(profile.chair_plus_until).getTime() > Date.now();
 }
 
 export function getBeforeImage(post: ApiPost): string | null {

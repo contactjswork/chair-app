@@ -1,6 +1,7 @@
 import AppShell from '@/components/layout/AppShell';
 import HideOnScrollBar from '@/components/layout/HideOnScrollBar';
 import HeroSearch from '@/components/ui/HeroSearch';
+import StoriesBar from '@/components/ui/StoriesBar';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import HomePersonalized from '@/components/ui/HomePersonalized';
 import { CoupDeCoeurStrip, PopularStrip, NewTalentsStrip } from '@/components/ui/HomeGeoStrips';
@@ -124,6 +125,9 @@ export default async function HomePage() {
           <HeroSearch compact />
         </div>
       </HideOnScrollBar>
+
+      {/* Stories — coiffeurs suivis uniquement, jamais un feed mondial */}
+      <StoriesBar />
 
       {/* ① Pour vous — catégories inspirations */}
       <HomePersonalized />

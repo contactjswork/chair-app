@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import DashboardNav from '@/components/layout/DashboardNav';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
@@ -211,7 +210,6 @@ export default function ProNotificationsPage() {
         </section>
       )}
 
-      <DashboardNav />
     </div>
   );
 }

@@ -8,30 +8,30 @@ type LucideIcon = React.ElementType;
 type Collection = { title: string; slug: string; Icon: LucideIcon; dark: boolean; };
 
 const DEFAULT_COLS: Collection[] = [
-  { title: 'Les meilleurs Barbers',  slug: 'barber',      Icon: Scissors, dark: true  },
-  { title: 'Spécialistes Balayage',  slug: 'balayage',    Icon: Star,     dark: false },
-  { title: 'Coiffeurs Mariage',      slug: 'mariage',     Icon: Heart,    dark: false },
-  { title: 'Cheveux Bouclés',        slug: 'boucles',     Icon: Wind,     dark: false },
-  { title: 'Fantasy Colors',         slug: 'coloration',  Icon: Zap,      dark: false },
-  { title: 'Extensions',             slug: 'extensions',  Icon: Layers,   dark: true  },
+  { title: 'Coupe Homme & Barber',   slug: 'coupe-homme',          Icon: Scissors, dark: true  },
+  { title: 'Spécialistes Balayage',  slug: 'couleur-balayage',     Icon: Star,     dark: false },
+  { title: 'Coiffeurs Événementiel', slug: 'evenementiel',         Icon: Heart,    dark: false },
+  { title: 'Cheveux Bouclés',        slug: 'boucles-curly',        Icon: Wind,     dark: false },
+  { title: 'Soins & Transformation', slug: 'soins-transformation', Icon: Zap,      dark: false },
+  { title: 'Extensions',             slug: 'extensions',           Icon: Layers,   dark: true  },
 ];
 
 const FEMME_COLS: Collection[] = [
-  { title: 'Spécialistes Balayage',  slug: 'balayage',    Icon: Sparkles, dark: false },
-  { title: 'Coloristes Experts',     slug: 'coloration',  Icon: Zap,      dark: false },
-  { title: 'Cheveux Bouclés',        slug: 'boucles',     Icon: Wind,     dark: false },
-  { title: 'Coiffeurs Mariage',      slug: 'mariage',     Icon: Heart,    dark: true  },
-  { title: 'Extensions',             slug: 'extensions',  Icon: Layers,   dark: false },
-  { title: 'Blond & Ombré',          slug: 'blond',       Icon: Star,     dark: false },
+  { title: 'Spécialistes Balayage',  slug: 'couleur-balayage',     Icon: Sparkles, dark: false },
+  { title: 'Texture & Lissage',      slug: 'texture-lissage',      Icon: Zap,      dark: false },
+  { title: 'Cheveux Bouclés',        slug: 'boucles-curly',        Icon: Wind,     dark: false },
+  { title: 'Coiffeurs Événementiel', slug: 'evenementiel',         Icon: Heart,    dark: true  },
+  { title: 'Extensions',             slug: 'extensions',           Icon: Layers,   dark: false },
+  { title: 'Soins & Transformation', slug: 'soins-transformation', Icon: Star,     dark: false },
 ];
 
 const HOMME_COLS: Collection[] = [
-  { title: 'Les meilleurs Barbers',  slug: 'barber',      Icon: Scissors, dark: true  },
-  { title: 'Spécialistes Dégradé',   slug: 'degrade',     Icon: Layers,   dark: false },
-  { title: 'Skin Fade',              slug: 'fade',         Icon: Flame,    dark: false },
+  { title: 'Coupe Homme & Barber',   slug: 'coupe-homme', Icon: Scissors, dark: true  },
   { title: 'Barbe & Style',          slug: 'barbe',        Icon: User,     dark: false },
-  { title: 'Coupe Classique',        slug: 'coupe-homme',  Icon: Star,     dark: false },
-  { title: 'Style Urbain',           slug: 'barber',       Icon: Zap,      dark: true  },
+  { title: 'Afro & Locks',           slug: 'afro-locks',   Icon: Flame,    dark: false },
+  { title: 'Texture & Lissage',      slug: 'texture-lissage', Icon: Layers, dark: false },
+  { title: 'Couleur & Balayage',     slug: 'couleur-balayage', Icon: Zap,  dark: false },
+  { title: 'Extensions',             slug: 'extensions',   Icon: Star,     dark: true  },
 ];
 
 export default function HomeCollections() {

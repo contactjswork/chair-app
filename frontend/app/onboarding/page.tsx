@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
-import { resolveMediaUrl, type ApiSpecialty } from '@/lib/types';
+import { api, referral } from '@/lib/api';
+import { resolveMediaUrl, type ApiSpecialty, type ApiReferral } from '@/lib/types';
 import {
   User, Image as ImageIcon, FileText, Tag, Scissors,
-  Calendar, Camera, ChevronRight, Check, Eye, ArrowRight, X
+  Calendar, Camera, ChevronRight, Check, ArrowRight, Share2
 } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
+import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
+import ShareSheet from '@/components/ui/ShareSheet';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -30,7 +32,7 @@ const STEPS: OnboardingStep[] = [
   { id: 2, title: 'Bannière',           subtitle: 'Votre vitrine visuelle.',                  icon: ImageIcon, why: 'Une belle bannière inspire confiance dès le premier regard.' },
   { id: 3, title: 'Bio & Accroche',     subtitle: 'Racontez votre histoire.',                 icon: FileText,  why: 'Une bio complète améliore votre référencement sur CHAIR.' },
   { id: 4, title: 'Spécialités',        subtitle: 'Ce que vous faites le mieux.',             icon: Tag,       why: 'Les clients recherchent par spécialité. Soyez visible.' },
-  { id: 5, title: 'Services & Tarifs',  subtitle: 'Définissez vos prestations.',              icon: Scissors,  why: 'Les coiffeurs avec des services reçoivent 3x plus de RDVs.' },
+  { id: 5, title: 'Vos services',       subtitle: 'Le détail derrière chaque spécialité.',    icon: Scissors,  why: 'Une spécialité seule ne suffit pas — les clients cherchent des prestations précises ("Dégradé américain", "Balayage blond"). Chaque service ajouté vous rend plus visible et plus crédible.' },
   { id: 6, title: 'Vos horaires',       subtitle: 'Quand êtes-vous disponible ?',             icon: Calendar,  why: 'Indispensable pour que les clients puissent réserver.' },
   { id: 7, title: 'Première réalisation', subtitle: 'Montrez votre talent.',                 icon: Camera,    why: 'La première réalisation est la plus importante. Faites-la belle.' },
 ];
@@ -90,7 +92,9 @@ export default function OnboardingPage() {
   const router = useRouter();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const [profileSlug, setProfileSlug] = useState<string | null>(null);
+  const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [myReferral, setMyReferral] = useState<ApiReferral | null>(null);
 
   // Step 1 — Avatar
   const [avatarUrl,      setAvatarUrl]      = useState<string | null>(null);
@@ -114,7 +118,8 @@ export default function OnboardingPage() {
   const [specialtiesSaving, setSpecialtiesSaving] = useState(false);
 
   // Step 5 — Services
-  const [categoryName, setCategoryName] = useState('');
+  const [serviceSpecialtyId, setServiceSpecialtyId] = useState<number | null>(null);
+  const [specialtyCategoryIds, setSpecialtyCategoryIds] = useState<Record<number, number>>({});
   const [serviceName, setServiceName] = useState('');
   const [servicePrice, setServicePrice] = useState('');
   const [serviceDuration, setServiceDuration] = useState('60');
@@ -150,8 +155,6 @@ export default function OnboardingPage() {
         router.push('/app/compte');
         return;
       }
-      const slug = user.hairdresser_profile?.slug;
-      setProfileSlug(slug ?? null);
       setAvatarUrl(resolveMediaUrl(user.avatar));
       setCity(user.hairdresser_profile?.city ?? '');
     }
@@ -163,6 +166,12 @@ export default function OnboardingPage() {
   useEffect(() => {
     api.get<ApiSpecialty[]>('/specialties').then(setAllSpecialties).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (currentStep === 5 && serviceSpecialtyId === null && selectedSpecialties.length > 0) {
+      setServiceSpecialtyId(selectedSpecialties[0]);
+    }
+  }, [currentStep, serviceSpecialtyId, selectedSpecialties]);
 
   // ── Step handlers ─────────────────────────────────────────────────────────
 
@@ -246,20 +255,29 @@ export default function OnboardingPage() {
   }
 
   async function saveService() {
-    if (!categoryName.trim() || !serviceName.trim()) return;
+    if (!serviceName.trim() || !serviceSpecialtyId) return;
     setServiceSaving(true);
     try {
-      // Crée catégorie
-      const cat = await api.post<{ id: number }>('/service-categories', { name: categoryName, display_order: 1 });
-      // Crée service
+      let categoryId = specialtyCategoryIds[serviceSpecialtyId];
+      if (!categoryId) {
+        const specialty = allSpecialties.find((s) => s.id === serviceSpecialtyId);
+        const specialtyName = specialty?.name ?? 'Prestations';
+        const existing = await api.get<{ id: number; name: string }[]>('/service-categories');
+        const match = existing.find((c) => c.name === specialtyName);
+        categoryId = match
+          ? match.id
+          : (await api.post<{ id: number }>('/service-categories', { name: specialtyName, display_order: 1 })).id;
+        setSpecialtyCategoryIds((prev) => ({ ...prev, [serviceSpecialtyId!]: categoryId }));
+      }
       const parsedPrice = parseFloat(servicePrice);
       const parsedDuration = parseInt(serviceDuration);
       await api.post('/services', {
-        category_id:      cat.id,
-        name:             serviceName,
-        price:            isNaN(parsedPrice) ? null : parsedPrice,
-        duration_minutes: isNaN(parsedDuration) ? null : parsedDuration,
-        is_active:        true,
+        category_id:       categoryId,
+        specialty_id:      serviceSpecialtyId,
+        name:              serviceName,
+        price:             isIndependent && !isNaN(parsedPrice) ? parsedPrice : null,
+        duration_minutes:  isIndependent && !isNaN(parsedDuration) ? parsedDuration : null,
+        is_active:         true,
       });
       setServiceSaved(true);
     } catch {
@@ -280,7 +298,7 @@ export default function OnboardingPage() {
         break_start: null,
         break_end:   null,
       }));
-      await api.put('/schedule', { days });
+      await api.put('/schedule', { schedules: days });
       setScheduleSet(true);
     } catch {
       // silently fail
@@ -324,7 +342,7 @@ export default function OnboardingPage() {
     if (currentStep < STEPS.length) {
       setCurrentStep(nextStep(currentStep));
     } else {
-      router.push('/');
+      setShowSharePrompt(true);
     }
   }
 
@@ -332,9 +350,14 @@ export default function OnboardingPage() {
     if (currentStep < STEPS.length) {
       setCurrentStep(nextStep(currentStep));
     } else {
-      router.push('/');
+      setShowSharePrompt(true);
     }
   }
+
+  useEffect(() => {
+    if (!showSharePrompt) return;
+    referral.mine().then(setMyReferral).catch(() => {});
+  }, [showSharePrompt]);
 
   // ── File input helpers ────────────────────────────────────────────────────
 
@@ -354,6 +377,51 @@ export default function OnboardingPage() {
 
   const step = STEPS[currentStep - 1];
 
+  // ── Écran final : partage du profil ──────────────────────────────────────
+  // Réflexe encouragé dès l'onboarding (programme ambassadeur, voir
+  // docs/GROWTH.md) — jamais bloquant, "Passer" toujours disponible.
+  if (showSharePrompt) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col">
+        <div className="bg-white border-b border-neutral-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+          <Link href="/" className="text-lg font-bold tracking-[0.12em] uppercase text-neutral-900">CHAIR</Link>
+        </div>
+        <div className="max-w-lg mx-auto px-4 py-10 w-full flex-1 flex flex-col items-center text-center">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-900 flex items-center justify-center mb-5">
+            <Share2 size={24} className="text-white" strokeWidth={1.5} />
+          </div>
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Partagez votre profil</h1>
+          <p className="text-sm text-neutral-500 leading-relaxed mb-8 max-w-xs">
+            Faites savoir à vos clients que vous êtes sur CHAIR. Chaque partage et chaque invitation rapportent des récompenses.
+          </p>
+          <button
+            onClick={() => setShareOpen(true)}
+            disabled={!myReferral}
+            className="w-full max-w-xs flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-50 mb-3"
+          >
+            <Share2 size={15} />Partager mon profil
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            className="text-sm text-neutral-400 hover:text-neutral-700 transition-colors"
+          >
+            Passer pour l&apos;instant
+          </button>
+        </div>
+        {myReferral && (
+          <ShareSheet
+            open={shareOpen}
+            onClose={() => { setShareOpen(false); router.push('/'); }}
+            title="Partager mon profil"
+            shareUrl={myReferral.link}
+            shareText="Je viens de rejoindre CHAIR, l'app qui met en avant les coiffeurs !"
+            actionType="share_profile"
+          />
+        )}
+      </div>
+    );
+  }
+
   // ── Rendu ─────────────────────────────────────────────────────────────────
 
   return (
@@ -362,16 +430,6 @@ export default function OnboardingPage() {
       <div className="bg-white border-b border-neutral-100 px-4 py-3 flex items-center justify-between sticky top-0 z-20">
         <Link href="/" className="text-lg font-bold tracking-[0.12em] uppercase text-neutral-900">CHAIR</Link>
         <div className="flex items-center gap-3">
-          {profileSlug && (
-            <Link
-              href={`/coiffeur/${profileSlug}`}
-              target="_blank"
-              className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 border border-neutral-200 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
-            >
-              <Eye size={13} />
-              Mon profil public
-            </Link>
-          )}
           <button
             onClick={() => { logout(); router.push('/'); }}
             className="text-xs text-neutral-400 hover:text-neutral-700 transition-colors"
@@ -398,21 +456,6 @@ export default function OnboardingPage() {
         <div className="mb-5">
           <ProgressBar current={isIndependent || currentStep < 6 ? currentStep : currentStep - 1} total={totalSteps} />
         </div>
-
-        {/* Profil public banner (à partir de l'étape 2) */}
-        {currentStep > 1 && profileSlug && (
-          <Link
-            href={`/coiffeur/${profileSlug}`}
-            target="_blank"
-            className="flex items-center justify-between bg-neutral-900 text-white rounded-xl px-4 py-3 mb-5 hover:bg-neutral-800 transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <Eye size={16} strokeWidth={1.5} />
-              <span className="text-sm font-semibold">Voir mon profil public</span>
-            </div>
-            <span className="text-xs text-neutral-400">Comme le voient les clients</span>
-          </Link>
-        )}
 
         {/* ── STEP 1 — Avatar ── */}
         {currentStep === 1 && (
@@ -569,95 +612,20 @@ export default function OnboardingPage() {
             <div className="bg-neutral-50 rounded-xl px-4 py-3 mb-4 border border-neutral-100">
               <p className="text-[11px] font-semibold text-neutral-700 mb-0.5">Votre visibilité dépend de vos spécialités</p>
               <p className="text-[11px] text-neutral-500 leading-relaxed">
-                Les clients recherchent par technique : <em>"Balayage Paris"</em>, <em>"Barber Lyon"</em>…
-                Chaque spécialité cochée vous fait apparaître dans ces recherches sur CHAIR et sur Google.
+                Les clients recherchent par univers : <em>&quot;Coupe Homme Paris&quot;</em>, <em>&quot;Couleur &amp; Balayage Lyon&quot;</em>…
+                Chaque spécialité cochée vous fait apparaître dans ces recherches sur CHAIR et sur Google. Aucune limite — cochez tout ce qui vous représente.
               </p>
             </div>
 
-            {/* Groupes par catégorie */}
-            {(() => {
-              const GROUPS: { label: string; desc: string; slugs: string[] }[] = [
-                {
-                  label: 'Couleur',
-                  desc: 'Très recherchées — fort potentiel de visibilité locale.',
-                  slugs: ['balayage','blond','coloration','ombre-hair','hair-contouring','tie-dye','roux','couleur-homme'],
-                },
-                {
-                  label: 'Coupe Femme',
-                  desc: 'Secteur dominant — ciblez la clientèle féminine de votre zone.',
-                  slugs: ['coupe-femme','coupe-courte','coupe-longue','frange'],
-                },
-                {
-                  label: 'Coupe Homme & Barber',
-                  desc: 'Barber et dégradé sont parmi les termes les plus recherchés en France.',
-                  slugs: ['coupe-homme','barber','degrade','taper','fade','buzz-cut','barbe'],
-                },
-                {
-                  label: 'Texture & Soin',
-                  desc: 'Niche à fort engagement — les clients cherchent des experts spécifiques.',
-                  slugs: ['boucles','extensions','lissage','keratine','ondulations'],
-                },
-                {
-                  label: 'Style & Créativité',
-                  desc: 'Différenciez-vous avec des techniques rares et demandées.',
-                  slugs: ['dreads','braid'],
-                },
-                {
-                  label: 'Occasion',
-                  desc: 'Mariage et soirée génèrent les prestations les mieux rémunérées.',
-                  slugs: ['chignon','mariage','coiffure-soiree'],
-                },
-              ];
+            <SpecialtyPicker specialties={allSpecialties} selected={selectedSpecialties} onToggle={(id) =>
+              setSelectedSpecialties((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+            } />
 
-              const bySlug = Object.fromEntries(allSpecialties.map((s) => [s.slug, s]));
-
-              return GROUPS.map((group) => {
-                const items = group.slugs.map((slug) => bySlug[slug]).filter(Boolean);
-                if (items.length === 0) return null;
-                return (
-                  <div key={group.label} className="mb-4">
-                    <div className="flex items-baseline gap-2 mb-1.5">
-                      <p className="text-[11px] font-bold text-neutral-800 uppercase tracking-wide">{group.label}</p>
-                      <p className="text-[10px] text-neutral-400 leading-tight">{group.desc}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {items.map((sp) => {
-                        const active = selectedSpecialties.includes(sp.id);
-                        return (
-                          <button
-                            key={sp.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedSpecialties((prev) =>
-                                prev.includes(sp.id) ? prev.filter((x) => x !== sp.id) : [...prev, sp.id]
-                              )
-                            }
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                              active
-                                ? 'bg-neutral-900 text-white border-neutral-900'
-                                : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
-                            }`}
-                          >
-                            {active && <Check size={9} />}
-                            {sp.name}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-
-            {selectedSpecialties.length >= 2 ? (
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mt-2 pt-2 border-t border-neutral-100">
+            {selectedSpecialties.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-green-600 mt-4 pt-3 border-t border-neutral-100">
                 <Check size={13} />
-                {selectedSpecialties.length} spécialités — vous serez visible dans autant de recherches
+                {selectedSpecialties.length} spécialité{selectedSpecialties.length > 1 ? 's' : ''} sélectionnée{selectedSpecialties.length > 1 ? 's' : ''}
               </div>
-            ) : (
-              <p className="text-[11px] text-neutral-400 mt-2 pt-2 border-t border-neutral-100">
-                Sélectionnez au moins 2 spécialités pour continuer.
-              </p>
             )}
           </StepCard>
         )}
@@ -671,10 +639,31 @@ export default function OnboardingPage() {
                   <Check size={22} className="text-green-600" />
                 </div>
                 <p className="text-sm font-semibold text-neutral-900">Service ajouté</p>
-                <p className="text-xs text-neutral-400">Vous pourrez en ajouter d'autres depuis votre dashboard.</p>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Ajoutez-en d&apos;autres maintenant, ou complétez plus tard depuis votre profil — <span className="font-semibold text-neutral-600">Profil → Prestations</span>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setServiceSaved(false); setServiceName(''); setServicePrice(''); }}
+                  className="mt-2 text-xs font-semibold text-neutral-900 border border-neutral-200 rounded-full px-4 py-2 hover:bg-neutral-50 transition-colors"
+                >
+                  + Ajouter un autre service
+                </button>
               </div>
+            ) : selectedSpecialties.length === 0 ? (
+              <p className="text-xs text-neutral-400 text-center py-4">
+                Aucune spécialité sélectionnée à l&apos;étape précédente — vous pourrez ajouter des services depuis votre profil (Profil → Prestations).
+              </p>
             ) : (
               <div className="space-y-3">
+                {/* Pourquoi ajouter des services maintenant */}
+                <div className="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100">
+                  <p className="text-[11px] font-semibold text-neutral-700 mb-0.5">Pourquoi lister vos services ?</p>
+                  <p className="text-[11px] text-neutral-500 leading-relaxed">
+                    Une spécialité comme &quot;{allSpecialties.find((s) => s.id === serviceSpecialtyId)?.name ?? 'Coupe Homme'}&quot; regroupe plusieurs prestations. Plus vous en détaillez, plus vous apparaissez dans de recherches précises et plus votre profil inspire confiance. Pas d&apos;obligation à tout faire maintenant : vous pourrez toujours en ajouter, modifier ou supprimer depuis <span className="font-semibold text-neutral-700">votre profil</span> ensuite.
+                  </p>
+                </div>
+
                 {/* Bandeau info salon */}
                 {!isIndependent && (
                   <div className="bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 flex items-start gap-3">
@@ -691,14 +680,28 @@ export default function OnboardingPage() {
                 )}
 
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom de la catégorie</label>
-                  <input
-                    type="text"
-                    value={categoryName}
-                    onChange={(e) => setCategoryName(e.target.value)}
-                    placeholder="Ex : Couleur, Coupe, Soin..."
-                    className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
-                  />
+                  <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Spécialité</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedSpecialties.map((id) => {
+                      const sp = allSpecialties.find((s) => s.id === id);
+                      if (!sp) return null;
+                      const active = serviceSpecialtyId === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setServiceSpecialtyId(id)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            active
+                              ? 'bg-neutral-900 text-white border-neutral-900'
+                              : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
+                          }`}
+                        >
+                          {sp.name}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Nom du service</label>
@@ -706,13 +709,13 @@ export default function OnboardingPage() {
                     type="text"
                     value={serviceName}
                     onChange={(e) => setServiceName(e.target.value)}
-                    placeholder="Ex : Balayage, Coupe femme..."
+                    placeholder="Ex : Taper Bas, Balayage, Chignon..."
                     className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
                   />
                 </div>
 
-                {/* Prix + Durée : obligatoires pour indépendant, masqués pour salon */}
-                {isIndependent ? (
+                {/* Prix + Durée : uniquement pour les indépendants, jamais rendus pour les salariés */}
+                {isIndependent && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Prix (€)</label>
@@ -738,12 +741,12 @@ export default function OnboardingPage() {
                       </select>
                     </div>
                   </div>
-                ) : null}
+                )}
 
                 <button
                   type="button"
                   onClick={saveService}
-                  disabled={serviceSaving || !categoryName.trim() || !serviceName.trim()}
+                  disabled={serviceSaving || !serviceName.trim() || !serviceSpecialtyId}
                   className="w-full bg-neutral-900 text-white font-semibold py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-50"
                 >
                   {serviceSaving ? 'Enregistrement...' : 'Ajouter ce service'}

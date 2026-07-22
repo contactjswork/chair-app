@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { jobOffers, api } from '@/lib/api';
 import type { ApiJobOffer } from '@/lib/types';
-import SalonOwnerNav from '@/components/layout/SalonOwnerNav';
-import SalonOwnerSidebar from '@/components/layout/SalonOwnerSidebar';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { Plus, Edit2, Trash2, MapPin, ExternalLink, Briefcase, Check, X, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
 
@@ -165,10 +163,8 @@ export default function RecrutementPage() {
   const pendingCount = applications.filter((a) => a.status === 'pending').length;
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex pb-28 md:pb-0">
-      <SalonOwnerSidebar />
-      <SalonOwnerNav />
-      <div className="flex-1 md:ml-60">
+    <div className="min-h-screen bg-neutral-50 flex">
+      <div className="flex-1">
 
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">
@@ -371,7 +367,7 @@ export default function RecrutementPage() {
                     </div>
                     {expandedApp === app.id && app.message && (
                       <div className="px-4 pb-4 pt-0 border-t border-neutral-100">
-                        <p className="text-xs text-neutral-600 pt-3 italic">"{app.message}"</p>
+                        <p className="text-xs text-neutral-600 pt-3 italic">&quot;{app.message}&quot;</p>
                         {app.status === 'pending' && (
                           <button onClick={() => handleAppStatus(app.id, 'viewed')}
                             className="mt-2 text-[11px] text-neutral-400 hover:text-neutral-600 underline">

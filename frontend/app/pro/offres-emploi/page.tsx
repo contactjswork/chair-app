@@ -5,9 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
-import DashboardNav from '@/components/layout/DashboardNav';
 import {
-  Briefcase, MapPin, Clock, Search, X, Send, Check,
+  Briefcase, Clock, Search, X, Send, Check,
   ChevronLeft, ExternalLink, Building2, GraduationCap, Filter,
 } from 'lucide-react';
 
@@ -132,10 +131,9 @@ export default function OffresEmploiPage() {
 
     return (
       <div className="min-h-screen bg-neutral-50 pb-24">
-        <DashboardNav />
         {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
-        <div className="md:ml-60 max-w-2xl mx-auto px-4 pt-4 pb-6">
+        <div className="max-w-2xl mx-auto px-4 pt-4 pb-6">
           <button onClick={() => setDetail(null)} className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium mb-4 hover:text-neutral-900 transition-colors">
             <ChevronLeft size={14} />Retour aux offres
           </button>
@@ -242,12 +240,11 @@ export default function OffresEmploiPage() {
   // ── VUE LISTE ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
-      <DashboardNav />
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
-      <div className="md:ml-60 max-w-2xl mx-auto px-4 pt-4 pb-6">
+      <div className="max-w-2xl mx-auto px-4 pt-4 pb-6">
         <div className="mb-4">
-          <h1 className="text-xl font-bold text-neutral-900">Offres d'emploi</h1>
+          <h1 className="text-xl font-bold text-neutral-900">Offres d&apos;emploi</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} offre{filtered.length !== 1 ? 's' : ''} ouverte{filtered.length !== 1 ? 's' : ''}</p>
         </div>
 

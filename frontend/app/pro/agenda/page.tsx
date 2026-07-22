@@ -4,15 +4,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState, useRef } from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { appointments as apptApi, api } from '@/lib/api';
+import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
-import { type ApiAppointment, apptDateStr, resolveMediaUrl } from '@/lib/types';
+import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl } from '@/lib/types';
 import {
   CalendarDays, Clock, ChevronLeft, ChevronRight, Settings,
   Bell, ZoomIn, ZoomOut, User, X, Check, Phone, Mail,
-  Calendar, AlertTriangle, CheckCircle2, Ban, UserX,
+  Calendar, AlertTriangle, CheckCircle2, Ban, UserX, Trash2,
 } from 'lucide-react';
-import DashboardNav from '@/components/layout/DashboardNav';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -78,6 +77,24 @@ function dayRevenue(apts: ApiAppointment[], ds: string) {
   return apts
     .filter(a=>apptDateStr(a)===ds && ['confirmed','completed'].includes(a.status))
     .reduce((s,a)=>s+(a.price?parseFloat(a.price):0),0);
+}
+function unavailForDate(items: ApiUnavailability[], ds: string) {
+  return items.filter(u => {
+    const s = u.start_datetime.slice(0,10);
+    const e = u.end_datetime.slice(0,10);
+    return ds >= s && ds <= e;
+  });
+}
+// Bornes (en minutes depuis minuit) d'un blocage sur un jour donné — tronqué
+// aux bornes de la journée pour les blocages qui s'étalent sur plusieurs jours.
+function unavailBoundsForDate(u: ApiUnavailability, ds: string): { startMin: number; endMin: number } {
+  const dayStartMs = new Date(ds+'T00:00:00').getTime();
+  const dayEndMs   = new Date(ds+'T23:59:59').getTime();
+  const sMs = Math.max(new Date(u.start_datetime.replace(' ','T')).getTime(), dayStartMs);
+  const eMs = Math.min(new Date(u.end_datetime.replace(' ','T')).getTime(), dayEndMs);
+  const startMin = Math.round((sMs-dayStartMs)/60000);
+  const endMin   = Math.round((eMs-dayStartMs)/60000);
+  return { startMin, endMin };
 }
 
 type ViewMode = 'day'|'week'|'month';
@@ -350,21 +367,177 @@ function AppointmentBlock({
   );
 }
 
+// ── UnavailabilityBlock (visuel, non draggable) ───────────────────────────────
+
+function UnavailabilityBlock({
+  unavail, hourHeight, topPx, heightPx, onClick, compact,
+}: {
+  unavail: ApiUnavailability; hourHeight: number; topPx: number; heightPx: number;
+  onClick: () => void; compact?: boolean;
+}) {
+  return (
+    <div
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      className="absolute left-0.5 right-1 rounded-xl overflow-hidden select-none cursor-pointer z-10 border-l-2 border-neutral-300 bg-neutral-100/80 hover:bg-neutral-150 transition-colors"
+      style={{
+        top: topPx,
+        height: Math.max(heightPx, 22),
+        backgroundImage: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 6px, transparent 6px, transparent 12px)',
+      }}
+    >
+      <div className="px-2 py-1.5 h-full flex items-center gap-1.5 min-w-0">
+        <Ban size={compact?10:12} className="text-neutral-400 flex-shrink-0" />
+        <span className="text-[11px] font-semibold text-neutral-500 truncate">
+          {unavail.reason || 'Bloqué'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── BlockCreateSheet — création d'un blocage depuis l'agenda ──────────────────
+
+function BlockCreateSheet({
+  date, time, presetReason, onClose, onCreated,
+}: {
+  date: string; time: string; presetReason?: string;
+  onClose: () => void; onCreated: () => void;
+}) {
+  const [startTime, setStartTime] = useState(time);
+  const [endTime,   setEndTime]   = useState(() => fromMin(toMin(time) + (presetReason ? 30 : 120)));
+  const [reason,    setReason]    = useState(presetReason ?? '');
+  const [saving,    setSaving]    = useState(false);
+  const [error,     setError]     = useState('');
+
+  async function handleCreate() {
+    setError('');
+    const start = `${date}T${startTime}:00`;
+    const end   = `${date}T${endTime}:00`;
+    if (new Date(start) <= new Date()) {
+      setError('Le début doit être dans le futur.');
+      return;
+    }
+    if (new Date(end) <= new Date(start)) {
+      setError('La fin doit être après le début.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await scheduleApi.unavailabilities.create({ start_datetime: start, end_datetime: end, reason: reason || undefined });
+      onCreated();
+    } catch {
+      setError('Erreur lors de la création du blocage.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-5" onClick={e=>e.stopPropagation()}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400 mb-0.5">
+          {new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+        </p>
+        <p className="text-[18px] font-bold text-neutral-900 mb-4">
+          {presetReason ? 'Marquer une pause' : 'Bloquer un créneau'}
+        </p>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] text-neutral-400 font-medium block mb-1">Début</label>
+            <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
+              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300" />
+          </div>
+          <div>
+            <label className="text-[10px] text-neutral-400 font-medium block mb-1">Fin</label>
+            <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
+              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300" />
+          </div>
+        </div>
+        <input
+          type="text" value={reason} onChange={e=>setReason(e.target.value)}
+          placeholder="Motif (optionnel)"
+          className="w-full text-[13px] text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300 placeholder:text-neutral-300 mb-3"
+        />
+        {error && <p className="text-[12px] text-red-600 mb-2">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+            Annuler
+          </button>
+          <button onClick={handleCreate} disabled={saving} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
+            {saving ? 'Création…' : (presetReason ? 'Marquer la pause' : 'Bloquer')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── UnavailabilityConfirmSheet — suppression d'un blocage existant ────────────
+
+function UnavailabilityConfirmSheet({
+  unavail, onClose, onDeleted,
+}: { unavail: ApiUnavailability; onClose: () => void; onDeleted: (id: number) => void }) {
+  const [deleting, setDeleting] = useState(false);
+  const s = new Date(unavail.start_datetime.replace(' ','T'));
+  const e = new Date(unavail.end_datetime.replace(' ','T'));
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      await scheduleApi.unavailabilities.delete(unavail.id);
+      onDeleted(unavail.id);
+    } catch {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-5" onClick={e2=>e2.stopPropagation()}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+            <Ban size={18} className="text-neutral-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-bold text-neutral-900">{unavail.reason || 'Créneau bloqué'}</p>
+            <p className="text-[12px] text-neutral-400">
+              {s.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} · {s.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})} – {e.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+            Fermer
+          </button>
+          <button onClick={handleDelete} disabled={deleting} className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50">
+            <Trash2 size={13} /> {deleting ? 'Suppression…' : 'Débloquer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── DayView ──────────────────────────────────────────────────────────────────
 
 interface DayViewProps {
   date: Date;
   appointments: ApiAppointment[];
+  unavailabilities: ApiUnavailability[];
   hourHeight: number;
   loading: boolean;
   onMove: (id:number, date:string, time:string, dur?:number) => void;
   onSelectApt: (apt:ApiAppointment) => void;
+  onSelectUnavailability: (u:ApiUnavailability) => void;
   onQuickCreate: (time:string, date:string) => void;
 }
 
-function DayView({ date, appointments, hourHeight, loading, onMove, onSelectApt, onQuickCreate }: DayViewProps) {
+function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate }: DayViewProps) {
   const dateStr      = isoDate(date);
   const dayApts      = aptsForDate(appointments, dateStr);
+  const dayUnavail   = unavailForDate(unavailabilities, dateStr);
   const scrollRef    = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isToday      = dateStr === isoDate(new Date());
@@ -570,7 +743,24 @@ function DayView({ date, appointments, hourHeight, loading, onMove, onSelectApt,
             );
           })}
 
-          {dayApts.length===0 && (
+          {/* Blocages / indisponibilités */}
+          {dayUnavail.map(u => {
+            const { startMin, endMin } = unavailBoundsForDate(u, dateStr);
+            const topPx    = ((startMin-START_HOUR*60)/60)*hourHeight;
+            const heightPx = ((endMin-startMin)/60)*hourHeight;
+            return (
+              <UnavailabilityBlock
+                key={u.id}
+                unavail={u}
+                hourHeight={hourHeight}
+                topPx={topPx}
+                heightPx={heightPx}
+                onClick={()=>onSelectUnavailability(u)}
+              />
+            );
+          })}
+
+          {dayApts.length===0 && dayUnavail.length===0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <CalendarDays size={32} className="text-neutral-100 mb-2" />
               <p className="text-[13px] text-neutral-300 font-medium">Aucun rendez-vous</p>
@@ -586,12 +776,13 @@ function DayView({ date, appointments, hourHeight, loading, onMove, onSelectApt,
 // ── WeekView ─────────────────────────────────────────────────────────────────
 
 function WeekView({
-  weekStart, appointments, hourHeight, loading, onMove, onDayClick, onSelectApt,
+  weekStart, appointments, unavailabilities, hourHeight, loading, onMove, onDayClick, onSelectApt, onSelectUnavailability,
 }: {
-  weekStart:Date; appointments:ApiAppointment[]; hourHeight:number; loading:boolean;
+  weekStart:Date; appointments:ApiAppointment[]; unavailabilities:ApiUnavailability[]; hourHeight:number; loading:boolean;
   onMove:(id:number,date:string,time:string,dur?:number)=>void;
   onDayClick:(d:Date)=>void;
   onSelectApt:(apt:ApiAppointment)=>void;
+  onSelectUnavailability:(u:ApiUnavailability)=>void;
 }) {
   const days     = Array.from({length:7},(_,i)=>addDays(weekStart,i));
   const todayStr = isoDate(new Date());
@@ -634,10 +825,23 @@ function WeekView({
           const now=new Date();
           const nowTop=isToday?((now.getHours()*60+now.getMinutes()-START_HOUR*60)/60)*hourHeight:null;
           const dayApts=aptsForDate(appointments,ds);
+          const dayUnavail=unavailForDate(unavailabilities,ds);
           return (
             <div key={ci} className="flex-1 relative border-l border-neutral-100 min-w-0" style={{height:totalH}}>
               {hours.map(h=><div key={h} className="absolute left-0 right-0 border-t border-neutral-100" style={{top:(h-START_HOUR)*hourHeight}} />)}
               {nowTop!==null&&<div className="absolute left-0 right-0 z-10 flex items-center pointer-events-none" style={{top:nowTop}}><div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 flex-shrink-0"/><div className="flex-1 h-px bg-red-400"/></div>}
+              {dayUnavail.map(u=>{
+                const { startMin, endMin } = unavailBoundsForDate(u, ds);
+                const topPx=((startMin-START_HOUR*60)/60)*hourHeight;
+                const heightPx=((endMin-startMin)/60)*hourHeight;
+                return (
+                  <UnavailabilityBlock
+                    key={u.id} unavail={u} hourHeight={hourHeight}
+                    topPx={topPx} heightPx={heightPx} compact
+                    onClick={()=>onSelectUnavailability(u)}
+                  />
+                );
+              })}
               {dayApts.map(apt=>{
                 const startMin=apt.appointment_time?toMin(apt.appointment_time):START_HOUR*60;
                 const dur=apt.duration_minutes??60;
@@ -748,7 +952,10 @@ function PendingBanner({pending,updating,collapsed,onToggle,onConfirm,onDecline,
 
 // ── QuickCreatePopup ──────────────────────────────────────────────────────────
 
-function QuickCreatePopup({date,time,onClose}:{date:string;time:string;onClose:()=>void}) {
+function QuickCreatePopup({date,time,onClose,onBlock,onPause}:{
+  date:string; time:string; onClose:()=>void;
+  onBlock:()=>void; onPause:()=>void;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"/>
@@ -760,16 +967,18 @@ function QuickCreatePopup({date,time,onClose}:{date:string;time:string;onClose:(
           <p className="text-[22px] font-bold text-neutral-900">{fmtTime(time)}</p>
         </div>
         <div className="px-3 pb-4 space-y-1.5">
-          {[
-            {label:'Nouveau rendez-vous', href:`/pro/reservations/nouveau?date=${date}&time=${time}`, primary:true},
-            {label:'Bloquer un créneau',  href:`/pro/planning?block=${date}&time=${time}`, primary:false},
-            {label:'Marquer une pause',   href:`/pro/planning?pause=${date}&time=${time}`, primary:false},
-          ].map(o=>(
-            <Link key={o.label} href={o.href}
-              className={`flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors ${o.primary?'bg-neutral-900 text-white hover:bg-neutral-700':'bg-neutral-50 text-neutral-700 hover:bg-neutral-100'}`}>
-              {o.label}<ChevronRight size={16} className="opacity-40"/>
-            </Link>
-          ))}
+          <Link href={`/pro/reservations/nouveau?date=${date}&time=${time}`}
+            className="flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-900 text-white hover:bg-neutral-700">
+            Nouveau rendez-vous<ChevronRight size={16} className="opacity-40"/>
+          </Link>
+          <button onClick={onBlock}
+            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
+            Bloquer un créneau<ChevronRight size={16} className="opacity-40"/>
+          </button>
+          <button onClick={onPause}
+            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
+            Marquer une pause<ChevronRight size={16} className="opacity-40"/>
+          </button>
           <button onClick={onClose} className="w-full py-3 text-[13px] font-semibold text-neutral-400">Annuler</button>
         </div>
       </div>
@@ -804,9 +1013,18 @@ export default function AgendaPage() {
   const [saving,   setSaving]   = useState(false);
   const [quickCreate, setQuickCreate] = useState<{time:string;date:string}|null>(null);
   const [aiHint,   setAiHint]   = useState<string|null>(null);
+  const [unavailabilities, setUnavailabilities] = useState<ApiUnavailability[]>([]);
+  const [blockCreate, setBlockCreate] = useState<{date:string;time:string;presetReason?:string}|null>(null);
+  const [selectedUnavail, setSelectedUnavail] = useState<ApiUnavailability|null>(null);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
   const weekStart = getWeekStart(current);
+
+  function loadUnavailabilities() {
+    scheduleApi.unavailabilities.list()
+      .then(data=>setUnavailabilities(data as ApiUnavailability[]))
+      .catch(()=>{});
+  }
 
   useEffect(()=>{
     if(!user) return;
@@ -814,6 +1032,7 @@ export default function AgendaPage() {
       .then(data=>setAppointments(data as ApiAppointment[]))
       .catch(()=>{})
       .finally(()=>setLoading(false));
+    loadUnavailabilities();
   },[user]);
 
   // Keep selectedApt in sync with appointments array
@@ -881,7 +1100,6 @@ export default function AgendaPage() {
 
   if(!isIndependent) return (
     <div className="min-h-screen bg-neutral-50 pb-24">
-      <DashboardNav/>
       <div className="max-w-2xl mx-auto px-4 pt-16 text-center">
         <CalendarDays size={40} className="text-neutral-200 mx-auto mb-4"/>
         <p className="text-neutral-400 text-sm">L&apos;agenda est disponible pour les coiffeurs indépendants.</p>
@@ -893,7 +1111,6 @@ export default function AgendaPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-20">
-      <DashboardNav/>
 
       {/* Header */}
       <div className="sticky top-content-mobile-pro md:top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100">
@@ -959,20 +1176,22 @@ export default function AgendaPage() {
       {/* Views */}
       {view==='day'&&(
         <DayView
-          date={current} appointments={appointments}
+          date={current} appointments={appointments} unavailabilities={unavailabilities}
           hourHeight={hourH} loading={loading}
           onMove={moveAppointment}
           onSelectApt={apt=>setSelectedApt(apt)}
+          onSelectUnavailability={u=>setSelectedUnavail(u)}
           onQuickCreate={(time,date)=>setQuickCreate({time,date})}
         />
       )}
       {view==='week'&&(
         <WeekView
-          weekStart={weekStart} appointments={appointments}
+          weekStart={weekStart} appointments={appointments} unavailabilities={unavailabilities}
           hourHeight={Math.max(44,Math.round(hourH*0.7))} loading={loading}
           onMove={moveAppointment}
           onDayClick={d=>{setCurrent(d);setView('day');}}
           onSelectApt={apt=>setSelectedApt(apt)}
+          onSelectUnavailability={u=>setSelectedUnavail(u)}
         />
       )}
       {view==='month'&&(
@@ -996,7 +1215,30 @@ export default function AgendaPage() {
 
       {/* Quick create */}
       {quickCreate&&(
-        <QuickCreatePopup date={quickCreate.date} time={quickCreate.time} onClose={()=>setQuickCreate(null)}/>
+        <QuickCreatePopup
+          date={quickCreate.date} time={quickCreate.time}
+          onClose={()=>setQuickCreate(null)}
+          onBlock={()=>{ setBlockCreate({date:quickCreate.date,time:quickCreate.time}); setQuickCreate(null); }}
+          onPause={()=>{ setBlockCreate({date:quickCreate.date,time:quickCreate.time,presetReason:'Pause'}); setQuickCreate(null); }}
+        />
+      )}
+
+      {/* Créer un blocage */}
+      {blockCreate&&(
+        <BlockCreateSheet
+          date={blockCreate.date} time={blockCreate.time} presetReason={blockCreate.presetReason}
+          onClose={()=>setBlockCreate(null)}
+          onCreated={()=>{ setBlockCreate(null); loadUnavailabilities(); }}
+        />
+      )}
+
+      {/* Supprimer un blocage */}
+      {selectedUnavail&&(
+        <UnavailabilityConfirmSheet
+          unavail={selectedUnavail}
+          onClose={()=>setSelectedUnavail(null)}
+          onDeleted={(id)=>{ setUnavailabilities(prev=>prev.filter(u=>u.id!==id)); setSelectedUnavail(null); }}
+        />
       )}
     </div>
   );

@@ -5,57 +5,39 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 
-// Photo map built from onboarding data (Unsplash)
+// Photo map — aligné sur les 10 spécialités CHAIR
 const STYLE_ICONS: Record<string, string> = {
-  // Femme
-  balayage:        '/onboarding/balayage.png',
-  'coupe-femme':   '/onboarding/coupe.png',
-  boucles:         '/onboarding/boucles.png',
-  lissage:         '/onboarding/lissage.png',
-  coloration:      '/onboarding/couleur-femme.png',
-  chignon:         '/onboarding/chignon.png',
-  // Homme
-  barber:          '/onboarding/barber.png',
-  'coupe-homme':   '/onboarding/classique.png',
-  'coupe-longue':  '/onboarding/cheveux-longs.png',
-  barbe:           '/onboarding/barbe.png',
-  'couleur-homme': '/onboarding/couleur.png',
-  dreads:          '/onboarding/dreads.png',
-  // Fallbacks
-  'coupe-courte':  '/onboarding/classique.png',
-  extensions:      '/onboarding/lissage.png',
-  mariage:         '/onboarding/chignon.png',
-  degrade:         '/onboarding/barber.png',
+  'couleur-balayage':     '/onboarding/balayage.png',
+  'coupe-femme':          '/onboarding/coupe.png',
+  'boucles-curly':        '/onboarding/boucles.png',
+  'texture-lissage':      '/onboarding/lissage.png',
+  'soins-transformation': '/onboarding/couleur.png',
+  'evenementiel':         '/onboarding/chignon.png',
+  'coupe-homme':          '/onboarding/classique.png',
+  'extensions':           '/onboarding/cheveux-longs.png',
+  'barbe':                '/onboarding/barbe.png',
+  'afro-locks':           '/onboarding/dreads.png',
 };
 
 const STYLE_LABELS: Record<string, string> = {
-  // Femme
-  balayage:        'Balayage',
-  'coupe-femme':   'Coupe & Frange',
-  boucles:         'Boucles',
-  lissage:         'Lissage',
-  coloration:      'Couleur Créative',
-  chignon:         'Chignon & Soirée',
-  // Homme
-  barber:          'Barber & Dégradé',
-  'coupe-homme':   'Coupe Classique',
-  'coupe-longue':  'Cheveux Longs',
-  barbe:           'Barbe',
-  'couleur-homme': 'Couleur & Créatif',
-  dreads:          'Dreads & Locks',
-  // Fallbacks
-  'coupe-courte':  'Coupe Courte',
-  extensions:      'Extensions',
-  mariage:         'Mariage',
-  degrade:         'Dégradé',
+  'couleur-balayage':     'Couleur & Balayage',
+  'coupe-femme':          'Coupe Femme',
+  'boucles-curly':        'Boucles & Curly',
+  'texture-lissage':      'Texture & Lissage',
+  'soins-transformation': 'Soins & Transformation',
+  'evenementiel':         'Événementiel',
+  'coupe-homme':          'Coupe Homme',
+  'extensions':           'Extensions',
+  'barbe':                'Barbe',
+  'afro-locks':           'Afro & Locks',
 };
 
 // Default inspirations for users without preferences
-const DEFAULT_SLUGS = ['balayage', 'barber', 'boucles', 'coloration', 'dreads', 'lissage', 'chignon', 'barbe'];
+const DEFAULT_SLUGS = ['couleur-balayage', 'coupe-homme', 'boucles-curly', 'afro-locks', 'evenementiel', 'texture-lissage', 'coupe-femme', 'extensions'];
 
 // Gender-based fallback slugs
-const FEMME_SLUGS  = ['balayage', 'coupe-femme', 'boucles', 'lissage', 'coloration', 'chignon'];
-const HOMME_SLUGS  = ['barber', 'coupe-homme', 'coupe-longue', 'barbe', 'couleur-homme', 'dreads'];
+const FEMME_SLUGS  = ['couleur-balayage', 'coupe-femme', 'boucles-curly', 'texture-lissage', 'evenementiel', 'extensions'];
+const HOMME_SLUGS  = ['coupe-homme', 'barbe', 'afro-locks', 'texture-lissage', 'couleur-balayage', 'extensions'];
 
 interface InspirationCard { slug: string; label: string; icon: string; }
 
@@ -140,7 +122,7 @@ export default function HomePersonalized() {
               href={`/app/recherche?specialty=${insp.slug}`}
               className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.88] transition-transform duration-150"
             >
-              <div className="w-[76px] h-[76px] rounded-full border-2 border-neutral-900 flex items-center justify-center bg-white">
+              <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white">
                 <Image
                   src={insp.icon}
                   alt={insp.label}

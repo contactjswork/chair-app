@@ -130,7 +130,7 @@ export default function PersonalizedSection() {
       <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
         {hairdressers.map((h) => (
           <div key={h.id} className="flex-shrink-0 w-[160px] md:w-[190px]">
-            <HairdresserCard hairdresser={h} />
+            <HairdresserCard hairdresser={h} showFlame={false} />
           </div>
         ))}
       </div>

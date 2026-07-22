@@ -9,11 +9,11 @@ import type { ApiHairdresserProfile, ApiSpecialty, ApiSearchSuggestion } from '@
 import { resolveMediaUrl } from '@/lib/types';
 import { search as searchApi } from '@/lib/api';
 import { getStoredLocation, storeLocation, requestBrowserGeolocation, formatDistance } from '@/hooks/useGeolocation';
-import { estimateLevelColor, LEVEL_RING } from '@/lib/chairLevel';
+import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import {
   Search, X, SlidersHorizontal, MapPin, Star, Scissors, User,
   Navigation, RotateCcw, Loader2, ChevronRight, BadgeCheck, Clock,
-  Sparkles, Sun, Droplets, Wind, Minus, Paintbrush,
+  Sparkles, Sun, Droplets, Wind, Minus, Paintbrush, Flame,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -32,23 +32,21 @@ function saveRecentSearch(q: string) {
 
 // ── Specialty ordering by gender ─────────────────────────────────────────────
 
-// Alignés sur l'onboarding — 6 par genre
-const SP_HOMME_6 = ['barber', 'coupe-homme', 'coupe-longue', 'barbe', 'couleur-homme', 'dreads'];
-const SP_FEMME_6 = ['balayage', 'coupe-femme', 'boucles', 'lissage', 'coloration', 'chignon'];
+// Alignées sur les 10 spécialités CHAIR — 6 par genre (unisexes réparties des deux côtés)
+const SP_HOMME_6 = ['coupe-homme', 'barbe', 'afro-locks', 'texture-lissage', 'couleur-balayage', 'extensions'];
+const SP_FEMME_6 = ['couleur-balayage', 'coupe-femme', 'boucles-curly', 'texture-lissage', 'evenementiel', 'extensions'];
 
 const NAME_OVERRIDE: Record<string, string> = {
-  'barber':        'Barber',
-  'coupe-homme':   'Coupe classique',
-  'coupe-longue':  'Cheveux longs',
-  'barbe':         'Barbe',
-  'couleur-homme': 'Couleur créative',
-  'dreads':        'Dreads & Locks',
-  'balayage':      'Balayage',
-  'coupe-femme':   'Coupe & Frange',
-  'boucles':       'Boucles',
-  'lissage':       'Lissage',
-  'coloration':    'Coloration',
-  'chignon':       'Chignon & Soirée',
+  'coupe-homme':          'Coupe Homme',
+  'barbe':                'Barbe',
+  'afro-locks':           'Afro & Locks',
+  'texture-lissage':      'Texture & Lissage',
+  'couleur-balayage':     'Couleur & Balayage',
+  'coupe-femme':          'Coupe Femme',
+  'boucles-curly':        'Boucles & Curly',
+  'evenementiel':         'Événementiel',
+  'extensions':           'Extensions',
+  'soins-transformation': 'Soins & Transformation',
 };
 
 function specialtyName(s: ApiSpecialty): string {
@@ -56,20 +54,16 @@ function specialtyName(s: ApiSpecialty): string {
 }
 
 const SPECIALTY_ICON: Record<string, React.ReactNode> = {
-  // Homme
-  'barber':        <Scissors   size={12} strokeWidth={2} />,
-  'coupe-homme':   <Scissors   size={12} strokeWidth={2} />,
-  'coupe-longue':  <Wind       size={12} strokeWidth={2} />,
-  'barbe':         <User       size={12} strokeWidth={2} />,
-  'couleur-homme': <Paintbrush size={12} strokeWidth={2} />,
-  'dreads':        <Minus      size={12} strokeWidth={2.5} />,
-  // Femme
-  'balayage':      <Sparkles   size={12} strokeWidth={2} />,
-  'coupe-femme':   <Scissors   size={12} strokeWidth={2} />,
-  'boucles':       <Wind       size={12} strokeWidth={2} />,
-  'lissage':       <Minus      size={12} strokeWidth={2.5} />,
-  'coloration':    <Paintbrush size={12} strokeWidth={2} />,
-  'chignon':       <Sun        size={12} strokeWidth={2} />,
+  'coupe-homme':          <Scissors   size={12} strokeWidth={2} />,
+  'barbe':                <User       size={12} strokeWidth={2} />,
+  'afro-locks':           <Minus      size={12} strokeWidth={2.5} />,
+  'texture-lissage':      <Minus      size={12} strokeWidth={2.5} />,
+  'couleur-balayage':     <Sparkles   size={12} strokeWidth={2} />,
+  'coupe-femme':          <Scissors   size={12} strokeWidth={2} />,
+  'boucles-curly':        <Wind       size={12} strokeWidth={2} />,
+  'evenementiel':         <Sun        size={12} strokeWidth={2} />,
+  'extensions':           <Paintbrush size={12} strokeWidth={2} />,
+  'soins-transformation': <Sparkles   size={12} strokeWidth={2} />,
 };
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -126,17 +120,32 @@ function HairdresserRow({ h, distanceKm }: { h: ApiHairdresserProfile; distanceK
   const hasRating = h.reviews_count > 0;
   const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const streakDays = h.chair_streak?.current_streak ?? 0;
+  const streakActive = h.chair_streak?.is_active_today ?? false;
+  const showFlame = streakDays >= 3;
 
   return (
     <Link href={`/app/coiffeur/${h.slug}`} className="flex items-center gap-4 py-4 border-b border-neutral-100 last:border-0 group active:bg-neutral-50 rounded-xl transition-colors -mx-1 px-1">
 
       {/* Avatar */}
-      <div className={`relative flex-shrink-0 w-[60px] h-[60px] rounded-full overflow-hidden bg-neutral-100 ${ring.show ? 'ring-2 ring-offset-1 ring-amber-400' : ''}`}>
-        {avatar ? (
-          <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="60px" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-neutral-200">
-            <span className="text-xl font-bold text-neutral-400">{h.user.name.charAt(0).toUpperCase()}</span>
+      <div
+        className="relative flex-shrink-0 w-[60px] h-[60px] rounded-full p-[2px]"
+        style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
+      >
+        {ring.show && <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />}
+        <div className={`relative rounded-full overflow-hidden bg-neutral-100 ${ring.show ? 'w-[calc(100%-4px)] h-[calc(100%-4px)] m-[2px]' : 'w-full h-full'}`}>
+          {avatar ? (
+            <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="60px" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+              <span className="text-xl font-bold text-neutral-400">{h.user.name.charAt(0).toUpperCase()}</span>
+            </div>
+          )}
+        </div>
+        {showFlame && (
+          <div className={`absolute -top-1 -right-1 flex items-center gap-0.5 pl-1 pr-1.5 py-0.5 rounded-full border-2 border-white shadow-sm ${streakActive ? 'bg-orange-500' : 'bg-neutral-400'}`}>
+            <Flame size={7} className="text-white" fill="currentColor" strokeWidth={0} />
+            <span className="text-[7px] font-bold text-white leading-none">{streakDays}</span>
           </div>
         )}
       </div>
@@ -188,6 +197,11 @@ function HairdresserGridCard({ h, distanceKm }: { h: ApiHairdresserProfile; dist
   const bg = banner ?? avatar;
   const hasRating = h.reviews_count > 0;
   const spec = h.specialties[0]?.name;
+  const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
+  const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const streakDays = h.chair_streak?.current_streak ?? 0;
+  const streakActive = h.chair_streak?.is_active_today ?? false;
+  const showFlame = streakDays >= 3;
 
   return (
     <Link href={`/app/coiffeur/${h.slug}`} className="block group">
@@ -197,8 +211,21 @@ function HairdresserGridCard({ h, distanceKm }: { h: ApiHairdresserProfile; dist
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/5 to-transparent" />
 
+        {ring.show && (
+          <span className={`absolute top-2.5 left-2.5 text-[7px] font-bold tracking-[0.1em] uppercase text-white px-2 py-1 rounded-full ${ring.pill}`}>
+            {ring.label}
+          </span>
+        )}
+
+        {showFlame && (
+          <div className={`absolute top-2.5 right-2.5 flex items-center gap-0.5 pl-1 pr-1.5 py-0.5 rounded-full shadow ${streakActive ? 'bg-orange-500' : 'bg-neutral-500/90'}`}>
+            <Flame size={9} className="text-white" fill="currentColor" strokeWidth={0} />
+            <span className="text-[9px] font-bold text-white leading-none">{streakDays}</span>
+          </div>
+        )}
+
         {h.is_verified && (
-          <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center shadow">
+          <div className={`absolute ${showFlame ? 'top-9' : 'top-2.5'} right-2.5 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center shadow transition-all`}>
             <BadgeCheck size={11} className="text-violet-600" />
           </div>
         )}
@@ -444,15 +471,15 @@ function RechercheContent() {
   const placeholder = (() => {
     const interests = prefs.interests ?? [];
     const SLUG_LABEL: Record<string, string> = {
-      barber: 'Barber', degrade: 'Dégradé', fade: 'Fade', balayage: 'Balayage',
-      blond: 'Blond', coloration: 'Coloration', 'ombre-hair': 'Ombré', boucles: 'Boucles',
+      'coupe-homme': 'Coupe Homme', 'barbe': 'Barbe', 'coupe-femme': 'Coupe Femme',
+      'couleur-balayage': 'Balayage', 'texture-lissage': 'Lissage', 'boucles-curly': 'Boucles',
     };
     if (interests.length >= 2) {
       return interests.slice(0, 3).map((s) => SLUG_LABEL[s] ?? s).join(', ') + '...';
     }
-    if (prefs.gender === 'homme') return 'Barber, Dégradé, Fade...';
-    if (prefs.gender === 'femme') return 'Balayage, Blond, Ombré...';
-    return 'Balayage, Barber, blond polaire...';
+    if (prefs.gender === 'homme') return 'Coupe Homme, Barbe, Afro & Locks...';
+    if (prefs.gender === 'femme') return 'Balayage, Boucles, Lissage...';
+    return 'Balayage, Coupe Homme, Événementiel...';
   })();
 
   // ── Init ──────────────────────────────────────────────────────────────────

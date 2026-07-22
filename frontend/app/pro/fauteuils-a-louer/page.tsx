@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
-import DashboardNav from '@/components/layout/DashboardNav';
 import {
   Armchair, MapPin, Calendar, Euro, Package, AlertCircle,
   ChevronLeft, Send, Check, Search, X, Camera, Star,
@@ -113,10 +112,9 @@ export default function FauteuilsALouerPage() {
 
     return (
       <div className="min-h-screen bg-neutral-50 pb-24">
-        <DashboardNav />
         {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
-        <div className="md:ml-60">
+        <div>
           {/* Galerie photos */}
           {hasPhotos ? (
             <div className="relative bg-neutral-900 aspect-[4/3] max-h-80 overflow-hidden">
@@ -297,10 +295,9 @@ export default function FauteuilsALouerPage() {
   // ── VUE LISTE ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
-      <DashboardNav />
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
-      <div className="md:ml-60 max-w-3xl mx-auto px-4 pt-4 pb-6">
+      <div className="max-w-3xl mx-auto px-4 pt-4 pb-6">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-neutral-900">Fauteuils à louer</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} annonce{filtered.length !== 1 ? 's' : ''} disponible{filtered.length !== 1 ? 's' : ''}</p>

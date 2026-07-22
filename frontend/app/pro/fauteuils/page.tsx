@@ -4,8 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
-import SalonOwnerNav from '@/components/layout/SalonOwnerNav';
-import SalonOwnerSidebar from '@/components/layout/SalonOwnerSidebar';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import {
   Armchair, Plus, Edit2, Trash2, Check, X, Camera, Euro,
@@ -173,11 +171,9 @@ export default function FauteuilsPage() {
   if (view === 'detail' && detailRental) {
     const photos = detailRental.photos ?? [];
     return (
-      <div className="min-h-screen bg-neutral-50 flex pb-28 md:pb-0">
-        <SalonOwnerSidebar />
-        <SalonOwnerNav />
+      <div className="min-h-screen bg-neutral-50 flex">
         {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
-        <div className="flex-1 md:ml-60">
+        <div className="flex-1">
         <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
           <DashboardPageHeader title={detailRental.title} backHref="#" right={
             <button onClick={() => setView('list')} className="text-xs text-neutral-500 font-medium">← Retour</button>
@@ -291,7 +287,7 @@ export default function FauteuilsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-neutral-900">{req.hairdresser?.user?.name ?? 'Coiffeur'}</p>
-                      {req.message && <p className="text-xs text-neutral-400 truncate">"{req.message}"</p>}
+                      {req.message && <p className="text-xs text-neutral-400 truncate">&quot;{req.message}&quot;</p>}
                     </div>
                     <div className="flex gap-1.5">
                       <button onClick={() => handleRequest(req.id, 'accept')} className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors"><Check size={13} className="text-white" /></button>
@@ -311,10 +307,8 @@ export default function FauteuilsPage() {
   // ── VUE FORMULAIRE ────────────────────────────────────────────────────────
   if (view === 'form') {
     return (
-      <div className="min-h-screen bg-neutral-50 flex pb-28 md:pb-0">
-        <SalonOwnerSidebar />
-        <SalonOwnerNav />
-        <div className="flex-1 md:ml-60">
+      <div className="min-h-screen bg-neutral-50 flex">
+        <div className="flex-1">
         <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
           <DashboardPageHeader title={editItem ? 'Modifier l\'annonce' : 'Nouvelle annonce'} right={
             <button onClick={() => setView(editItem ? 'detail' : 'list')} className="text-xs text-neutral-500 font-medium">← Retour</button>
@@ -324,7 +318,7 @@ export default function FauteuilsPage() {
             <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
               <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Informations</h3>
               <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1">Titre de l'annonce *</label>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1">Titre de l&apos;annonce *</label>
                 <input type="text" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                   placeholder="Ex: Fauteuil disponible du lundi au vendredi" required className={inputCls} />
               </div>
@@ -402,11 +396,9 @@ export default function FauteuilsPage() {
 
   // ── VUE LISTE ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-neutral-50 flex pb-28 md:pb-0">
-      <SalonOwnerSidebar />
-      <SalonOwnerNav />
+    <div className="min-h-screen bg-neutral-50 flex">
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
-      <div className="flex-1 md:ml-60">
+      <div className="flex-1">
       <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
         <DashboardPageHeader title="Fauteuils" />
 

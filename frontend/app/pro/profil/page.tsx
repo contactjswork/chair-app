@@ -1,14 +1,18 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
-import { api, training as trainingApi } from '@/lib/api';
-import type { ApiSpecialty, ApiTrainingBadge } from '@/lib/types';
+import { api } from '@/lib/api';
+import { getStoredToken } from '@/lib/auth';
+import type { ApiSpecialty, ApiService } from '@/lib/types';
 import ImageUpload from '@/components/ui/ImageUpload';
-import { ChevronLeft, Save, Check, AlertCircle, Plus, Eye, Scissors } from 'lucide-react';
-import DashboardNav from '@/components/layout/DashboardNav';
+import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
+import {
+  ChevronLeft, Save, Check, AlertCircle, Plus, Eye, Scissors,
+  Clock, ShieldCheck, Upload, Loader, X,
+} from 'lucide-react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -19,12 +23,13 @@ interface ProfileData {
     slug: string;
     tagline: string | null;
     city: string | null;
-    instagram_url: string | null;
     booking_url: string | null;
     years_experience: number | null;
+    diploma: string | null;
+    diploma_document_url: string | null;
+    diploma_status: 'none' | 'pending' | 'verified' | 'rejected';
     banner_image: string | null;
     is_independent: boolean;
-    keywords: string | null;
     work_availability: 'employed' | 'looking_salon' | 'looking_gig' | 'not_available' | null;
     specialties: ApiSpecialty[];
   };
@@ -69,22 +74,24 @@ export default function DashboardProfilPage() {
   const [profile, setProfile]           = useState<ProfileData | null>(null);
   const [loading, setLoading]           = useState(true);
   const [allSpecialties, setAllSpecialties] = useState<ApiSpecialty[]>([]);
+  const [services, setServices]         = useState<ApiService[]>([]);
 
   // Champs
   const [bio, setBio]                         = useState('');
   const [tagline, setTagline]                 = useState('');
   const [city, setCity]                       = useState('');
-  const [instagram, setInstagram]             = useState('');
   const [bookingUrl, setBookingUrl]           = useState('');
   const [yearsExp, setYearsExp]               = useState('');
   const [selectedSpecialties, setSelectedSpecialties] = useState<number[]>([]);
   const [workAvailability, setWorkAvailability] = useState<string>('employed');
 
-  // Formations
-  const [trainingCatalogue, setTrainingCatalogue] = useState<ApiTrainingBadge[]>([]);
-  const [myTraining, setMyTraining]               = useState<ApiTrainingBadge[]>([]);
-  const [trainingSearch, setTrainingSearch]       = useState('');
-  const [trainingLoading, setTrainingLoading]     = useState(false);
+  // Diplôme
+  const [diplomaType, setDiplomaType]         = useState('');
+  const [diplomaStatus, setDiplomaStatus]     = useState<'none' | 'pending' | 'verified' | 'rejected'>('none');
+  const [diplomaDocUrl, setDiplomaDocUrl]     = useState<string | null>(null);
+  const [diplomaUploading, setDiplomaUploading] = useState(false);
+  const [diplomaError, setDiplomaError]       = useState('');
+  const diplomaFileRef = useRef<HTMLInputElement>(null);
 
   const [avatarUrl, setAvatarUrl]   = useState<string | null>(null);
   const [bannerUrl, setBannerUrl]   = useState<string | null>(null);
@@ -103,31 +110,27 @@ export default function DashboardProfilPage() {
     Promise.all([
       api.get<ProfileData>('/profile'),
       fetch(`${API_BASE}/specialties`).then((r) => r.json()),
+      api.get<ApiService[]>('/services').catch(() => []),
     ])
-      .then(([profileData, specs]) => {
+      .then(([profileData, specs, svcs]) => {
         setProfile(profileData);
         setBio(profileData.user.bio ?? '');
         setTagline(profileData.profile.tagline ?? '');
         setCity(profileData.profile.city ?? profileData.user.city ?? '');
-        setInstagram(profileData.profile.instagram_url ?? '');
         setBookingUrl(profileData.profile.booking_url ?? '');
         setYearsExp(String(profileData.profile.years_experience ?? ''));
+        setDiplomaType(profileData.profile.diploma ?? '');
+        setDiplomaStatus(profileData.profile.diploma_status ?? 'none');
+        setDiplomaDocUrl(profileData.profile.diploma_document_url ?? null);
         setSelectedSpecialties(profileData.profile.specialties.map((s) => s.id));
         setAllSpecialties(specs);
+        setServices(svcs as ApiService[]);
         setAvatarUrl(profileData.user.avatar);
         setBannerUrl(profileData.profile.banner_image);
         setWorkAvailability(profileData.profile.work_availability ?? 'employed');
       })
       .catch((e) => setErrorMsg(e instanceof Error ? e.message : 'Impossible de charger le profil.'))
       .finally(() => setLoading(false));
-
-    // Charger le catalogue et les formations
-    Promise.all([trainingApi.catalogue(), trainingApi.myBadges()])
-      .then(([catalogue, mine]) => {
-        setTrainingCatalogue(catalogue);
-        setMyTraining(mine);
-      })
-      .catch(() => {});
   }, [user]);
 
   function toggleSpecialty(id: number) {
@@ -145,7 +148,6 @@ export default function DashboardProfilPage() {
         bio: bio || null,
         tagline: tagline || null,
         city: city || null,
-        instagram_url: instagram || null,
         booking_url: bookingUrl || null,
         years_experience: yearsExp ? parseInt(yearsExp) : null,
         work_availability: workAvailability,
@@ -162,6 +164,45 @@ export default function DashboardProfilPage() {
     } catch (e) {
       setErrorMsg(e instanceof Error ? e.message : 'Erreur lors de la sauvegarde.');
       setSaveStatus('error');
+    }
+  }
+
+  async function handleDiplomaFileSelect(file: File) {
+    if (!diplomaType) {
+      setDiplomaError('Choisissez le diplôme obtenu avant d\'envoyer le document.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setDiplomaError('Photo du diplôme requise (JPG, PNG, WebP).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setDiplomaError('Fichier trop lourd (max 8 Mo).');
+      return;
+    }
+    setDiplomaError('');
+    setDiplomaUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('diploma', diplomaType);
+      formData.append('document', file);
+      const token = getStoredToken();
+      const res = await fetch(`${API_BASE}/profile/diploma-document`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Échec de l\'envoi.');
+      }
+      const data = await res.json();
+      setDiplomaStatus(data.diploma_status);
+      setDiplomaDocUrl(data.diploma_document_url);
+    } catch (e) {
+      setDiplomaError(e instanceof Error ? e.message : 'Échec de l\'envoi.');
+    } finally {
+      setDiplomaUploading(false);
     }
   }
 
@@ -182,7 +223,6 @@ export default function DashboardProfilPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <DashboardNav />
 
       {/* Header mobile */}
       <div className="px-4 pt-4">
@@ -199,24 +239,16 @@ export default function DashboardProfilPage() {
           <span className="text-neutral-200">|</span>
           <span className="text-sm font-semibold text-neutral-900">Modifier mon profil</span>
         </div>
-        <div className="flex items-center gap-3">
-          {user.hairdresser_profile && (
-            <Link href={`/app/coiffeur/${user.hairdresser_profile.slug}`} target="_blank"
-              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
-              <Eye size={13} /> Voir mon profil
-            </Link>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={saveStatus === 'saving'}
-            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-50 ${
-              saveStatus === 'saved' ? 'bg-green-600 text-white' : 'bg-neutral-900 text-white hover:bg-neutral-700'
-            }`}
-          >
-            {saveStatus === 'saving' ? 'Sauvegarde...' : saveStatus === 'saved'
-              ? <><Check size={15} /> Sauvegardé</> : <><Save size={15} /> Enregistrer</>}
-          </button>
-        </div>
+        <button
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-50 ${
+            saveStatus === 'saved' ? 'bg-green-600 text-white' : 'bg-neutral-900 text-white hover:bg-neutral-700'
+          }`}
+        >
+          {saveStatus === 'saving' ? 'Sauvegarde...' : saveStatus === 'saved'
+            ? <><Check size={15} /> Sauvegardé</> : <><Save size={15} /> Enregistrer</>}
+        </button>
       </header>
 
       {/* ── Contenu ─────────────────────────────────────────────────── */}
@@ -271,7 +303,10 @@ export default function DashboardProfilPage() {
         {/* ── Identité ─────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Identité</h2>
-          <p className="text-xs text-neutral-400 mb-4">Ce que les clients voient en premier</p>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Votre photo et votre bannière sont la toute première chose qu&apos;un client voit — avant même de lire un mot de votre bio.
+            Un profil sans photo inspire méfiance ; un profil soigné inspire confiance. <span className="font-semibold text-neutral-700">Les profils avec photo reçoivent 5x plus de visites.</span>
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-5">
             <ImageUpload
               currentUrl={avatarUrl}
@@ -312,6 +347,7 @@ export default function DashboardProfilPage() {
                 placeholder="Ex : Strasbourg, Haguenau, Paris..."
                 className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
               />
+              <p className="text-[11px] text-neutral-400 mt-1.5">Indispensable pour votre référencement local — c&apos;est ce qui vous fait apparaître dans les recherches &quot;coiffeur à {city || '[votre ville]'}&quot;.</p>
             </div>
           </div>
         </section>
@@ -319,7 +355,10 @@ export default function DashboardProfilPage() {
         {/* ── Présentation ─────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Présentation</h2>
-          <p className="text-xs text-neutral-400 mb-4">Votre histoire, votre style, ce qui vous rend unique</p>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Un client ne réserve pas un profil anonyme. Votre accroche et votre bio racontent qui vous êtes, votre parcours et votre approche —
+            c&apos;est ce qui transforme une visite en prise de rendez-vous. Une bio complète améliore aussi votre référencement sur CHAIR.
+          </p>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
@@ -350,36 +389,76 @@ export default function DashboardProfilPage() {
           </div>
         </section>
 
-        {/* ── Spécialités ──────────────────────────────────────────── */}
+        {/* ── Spécialités + services ───────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Spécialités</h2>
-          <p className="text-xs text-neutral-400 mb-4">Vos domaines d'expertise — apparaissent sur votre profil et dans la recherche</p>
-          <div className="flex flex-wrap gap-2">
-            {allSpecialties.map((s) => {
-              const selected = selectedSpecialties.includes(s.id);
-              return (
-                <button key={s.id} type="button" onClick={() => toggleSpecialty(s.id)}
-                  className={`text-xs font-semibold tracking-wide uppercase px-3 py-1.5 rounded-full border transition-all ${
-                    selected
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
-                  }`}>
-                  {s.name}
-                </button>
-              );
-            })}
-          </div>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Vos domaines d&apos;expertise — apparaissent sur votre profil et dans la recherche CHAIR. C&apos;est le principal levier de votre visibilité :
+            un client qui cherche &quot;Coupe Homme à Haguenau&quot; ne verra que les coiffeurs qui ont coché cette spécialité. Aucune limite — cochez tout ce qui vous représente.
+          </p>
+
+          <SpecialtyPicker specialties={allSpecialties} selected={selectedSpecialties} onToggle={toggleSpecialty} />
+
           {selectedSpecialties.length > 0 && (
-            <p className="text-[11px] text-neutral-400 mt-3">{selectedSpecialties.length} sélectionnée{selectedSpecialties.length > 1 ? 's' : ''}</p>
+            <div className="mt-5 pt-4 border-t border-neutral-100 space-y-3">
+              <p className="text-xs font-semibold text-neutral-700">Vos services par spécialité</p>
+              <p className="text-[11px] text-neutral-400 -mt-2 leading-relaxed">
+                Une spécialité regroupe plusieurs prestations précises. Détaillez vos services pour apparaître dans des recherches plus précises encore.
+              </p>
+              {selectedSpecialties.map((id) => {
+                const sp = allSpecialties.find((s) => s.id === id);
+                if (!sp) return null;
+                const spServices = services.filter((s) => s.specialty_id === id);
+                return (
+                  <div key={id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 px-4 py-3 bg-neutral-50">
+                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
+                        {sp.icon
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={sp.icon} alt={sp.name} className="w-full h-full object-cover" />
+                          : <Scissors size={15} className="text-neutral-400" strokeWidth={1.5} />
+                        }
+                      </div>
+                      <p className="text-sm font-semibold text-neutral-900 flex-1 min-w-0">{sp.name}</p>
+                      <Link
+                        href={`/pro/services?specialty=${id}`}
+                        className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 transition-colors flex-shrink-0"
+                      >
+                        + Ajouter
+                      </Link>
+                    </div>
+                    {spServices.length === 0 ? (
+                      <p className="text-[11px] text-amber-600 px-4 py-3 leading-relaxed">
+                        Aucun service pour l&apos;instant — cette spécialité reste invisible dans les recherches précises tant qu&apos;aucun service n&apos;y est rattaché.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-neutral-50">
+                        {spServices.map((s) => (
+                          <li key={s.id} className="flex items-center justify-between px-4 py-2.5 text-xs">
+                            <span className="text-neutral-700 font-medium">{s.name}</span>
+                            {isIndependent && s.price != null && (
+                              <span className="text-neutral-400 font-semibold">{parseFloat(String(s.price)).toFixed(0)} €</span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </section>
 
         {/* ── Informations professionnelles ────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-4">Informations professionnelles</h2>
+          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Informations professionnelles</h2>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Votre expérience et vos qualifications rassurent les clients qui hésitent entre plusieurs profils.
+          </p>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Années d'expérience</label>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Années d&apos;expérience</label>
               <input
                 type="number"
                 value={yearsExp}
@@ -389,18 +468,71 @@ export default function DashboardProfilPage() {
                 className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
-                Instagram <span className="text-neutral-400 font-normal">— URL complète</span>
-              </label>
-              <input
-                type="url"
-                value={instagram}
-                onChange={(e) => { setInstagram(e.target.value); markDirty(); }}
-                placeholder="https://instagram.com/votre-compte"
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
-              />
-            </div>
+
+            {isIndependent && (
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 mb-1.5 flex items-center gap-1.5">
+                  <ShieldCheck size={13} className="text-neutral-400" />
+                  Diplôme officiel <span className="text-neutral-400 font-normal">— vérifié par CHAIR</span>
+                </label>
+                <p className="text-[11px] text-neutral-400 mb-2.5 leading-relaxed">
+                  Pour garder ce badge crédible, chaque diplôme est vérifié par CHAIR à partir d&apos;un document justificatif — pas d&apos;auto-déclaration.
+                  Envoyez une photo claire de votre diplôme ; il sera validé sous quelques jours.
+                </p>
+
+                {diplomaStatus === 'verified' ? (
+                  <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 text-green-700 text-xs font-semibold px-4 py-3 rounded-xl">
+                    <Check size={14} className="flex-shrink-0" />
+                    {diplomaType} — vérifié par CHAIR
+                  </div>
+                ) : diplomaStatus === 'pending' ? (
+                  <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold px-4 py-3 rounded-xl">
+                    <Clock size={14} className="flex-shrink-0" />
+                    {diplomaType} — en cours de vérification
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {diplomaStatus === 'rejected' && (
+                      <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-600 text-xs font-semibold px-4 py-3 rounded-xl">
+                        <X size={14} className="flex-shrink-0" />
+                        Document refusé — vérifiez qu&apos;il est lisible et réessayez.
+                      </div>
+                    )}
+                    <select
+                      value={diplomaType}
+                      onChange={(e) => setDiplomaType(e.target.value)}
+                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                    >
+                      <option value="">Choisir le diplôme obtenu</option>
+                      <option value="CAP Coiffure">CAP Coiffure</option>
+                      <option value="BP Coiffure">BP Coiffure</option>
+                      <option value="BM Coiffure">BM Coiffure (Brevet de Maîtrise)</option>
+                    </select>
+                    <button
+                      type="button"
+                      disabled={!diplomaType || diplomaUploading}
+                      onClick={() => diplomaFileRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 text-xs font-semibold border border-neutral-200 text-neutral-700 px-4 py-3 rounded-xl hover:border-neutral-400 transition-colors disabled:opacity-40"
+                    >
+                      {diplomaUploading ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {diplomaUploading ? 'Envoi en cours...' : 'Envoyer une photo de mon diplôme'}
+                    </button>
+                    <input
+                      ref={diplomaFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleDiplomaFileSelect(f); e.target.value = ''; }}
+                    />
+                    {diplomaError && <p className="text-[11px] text-red-500">{diplomaError}</p>}
+                    {diplomaDocUrl && diplomaStatus === 'rejected' && (
+                      <p className="text-[11px] text-neutral-400">Dernier document envoyé : <a href={diplomaDocUrl} target="_blank" rel="noreferrer" className="underline">voir</a></p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {profile?.profile && !profile.profile.is_independent && (
               <div>
                 <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
@@ -427,7 +559,9 @@ export default function DashboardProfilPage() {
         {/* ── Disponibilité ────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Disponibilité</h2>
-          <p className="text-xs text-neutral-400 mb-4">Visible sur votre profil — permet aux salons et clients de vous trouver</p>
+          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
+            Visible sur votre profil — permet aux salons et clients de savoir si vous êtes en poste, à l&apos;écoute d&apos;opportunités, ou non disponible.
+          </p>
           <div className="flex flex-col gap-2">
             {([
               ['employed',       'En poste',                   'Vous êtes actuellement en salon ou en activité'],
@@ -459,70 +593,6 @@ export default function DashboardProfilPage() {
           </div>
         </section>
 
-        {/* ── Formations ───────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Formations & certifications</h2>
-          <p className="text-xs text-neutral-400 mb-4">Augmentez votre crédibilité — visible sur votre profil public</p>
-
-          {/* Formations déjà ajoutées */}
-          {myTraining.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {myTraining.map((b) => (
-                <div key={b.id} className="flex items-center gap-1.5 bg-neutral-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full">
-                  {b.name}
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setTrainingLoading(true);
-                      try {
-                        await trainingApi.remove(b.id);
-                        setMyTraining((prev) => prev.filter((t) => t.id !== b.id));
-                      } catch {} finally { setTrainingLoading(false); }
-                    }}
-                    className="ml-0.5 text-neutral-300 hover:text-white transition-colors leading-none"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Recherche dans le catalogue */}
-          <input
-            type="text"
-            value={trainingSearch}
-            onChange={(e) => setTrainingSearch(e.target.value)}
-            placeholder="Rechercher une institution..."
-            className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 mb-3"
-          />
-
-          <div className="flex flex-wrap gap-1.5">
-            {trainingCatalogue
-              .filter((b) =>
-                !myTraining.some((t) => t.id === b.id) &&
-                (trainingSearch === '' || b.institution.toLowerCase().includes(trainingSearch.toLowerCase()) || b.name.toLowerCase().includes(trainingSearch.toLowerCase()))
-              )
-              .map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  disabled={trainingLoading}
-                  onClick={async () => {
-                    setTrainingLoading(true);
-                    try {
-                      const updated = await trainingApi.add(b.id);
-                      setMyTraining(updated);
-                    } catch {} finally { setTrainingLoading(false); }
-                  }}
-                  className="text-[11px] font-semibold px-3 py-1.5 rounded-full border border-neutral-200 text-neutral-500 hover:border-neutral-900 hover:text-neutral-900 transition-all disabled:opacity-50"
-                >
-                  + {b.name}
-                </button>
-              ))}
-          </div>
-        </section>
-
         {/* ── CTA Services — référencement ─────────────────────────── */}
         <section className="bg-neutral-50 border border-neutral-100 rounded-2xl p-5 mb-6">
           <div className="flex items-start gap-3">
@@ -530,10 +600,10 @@ export default function DashboardProfilPage() {
               <Scissors size={14} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-semibold text-neutral-900">Ajoutez vos services</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">Gérer mes services</h2>
               <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">
                 Les services améliorent votre visibilité dans la recherche CHAIR. Quand un client tape
-                {' '}"balayage blond" ou "coupe homme", ce sont vos services qui le font apparaître.
+                {' '}&quot;balayage blond&quot; ou &quot;coupe homme&quot;, ce sont vos services qui le font apparaître.
               </p>
               <Link
                 href="/pro/services"
@@ -551,10 +621,11 @@ export default function DashboardProfilPage() {
           <div className="text-center pb-2">
             <Link
               href={`/app/coiffeur/${user.hairdresser_profile.slug}`}
-              className="text-xs text-neutral-400 hover:text-neutral-700 underline transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 underline transition-colors"
               target="_blank"
             >
-              Voir mon profil public →
+              <Eye size={12} />
+              Voir mon profil public
             </Link>
           </div>
         )}

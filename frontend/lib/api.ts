@@ -172,8 +172,56 @@ export const streak = {
 
 // ── Analytics ────────────────────────────────────────────────────────
 
+import type { ApiAnalytics } from './types';
+
 export const analytics = {
-  get: () => api.get('/my-analytics'),
+  get: () => api.get<ApiAnalytics>('/my-analytics'),
+};
+
+// ── Abonnements CHAIR+ / CHAIR BUSINESS ─────────────────────────────────
+
+import type { ApiMySubscription } from './types';
+
+export const subscription = {
+  mine: () => api.get<ApiMySubscription>('/my-subscription'),
+  subscribe: (plan: 'chair_plus' | 'chair_business') =>
+    api.post<{ checkout_url: string }>('/subscribe', { plan }),
+  manage: () => api.post<{ portal_url: string }>('/subscribe/manage', {}),
+};
+
+// ── Stories CHAIR+ ──────────────────────────────────────────────────────
+
+import type { ApiStoryBubble, ApiStory } from './types';
+
+export const stories = {
+  feed: () => api.get<{ bubbles: ApiStoryBubble[] }>('/stories/feed'),
+  mine: () => api.get<ApiStory[]>('/stories/mine'),
+  byHairdresser: (hairdresserId: number) => api.get<ApiStory[]>(`/stories/by-hairdresser/${hairdresserId}`),
+  view: (id: number) => api.post<{ views_count: number }>(`/stories/${id}/view`, {}),
+  remove: (id: number) => api.delete<{ message: string }>(`/stories/${id}`),
+};
+
+// ── Programme ambassadeur ──────────────────────────────────────────────
+
+import type { ApiReferral, ShareActionType, ShareChannel } from './types';
+
+export const referral = {
+  mine: () => api.get<ApiReferral>('/my-referral'),
+  share: (actionType: ShareActionType, opts?: { targetType?: string; targetId?: number; channel?: ShareChannel }) =>
+    api.post<{ rewarded: boolean; points: number }>('/share-events', {
+      action_type: actionType,
+      target_type: opts?.targetType,
+      target_id: opts?.targetId,
+      channel: opts?.channel,
+    }),
+};
+
+// ── Réputation par spécialité ──────────────────────────────────────────
+
+import type { ApiSpecialtyProgressResponse } from './types';
+
+export const specialtyProgress = {
+  mine: () => api.get<ApiSpecialtyProgressResponse>('/my-specialty-progress'),
 };
 
 // ── Leaderboard ──────────────────────────────────────────────────────
@@ -186,9 +234,20 @@ export const leaderboard = {
     if (params.limit) qs.set('limit', String(params.limit));
     return api.get(`/leaderboard?${qs.toString()}`);
   },
+  /** Classement par spécialité, filtré ville/département/région/France. */
+  bySpecialty: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country'; geoValue?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    qs.set('specialty_id', String(params.specialtyId));
+    if (params.geo)      qs.set('geo', params.geo);
+    if (params.geoValue) qs.set('geo_value', params.geoValue);
+    if (params.limit)    qs.set('limit', String(params.limit));
+    return api.get<import('./types').ApiSpecialtyLeaderboard>(`/leaderboard?${qs.toString()}`);
+  },
 };
 
 // ── Appointments ────────────────────────────────────────────────────
+
+import type { ApiStats } from './types';
 
 export interface AppointmentCreateData {
   hairdresser_id: number;
@@ -232,7 +291,7 @@ export const appointments = {
     api.post(`/appointments/${appointmentId}/review`, data),
 
   getStats: () =>
-    api.get('/stats'),
+    api.get<ApiStats>('/stats'),
 
   myList: () =>
     api.get('/my-appointments'),
@@ -247,12 +306,13 @@ import type {
 
 export const visits = {
   /** Coiffeur : récupère ou génère le token QR actif */
-  getQrToken: () =>
-    api.get<ApiQrTokenResponse>('/hairdresser/qr-token'),
+  getQrToken: (specialtyId?: number | null) =>
+    api.get<ApiQrTokenResponse>(`/hairdresser/qr-token${specialtyId ? `?specialty_id=${specialtyId}` : ''}`),
 
-  /** Coiffeur : force la génération d'un nouveau QR même si l'actuel est encore valide */
-  refreshQrToken: () =>
-    api.post<ApiQrTokenResponse>('/hairdresser/qr-token/refresh', {}),
+  /** Coiffeur : force la génération d'un nouveau QR même si l'actuel est encore valide.
+   *  specialty_id : quelle prestation ce QR va certifier (alimente le score de la bonne spécialité). */
+  refreshQrToken: (specialtyId?: number | null) =>
+    api.post<ApiQrTokenResponse>('/hairdresser/qr-token/refresh', { specialty_id: specialtyId ?? null }),
 
   /** Public : infos du coiffeur avant confirmation du scan */
   getScanInfo: (token: string) =>
@@ -308,9 +368,9 @@ export const services = {
 
   items: {
     list: () => api.get('/services'),
-    create: (data: { category_id: number; name: string; description?: string; price: number | null; duration_minutes: number | null }) =>
+    create: (data: { category_id: number; specialty_id?: number | null; name: string; description?: string; price: number | null; duration_minutes: number | null }) =>
       api.post('/services', data),
-    update: (id: number, data: Partial<{ category_id: number; name: string; description: string; price: number | null; duration_minutes: number | null; is_active: boolean }>) =>
+    update: (id: number, data: Partial<{ category_id: number; specialty_id: number | null; name: string; description: string; price: number | null; duration_minutes: number | null; is_active: boolean }>) =>
       api.put(`/services/${id}`, data),
     deactivate: (id: number) => api.delete(`/services/${id}`),
   },
@@ -326,6 +386,10 @@ export const schedule = {
     create: (data: { start_datetime: string; end_datetime: string; reason?: string }) =>
       api.post('/unavailabilities', data),
     delete: (id: number) => api.delete(`/unavailabilities/${id}`),
+  },
+  bookingWindow: {
+    get: () => api.get('/booking-window'),
+    update: (days: number | null) => api.put('/booking-window', { booking_window_days: days }),
   },
 };
 
@@ -356,6 +420,13 @@ export const salons = {
     api.post<ApiSalonFull>('/my-salon', data),
   removeHairdresser: (profileId: number) =>
     api.delete<{ message: string }>(`/my-salon/hairdressers/${profileId}`),
+  /** Gérant : attribue une visite / déclenche une demande d'avis pour un membre
+   *  de son équipe (fallback salarié — jamais un avis écrit par le gérant lui-même). */
+  inviteReview: (profileId: number, specialtyId?: number | null) =>
+    api.post<{ token: string; scan_url: string; valid_until: string; specialty_id: number | null }>(
+      `/my-salon/hairdressers/${profileId}/review-invite`,
+      { specialty_id: specialtyId ?? null }
+    ),
   verifySiret: (siret: string) =>
     api.get<{ valid: boolean; business_name?: string; city?: string; activity_code?: string; is_hairdresser?: boolean; is_active?: boolean; message?: string }>(`/verify-siret?siret=${siret}`),
   requestJoin: (salonId: number, message?: string) => api.post<ApiSalonJoinRequest>('/join-salon', { salon_id: salonId, message }),

@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { referral } from '@/lib/api';
+import type { ApiReferral } from '@/lib/types';
 import Image from 'next/image';
-import { Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Check, ArrowRight, ArrowLeft, Share2 } from 'lucide-react';
+import ShareSheet from '@/components/ui/ShareSheet';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -74,12 +77,19 @@ export default function ClientOnboardingPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anim,     setAnim]     = useState<'in' | 'out'>('in');
   const [saving,   setSaving]   = useState(false);
+  const [myReferral, setMyReferral] = useState<ApiReferral | null>(null);
+  const [shareOpen,  setShareOpen]  = useState(false);
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) { router.replace('/connexion'); return; }
     if (user.role === 'hairdresser' || user.role === 'salon_owner') router.replace('/pro');
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    if (step !== 'done') return;
+    referral.mine().then(setMyReferral).catch(() => {});
+  }, [step]);
 
   function transition(fn: () => void) {
     setAnim('out');
@@ -321,8 +331,28 @@ export default function ClientOnboardingPage() {
               <ArrowRight size={15} />
             </button>
 
+            {myReferral && (
+              <button
+                onClick={() => setShareOpen(true)}
+                className="w-full flex items-center justify-center gap-2 text-neutral-500 font-semibold py-3 text-[13px] hover:text-neutral-800 transition-colors"
+              >
+                <Share2 size={13} />Inviter un ami sur CHAIR
+              </button>
+            )}
+
             <style>{`@keyframes popIn { from { transform: scale(0); opacity: 0 } to { transform: scale(1); opacity: 1 } }`}</style>
           </div>
+        )}
+
+        {myReferral && (
+          <ShareSheet
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            title="Inviter un ami"
+            shareUrl={myReferral.link}
+            shareText="Découvre CHAIR, l'app pour trouver les meilleurs coiffeurs près de toi !"
+            actionType="share_profile"
+          />
         )}
 
       </div>

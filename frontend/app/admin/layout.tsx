@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu,
   X,
+  GraduationCap,
 } from 'lucide-react';
 
 interface AdminUser {
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users },
   { href: '/admin/coiffeurs', label: 'Coiffeurs', icon: Scissors },
+  { href: '/admin/diplomes', label: 'Diplômes', icon: GraduationCap },
   { href: '/admin/reservations', label: 'Réservations', icon: CalendarCheck },
   { href: '/admin/avis', label: 'Avis', icon: Star },
   { href: '/admin/signalements', label: 'Signalements', icon: Flag },

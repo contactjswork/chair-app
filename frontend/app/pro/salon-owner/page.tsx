@@ -5,20 +5,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNotificationCount } from '@/contexts/NotificationContext';
-import SalonOwnerNav from '@/components/layout/SalonOwnerNav';
-import SalonOwnerSidebar from '@/components/layout/SalonOwnerSidebar';
-import ChairLogo from '@/components/ui/ChairLogo';
 import {
-  Building2, Users, Armchair, Briefcase, Bell,
-  ArrowRight, ChevronRight, MapPin,
+  Building2, Armchair, Briefcase,
+  ArrowRight, ChevronRight, MapPin, Edit2, UserPlus,
   AlertTriangle, LogOut,
 } from 'lucide-react';
 import { api, salons as salonsApi } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
 
+interface TeamMember {
+  id: number;
+  user?: { name?: string };
+  avatar?: string | null;
+}
+
 interface DashboardData {
   salon:              ApiSalonFull | null;
+  team:                TeamMember[];
   hairdressers_count: number;
   pending_joins:      number;
   job_offers_count:   number;
@@ -27,10 +30,11 @@ interface DashboardData {
   pending_rentals:    number;
 }
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
+
 export default function SalonOwnerDashboard() {
   const { user, isLoading, logout } = useAuth();
   const router   = useRouter();
-  const { unreadCount } = useNotificationCount();
 
   const [data,    setData]    = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +57,7 @@ export default function SalonOwnerDashboard() {
 
       setData({
         salon,
+        team:                (salon?.hairdressers ?? []) as unknown as TeamMember[],
         hairdressers_count: salon?.hairdressers?.length ?? 0,
         pending_joins:      salonData?.pending_requests?.length ?? 0,
         job_offers_count:   0,
@@ -85,31 +90,13 @@ export default function SalonOwnerDashboard() {
   if ((data?.pending_rentals ?? 0) > 0)                alerts.push({ label: `${data!.pending_rentals} demande(s) de fauteuil`,           href: '/pro/fauteuils' });
 
   const ACTIONS = [
-    { icon: Briefcase, label: 'Créer une offre',       href: '/pro/recrutement', color: 'bg-neutral-900 text-white' },
-    { icon: Armchair,  label: 'Ajouter un fauteuil',   href: '/pro/fauteuils',   color: 'bg-neutral-900 text-white' },
-    { icon: Users,     label: 'Mon équipe',             href: '/pro/equipe',      color: 'bg-neutral-100 text-neutral-900' },
-    { icon: Building2, label: 'Gérer mon salon',        href: '/pro/salon',       color: 'bg-neutral-100 text-neutral-900' },
+    { icon: Briefcase, label: 'Créer une offre',     href: '/pro/recrutement', color: 'bg-neutral-900 text-white' },
+    { icon: Armchair,  label: 'Ajouter un fauteuil', href: '/pro/fauteuils',   color: 'bg-neutral-900 text-white' },
   ];
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
-      <SalonOwnerSidebar />
-      <SalonOwnerNav />
-
-      <main className="flex-1 md:ml-60 pb-28 md:pb-10">
-
-      {/* Header mobile */}
-      <div className="md:hidden sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 pt-safe flex items-center justify-between">
-        <ChairLogo href="/pro/salon-owner" size="md" pro />
-        <Link href="/pro/notifications" className="relative w-9 h-9 flex items-center justify-center">
-          <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
-          {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-3 h-3 bg-red-500 rounded-full text-[7px] text-white font-bold flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          )}
-        </Link>
-      </div>
+      <main className="flex-1">
 
       <div className="max-w-xl mx-auto px-4 pt-6 space-y-4">
 
@@ -123,28 +110,58 @@ export default function SalonOwnerDashboard() {
 
         {/* Salon card */}
         {salon ? (
-          <Link href="/pro/salon" className="block bg-white rounded-2xl border border-neutral-100 overflow-hidden hover:border-neutral-200 transition-colors">
-            <div className="relative h-24 bg-neutral-200">
-              {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
-            </div>
+          <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+            <Link href="/pro/salon" className="block hover:opacity-90 transition-opacity">
+              <div className="relative h-24 bg-neutral-200">
+                {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
+              </div>
+            </Link>
             <div className="p-4 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+              <Link href="/pro/salon" className="w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
                 {logoUrl
                   ? <Image src={logoUrl} alt={salon.name} width={48} height={48} className="object-cover" />
                   : <Building2 size={20} className="text-neutral-400" />
                 }
-              </div>
-              <div className="flex-1 min-w-0">
+              </Link>
+              <Link href="/pro/salon" className="flex-1 min-w-0">
                 <p className="text-[15px] font-bold text-neutral-900 truncate">{salon.name}</p>
                 {salon.city && (
                   <div className="flex items-center gap-1 text-xs text-neutral-500 mt-0.5">
                     <MapPin size={10} />{salon.city}
                   </div>
                 )}
-              </div>
-              <ChevronRight size={16} className="text-neutral-400 flex-shrink-0" />
+              </Link>
+              <Link href="/pro/salon?edit=1"
+                className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-900 hover:text-white transition-colors flex-shrink-0"
+                title="Modifier la fiche salon">
+                <Edit2 size={13} />
+              </Link>
             </div>
-          </Link>
+
+            {/* Équipe — aperçu direct, sans page intermédiaire */}
+            <Link href="/pro/equipe" className="flex items-center gap-3 px-4 py-3 border-t border-neutral-50 hover:bg-neutral-50 transition-colors">
+              {data && data.team.length > 0 ? (
+                <div className="flex -space-x-2 flex-shrink-0">
+                  {data.team.slice(0, 4).map((m) => (
+                    <div key={m.id} className="w-7 h-7 rounded-full bg-neutral-200 border-2 border-white overflow-hidden relative flex items-center justify-center">
+                      {m.avatar
+                        ? <Image src={`${API_BASE}${m.avatar}`} alt="" fill className="object-cover" sizes="28px" />
+                        : <span className="text-[10px] font-bold text-neutral-500">{m.user?.name?.[0] ?? '?'}</span>
+                      }
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                  <UserPlus size={12} className="text-neutral-400" />
+                </div>
+              )}
+              <span className="text-xs font-medium text-neutral-600 flex-1">
+                {data?.hairdressers_count ? `${data.hairdressers_count} coiffeur${data.hairdressers_count > 1 ? 's' : ''} dans l'équipe` : 'Inviter un coiffeur'}
+              </span>
+              <ChevronRight size={14} className="text-neutral-400 flex-shrink-0" />
+            </Link>
+          </div>
         ) : (
           <Link href="/pro/salon" className="flex items-center gap-3 p-4 bg-neutral-900 text-white rounded-2xl">
             <Building2 size={20} className="flex-shrink-0" />
@@ -171,9 +188,8 @@ export default function SalonOwnerDashboard() {
         )}
 
         {/* Stats rapides */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Coiffeurs',    value: data?.hairdressers_count ?? 0, icon: Users,    href: '/pro/equipe' },
             { label: 'Offres actives', value: data?.job_offers_count ?? 0, icon: Briefcase, href: '/pro/recrutement' },
             { label: 'Fauteuils',    value: data?.rentals_count ?? 0,      icon: Armchair, href: '/pro/fauteuils' },
           ].map((s, i) => (

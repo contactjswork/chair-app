@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
       // Anciennes routes pro → /pro/...
       { source: '/dashboard',                  destination: '/pro',                   permanent: true },
       { source: '/dashboard/:path*',           destination: '/pro/:path*',            permanent: true },
+      // Statistiques fusionnée dans Performance (ex-Business)
+      { source: '/pro/statistiques',           destination: '/pro/business',          permanent: true },
+      // Rejoindre un salon + invitations fusionnées dans la fiche Salon
+      { source: '/pro/rejoindre-salon',        destination: '/pro/salon',             permanent: true },
+      { source: '/pro/invitations',            destination: '/pro/salon',             permanent: true },
       // Ancienne URL site vitrine
       { source: '/site-vitrine',               destination: '/',                      permanent: true },
       { source: '/site-vitrine/:path*',        destination: '/:path*',                permanent: true },

@@ -11,6 +11,7 @@ const PUBLIC_PREFIXES = [
   '/app/realisation/',
   '/app/avis/',
   '/app/scan/',
+  '/app/classements',
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

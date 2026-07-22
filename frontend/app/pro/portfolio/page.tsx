@@ -11,7 +11,6 @@ import {
   Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
   Eye, Star, TrendingUp,
 } from 'lucide-react';
-import DashboardNav from '@/components/layout/DashboardNav';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 const MAX_PHOTOS = 10;
@@ -110,9 +109,9 @@ function AddPostForm({ specialties, onSuccess, onCancel }: {
   const [error, setError] = useState('');
 
   const suggestedSpecialties = gender === 'homme'
-    ? specialties.filter(s => ['barber', 'coupe-homme', 'taper', 'fade', 'degrade', 'buzz-cut'].includes(s.slug))
+    ? specialties.filter(s => s.slug !== 'coupe-femme')
     : gender === 'femme'
-    ? specialties.filter(s => ['balayage', 'blond', 'coloration', 'ombre-hair', 'boucles', 'extensions', 'lissage', 'coupe-femme', 'mariage', 'hair-contouring', 'chignon', 'tie-dye'].includes(s.slug))
+    ? specialties.filter(s => s.slug !== 'coupe-homme' && s.slug !== 'barbe')
     : specialties;
 
   function handleGenderChange(g: 'homme' | 'femme' | '') {
@@ -406,7 +405,6 @@ export default function PortfolioPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-28">
-      <DashboardNav />
 
       {/* Mobile header */}
       <div className="md:hidden sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-4 h-14 pt-safe flex items-center justify-between">

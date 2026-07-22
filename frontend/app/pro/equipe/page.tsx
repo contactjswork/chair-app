@@ -3,11 +3,10 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { api } from '@/lib/api';
-import SalonOwnerNav from '@/components/layout/SalonOwnerNav';
-import SalonOwnerSidebar from '@/components/layout/SalonOwnerSidebar';
+import { api, salons } from '@/lib/api';
 import {
   Users, Search, Send, X, UserMinus, Check, Clock, UserPlus, ChevronRight,
+  MessageSquarePlus, Copy, Link2,
 } from 'lucide-react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
@@ -32,6 +31,7 @@ interface TeamMember {
   id: number;
   user?: { name?: string };
   specialty?: string;
+  specialties?: { id: number; name: string }[];
   avatar?: string | null;
 }
 
@@ -49,6 +49,11 @@ export default function EquipePage() {
   const [loading,      setLoading]      = useState(true);
   const [toast,        setToast]        = useState<string | null>(null);
   const [removeId,     setRemoveId]     = useState<number | null>(null);
+  const [inviteFor,    setInviteFor]    = useState<TeamMember | null>(null);
+  const [inviteSpecialtyId, setInviteSpecialtyId] = useState<number | null>(null);
+  const [inviteLink,   setInviteLink]   = useState<string | null>(null);
+  const [inviteLoading,setInviteLoading]= useState(false);
+  const [linkCopied,   setLinkCopied]   = useState(false);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -104,6 +109,33 @@ export default function EquipePage() {
     } catch { showToast('Erreur.'); }
   }
 
+  function openInviteReview(member: TeamMember) {
+    setInviteFor(member);
+    setInviteSpecialtyId(member.specialties?.[0]?.id ?? null);
+    setInviteLink(null);
+    setLinkCopied(false);
+  }
+
+  async function generateInviteLink() {
+    if (!inviteFor) return;
+    setInviteLoading(true);
+    try {
+      const res = await salons.inviteReview(inviteFor.id, inviteSpecialtyId);
+      setInviteLink(res.scan_url);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Erreur lors de la génération du lien.');
+    } finally {
+      setInviteLoading(false);
+    }
+  }
+
+  async function copyInviteLink() {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
+
   async function handleRemoveMember(id: number) {
     setRemoveId(id);
     try {
@@ -121,12 +153,10 @@ export default function EquipePage() {
   const pendingInvitations = invitations.filter((i) => i.status === 'pending');
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex pb-28 md:pb-0">
-      <SalonOwnerSidebar />
-      <SalonOwnerNav />
+    <div className="min-h-screen bg-neutral-50 flex">
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
-      <div className="flex-1 md:ml-60">
+      <div className="flex-1">
       <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
         <div className="mb-5">
           <h1 className="text-xl font-bold text-neutral-900">Équipe</h1>
@@ -178,6 +208,12 @@ export default function EquipePage() {
                       <p className="text-sm font-bold text-neutral-900">{m.user?.name ?? 'Coiffeur'}</p>
                       {m.specialty && <p className="text-xs text-neutral-400">{m.specialty}</p>}
                     </div>
+                    <button
+                      onClick={() => openInviteReview(m)}
+                      title="Demander un avis pour ce membre"
+                      className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-900 hover:text-white transition-colors">
+                      <MessageSquarePlus size={13} />
+                    </button>
                     <button
                       onClick={() => { if (confirm(`Retirer ${m.user?.name ?? 'ce coiffeur'} du salon ?`)) handleRemoveMember(m.id); }}
                       disabled={removeId === m.id}
@@ -305,6 +341,77 @@ export default function EquipePage() {
         )}
       </div>
       </div>
+
+      {/* Fallback gérant : attribuer une visite / déclencher une demande d'avis
+          pour un salarié qui ne facture pas lui-même. Génère un lien QR — le
+          gérant ne peut jamais écrire l'avis à la place du client. */}
+      {inviteFor && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setInviteFor(null)} />
+          <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[16px] font-bold text-neutral-900">Demander un avis</p>
+                <p className="text-xs text-neutral-400 mt-0.5">pour {inviteFor.user?.name ?? 'ce coiffeur'}</p>
+              </div>
+              <button onClick={() => setInviteFor(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+                <X size={15} />
+              </button>
+            </div>
+
+            {!inviteLink ? (
+              <>
+                {inviteFor.specialties && inviteFor.specialties.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-2">Quelle prestation ?</p>
+                    <div className="flex flex-wrap gap-2">
+                      {inviteFor.specialties.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => setInviteSpecialtyId(s.id)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            inviteSpecialtyId === s.id
+                              ? 'bg-neutral-900 text-white border-neutral-900'
+                              : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                          }`}
+                        >
+                          {s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-[12px] text-neutral-400 leading-relaxed mb-4">
+                  Génère un lien valable 48h à envoyer vous-même au client (SMS, WhatsApp...).
+                  Il confirme sa visite et rédige lui-même son avis — vous ne pouvez pas le faire à sa place.
+                </p>
+                <button
+                  onClick={generateInviteLink}
+                  disabled={inviteLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                >
+                  <Link2 size={15} />
+                  {inviteLoading ? 'Génération...' : 'Générer le lien'}
+                </button>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-3 text-xs text-neutral-600 break-all">
+                  {inviteLink}
+                </div>
+                <button
+                  onClick={copyInviteLink}
+                  className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-700 transition-colors"
+                >
+                  {linkCopied ? <Check size={15} /> : <Copy size={15} />}
+                  {linkCopied ? 'Copié !' : 'Copier le lien'}
+                </button>
+                <p className="text-[11px] text-neutral-400 text-center">Valable 48h.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,15 +3,17 @@ import Image from 'next/image';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
-import { Star, Award } from 'lucide-react';
+import { Star, Award, Flame } from 'lucide-react';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 export default function HairdresserCard({
   hairdresser,
   distanceKm,
+  showFlame: allowFlame = true,
 }: {
   hairdresser: ApiHairdresserProfile;
   distanceKm?: number;
+  showFlame?: boolean;
 }) {
   const banner      = resolveMediaUrl(hairdresser.banner_image);
   const avatar      = resolveMediaUrl(hairdresser.user.avatar);
@@ -20,6 +22,9 @@ export default function HairdresserCard({
   const levelColor  = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
   const ring        = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   const badgeCount  = hairdresser.chair_badges?.length ?? hairdresser.chair_badges_all?.length ?? 0;
+  const streakDays  = hairdresser.chair_streak?.current_streak ?? 0;
+  const streakActive= hairdresser.chair_streak?.is_active_today ?? false;
+  const showFlame   = allowFlame && streakDays >= 3;
 
   return (
     <Link href={`/app/coiffeur/${hairdresser.slug}`} className="block group">
@@ -88,6 +93,13 @@ export default function HairdresserCard({
             {ring.show && (
               <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-px rounded-full text-[7px] font-bold tracking-[0.1em] uppercase whitespace-nowrap ${ring.pill}`}>
                 {ring.label}
+              </div>
+            )}
+            {/* Flamme streak */}
+            {showFlame && (
+              <div className={`absolute -top-1 -right-1 flex items-center gap-0.5 pl-1 pr-1.5 py-0.5 rounded-full border-2 border-neutral-900 shadow-sm ${streakActive ? 'bg-orange-500' : 'bg-neutral-500'}`}>
+                <Flame size={8} className="text-white" fill="currentColor" strokeWidth={0} />
+                <span className="text-[8px] font-bold text-white leading-none">{streakDays}</span>
               </div>
             )}
           </div>

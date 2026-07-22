@@ -11,6 +11,9 @@ import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 import { MapPin, BadgeCheck, Star, Clock } from 'lucide-react';
 import BackButton from '@/components/ui/BackButton';
 import BookingCTA from '@/components/ui/BookingCTA';
+import SpecialtyHighlights from '@/components/ui/SpecialtyHighlights';
+import StreakFlameBadge from '@/components/ui/StreakFlameBadge';
+import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -77,6 +80,10 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
   const mainSpecialty = hairdresser.specialties?.[0]?.name ?? null;
   const yearsExp      = hairdresser.years_experience;
   const canBook       = hairdresser.is_independent || !!hairdresser.booking_url;
+  const levelColor    = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
+  const ring          = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const streakDays    = hairdresser.chair_streak?.current_streak ?? 0;
+  const streakActive  = hairdresser.chair_streak?.is_active_today ?? false;
 
   const metaLine = [
     mainSpecialty,
@@ -105,16 +112,34 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
           {/* Avatar + rating */}
           <div className="flex items-end justify-between -mt-12 mb-5 relative z-10">
-            <div className="relative w-[82px] h-[82px] rounded-full overflow-hidden bg-neutral-200 border-4 border-white shadow-md flex-shrink-0">
-              {avatarUrl ? (
-                <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
-                  <span className="text-[24px] font-bold text-white/40">
-                    {hairdresser.user.name.charAt(0).toUpperCase()}
-                  </span>
+            <div
+              className="relative w-[82px] h-[82px] rounded-full p-[3px] flex-shrink-0"
+              style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
+            >
+              {/* Anneau coloré (niveau CHAIR) */}
+              {ring.show && (
+                <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />
+              )}
+              {/* Avatar */}
+              <div className={`relative rounded-full overflow-hidden bg-neutral-200 shadow-md ${ring.show ? 'w-[calc(100%-6px)] h-[calc(100%-6px)] m-[3px]' : 'w-full h-full border-4 border-white'}`}>
+                {avatarUrl ? (
+                  <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-neutral-800 flex items-center justify-center">
+                    <span className="text-[24px] font-bold text-white/40">
+                      {hairdresser.user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {/* Pastille niveau */}
+              {ring.show && (
+                <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-[0.1em] uppercase whitespace-nowrap shadow-sm ${ring.pill}`}>
+                  {ring.label}
                 </div>
               )}
+              {/* Flamme streak — cliquable, explique ce que ça veut dire */}
+              <StreakFlameBadge days={streakDays} active={streakActive} coiffeurName={hairdresser.user.name} />
             </div>
 
             {hasRating && (
@@ -148,6 +173,10 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               {hairdresser.tagline}
             </p>
           )}
+
+          {/* "Pourquoi ce coiffeur est reconnu" — 1 à 3 signaux maximum. Le
+              détail complet (tous les badges) reste dans CHAIR PRO, pas ici. */}
+          <SpecialtyHighlights highlights={hairdresser.specialty_highlights ?? []} />
 
           {/* Actions : S'abonner, favoris, partage */}
           <ProfileActions
@@ -236,6 +265,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             </div>
           </div>
         )}
+
 
         {/* ── AVIS ── */}
         <ReviewsCompact

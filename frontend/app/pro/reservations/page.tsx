@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardNav from '@/components/layout/DashboardNav';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi } from '@/lib/api';
@@ -99,7 +98,7 @@ function AppointmentCard({
         </div>
         {appt.message && (
           <p className="text-xs text-neutral-500 italic border-t border-neutral-200 pt-1.5 mt-1.5">
-            "{appt.message}"
+            &quot;{appt.message}&quot;
           </p>
         )}
       </div>
@@ -216,7 +215,6 @@ export default function ReservationsPage() {
 
   return (
     <div className="min-h-screen bg-white pb-28 md:pb-8">
-      <DashboardNav />
       <div className="max-w-2xl mx-auto">
         <div className="px-4 pt-4">
           <DashboardPageHeader title="Rendez-vous" />

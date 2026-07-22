@@ -73,8 +73,15 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+// Fin de dev / démo pré-lancement : onboarding coiffeur désactivé temporairement
+// (voir AuthContext.tsx — même variable). L'onboarding client (/app/onboarding) reste actif.
+const SKIP_PRO_ONBOARDING = process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true';
+
 export function redirectPathForRole(role: UserRole, isNewUser = false): string {
-  if (role === 'hairdresser') return isNewUser ? '/onboarding' : '/pro';
+  if (role === 'hairdresser') {
+    if (isNewUser && SKIP_PRO_ONBOARDING) return '/pro';
+    return isNewUser ? '/onboarding' : '/pro';
+  }
   if (role === 'salon_owner') return isNewUser ? '/pro/salon' : '/pro/salon-owner';
   return isNewUser ? '/app/onboarding' : '/app';
 }

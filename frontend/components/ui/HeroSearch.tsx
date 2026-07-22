@@ -15,18 +15,17 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
 };
 
 const SLUG_LABEL: Record<string, string> = {
-  barber: 'Barber', degrade: 'Dégradé', fade: 'Fade', taper: 'Taper',
-  'coupe-homme': 'Coupe homme', barbe: 'Barbe', 'buzz-cut': 'Buzz Cut',
-  balayage: 'Balayage', blond: 'Blond', coloration: 'Coloration',
-  'ombre-hair': 'Ombré', boucles: 'Boucles', lissage: 'Lissage',
-  extensions: 'Extensions', mariage: 'Mariage', 'coupe-femme': 'Coupe femme',
-  'tie-dye': 'Tie & Dye', roux: 'Roux', frange: 'Frange',
+  'coupe-homme': 'Coupe Homme', 'barbe': 'Barbe', 'coupe-femme': 'Coupe Femme',
+  'couleur-balayage': 'Couleur & Balayage', 'texture-lissage': 'Texture & Lissage',
+  'boucles-curly': 'Boucles & Curly', 'afro-locks': 'Afro & Locks',
+  'extensions': 'Extensions', 'evenementiel': 'Événementiel',
+  'soins-transformation': 'Soins & Transformation',
 };
 
 export default function HeroSearch({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [value, setValue] = useState('');
-  const [placeholder, setPlaceholder] = useState('Balayage, Barber, Lyon...');
+  const [placeholder, setPlaceholder] = useState('Balayage, Coupe Homme, Lyon...');
   const [suggestions, setSuggestions] = useState<ApiSearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -60,9 +59,9 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
         const labels = interests.slice(0, 3).map((s) => SLUG_LABEL[s] ?? (s.charAt(0).toUpperCase() + s.slice(1)));
         setPlaceholder(labels.join(', ') + '...');
       } else if (prefs.gender === 'homme') {
-        setPlaceholder('Barber, Dégradé, Fade...');
+        setPlaceholder('Coupe Homme, Barbe, Afro & Locks...');
       } else if (prefs.gender === 'femme') {
-        setPlaceholder('Balayage, Blond, Ombré...');
+        setPlaceholder('Balayage, Boucles & Curly, Lissage...');
       }
     } catch { /* ignore */ }
   }, []);

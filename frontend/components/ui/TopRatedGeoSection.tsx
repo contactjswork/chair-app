@@ -7,6 +7,7 @@ import { Star, ChevronRight, BadgeCheck, MapPin } from 'lucide-react';
 import { getStoredLocation } from '@/hooks/useGeolocation';
 import { resolveMediaUrl } from '@/lib/types';
 import type { ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
+import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -45,7 +46,7 @@ export default function TopRatedGeoSection({ fallback }: { fallback: ApiHairdres
             {isGeo ? 'TOP 5 coiffeurs plébiscités dans votre secteur' : 'Les coiffeurs plébiscités par leurs clients'}
           </p>
         </div>
-        <Link href="/app/recherche" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+        <Link href="/app/classements" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
           <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
         </Link>
       </div>
@@ -54,6 +55,8 @@ export default function TopRatedGeoSection({ fallback }: { fallback: ApiHairdres
           const avatar = resolveMediaUrl(h.user.avatar);
           const hasRating = h.reviews_count > 0;
           const rankCls = idx === 0 ? 'text-amber-500' : idx === 1 ? 'text-neutral-400' : idx === 2 ? 'text-orange-400' : 'text-neutral-300';
+          const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
+          const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
           return (
             <Link
               key={h.id}
@@ -61,14 +64,20 @@ export default function TopRatedGeoSection({ fallback }: { fallback: ApiHairdres
               className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm transition-all group"
             >
               <span className={`w-5 text-center text-[13px] font-bold flex-shrink-0 ${rankCls}`}>{idx + 1}</span>
-              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
-                {avatar ? (
-                  <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="44px" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-neutral-200">
-                    <span className="font-bold text-neutral-400">{h.user.name.charAt(0)}</span>
-                  </div>
-                )}
+              <div
+                className="relative w-11 h-11 rounded-full p-[2px] flex-shrink-0"
+                style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
+              >
+                {ring.show && <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />}
+                <div className={`relative rounded-full overflow-hidden bg-neutral-100 ${ring.show ? 'w-[calc(100%-4px)] h-[calc(100%-4px)] m-[2px]' : 'w-full h-full'}`}>
+                  {avatar ? (
+                    <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="44px" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+                      <span className="font-bold text-neutral-400">{h.user.name.charAt(0)}</span>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
