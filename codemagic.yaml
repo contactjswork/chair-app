@@ -33,8 +33,9 @@ definitions:
       cd frontend
       PLIST="ios/App/App/Info.plist"
 
-      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
-      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" 2>/dev/null || true
+      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
+      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
 
       cd ios/App
       agvtool new-marketing-version 1.0.0
