@@ -5,23 +5,33 @@ definitions:
   # CHAIR charge le site en direct (server.url dans capacitor.*.config.ts —
   # l'app utilise du middleware Next.js, incompatible avec un export statique)
   # donc il n'y a pas de build web à embarquer. On configure juste les
-  # permissions iOS (usage descriptions) et la version, une seule fois après
-  # génération/sync du projet.
+  # permissions iOS (usage descriptions), le nom affiché et la version.
   #
   # NSLocationWhenInUseUsageDescription n'est déclarée QUE côté client (CHAIR) :
-  # PRO n'a aucun code de géolocalisation (pas de "coiffeurs près de moi"),
-  # déclarer une permission inutilisée est un risque de rejet App Review.
+  # PRO n'a aucun code de géolocalisation (pas de "coiffeurs près de moi", la
+  # recherche fauteuil se fait par ville/adresse saisie), déclarer une
+  # permission inutilisée est un risque de rejet App Review. Elle est donc
+  # absente du Info.plist committé (baseline = état client) et seule
+  # configure_ios_location (workflow client uniquement) l'ajoute.
+  #
+  # Le projet Xcode (ios/App) est PARTAGÉ entre CHAIR et CHAIR PRO — un seul
+  # App.xcodeproj, re-synchronisé à chaque build via cap:chair:sync / cap:pro:sync
+  # puis "npx cap sync ios". Important : cap sync NE modifie PAS
+  # PRODUCT_BUNDLE_IDENTIFIER ni CFBundleDisplayName dans le projet natif (ce
+  # sont des réglages Xcode, pas des réglages Capacitor JS) — configure_bundle_id
+  # et les étapes de branding ci-dessous le font explicitement à chaque build,
+  # pour ne jamais dépendre de l'état laissé par le build précédent.
+  configure_bundle_id: &configure_bundle_id
+    name: Fixer le Bundle ID Xcode pour cette variante
+    script: |
+      cd frontend/ios/App
+      sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" App.xcodeproj/project.pbxproj
+
   configure_ios_common: &configure_ios_common
     name: Configurer permissions iOS communes + version
     script: |
       cd frontend
       PLIST="ios/App/App/Info.plist"
-
-      /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
-      /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
-
-      /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
-      /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
 
       /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST" 2>/dev/null || true
       /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST" 2>/dev/null || true
@@ -38,6 +48,16 @@ definitions:
       /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST" 2>/dev/null || \
       /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST"
 
+  # PRO n'a jamais de clé localisation : si un build précédent l'a laissée
+  # dans le Info.plist committé, on la retire explicitement plutôt que de
+  # compter sur l'état du fichier source.
+  configure_ios_no_location: &configure_ios_no_location
+    name: Retirer la permission localisation (PRO n'en a pas besoin)
+    script: |
+      cd frontend
+      PLIST="ios/App/App/Info.plist"
+      /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
+
 workflows:
   chair-client-ios:
     name: CHAIR (client) — iOS TestFlight
@@ -51,7 +71,7 @@ workflows:
         bundle_identifier: app.getchair.client
       vars:
         BUNDLE_ID: "app.getchair.client"
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
       node: 20
       xcode: latest
@@ -71,6 +91,19 @@ workflows:
           cd frontend
           test -d ios || npx cap add ios
           npx cap sync ios
+      - <<: *configure_bundle_id
+      - name: Configurer nom affiché + permissions caméra/photo (CHAIR)
+        script: |
+          cd frontend
+          PLIST="ios/App/App/Info.plist"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
       - <<: *configure_ios_common
       - <<: *configure_ios_location
       - name: Récupérer/générer le certificat + profil App Store Connect
@@ -92,7 +125,7 @@ workflows:
       - name: Build .ipa
         script: |
           cd frontend
-          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
@@ -117,7 +150,7 @@ workflows:
         bundle_identifier: app.getchair.pro
       vars:
         BUNDLE_ID: "app.getchair.pro"
-        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
       node: 20
       xcode: latest
@@ -137,7 +170,21 @@ workflows:
           cd frontend
           test -d ios || npx cap add ios
           npx cap sync ios
+      - <<: *configure_bundle_id
+      - name: Configurer nom affiché + permissions caméra/photo (CHAIR PRO)
+        script: |
+          cd frontend
+          PLIST="ios/App/App/Info.plist"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR PRO'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
       - <<: *configure_ios_common
+      - <<: *configure_ios_no_location
       - name: Récupérer/générer le certificat + profil App Store Connect
         script: |
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
@@ -157,7 +204,7 @@ workflows:
       - name: Build .ipa
         script: |
           cd frontend
-          xcode-project build-ipa --workspace "$XCODE_WORKSPACE" --scheme "$XCODE_SCHEME"
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log

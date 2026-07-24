@@ -41,6 +41,9 @@ yarn-error.log*
 next-env.d.ts
 
 # capacitor
-/ios
+# ios/ EST committé : c'est le projet Xcode source de vérité (scheme partagé,
+# entitlements, Info.plist, icônes/splash) que codemagic.yaml réutilise
+# ("test -d ios || npx cap add ios" ne regénère que s'il est absent). Seuls
+# les artefacts de build à l'intérieur sont ignorés (voir ios/.gitignore).
 /android
 capacitor.config.ts
