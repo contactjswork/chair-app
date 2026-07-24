@@ -28,16 +28,9 @@ definitions:
       sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = $BUNDLE_ID;/g" App.xcodeproj/project.pbxproj
 
   configure_ios_common: &configure_ios_common
-    name: Configurer permissions iOS communes + version
+    name: Configurer version
     script: |
-      cd frontend
-      PLIST="ios/App/App/Info.plist"
-
-      /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" 2>/dev/null || true
-      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
-      /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
-
-      cd ios/App
+      cd frontend/ios/App
       agvtool new-marketing-version 1.0.0
 
   configure_ios_location: &configure_ios_location

@@ -51,9 +51,5 @@
 	<string>CHAIR accède à vos photos pour publier une réalisation depuis votre galerie.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
 </dict>
 </plist>

@@ -36,8 +36,4 @@ echo "→ Nom affiché + permissions (CHAIR)"
 /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST"
 
-/usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
-
 echo "✓ Projet iOS prêt pour CHAIR (client, app.getchair.client). Ouvre ios/App/App.xcodeproj dans Xcode."

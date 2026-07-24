@@ -38,8 +38,4 @@ echo "→ Nom affiché + permissions (CHAIR PRO)"
 # inutilisée (risque de rejet App Review).
 /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
 
-/usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :UIBackgroundModes:0 string remote-notification" "$PLIST"
-
 echo "✓ Projet iOS prêt pour CHAIR PRO (app.getchair.pro). Ouvre ios/App/App.xcodeproj dans Xcode."
