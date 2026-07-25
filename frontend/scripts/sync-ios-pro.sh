@@ -24,6 +24,14 @@ PLIST="ios/App/App/Info.plist"
 echo "→ Bundle ID"
 sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = app.getchair.pro;/g" ios/App/App.xcodeproj/project.pbxproj
 
+# Codemagic incrémentait automatiquement le build number à chaque build
+# (lookup du dernier build App Store Connect + 1) — sans CI, personne ne le
+# fait plus, donc chaque archive repartait de 1 et App Store Connect
+# ignorait silencieusement les nouveaux uploads (déjà utilisé). On
+# l'incrémente ici à chaque sync : ça monte toujours, jamais de doublon.
+echo "→ Build number (incrémenté)"
+(cd ios/App && agvtool next-version -all)
+
 echo "→ Nom affiché + permissions (CHAIR PRO)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR PRO'" "$PLIST"
 
