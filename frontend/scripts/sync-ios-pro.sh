@@ -46,4 +46,18 @@ echo "→ Nom affiché + permissions (CHAIR PRO)"
 # inutilisée (risque de rejet App Review).
 /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
 
-echo "✓ Projet iOS prêt pour CHAIR PRO (app.getchair.pro). Ouvre ios/App/App.xcodeproj dans Xcode."
+BUILD_NUM=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+ACTUAL_URL=$(node -e "console.log(require('./ios/App/App/capacitor.config.json').server.url)" 2>/dev/null || echo "?")
+
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "  CHAIR PRO — app.getchair.pro"
+echo "  URL chargée : $ACTUAL_URL"
+echo "  Build number : $BUILD_NUM"
+echo "════════════════════════════════════════════════════════"
+if [ "$ACTUAL_URL" != "https://www.getchair.app/pro" ]; then
+  echo "✗ ATTENTION : l'URL ne correspond pas à ce qui est attendu (https://www.getchair.app/pro) !"
+  echo "  Ne pas archiver tant que ce n'est pas corrigé."
+  exit 1
+fi
+echo "✓ Vérifié — ouvre maintenant ios/App/App.xcodeproj dans Xcode et Archive."

@@ -44,4 +44,18 @@ echo "→ Nom affiché + permissions (CHAIR)"
 /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST"
 
-echo "✓ Projet iOS prêt pour CHAIR (client, app.getchair.client). Ouvre ios/App/App.xcodeproj dans Xcode."
+BUILD_NUM=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+ACTUAL_URL=$(node -e "console.log(require('./ios/App/App/capacitor.config.json').server.url)" 2>/dev/null || echo "?")
+
+echo ""
+echo "════════════════════════════════════════════════════════"
+echo "  CHAIR (client) — app.getchair.client"
+echo "  URL chargée : $ACTUAL_URL"
+echo "  Build number : $BUILD_NUM"
+echo "════════════════════════════════════════════════════════"
+if [ "$ACTUAL_URL" != "https://www.getchair.app/app" ]; then
+  echo "✗ ATTENTION : l'URL ne correspond pas à ce qui est attendu (https://www.getchair.app/app) !"
+  echo "  Ne pas archiver tant que ce n'est pas corrigé."
+  exit 1
+fi
+echo "✓ Vérifié — ouvre maintenant ios/App/App.xcodeproj dans Xcode et Archive."
