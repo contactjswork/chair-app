@@ -36,12 +36,53 @@ git push origin main
 ```bash
 cd ~/sites/api.getchair.app/backend
 git pull origin main
+composer install --no-dev --optimize-autoloader
 php artisan migrate --force
 php artisan config:clear
 php artisan route:cache
 ```
 
 **C'est tout.** Ne jamais faire `migrate:fresh` ou `migrate:fresh --seed` en prod.
+
+### ⚠️ Piège connu (découvert le 2026-07-27) — structure de dossier
+
+`~/sites/api.getchair.app/backend/` est un clone git du **mono-repo entier**
+(`chair-app.git`, qui contient `backend/` ET `frontend/` comme sous-dossiers),
+mais le serveur attend les fichiers Laravel **directement à la racine** de ce
+dossier (`artisan`, `routes/`, `app/`... à plat, pas dans un sous-dossier
+`backend/`). Un `git pull`/`git reset --hard origin/main` classique recrée
+donc `backend/` et `frontend/` comme sous-dossiers imbriqués **sans mettre à
+jour les fichiers à plat que le site sert réellement**.
+
+Si après un `git pull` les changements ne semblent pas pris en compte, vérifier :
+```bash
+ls backend/routes/api.php   # si ce fichier existe, le pull a atterri au mauvais endroit
+```
+Si c'est le cas, fusionner manuellement puis nettoyer :
+```bash
+cp -a backend/. .
+rm -rf backend frontend
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan config:clear
+php artisan route:cache
+```
+
+**Après tout `composer install` en SSH** : le PHP utilisé en ligne de commande
+sur ce serveur (`which php` → `/opt/php8.4/bin/php`) n'est pas celui qui sert
+le site (`php -v` côté web → 8.2.31). Composer génère alors un
+`vendor/composer/platform_check.php` qui exige PHP 8.4+ et fait planter
+**toutes** les requêtes web en 500, alors que `composer.json` n'exige en
+réalité que `^7.3|^8.0`. Neutraliser systématiquement après chaque
+`composer install` :
+```bash
+sed -i 's/PHP_VERSION_ID >= 80401/true/' vendor/composer/platform_check.php
+```
+
+**Cause structurelle non résolue** : ce dossier devrait idéalement être un
+sparse-checkout ne récupérant que le sous-dossier `backend/` du mono-repo, ou
+un repo séparé. Tant que ce n'est pas mis en place, ce piège se reproduira à
+chaque déploiement — suivre la procédure ci-dessus à chaque fois.
 
 ---
 
