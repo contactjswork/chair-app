@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // URL du frontend Next.js — utilisée pour construire les liens partageables
+    // (parrainage, invitations...). Distincte de APP_URL qui est l'URL de l'API.
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
     'asset_url' => env('ASSET_URL', null),
 
     /*
