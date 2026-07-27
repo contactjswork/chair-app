@@ -9,13 +9,22 @@ class HairdresserProfile extends Model
 {
     use HasFactory;
 
+    // Coût nul (pas de requête, juste une comparaison de date sur une colonne
+    // déjà chargée) contrairement à is_chair_plus — safe en $appends global,
+    // donc visible partout où le modèle est sérialisé (recherche, profil,
+    // portfolio) sans geste supplémentaire par contrôleur.
+    protected $appends = ['is_chair_pick'];
+
     protected $fillable = [
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
-        'years_experience', 'diploma', 'city', 'postal_code',
+        'years_experience', 'diploma', 'diploma_document_url', 'diploma_status', 'city', 'postal_code',
+        'department', 'region',
         'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'work_availability', 'is_verified',
         'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
         'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
-        'identity_verified', 'pro_active_badge',
+        'identity_verified', 'pro_active_badge', 'booking_window_days',
+        'featured_until', 'chair_plus_until', 'chair_pick_until',
+        'siret', 'siret_verification_status',
     ];
 
     protected $casts = [
@@ -24,7 +33,77 @@ class HairdresserProfile extends Model
         'identity_verified' => 'boolean',
         'pro_active_badge'  => 'boolean',
         'avg_rating'        => 'decimal:2',
+        'featured_until'    => 'datetime',
+        'chair_plus_until'  => 'datetime',
+        'chair_pick_until'  => 'datetime',
     ];
+
+    /** "Coup de cœur CHAIR" — sélection éditoriale manuelle, jamais liée à l'abonnement. */
+    public function getIsChairPickAttribute(): bool
+    {
+        return $this->chair_pick_until !== null && now()->lt($this->chair_pick_until);
+    }
+
+    /**
+     * is_featured reste vrai en permanence si posé manuellement (admin), OU
+     * temporairement si un boost local (récompense parrainage) est encore
+     * actif — mêmes lectures partout dans HairdresserController, aucun appel
+     * site à changer.
+     */
+    public function getIsFeaturedAttribute($value): bool
+    {
+        if ($value) return true;
+        return $this->featured_until !== null && now()->lt($this->featured_until);
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /**
+     * CHAIR+ actif — un SEUL point de vérité, quelle que soit la source :
+     *  1. banqué (récompense parrainage, chair_plus_until) ;
+     *  2. abonnement payé individuel (subscriptions.plan = chair_plus) ;
+     *  3. abonnement CHAIR BUSINESS du salon (couvre toute l'équipe).
+     * Rien d'autre dans le code ne doit vérifier ces sources séparément.
+     */
+    public function hasChairPlus(): bool
+    {
+        if ($this->chair_plus_until !== null && now()->lt($this->chair_plus_until)) {
+            return true;
+        }
+
+        $own = $this->subscriptions()
+            ->where('plan', 'chair_plus')
+            ->whereIn('status', ['trialing', 'active', 'past_due'])
+            ->latest('id')
+            ->first();
+        if ($own && $own->coversToday()) return true;
+
+        if ($this->salon_id) {
+            $salonSub = Subscription::where('salon_id', $this->salon_id)
+                ->where('plan', 'chair_business')
+                ->whereIn('status', ['trialing', 'active', 'past_due'])
+                ->latest('id')
+                ->first();
+            if ($salonSub && $salonSub->coversToday()) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Accesseur exposé explicitement (jamais via $appends global — hasChairPlus()
+     * coûte jusqu'à 2 requêtes ; l'ajouter partout ferait un N+1 sur les listes
+     * de recherche). À appeler via ->append('is_chair_plus') uniquement sur les
+     * réponses "profil unique" (auth, /profile) qui pilotent le déverrouillage
+     * des fonctionnalités CHAIR+ côté frontend.
+     */
+    public function getIsChairPlusAttribute(): bool
+    {
+        return $this->hasChairPlus();
+    }
 
     public function user()
     {

@@ -11,6 +11,7 @@ class VerifiedVisit extends Model
         'client_user_id',
         'client_token',
         'qr_token_id',
+        'specialty_id',
         'service_type',
         'scanned_at',
     ];

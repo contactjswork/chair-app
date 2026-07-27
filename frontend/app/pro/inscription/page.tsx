@@ -1,12 +1,20 @@
 'use client';
 
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useState, useRef } from 'react';
-import { Scissors, Building2, MapPin, CheckCircle, AlertCircle, Loader, Search, X, ChevronRight } from 'lucide-react';
-import ChairLogo from '@/components/ui/ChairLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { salons } from '@/lib/api';
 import type { ApiSalonFull } from '@/lib/types';
+import {
+  AlertCircle, Building2, CheckCircle, Loader,
+  Lock, Mail, MapPin, Scissors, Search, User, X,
+} from 'lucide-react';
+import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
+import ChoiceCard from '@/components/onboarding/ChoiceCard';
+import WelcomeSlides from '@/components/onboarding/WelcomeSlides';
+import QuestionScreen from '@/components/onboarding/QuestionScreen';
+import LocationAccordion from '@/components/onboarding/LocationAccordion';
+import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 
 type ProRole = 'hairdresser' | 'salon_owner';
 type HairdresserType = 'independent' | 'salon';
@@ -16,53 +24,92 @@ type SiretResult =
   | { status: 'ok'; business_name: string; city: string; is_hairdresser: boolean }
   | { status: 'error'; message: string };
 
+type Step =
+  | 'role' | 'name' | 'email' | 'password'
+  | 'hd_type' | 'hd_location' | 'hd_salon_search'
+  | 'so_name' | 'so_location' | 'so_siret';
+
+/**
+ * Ordre des écrans selon le chemin choisi — un seul endroit où la séquence
+ * est décidée. Le sous-type (indépendant/salarié) est demandé juste après le
+ * rôle — les deux questions "qui es-tu" restent groupées avant l'identité
+ * (nom/email/mot de passe), au lieu de revenir dessus après coup. L'adresse
+ * (indépendant + gérant) est un seul écran (`LocationAccordion` : pays →
+ * région → département → ville → rue, chaque section se replie une fois
+ * validée) plutôt qu'un écran par champ, pour être retrouvé sur la carte.
+ */
+function buildPath(role: ProRole | null, hdType: HairdresserType): Step[] {
+  const identity: Step[] = ['name', 'email', 'password'];
+  if (role === 'salon_owner') {
+    return ['role', ...identity, 'so_name', 'so_location', 'so_siret'];
+  }
+  if (role === 'hairdresser') {
+    return ['role', 'hd_type', ...identity, hdType === 'independent' ? 'hd_location' : 'hd_salon_search'];
+  }
+  return ['role'];
+}
+
+function Screen(props: Omit<React.ComponentProps<typeof QuestionScreen>, 'theme'>) {
+  return <QuestionScreen {...props} theme="dark" />;
+}
+
+const inputCls = 'w-full px-4 py-4 bg-neutral-900 border border-neutral-700 rounded-2xl text-[16px] text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-400 transition-all';
+
 export default function ProInscriptionPage() {
   const { register } = useAuth();
+  const { animClass, transition } = useStepTransition();
 
-  const [role, setRole] = useState<ProRole>('hairdresser');
-  const [name, setName]         = useState('');
-  const [email, setEmail]       = useState('');
+  const [showSlides, setShowSlides] = useState(true);
+
+  const [role, setRole] = useState<ProRole | null>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [hairdresserType, setHairdresserType] = useState<HairdresserType>('independent');
-  const [city, setCity]         = useState('');
+  const [region, setRegion] = useState('');
+  const [department, setDepartment] = useState('');
+  const [city, setCity] = useState('');
+  const [street, setStreet] = useState('');
 
   // Recherche + rattachement salon
-  const [salonQuery, setSalonQuery]     = useState('');
+  const [salonQuery, setSalonQuery] = useState('');
   const [salonResults, setSalonResults] = useState<ApiSalonFull[]>([]);
   const [salonSearching, setSalonSearching] = useState(false);
-  const [selectedSalon, setSelectedSalon]   = useState<ApiSalonFull | null>(null);
+  const [selectedSalon, setSelectedSalon] = useState<ApiSalonFull | null>(null);
   const salonSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [managerSalonName, setManagerSalonName] = useState('');
-  const [managerCity, setManagerCity]           = useState('');
-  const [siret, setSiret]                       = useState('');
-  const [siretResult, setSiretResult]           = useState<SiretResult>({ status: 'idle' });
+  const [managerRegion, setManagerRegion] = useState('');
+  const [managerDepartment, setManagerDepartment] = useState('');
+  const [managerCity, setManagerCity] = useState('');
+  const [managerStreet, setManagerStreet] = useState('');
+  const [siret, setSiret] = useState('');
+  const [siretResult, setSiretResult] = useState<SiretResult>({ status: 'idle' });
   const siretTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [step, setStep]           = useState(1);
-  const [error, setError]         = useState('');
+  const [stepIndex, setStepIndex] = useState(0);
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Nombre d'étapes affichées pour le rôle "coiffeur" : 3 si en salon (recherche
-  // de salon incluse), 2 si indépendant (l'étape recherche salon est sautée).
-  // Les spécialités sont demandées plus tard, pendant l'onboarding — pas ici.
-  const hairdresserSteps = hairdresserType === 'salon' ? 3 : 2;
+  const path = useMemo(() => buildPath(role, hairdresserType), [role, hairdresserType]);
+  const step = path[stepIndex];
+  const progress = ((stepIndex + 1) / path.length) * 100;
 
-  function handleStep1(e: React.FormEvent) {
-    e.preventDefault();
+  function goNext() {
+    tapFeedback();
     setError('');
-    if (password.length < 8) { setError('Le mot de passe doit contenir au moins 8 caractères.'); return; }
-    setStep(2);
-  }
-
-  function handleStep2(e: React.FormEvent) {
-    e.preventDefault();
-    setError('');
-    if (hairdresserType === 'salon') {
-      setStep(3);
+    if (stepIndex < path.length - 1) {
+      transition(() => setStepIndex((i) => i + 1));
     } else {
       submitForm();
     }
+  }
+
+  function goBack() {
+    if (stepIndex === 0) return;
+    tapFeedback();
+    setError('');
+    transition(() => setStepIndex((i) => i - 1));
   }
 
   function searchSalons(q: string) {
@@ -103,22 +150,27 @@ export default function ProInscriptionPage() {
     }, 600);
   }
 
-  async function submitForm(e?: React.FormEvent) {
-    if (e) e.preventDefault();
+  async function submitForm() {
     setError('');
     setIsLoading(true);
     try {
-      const payload: Record<string, string | number | undefined> = { name, email, password, password_confirmation: password, role };
+      const payload: Record<string, string | number | undefined> = { name, email, password, password_confirmation: password, role: role! };
       if (role === 'hairdresser') {
         payload.hairdresser_type = hairdresserType;
         if (hairdresserType === 'independent') {
+          payload.region = region || undefined;
+          payload.department = department || undefined;
           payload.city = city || undefined;
+          payload.address = street || undefined;
         } else if (selectedSalon) {
           payload.salon_id = selectedSalon.id;
         }
       } else {
         payload.salon_name = managerSalonName || undefined;
+        payload.salon_region = managerRegion || undefined;
+        payload.salon_department = managerDepartment || undefined;
         payload.salon_city = managerCity || undefined;
+        payload.salon_address = managerStreet || undefined;
         payload.siret = siret.length === 14 ? siret : undefined;
       }
       await register(payload as unknown as Parameters<typeof register>[0]);
@@ -128,141 +180,214 @@ export default function ProInscriptionPage() {
     }
   }
 
+  if (showSlides) {
+    return <WelcomeSlides onDone={() => setShowSlides(false)} />;
+  }
+
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
+    <div className="h-[100svh] bg-neutral-950 flex flex-col overflow-hidden">
+      <OnboardingHeader
+        progress={progress}
+        onBack={stepIndex > 0 ? goBack : undefined}
+        onSkip={undefined}
+      />
 
-        <div className="text-center mb-8">
-          <ChairLogo href="/pro" size="md" pro dark />
-          <p className="text-sm text-neutral-400 mt-2">Créez votre espace professionnel</p>
-          <div className="flex items-center justify-center gap-2 mt-4">
-            {Array.from({ length: role === 'hairdresser' ? hairdresserSteps : 2 }, (_, i) => i + 1).map((s) => (
-              <div key={s} className={`h-1 w-10 rounded-full transition-colors ${step >= s ? 'bg-white' : 'bg-neutral-700'}`} />
-            ))}
-          </div>
+      {error && (
+        <div className="flex-shrink-0 mx-6 mb-3 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400 flex items-start gap-2">
+          <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+          {error}
         </div>
+      )}
 
-        {/* ══ ÉTAPE 1 — Infos classiques ══ */}
-        {step === 1 && (
-          <form onSubmit={handleStep1} className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-4">
-            {error && <div className="mb-4 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400">{error}</div>}
+      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-180 ease-out ${animClass}`}>
 
-            <p className="text-xs font-semibold text-neutral-400 mb-3">Je suis...</p>
-            <div className="flex flex-col gap-2 mb-6">
-              {([
-                ['hairdresser', 'Coiffeur', 'Gérez votre profil, vos réalisations et vos RDV', Scissors],
-                ['salon_owner', 'Gérant de salon', 'Créez la page de votre salon et gérez votre équipe', Building2],
-              ] as const).map(([value, label, desc, Icon]) => (
-                <button type="button" key={value} onClick={() => setRole(value)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                    role === value ? 'border-white bg-white text-neutral-900' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-white'
-                  }`}>
-                  <Icon size={20} strokeWidth={1.5} className="flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold">{label}</p>
-                    <p className={`text-[11px] leading-tight mt-0.5 ${role === value ? 'text-neutral-500' : 'text-neutral-600'}`}>{desc}</p>
-                  </div>
-                </button>
-              ))}
+        {/* ── Rôle ── */}
+        {step === 'role' && (
+          <Screen eyebrow="Bienvenue" title="Tu es..." ctaLabel="Continuer" ctaDisabled={!role} onNext={goNext}>
+            <div className="grid grid-cols-1 gap-3">
+              <ChoiceCard
+                variant="dark"
+                icon={Scissors}
+                label="Coiffeur"
+                sublabel="Gère ton profil, tes réalisations et tes RDV"
+                active={role === 'hairdresser'}
+                onClick={() => setRole('hairdresser')}
+              />
+              <ChoiceCard
+                variant="dark"
+                icon={Building2}
+                label="Gérant de salon"
+                sublabel="Crée la page de ton salon et gère ton équipe"
+                active={role === 'salon_owner'}
+                onClick={() => setRole('salon_owner')}
+              />
             </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Nom complet</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Sophie Martin" required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Email professionnel</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.fr" required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Mot de passe</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="8 caractères minimum" required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-              </div>
-              <button type="submit" className="w-full bg-white text-neutral-900 font-semibold py-3 rounded-xl hover:bg-neutral-100 transition-colors text-sm mt-2">
-                Continuer
-              </button>
-            </div>
-          </form>
+          </Screen>
         )}
 
-        {/* ══ ÉTAPE 2 — Coiffeur : type de compte ══ */}
-        {step === 2 && role === 'hairdresser' && (
-          <form onSubmit={handleStep2} className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-4">
-            {error && <div className="mb-4 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400">{error}</div>}
-            <button type="button" onClick={() => setStep(1)} className="text-xs text-neutral-500 hover:text-neutral-300 mb-5 flex items-center gap-1 transition-colors">
-              ← Retour
-            </button>
-            <p className="text-xs font-semibold text-neutral-400 mb-3">Mon activité</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              {([['independent', 'Indépendant(e)', MapPin], ['salon', 'En salon', Building2]] as const).map(([v, l, Icon]) => (
-                <button type="button" key={v} onClick={() => setHairdresserType(v)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all text-sm font-medium ${
-                    hairdresserType === v ? 'border-white bg-white text-neutral-900' : 'border-neutral-700 text-neutral-400 hover:border-neutral-500 hover:text-white'
-                  }`}>
-                  <Icon size={18} strokeWidth={1.5} />
-                  <span className="text-xs">{l}</span>
-                </button>
-              ))}
+        {/* ── Nom ── */}
+        {step === 'name' && (
+          <Screen
+            eyebrow="Identité"
+            title="Comment tu t'appelles ?"
+            ctaLabel="Continuer"
+            ctaDisabled={name.trim().length < 2}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <User size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                autoFocus
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && name.trim().length >= 2) goNext(); }}
+                placeholder="Sophie Martin"
+                className={`${inputCls} pl-11`}
+              />
             </div>
-            <div className="space-y-3">
-              {hairdresserType === 'independent' && (
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Ville principale <span className="font-normal text-neutral-600">(optionnelle)</span></label>
-                  <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Strasbourg"
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-                </div>
-              )}
-              <button type="submit" disabled={isLoading} className="w-full bg-white text-neutral-900 font-semibold py-3 rounded-xl hover:bg-neutral-100 transition-colors text-sm mt-2 flex items-center justify-center gap-1.5 disabled:opacity-50">
-                {hairdresserType === 'salon'
-                  ? <>Continuer <ChevronRight size={15} /></>
-                  : (isLoading ? 'Création...' : 'Créer mon compte pro')}
-              </button>
-            </div>
-          </form>
+          </Screen>
         )}
 
-        {/* ══ ÉTAPE 3 — Coiffeur en salon : rattachement ══ */}
-        {step === 3 && role === 'hairdresser' && hairdresserType === 'salon' && (
-          <form onSubmit={submitForm} className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-4">
-            {error && <div className="mb-4 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400">{error}</div>}
-            <button type="button" onClick={() => setStep(2)} className="text-xs text-neutral-500 hover:text-neutral-300 mb-5 flex items-center gap-1 transition-colors">
-              ← Retour
-            </button>
-            <p className="text-xs font-semibold text-neutral-400 mb-1">Votre salon</p>
-            <p className="text-[11px] text-neutral-600 mb-4">Cherchez le salon dans lequel vous travaillez — votre gérant confirmera le rattachement, ça n&apos;empêche pas de continuer.</p>
+        {/* ── Email ── */}
+        {step === 'email' && (
+          <Screen
+            eyebrow="Identité"
+            title="Ton email professionnel ?"
+            hint="Il servira à te connecter et à recevoir tes notifications importantes."
+            ctaLabel="Continuer"
+            ctaDisabled={!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <Mail size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                autoFocus
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) goNext(); }}
+                placeholder="votre@email.fr"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+          </Screen>
+        )}
 
+        {/* ── Mot de passe ── */}
+        {step === 'password' && (
+          <Screen
+            eyebrow="Sécurité"
+            title="Choisis un mot de passe."
+            hint="8 caractères minimum."
+            ctaLabel="Continuer"
+            ctaDisabled={password.length < 8}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <Lock size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
+              <input
+                autoFocus
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && password.length >= 8) goNext(); }}
+                placeholder="8 caractères minimum"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+          </Screen>
+        )}
+
+        {/* ── Coiffeur : type ── */}
+        {step === 'hd_type' && (
+          <Screen eyebrow="Ton activité" title="Indépendant(e) ou en salon ?" ctaLabel="Continuer" onNext={goNext}>
+            <div className="grid grid-cols-2 gap-3">
+              <ChoiceCard
+                variant="dark"
+                compact
+                icon={MapPin}
+                label="Indépendant(e)"
+                active={hairdresserType === 'independent'}
+                onClick={() => setHairdresserType('independent')}
+              />
+              <ChoiceCard
+                variant="dark"
+                compact
+                icon={Building2}
+                label="En salon"
+                active={hairdresserType === 'salon'}
+                onClick={() => setHairdresserType('salon')}
+              />
+            </div>
+          </Screen>
+        )}
+
+        {/* ── Coiffeur indépendant : localisation (un seul écran, tout visible) ── */}
+        {step === 'hd_location' && (
+          <Screen
+            eyebrow="Localisation"
+            title="Où exerces-tu ?"
+            hint="Pour être retrouvé sur la carte et dans les recherches et classements locaux."
+            ctaLabel={isLoading ? 'Création...' : 'Créer mon profil'}
+            ctaLoading={isLoading}
+            ctaDisabled={!region || !department || city.trim().length < 2}
+            onNext={goNext}
+          >
+            <LocationAccordion
+              value={{ region, department, city, street }}
+              onChange={(patch) => {
+                if (patch.region !== undefined) setRegion(patch.region);
+                if (patch.department !== undefined) setDepartment(patch.department);
+                if (patch.city !== undefined) setCity(patch.city);
+                if (patch.street !== undefined) setStreet(patch.street);
+              }}
+              theme="dark"
+            />
+          </Screen>
+        )}
+
+        {/* ── Coiffeur salarié : recherche du salon ── */}
+        {step === 'hd_salon_search' && (
+          <Screen
+            eyebrow="Ton salon"
+            title="Cherche ton salon."
+            hint="Ton gérant confirmera le rattachement — ça n'empêche pas de continuer sans."
+            ctaLabel={isLoading ? 'Création...' : (selectedSalon ? 'Créer mon profil' : 'Continuer sans salon')}
+            ctaLoading={isLoading}
+            onNext={goNext}
+          >
             {selectedSalon ? (
-              <div className="flex items-center justify-between bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-3 mb-4">
+              <div className="flex items-center justify-between bg-neutral-900 border border-neutral-700 rounded-2xl px-4 py-3.5">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{selectedSalon.name}</p>
-                  {selectedSalon.city && <p className="text-xs text-neutral-400">{selectedSalon.city}</p>}
+                  {selectedSalon.city && <p className="text-xs text-neutral-500">{selectedSalon.city}</p>}
                 </div>
                 <button type="button" onClick={() => { setSelectedSalon(null); setSalonQuery(''); }} className="text-neutral-400 hover:text-white flex-shrink-0 ml-2">
                   <X size={16} />
                 </button>
               </div>
             ) : (
-              <div className="mb-4">
+              <div>
                 <div className="relative">
-                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
+                  <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
                   <input
-                    type="text" value={salonQuery} onChange={(e) => searchSalons(e.target.value)}
+                    autoFocus
+                    type="text"
+                    value={salonQuery}
+                    onChange={(e) => searchSalons(e.target.value)}
                     placeholder="Nom ou ville du salon"
-                    className="w-full pl-9 pr-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all"
+                    className={`${inputCls} pl-11`}
                   />
                 </div>
                 {salonSearching && (
-                  <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1"><Loader size={11} className="animate-spin" /> Recherche...</p>
+                  <p className="text-xs text-neutral-500 mt-3 flex items-center gap-1.5"><Loader size={12} className="animate-spin" /> Recherche...</p>
                 )}
                 {!salonSearching && salonResults.length > 0 && (
-                  <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto">
+                  <div className="mt-3 space-y-1.5">
                     {salonResults.map((s) => (
                       <button key={s.id} type="button" onClick={() => { setSelectedSalon(s); setSalonResults([]); }}
-                        className="w-full text-left px-3.5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-750 border border-neutral-700 hover:border-neutral-600 transition-colors">
+                        className="w-full text-left px-4 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors">
                         <p className="text-sm font-medium text-white">{s.name}</p>
                         {s.city && <p className="text-[11px] text-neutral-500">{s.city}</p>}
                       </button>
@@ -270,71 +395,92 @@ export default function ProInscriptionPage() {
                   </div>
                 )}
                 {!salonSearching && salonQuery.trim().length >= 2 && salonResults.length === 0 && (
-                  <p className="text-[11px] text-neutral-500 mt-2 leading-relaxed">
-                    Aucun salon trouvé. Pas grave — continuez, vous pourrez rattacher votre salon plus tard depuis votre espace pro dès que votre gérant aura créé sa page CHAIR.
+                  <p className="text-[12px] text-neutral-500 mt-3 leading-relaxed">
+                    Aucun salon trouvé — continue, tu pourras te rattacher dès que ton gérant aura créé sa page CHAIR.
                   </p>
                 )}
               </div>
             )}
-
-            <button type="submit" disabled={isLoading} className="w-full bg-white text-neutral-900 font-semibold py-3 rounded-xl hover:bg-neutral-100 transition-colors text-sm flex items-center justify-center gap-1.5 disabled:opacity-50">
-              {isLoading ? 'Création...' : (selectedSalon ? 'Créer mon compte pro' : 'Continuer sans salon pour l’instant')}
-            </button>
-          </form>
+          </Screen>
         )}
 
-        {/* ══ ÉTAPE 2 — Gérant salon ══ */}
-        {step === 2 && role === 'salon_owner' && (
-          <form onSubmit={submitForm} className="bg-neutral-900 rounded-2xl border border-neutral-800 p-6 mb-4">
-            {error && <div className="mb-4 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400">{error}</div>}
-            <button type="button" onClick={() => setStep(1)} className="text-xs text-neutral-500 hover:text-neutral-300 mb-5 flex items-center gap-1 transition-colors">
-              ← Retour
-            </button>
-            <p className="text-xs font-semibold text-neutral-400 mb-1">Votre salon</p>
-            <p className="text-[11px] text-neutral-600 mb-4">Ces informations seront visibles sur la page publique de votre salon.</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Nom du salon</label>
-                <input type="text" value={managerSalonName} onChange={(e) => setManagerSalonName(e.target.value)} placeholder="Koehler Coiffeur" required
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Ville</label>
-                <input type="text" value={managerCity} onChange={(e) => setManagerCity(e.target.value)} placeholder="Strasbourg"
-                  className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-400 mb-1.5">SIRET <span className="font-normal text-neutral-600">(recommandé)</span></label>
-                <div className="relative">
-                  <input type="text" value={siret} onChange={(e) => checkSiret(e.target.value)} placeholder="14 chiffres" maxLength={14}
-                    className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition-all pr-16" />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold tabular-nums ${
-                    siret.length === 0 ? 'text-neutral-600' : siret.length === 14 ? 'text-green-400' : 'text-amber-400'
-                  }`}>{siret.length}/14</span>
-                </div>
-                {siretResult.status === 'loading' && <p className="text-xs text-neutral-500 mt-1 flex items-center gap-1"><Loader size={11} className="animate-spin" /> Vérification...</p>}
-                {siretResult.status === 'ok' && (
-                  <div className={`flex items-start gap-2 mt-2 px-3 py-2 rounded-xl text-xs ${siretResult.is_hairdresser ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>
-                    {siretResult.is_hairdresser ? <CheckCircle size={12} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />}
-                    <span>{siretResult.is_hairdresser ? 'Salon vérifié' : 'Entreprise trouvée'} — {siretResult.business_name}</span>
-                  </div>
-                )}
-                {siretResult.status === 'error' && <p className="text-xs text-red-400 mt-1 flex items-center gap-1"><AlertCircle size={11} />{siretResult.message}</p>}
-              </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-white text-neutral-900 font-semibold py-3 rounded-xl hover:bg-neutral-100 transition-colors text-sm mt-2 disabled:opacity-50">
-                {isLoading ? 'Création...' : 'Créer mon espace salon'}
-              </button>
+        {/* ── Gérant : nom du salon ── */}
+        {step === 'so_name' && (
+          <Screen eyebrow="Ton salon" title="Comment s'appelle ton salon ?" ctaLabel="Continuer" ctaDisabled={managerSalonName.trim().length < 2} onNext={goNext}>
+            <input
+              autoFocus
+              type="text"
+              value={managerSalonName}
+              onChange={(e) => setManagerSalonName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && managerSalonName.trim().length >= 2) goNext(); }}
+              placeholder="Koehler Coiffeur"
+              className={inputCls}
+            />
+          </Screen>
+        )}
+
+        {/* ── Gérant : localisation salon (un seul écran, tout visible) ── */}
+        {step === 'so_location' && (
+          <Screen
+            eyebrow="Ton salon"
+            title="Où est-il situé ?"
+            hint="Pour être retrouvé sur la carte et dans les recherches et classements locaux."
+            ctaLabel="Continuer"
+            ctaDisabled={!managerRegion || !managerDepartment || managerCity.trim().length < 2}
+            onNext={goNext}
+          >
+            <LocationAccordion
+              value={{ region: managerRegion, department: managerDepartment, city: managerCity, street: managerStreet }}
+              onChange={(patch) => {
+                if (patch.region !== undefined) setManagerRegion(patch.region);
+                if (patch.department !== undefined) setManagerDepartment(patch.department);
+                if (patch.city !== undefined) setManagerCity(patch.city);
+                if (patch.street !== undefined) setManagerStreet(patch.street);
+              }}
+              theme="dark"
+            />
+          </Screen>
+        )}
+
+        {/* ── Gérant : SIRET ── */}
+        {step === 'so_siret' && (
+          <Screen
+            eyebrow="Vérification"
+            title="Un SIRET ?"
+            hint="Recommandé — ça vérifie et certifie ton salon auprès des clients."
+            ctaLabel={isLoading ? 'Création...' : 'Créer mon espace salon'}
+            ctaLoading={isLoading}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <input
+                type="text"
+                value={siret}
+                onChange={(e) => checkSiret(e.target.value)}
+                placeholder="14 chiffres"
+                maxLength={14}
+                className={`${inputCls} pr-16`}
+              />
+              <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-xs font-semibold tabular-nums ${
+                siret.length === 0 ? 'text-neutral-600' : siret.length === 14 ? 'text-green-400' : 'text-amber-400'
+              }`}>{siret.length}/14</span>
             </div>
-          </form>
+            {siretResult.status === 'loading' && <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1.5"><Loader size={12} className="animate-spin" /> Vérification...</p>}
+            {siretResult.status === 'ok' && (
+              <div className={`flex items-start gap-2 mt-3 px-4 py-3 rounded-xl text-xs ${siretResult.is_hairdresser ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>
+                {siretResult.is_hairdresser ? <CheckCircle size={13} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />}
+                <span>{siretResult.is_hairdresser ? 'Salon vérifié' : 'Entreprise trouvée'} — {siretResult.business_name}</span>
+              </div>
+            )}
+            {siretResult.status === 'error' && <p className="text-xs text-red-400 mt-2 flex items-center gap-1.5"><AlertCircle size={12} />{siretResult.message}</p>}
+          </Screen>
         )}
+      </div>
 
-        <p className="text-center text-sm text-neutral-500">
+      <div className="flex-shrink-0 text-center pb-safe pb-4">
+        <p className="text-[13px] text-neutral-500">
           Déjà un compte pro ?{' '}
           <Link href="/pro/connexion" className="font-semibold text-white hover:underline">Se connecter</Link>
-        </p>
-        <p className="text-center text-sm text-neutral-600 mt-3">
-          Vous êtes client ?{' '}
-          <Link href="/inscription" className="text-neutral-500 hover:text-neutral-300 hover:underline">Créer un compte client</Link>
         </p>
       </div>
     </div>

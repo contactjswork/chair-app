@@ -10,7 +10,7 @@ import {
   MessageSquare, Award, BadgeCheck,
   Scissors, Briefcase, Sprout, TrendingUp, Medal,
   Bookmark, ShieldCheck, GraduationCap, Target, Flame, X, ChevronDown, BookOpen,
-  CalendarClock, Rocket, Globe, Heart,
+  CalendarClock, Rocket, Globe, Heart, Calendar, Share2, MapPin, Repeat, Gem,
 } from 'lucide-react';
 import type { ApiChairBadge, ApiChairLevel } from '@/lib/types';
 
@@ -24,9 +24,12 @@ export const BADGE_ICONS: Record<string, React.ElementType> = {
   portfolio_10:   Layout,
   portfolio_50:   Trophy,
   portfolio_300:  Crown,
+  follower_10:    Users,
   follower_100:   Users,
   follower_500:   Star,
+  follower_1000:  Star,
   follower_2500:  Zap,
+  follower_5000:  Zap,
   follower_15000: Crown,
   veteran_3m:     CalendarClock,
   veteran_1y:     CalendarClock,
@@ -35,11 +38,14 @@ export const BADGE_ICONS: Record<string, React.ElementType> = {
   verified:       BadgeCheck,
   new_talent:     Sprout,
   top_10_local:        TrendingUp,
+  top_5_local:         TrendingUp,
+  top_3_local:         Medal,
   top_1_percent:       Medal,
   pioneer_chair:       Rocket,
   national_reference:  Globe,
   ambassador_program:  Heart,
   ambassador_national: Heart,
+  legende_ultime:      Gem,
   identity_verified: ShieldCheck,
   siret_verified:    ShieldCheck,
   formation_badge:   BookOpen,
@@ -49,11 +55,31 @@ export const BADGE_ICONS: Record<string, React.ElementType> = {
   streak_30:         Flame,
   streak_100:        Flame,
   streak_365:        Flame,
+  streak_1000:       Flame,
   weekly_4:          Flame,
   perfect_day_1:     Target,
   perfect_week_7:    Target,
   perfect_month_30:  Target,
   perfect_100:       Target,
+  // ── Démarrage ──
+  first_specialty:      Scissors,
+  first_review_received:MessageSquare,
+  first_verified_visit: MapPin,
+  first_service:         Briefcase,
+  first_appointment:     Calendar,
+  first_share:           Share2,
+  // ── Avis et visites (carrière, globaux) ──
+  review_10:  MessageSquare,
+  review_50:  MessageSquare,
+  review_100: MessageSquare,
+  review_500: MessageSquare,
+  visit_25:   MapPin,
+  visit_100:  MapPin,
+  regular_clients_5: Repeat,
+  // ── Partages ──
+  share_10:   Share2,
+  share_100:  Share2,
+  share_1000: Share2,
 };
 
 // ── Icônes des paliers MÉTIER par spécialité (badges dynamiques) ────────────
@@ -72,22 +98,26 @@ const TIER_STYLES: Record<number, { bg: string; text: string; border: string }> 
   2: { bg: 'bg-neutral-100',text: 'text-neutral-600',  border: 'border-neutral-200' },
   3: { bg: 'bg-yellow-50',  text: 'text-yellow-700',   border: 'border-yellow-200' },
   4: { bg: 'bg-neutral-900',text: 'text-white',         border: 'border-neutral-900' },
+  5: { bg: 'bg-neutral-950',text: 'text-white',         border: 'border-neutral-900' },
 };
 
 // ── Medaillon de badge — icône premium, dégradé métal par tier ──────────────
 // Remplace les carrés plats colorés par une pièce/médaille avec relief,
 // cohérent partout où un badge est affiché (dashboard, profil public).
+// Tier 5 = "ultime" : distinct du tier 4 "légendaire" (noir uni + relief) par
+// un fin liseré or, réservé aux 1-2 badges de combinaison les plus rares.
 
 const TIER_MEDAL: Record<number, { gradient: string; icon: string; ringCls: string; label: string }> = {
-  1: { gradient: 'bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700',    icon: 'text-white',        ringCls: 'ring-amber-200',   label: 'Bronze' },
-  2: { gradient: 'bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600',    icon: 'text-white',        ringCls: 'ring-slate-200',   label: 'Argent' },
-  3: { gradient: 'bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-600',  icon: 'text-neutral-900',  ringCls: 'ring-yellow-200',  label: 'Or' },
+  1: { gradient: 'bg-gradient-to-br from-amber-300 via-amber-500 to-amber-700',    icon: 'text-white',        ringCls: 'ring-amber-200',   label: 'Commun' },
+  2: { gradient: 'bg-gradient-to-br from-slate-200 via-slate-400 to-slate-600',    icon: 'text-white',        ringCls: 'ring-slate-200',   label: 'Rare' },
+  3: { gradient: 'bg-gradient-to-br from-yellow-200 via-amber-400 to-yellow-600',  icon: 'text-neutral-900',  ringCls: 'ring-yellow-200',  label: 'Épique' },
   4: { gradient: 'bg-gradient-to-br from-neutral-600 via-neutral-900 to-black',    icon: 'text-white',        ringCls: 'ring-neutral-400', label: 'Légendaire' },
+  5: { gradient: 'bg-black',                                                       icon: 'text-amber-300',    ringCls: 'ring-amber-300/70',label: 'Ultime' },
 };
 
 export function BadgeMedallion({
   code, tier, size = 44, locked = false,
-}: { code: string; tier: 1 | 2 | 3 | 4; size?: number; locked?: boolean }) {
+}: { code: string; tier: 1 | 2 | 3 | 4 | 5; size?: number; locked?: boolean }) {
   const Icon = BADGE_ICONS[code] ?? Award;
 
   if (locked) {
@@ -159,6 +189,29 @@ const BADGE_STORY: Record<string, string> = {
   perfect_week_7:    '{name} a atteint tous ses objectifs du jour, 7 fois au total.',
   perfect_month_30:  '{name} a atteint tous ses objectifs du jour, 30 fois au total.',
   perfect_100:       '{name} a atteint tous ses objectifs du jour, 100 fois au total.',
+  first_specialty:       '{name} a choisi sa première spécialité sur CHAIR.',
+  first_review_received: '{name} a reçu son premier avis client.',
+  first_verified_visit:  '{name} a certifié sa première visite par QR code.',
+  first_service:         '{name} a renseigné sa première prestation.',
+  first_appointment:     '{name} a reçu son premier rendez-vous via CHAIR.',
+  first_share:           '{name} a partagé son profil ou une réalisation pour la première fois.',
+  review_10:  '{name} a reçu 10 avis clients.',
+  review_50:  '{name} a reçu 50 avis clients.',
+  review_100: '{name} a reçu 100 avis clients.',
+  review_500: '{name} a reçu 500 avis clients — une réputation qui ne doit rien au hasard.',
+  visit_25:   '{name} a certifié 25 visites par QR code.',
+  visit_100:  '{name} a certifié 100 visites par QR code.',
+  regular_clients_5: '{name} a fidélisé 5 clients revenus au moins deux fois.',
+  follower_10:   '{name} est suivi par 10 personnes sur CHAIR.',
+  follower_1000: '{name} est suivi par 1 000 personnes sur CHAIR.',
+  follower_5000: '{name} est suivi par 5 000 personnes sur CHAIR.',
+  share_10:   '{name} a partagé son profil ou ses réalisations 10 fois.',
+  share_100:  '{name} a partagé son profil ou ses réalisations 100 fois.',
+  share_1000: '{name} a partagé son profil ou ses réalisations 1 000 fois.',
+  streak_1000: '{name} a été actif sur CHAIR 1 000 jours d’affilée, sans interruption — plus de deux ans et demi de régularité totale.',
+  top_5_local: '{name} fait partie des 5 coiffeurs les mieux classés d’une spécialité, dans sa ville.',
+  top_3_local: '{name} fait partie des 3 coiffeurs les mieux classés d’une spécialité, dans sa ville — le podium local.',
+  legende_ultime: '{name} cumule une référence nationale, le top 1% CHAIR toutes disciplines, plus de 3 ans d’ancienneté et une activité récente prouvée sur une clientèle large et distincte — le sommet absolu de CHAIR.',
 };
 
 export function BadgeExplainSheet({
@@ -166,8 +219,9 @@ export function BadgeExplainSheet({
 }: { badge: ApiChairBadge | null; onClose: () => void; coiffeurName?: string }) {
   if (!badge) return null;
   const medal = TIER_MEDAL[badge.tier] ?? TIER_MEDAL[1];
+  const isLocked = badge.unlocked === false;
   const firstName = coiffeurName?.split(' ')[0] || 'Ce coiffeur';
-  const story = BADGE_STORY[badge.code]?.replace('{name}', firstName) ?? badge.desc;
+  const story = isLocked ? badge.desc : (BADGE_STORY[badge.code]?.replace('{name}', firstName) ?? badge.desc);
 
   // Portalé dans body, z-index au-dessus de la bottom nav (z-[60]) : un badge
   // peut être affiché n'importe où sur la page (dont des conteneurs
@@ -178,7 +232,7 @@ export function BadgeExplainSheet({
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[16px] font-bold text-neutral-900">Badge débloqué</p>
+          <p className="text-[16px] font-bold text-neutral-900">{isLocked ? 'Badge à débloquer' : 'Badge débloqué'}</p>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors flex-shrink-0"
@@ -187,13 +241,18 @@ export function BadgeExplainSheet({
           </button>
         </div>
         <div className="flex items-center gap-3 mb-3">
-          <BadgeMedallion code={badge.code} tier={badge.tier} size={52} />
+          <BadgeMedallion code={badge.code} tier={badge.tier} size={52} locked={isLocked} />
           <div>
-            <p className="text-[15px] font-bold text-neutral-900">{badge.name}</p>
+            <p className={`text-[15px] font-bold ${isLocked ? 'text-neutral-400' : 'text-neutral-900'}`}>{badge.name}</p>
             <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-300">{medal.label}</span>
           </div>
         </div>
         <p className="text-[13px] text-neutral-500 leading-relaxed">{story}</p>
+        {badge.unlocked_at && (
+          <p className="text-[11px] text-neutral-300 mt-3">
+            Débloqué le {new Date(badge.unlocked_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        )}
       </div>
     </div>,
     document.body
@@ -320,13 +379,16 @@ export function ProfileBadgesRow({ badges, level }: { badges: ApiChairBadge[]; l
 // réserver : "Nouveau talent" ou un streak interne ne rassurent personne.
 // On ne montre que ceux qui répondent à "il a déjà fait ses preuves",
 // classés du plus impressionnant au moins, et jamais plus de 3 — la
-// crédibilité vient de la sélection, pas de la quantité.
+// crédibilité vient de la sélection, pas de la quantité. Codes réels du
+// catalogue courant uniquement (voir BadgeService::BADGES) — une liste
+// désynchronisée du catalogue ne fait jamais rien matcher, silencieusement.
 const CLIENT_TRUST_PRIORITY: string[] = [
-  'perfect', 'master_100', 'visit_1000', 'star_500',
-  'excellent', 'expert_50', 'visit_250', 'identity_verified', 'siret_verified', 'verified', 'top_10',
-  'influencer_100', 'portfolio_50', 'diploma_added',
-  'well_rated', 'pro_10', 'visit_50', 'popular_30', 'portfolio_20', 'formation_badge',
-  'visit_10',
+  'legende_ultime', 'top_1_percent', 'national_reference', 'top_3_local',
+  'review_500', 'top_5_local', 'top_10_local', 'review_100',
+  'identity_verified', 'siret_verified', 'verified', 'review_50',
+  'follower_5000', 'portfolio_50', 'diploma_added',
+  'follower_1000', 'review_10', 'visit_100', 'follower_500', 'portfolio_10', 'formation_badge',
+  'visit_25',
 ];
 
 const TRUST_TIER_STYLES: Record<number, { bg: string; text: string }> = {
@@ -334,6 +396,7 @@ const TRUST_TIER_STYLES: Record<number, { bg: string; text: string }> = {
   2: { bg: 'bg-white', text: 'text-neutral-700' },
   3: { bg: 'bg-white', text: 'text-neutral-900' },
   4: { bg: 'bg-neutral-900 border-neutral-900', text: 'text-white' },
+  5: { bg: 'bg-black border-neutral-900', text: 'text-amber-300' },
 };
 
 function TrustBadgeCard({ badge }: { badge: ApiChairBadge }) {

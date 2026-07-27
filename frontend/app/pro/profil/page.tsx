@@ -4,14 +4,14 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { api, geo } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth';
 import type { ApiSpecialty, ApiService } from '@/lib/types';
 import ImageUpload from '@/components/ui/ImageUpload';
 import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
 import {
   ChevronLeft, Save, Check, AlertCircle, Plus, Eye, Scissors,
-  Clock, ShieldCheck, Upload, Loader, X,
+  Clock, ShieldCheck, Upload, Loader, X, ChevronDown, Sparkles,
 } from 'lucide-react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 
@@ -23,6 +23,10 @@ interface ProfileData {
     slug: string;
     tagline: string | null;
     city: string | null;
+    postal_code: string | null;
+    region: string | null;
+    department: string | null;
+    work_address: string | null;
     booking_url: string | null;
     years_experience: number | null;
     diploma: string | null;
@@ -46,6 +50,7 @@ function computeCompletion(
   bio: string,
   tagline: string,
   city: string,
+  postalCode: string,
   selectedSpecialties: number[],
   bookingUrl: string,
   yearsExp: string,
@@ -56,6 +61,7 @@ function computeCompletion(
     { label: 'Bio (100 caractères min)', done: bio.trim().length >= 100,            pts: 20 },
     { label: 'Accroche (tagline)',       done: tagline.trim().length >= 10,          pts: 15 },
     { label: 'Ville',                   done: city.trim().length > 0,              pts: 10 },
+    { label: 'Code postal',             done: postalCode.trim().length > 0,        pts: 5  },
     { label: 'Spécialités (min 2)',      done: selectedSpecialties.length >= 2,     pts: 15 },
     ...(!isIndependent ? [{ label: 'Lien de réservation', done: bookingUrl.trim().length > 0, pts: 15 }] : []),
     { label: "Années d'expérience",      done: yearsExp.trim().length > 0 && yearsExp !== '0', pts: 5 },
@@ -80,10 +86,17 @@ export default function DashboardProfilPage() {
   const [bio, setBio]                         = useState('');
   const [tagline, setTagline]                 = useState('');
   const [city, setCity]                       = useState('');
+  const [postalCode, setPostalCode]           = useState('');
+  const [region, setRegion]                   = useState('');
+  const [department, setDepartment]           = useState('');
+  const [address, setAddress]                 = useState('');
+  const [regionsList, setRegionsList]         = useState<string[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<Array<{ code: string; name: string }>>([]);
   const [bookingUrl, setBookingUrl]           = useState('');
   const [yearsExp, setYearsExp]               = useState('');
   const [selectedSpecialties, setSelectedSpecialties] = useState<number[]>([]);
   const [workAvailability, setWorkAvailability] = useState<string>('employed');
+  const [expandedSpecialty, setExpandedSpecialty] = useState<number | null>(null);
 
   // Diplôme
   const [diplomaType, setDiplomaType]         = useState('');
@@ -117,6 +130,10 @@ export default function DashboardProfilPage() {
         setBio(profileData.user.bio ?? '');
         setTagline(profileData.profile.tagline ?? '');
         setCity(profileData.profile.city ?? profileData.user.city ?? '');
+        setPostalCode(profileData.profile.postal_code ?? '');
+        setRegion(profileData.profile.region ?? '');
+        setDepartment(profileData.profile.department ?? '');
+        setAddress(profileData.profile.work_address ?? '');
         setBookingUrl(profileData.profile.booking_url ?? '');
         setYearsExp(String(profileData.profile.years_experience ?? ''));
         setDiplomaType(profileData.profile.diploma ?? '');
@@ -133,6 +150,19 @@ export default function DashboardProfilPage() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  useEffect(() => {
+    geo.regions().then((r) => setRegionsList(r.regions)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!region) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDepartmentsList([]);
+      return;
+    }
+    geo.departments(region).then((r) => setDepartmentsList(r.departments)).catch(() => setDepartmentsList([]));
+  }, [region]);
+
   function toggleSpecialty(id: number) {
     setSelectedSpecialties((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
@@ -148,6 +178,10 @@ export default function DashboardProfilPage() {
         bio: bio || null,
         tagline: tagline || null,
         city: city || null,
+        postal_code: postalCode || null,
+        region: region || null,
+        department: department || null,
+        work_address: address || null,
         booking_url: bookingUrl || null,
         years_experience: yearsExp ? parseInt(yearsExp) : null,
         work_availability: workAvailability,
@@ -208,7 +242,7 @@ export default function DashboardProfilPage() {
 
   // Score de complétion
   const isIndependent = profile?.profile.is_independent ?? true;
-  const completion = computeCompletion(avatarUrl, bio, tagline, city, selectedSpecialties, bookingUrl, yearsExp, isIndependent);
+  const completion = computeCompletion(avatarUrl, bio, tagline, city, postalCode, selectedSpecialties, bookingUrl, yearsExp, isIndependent);
   const completionPct = Math.round((completion.score / completion.total) * 100);
   const missing = completion.items.filter((i) => !i.done);
 
@@ -232,9 +266,8 @@ export default function DashboardProfilPage() {
       {/* Header desktop sticky */}
       <header className="hidden md:flex sticky top-0 z-10 bg-white border-b border-neutral-100 px-4 md:px-8 h-14 items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/pro" className="flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-900 transition-colors">
-            <ChevronLeft size={16} />
-            Dashboard
+          <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors p-1 -ml-1 rounded-lg">
+            <ChevronLeft size={18} />
           </Link>
           <span className="text-neutral-200">|</span>
           <span className="text-sm font-semibold text-neutral-900">Modifier mon profil</span>
@@ -260,83 +293,83 @@ export default function DashboardProfilPage() {
           </div>
         )}
 
-        {/* ── Score de complétion ──────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm font-semibold text-neutral-900">Profil complété à {completionPct}%</p>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                {completionPct === 100
-                  ? 'Profil optimisé — vous avez la meilleure visibilité possible.'
-                  : `${missing.length} action${missing.length > 1 ? 's' : ''} pour améliorer votre visibilité`}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{
-                background: `conic-gradient(#0a0a0a ${completionPct * 3.6}deg, #f5f5f5 0deg)`
-              }}>
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                <span className="text-[10px] font-bold text-neutral-900">{completionPct}%</span>
-              </div>
-            </div>
-          </div>
-          {/* Barre de progression */}
-          <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden mb-3">
-            <div
-              className="h-full bg-neutral-900 rounded-full transition-all duration-500"
-              style={{ width: `${completionPct}%` }}
-            />
-          </div>
-          {/* Items manquants */}
-          {missing.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {missing.map((item) => (
-                <span key={item.label} className="inline-flex items-center gap-1 text-[11px] text-neutral-500 bg-neutral-50 border border-neutral-100 px-2.5 py-1 rounded-full">
-                  <Plus size={9} className="text-neutral-400" />
-                  {item.label}
-                </span>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ── Identité ─────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Identité</h2>
-          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-            Votre photo et votre bannière sont la toute première chose qu&apos;un client voit — avant même de lire un mot de votre bio.
-            Un profil sans photo inspire méfiance ; un profil soigné inspire confiance. <span className="font-semibold text-neutral-700">Les profils avec photo reçoivent 5x plus de visites.</span>
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-5">
-            <ImageUpload
-              currentUrl={avatarUrl}
-              endpoint="/api/profile/avatar"
-              onSuccess={(url) => { setAvatarUrl(url); updateUser({ avatar: url }); markDirty(); }}
-              label="Photo de profil"
-              aspectClass="aspect-square"
-              shape="circle"
-            />
+        {/* ── Héro profil : bannière + avatar chevauché ────────────── */}
+        <section className="relative bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-4">
+          <div className="relative w-full aspect-[3/1] bg-neutral-100">
             <ImageUpload
               currentUrl={bannerUrl}
               endpoint="/api/profile/banner"
               onSuccess={(url) => { setBannerUrl(url); markDirty(); }}
               label="Bannière"
-              aspectClass="aspect-[3/1]"
               shape="rect"
+              variant="hero"
             />
           </div>
-          <div className="space-y-3">
-            {/* Nom — lecture seule */}
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Nom affiché</label>
-              <input
-                type="text"
-                value={user.name}
-                readOnly
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-100 rounded-xl text-sm text-neutral-400 cursor-default"
-              />
-              <p className="text-[11px] text-neutral-400 mt-1">Pour modifier votre nom, contactez le support.</p>
+          <div className="px-5 pb-5">
+            <div className="flex items-end justify-between gap-3 -mt-10">
+              <div className="w-20 h-20 rounded-full ring-4 ring-white overflow-hidden flex-shrink-0 shadow-sm">
+                <ImageUpload
+                  currentUrl={avatarUrl}
+                  endpoint="/api/profile/avatar"
+                  onSuccess={(url) => { setAvatarUrl(url); updateUser({ avatar: url }); markDirty(); }}
+                  label="Photo de profil"
+                  shape="circle"
+                  variant="hero"
+                />
+              </div>
+              {user.hairdresser_profile && (
+                <Link
+                  href={`/app/coiffeur/${user.hairdresser_profile.slug}`}
+                  target="_blank"
+                  className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 border border-neutral-200 px-3 py-2 rounded-xl hover:border-neutral-400 hover:text-neutral-900 transition-colors flex-shrink-0"
+                >
+                  <Eye size={13} />
+                  Profil public
+                </Link>
+              )}
             </div>
+            <p className="font-bold text-[17px] text-neutral-900 mt-3 leading-tight">{user.name}</p>
+            <input
+              type="text"
+              value={tagline}
+              onChange={(e) => { setTagline(e.target.value); markDirty(); }}
+              maxLength={255}
+              placeholder="Ajoutez une accroche — ex : Spécialiste blond polaire & colorations naturelles"
+              className="w-full mt-1 text-sm text-neutral-500 placeholder:text-neutral-400 bg-transparent focus:outline-none border-b border-transparent focus:border-neutral-200 pb-1 transition-colors"
+            />
+          </div>
+        </section>
+
+        {/* ── Complétion du profil ─────────────────────────────────── */}
+        {completionPct < 100 && (
+          <section className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: `conic-gradient(#0a0a0a ${completionPct * 3.6}deg, #f5f5f5 0deg)` }}>
+                <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center">
+                  <span className="text-[9px] font-bold text-neutral-900">{completionPct}%</span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-neutral-900">Profil complété à {completionPct}%</p>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {missing.map((item) => (
+                    <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-neutral-500 bg-neutral-50 border border-neutral-100 px-2 py-0.5 rounded-full">
+                      <Plus size={8} className="text-neutral-400" />
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Localisation ──────────────────────────────────────────── */}
+        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
+          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Localisation</h2>
+          <p className="text-xs text-neutral-400 mb-4">Vous fait apparaître dans les recherches locales, ex. « coiffeur à {city || '...'} ».</p>
+          <div className="space-y-3">
             {/* Ville */}
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Ville</label>
@@ -347,105 +380,160 @@ export default function DashboardProfilPage() {
                 placeholder="Ex : Strasbourg, Haguenau, Paris..."
                 className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
               />
-              <p className="text-[11px] text-neutral-400 mt-1.5">Indispensable pour votre référencement local — c&apos;est ce qui vous fait apparaître dans les recherches &quot;coiffeur à {city || '[votre ville]'}&quot;.</p>
+            </div>
+            {/* Code postal */}
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Code postal</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={postalCode}
+                onChange={(e) => { setPostalCode(e.target.value); markDirty(); }}
+                placeholder="Ex : 67500"
+                maxLength={10}
+                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+              />
+            </div>
+            {/* Région / Département */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Région</label>
+                <select
+                  value={region}
+                  onChange={(e) => { setRegion(e.target.value); setDepartment(''); markDirty(); }}
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                >
+                  <option value="">—</option>
+                  {regionsList.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Département</label>
+                <select
+                  value={department}
+                  onChange={(e) => { setDepartment(e.target.value); markDirty(); }}
+                  disabled={!region}
+                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all disabled:opacity-50"
+                >
+                  <option value="">—</option>
+                  {departmentsList.map((d) => <option key={d.code} value={d.name}>{d.name}</option>)}
+                </select>
+              </div>
+            </div>
+            {/* Adresse */}
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Adresse</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => { setAddress(e.target.value); markDirty(); }}
+                placeholder="Ex : 12 rue des Tanneurs"
+                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+              />
             </div>
           </div>
         </section>
 
-        {/* ── Présentation ─────────────────────────────────────────── */}
+        {/* ── Bio ───────────────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Présentation</h2>
-          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-            Un client ne réserve pas un profil anonyme. Votre accroche et votre bio racontent qui vous êtes, votre parcours et votre approche —
-            c&apos;est ce qui transforme une visite en prise de rendez-vous. Une bio complète améliore aussi votre référencement sur CHAIR.
-          </p>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
-                Accroche <span className="text-neutral-400 font-normal">— 1 phrase percutante</span>
-              </label>
-              <input
-                type="text"
-                value={tagline}
-                onChange={(e) => { setTagline(e.target.value); markDirty(); }}
-                maxLength={255}
-                placeholder="Ex : Spécialiste du blond polaire & colorations naturelles"
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
-              />
-              <p className="text-[11px] text-neutral-400 mt-1 text-right">{tagline.length}/255</p>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Bio</label>
-              <textarea
-                value={bio}
-                onChange={(e) => { setBio(e.target.value); markDirty(); }}
-                maxLength={1000}
-                rows={5}
-                placeholder="Parlez de votre parcours, vos techniques de prédilection, votre approche du métier..."
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none"
-              />
-              <p className="text-[11px] text-neutral-400 mt-1 text-right">{bio.length}/1000</p>
-            </div>
-          </div>
+          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Bio</h2>
+          <p className="text-xs text-neutral-400 mb-4">Parcours, techniques, approche du métier — ce qui donne envie de réserver.</p>
+          <textarea
+            value={bio}
+            onChange={(e) => { setBio(e.target.value); markDirty(); }}
+            maxLength={1000}
+            rows={5}
+            placeholder="Parlez de votre parcours, vos techniques de prédilection, votre approche du métier..."
+            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none"
+          />
+          <p className="text-[11px] text-neutral-400 mt-1 text-right">{bio.length}/1000</p>
         </section>
 
         {/* ── Spécialités + services ───────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Spécialités</h2>
-          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-            Vos domaines d&apos;expertise — apparaissent sur votre profil et dans la recherche CHAIR. C&apos;est le principal levier de votre visibilité :
-            un client qui cherche &quot;Coupe Homme à Haguenau&quot; ne verra que les coiffeurs qui ont coché cette spécialité. Aucune limite — cochez tout ce qui vous représente.
-          </p>
+          <p className="text-xs text-neutral-400 mb-4">Vos domaines d&apos;expertise — visibles sur votre profil et dans la recherche CHAIR.</p>
 
           <SpecialtyPicker specialties={allSpecialties} selected={selectedSpecialties} onToggle={toggleSpecialty} />
 
           {selectedSpecialties.length > 0 && (
-            <div className="mt-5 pt-4 border-t border-neutral-100 space-y-3">
-              <p className="text-xs font-semibold text-neutral-700">Vos services par spécialité</p>
-              <p className="text-[11px] text-neutral-400 -mt-2 leading-relaxed">
-                Une spécialité regroupe plusieurs prestations précises. Détaillez vos services pour apparaître dans des recherches plus précises encore.
-              </p>
-              {selectedSpecialties.map((id) => {
-                const sp = allSpecialties.find((s) => s.id === id);
-                if (!sp) return null;
-                const spServices = services.filter((s) => s.specialty_id === id);
-                return (
-                  <div key={id} className="border border-neutral-100 rounded-xl overflow-hidden">
-                    <div className="flex items-center gap-3 px-4 py-3 bg-neutral-50">
-                      <div className="w-9 h-9 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
-                        {sp.icon
-                          // eslint-disable-next-line @next/next/no-img-element
-                          ? <img src={sp.icon} alt={sp.name} className="w-full h-full object-cover" />
-                          : <Scissors size={15} className="text-neutral-400" strokeWidth={1.5} />
-                        }
-                      </div>
-                      <p className="text-sm font-semibold text-neutral-900 flex-1 min-w-0">{sp.name}</p>
-                      <Link
-                        href={`/pro/services?specialty=${id}`}
-                        className="text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 transition-colors flex-shrink-0"
+            <div className="mt-5 pt-4 border-t border-neutral-100">
+              <p className="text-xs font-semibold text-neutral-700 mb-2.5">Vos services par spécialité</p>
+              <div className="space-y-2">
+                {selectedSpecialties.map((id) => {
+                  const sp = allSpecialties.find((s) => s.id === id);
+                  if (!sp) return null;
+                  const spServices = services.filter((s) => s.specialty_id === id);
+                  const isOpen = expandedSpecialty === id;
+                  return (
+                    <div key={id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedSpecialty(isOpen ? null : id)}
+                        className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-neutral-50 transition-colors"
                       >
-                        + Ajouter
-                      </Link>
+                        <div className="w-8 h-8 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
+                          {sp.icon
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={sp.icon} alt={sp.name} className="w-full h-full object-cover" />
+                            : <Scissors size={14} className="text-neutral-400" strokeWidth={1.5} />
+                          }
+                        </div>
+                        <span className="text-sm font-semibold text-neutral-900 flex-1 min-w-0 truncate text-left">{sp.name}</span>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full flex-shrink-0 ${
+                          spServices.length === 0 ? 'bg-amber-50 text-amber-600' : 'bg-neutral-100 text-neutral-600'
+                        }`}>
+                          {spServices.length === 0 ? 'Vide' : spServices.length}
+                        </span>
+                        <ChevronDown size={15} className={`text-neutral-300 flex-shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="border-t border-neutral-100">
+                          {spServices.length === 0 ? (
+                            <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                              <p className="text-[11px] text-amber-600 leading-relaxed">Invisible dans les recherches précises sans service.</p>
+                              <Link
+                                href={`/pro/services?specialty=${id}`}
+                                className="text-[11px] font-semibold text-neutral-900 underline flex-shrink-0"
+                              >
+                                Ajouter
+                              </Link>
+                            </div>
+                          ) : (
+                            <>
+                              <ul className="divide-y divide-neutral-50">
+                                {spServices.map((s) => (
+                                  <li key={s.id} className="flex items-center justify-between px-3.5 py-2 text-xs">
+                                    <span className="text-neutral-700 font-medium">{s.name}</span>
+                                    {isIndependent && s.price != null && (
+                                      <span className="text-neutral-400 font-semibold">{parseFloat(String(s.price)).toFixed(0)} €</span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                              <Link
+                                href={`/pro/services?specialty=${id}`}
+                                className="block text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 px-3.5 py-2 border-t border-neutral-50 transition-colors"
+                              >
+                                + Ajouter un service
+                              </Link>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {spServices.length === 0 ? (
-                      <p className="text-[11px] text-amber-600 px-4 py-3 leading-relaxed">
-                        Aucun service pour l&apos;instant — cette spécialité reste invisible dans les recherches précises tant qu&apos;aucun service n&apos;y est rattaché.
-                      </p>
-                    ) : (
-                      <ul className="divide-y divide-neutral-50">
-                        {spServices.map((s) => (
-                          <li key={s.id} className="flex items-center justify-between px-4 py-2.5 text-xs">
-                            <span className="text-neutral-700 font-medium">{s.name}</span>
-                            {isIndependent && s.price != null && (
-                              <span className="text-neutral-400 font-semibold">{parseFloat(String(s.price)).toFixed(0)} €</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              <Link
+                href="/pro/services"
+                className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 border border-dashed border-neutral-200 hover:border-neutral-300 rounded-xl px-3.5 py-2.5 transition-colors"
+              >
+                <Sparkles size={12} />
+                Pas de spécialité qui correspond ? Créer un service personnalisé
+              </Link>
             </div>
           )}
         </section>
@@ -453,9 +541,6 @@ export default function DashboardProfilPage() {
         {/* ── Informations professionnelles ────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Informations professionnelles</h2>
-          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-            Votre expérience et vos qualifications rassurent les clients qui hésitent entre plusieurs profils.
-          </p>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Années d&apos;expérience</label>
@@ -475,10 +560,7 @@ export default function DashboardProfilPage() {
                   <ShieldCheck size={13} className="text-neutral-400" />
                   Diplôme officiel <span className="text-neutral-400 font-normal">— vérifié par CHAIR</span>
                 </label>
-                <p className="text-[11px] text-neutral-400 mb-2.5 leading-relaxed">
-                  Pour garder ce badge crédible, chaque diplôme est vérifié par CHAIR à partir d&apos;un document justificatif — pas d&apos;auto-déclaration.
-                  Envoyez une photo claire de votre diplôme ; il sera validé sous quelques jours.
-                </p>
+                <p className="text-[11px] text-neutral-400 mb-2.5">Envoyez une photo claire de votre diplôme ; il sera validé sous quelques jours.</p>
 
                 {diplomaStatus === 'verified' ? (
                   <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 text-green-700 text-xs font-semibold px-4 py-3 rounded-xl">
@@ -559,9 +641,7 @@ export default function DashboardProfilPage() {
         {/* ── Disponibilité ────────────────────────────────────────── */}
         <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
           <h2 className="text-sm font-semibold text-neutral-900 mb-1">Disponibilité</h2>
-          <p className="text-xs text-neutral-500 mb-4 leading-relaxed">
-            Visible sur votre profil — permet aux salons et clients de savoir si vous êtes en poste, à l&apos;écoute d&apos;opportunités, ou non disponible.
-          </p>
+          <p className="text-xs text-neutral-400 mb-4">Visible sur votre profil public.</p>
           <div className="flex flex-col gap-2">
             {([
               ['employed',       'En poste',                   'Vous êtes actuellement en salon ou en activité'],
@@ -592,43 +672,6 @@ export default function DashboardProfilPage() {
             ))}
           </div>
         </section>
-
-        {/* ── CTA Services — référencement ─────────────────────────── */}
-        <section className="bg-neutral-50 border border-neutral-100 rounded-2xl p-5 mb-6">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Scissors size={14} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-semibold text-neutral-900">Gérer mes services</h2>
-              <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">
-                Les services améliorent votre visibilité dans la recherche CHAIR. Quand un client tape
-                {' '}&quot;balayage blond&quot; ou &quot;coupe homme&quot;, ce sont vos services qui le font apparaître.
-              </p>
-              <Link
-                href="/pro/services"
-                className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold bg-neutral-900 text-white px-4 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
-              >
-                <Plus size={12} />
-                Gérer mes services
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* Lien profil public */}
-        {user.hairdresser_profile && (
-          <div className="text-center pb-2">
-            <Link
-              href={`/app/coiffeur/${user.hairdresser_profile.slug}`}
-              className="inline-flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 underline transition-colors"
-              target="_blank"
-            >
-              <Eye size={12} />
-              Voir mon profil public
-            </Link>
-          </div>
-        )}
       </div>
 
       {/* ── Sticky save bar (mobile) ─────────────────────────────────── */}

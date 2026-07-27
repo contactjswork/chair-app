@@ -44,8 +44,6 @@ const FEATURES_HAIRDRESSER = [
 ];
 
 const STATS = [
-  { value: '500+', label: 'coiffeurs sur CHAIR' },
-  { value: '4.9', label: 'note moyenne des profils' },
   { value: '100%', label: 'avis certifiés vérifiés' },
   { value: '2min', label: 'pour créer son profil' },
 ];
@@ -138,7 +136,7 @@ export default function CoiffeursProPage() {
       {/* ── Stats ── */}
       <section className="py-14 bg-white border-b border-neutral-100">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-neutral-100 rounded-3xl overflow-hidden">
+          <div className="grid grid-cols-2 gap-px bg-neutral-100 rounded-3xl overflow-hidden max-w-md mx-auto">
             {STATS.map((s, i) => (
               <div key={i} className="bg-white p-8 text-center">
                 <p className="text-[32px] font-black text-neutral-900 leading-none mb-1">{s.value}</p>

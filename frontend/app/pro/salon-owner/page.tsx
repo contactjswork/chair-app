@@ -8,10 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Building2, Armchair, Briefcase,
   ArrowRight, ChevronRight, MapPin, Edit2, UserPlus,
-  AlertTriangle, LogOut,
+  AlertTriangle, LogOut, Scissors, Star,
 } from 'lucide-react';
 import { api, salons as salonsApi } from '@/lib/api';
-import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
+import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview } from '@/lib/types';
+import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
+import OwnerStat from '@/components/owner/OwnerStat';
+import OwnerActionCard from '@/components/owner/OwnerActionCard';
 
 interface TeamMember {
   id: number;
@@ -30,14 +33,23 @@ interface DashboardData {
   pending_rentals:    number;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
-
 export default function SalonOwnerDashboard() {
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, enableHairdresserMode } = useAuth();
   const router   = useRouter();
 
   const [data,    setData]    = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enabling, setEnabling] = useState(false);
+  const [recentReviews, setRecentReviews] = useState<ApiSalonRecentReview[]>([]);
+
+  async function handleEnableHairdresserMode() {
+    setEnabling(true);
+    try {
+      await enableHairdresserMode();
+    } catch {
+      setEnabling(false);
+    }
+  }
 
   useEffect(() => {
     if (isLoading) return;
@@ -51,7 +63,9 @@ export default function SalonOwnerDashboard() {
       api.get<{ count: number }>('/my-salon/applications/pending-count'),
       api.get<unknown[]>('/my-salon/rentals'),
       api.get<unknown[]>('/my-salon/rental-requests'),
-    ]).then(([salonRes, appsRes, rentalsRes, rentalReqsRes]) => {
+      salonsApi.recentReviews(),
+    ]).then(([salonRes, appsRes, rentalsRes, rentalReqsRes, reviewsRes]) => {
+      if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value);
       const salonData = salonRes.status === 'fulfilled' ? salonRes.value : null;
       const salon     = salonData?.salon ?? null;
 
@@ -88,6 +102,7 @@ export default function SalonOwnerDashboard() {
   if ((data?.pending_joins ?? 0) > 0)                  alerts.push({ label: `${data!.pending_joins} demande(s) de coiffeur en attente`, href: '/pro/salon' });
   if ((data?.pending_apps ?? 0) > 0)                   alerts.push({ label: `${data!.pending_apps} candidature(s) à traiter`,           href: '/pro/recrutement' });
   if ((data?.pending_rentals ?? 0) > 0)                alerts.push({ label: `${data!.pending_rentals} demande(s) de fauteuil`,           href: '/pro/fauteuils' });
+  if (salon?.verification_status === 'pending_review') alerts.push({ label: 'Vérification SIRET en cours',                              href: '/pro/salon' });
 
   const ACTIONS = [
     { icon: Briefcase, label: 'Créer une offre',     href: '/pro/recrutement', color: 'bg-neutral-900 text-white' },
@@ -99,6 +114,35 @@ export default function SalonOwnerDashboard() {
       <main className="flex-1">
 
       <div className="max-w-xl mx-auto px-4 pt-6 space-y-4">
+
+        {/* Double identité : Mode Gérant / Mode Coiffeur (mobile — la
+            sidebar desktop a la sienne) */}
+        {(user?.can_manage_salon && user?.has_hairdresser_profile) && (
+          <div className="md:hidden">
+            <ProModeSwitcher />
+          </div>
+        )}
+
+        {/* Double identité : proposer d'activer le mode coiffeur si le gérant
+            coupe lui-même dans son salon */}
+        {salon && !user?.has_hairdresser_profile && (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4 flex items-center gap-3.5">
+            <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+              <Scissors size={16} className="text-neutral-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-neutral-900">Vous coupez aussi les cheveux ?</p>
+              <p className="text-xs text-neutral-400">Activez votre profil coiffeur dans {salon.name}.</p>
+            </div>
+            <button
+              onClick={handleEnableHairdresserMode}
+              disabled={enabling}
+              className="text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              {enabling ? '...' : 'Activer'}
+            </button>
+          </div>
+        )}
 
         {/* Bonjour */}
         <div>
@@ -145,7 +189,7 @@ export default function SalonOwnerDashboard() {
                   {data.team.slice(0, 4).map((m) => (
                     <div key={m.id} className="w-7 h-7 rounded-full bg-neutral-200 border-2 border-white overflow-hidden relative flex items-center justify-center">
                       {m.avatar
-                        ? <Image src={`${API_BASE}${m.avatar}`} alt="" fill className="object-cover" sizes="28px" />
+                        ? <Image src={resolveMediaUrl(m.avatar)!} alt="" fill className="object-cover" sizes="28px" />
                         : <span className="text-[10px] font-bold text-neutral-500">{m.user?.name?.[0] ?? '?'}</span>
                       }
                     </div>
@@ -189,29 +233,41 @@ export default function SalonOwnerDashboard() {
 
         {/* Stats rapides */}
         <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: 'Offres actives', value: data?.job_offers_count ?? 0, icon: Briefcase, href: '/pro/recrutement' },
-            { label: 'Fauteuils',    value: data?.rentals_count ?? 0,      icon: Armchair, href: '/pro/fauteuils' },
-          ].map((s, i) => (
-            <Link key={i} href={s.href}
-              className="bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col gap-2 hover:border-neutral-200 transition-colors">
-              <s.icon size={16} className="text-neutral-400" />
-              <p className="text-2xl font-bold text-neutral-900">{s.value}</p>
-              <p className="text-[11px] text-neutral-400 leading-tight">{s.label}</p>
-            </Link>
-          ))}
+          <OwnerStat icon={Briefcase} value={data?.job_offers_count ?? 0} label="Offres actives" href="/pro/recrutement" />
+          <OwnerStat icon={Armchair}  value={data?.rentals_count ?? 0}   label="Fauteuils"       href="/pro/fauteuils" />
         </div>
+
+        {/* Avis récents — ce qui s'est passé depuis la dernière visite */}
+        {recentReviews.length > 0 && (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-[0.15em] mb-3">Avis récents</p>
+            <div className="space-y-3">
+              {recentReviews.slice(0, 3).map((r) => (
+                <div key={r.id} className="flex items-start gap-2.5">
+                  <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                    <Star size={11} className="fill-amber-400 stroke-none" />
+                    <span className="text-xs font-bold text-neutral-900">{r.rating}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-neutral-600 line-clamp-2">
+                      {r.comment || <span className="italic text-neutral-400">Sans commentaire</span>}
+                    </p>
+                    <p className="text-[10px] text-neutral-400 mt-0.5">
+                      {r.hairdresser_name} {r.is_verified && '· visite vérifiée'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Actions rapides */}
         <div>
           <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-[0.15em] mb-3">Actions rapides</p>
           <div className="grid grid-cols-2 gap-3">
             {ACTIONS.map((a, i) => (
-              <Link key={i} href={a.href}
-                className={`flex items-center gap-3 px-4 py-4 rounded-2xl font-semibold text-[14px] hover:opacity-90 transition-opacity ${a.color}`}>
-                <a.icon size={18} className="flex-shrink-0" />
-                <span className="leading-tight">{a.label}</span>
-              </Link>
+              <OwnerActionCard key={i} icon={a.icon} label={a.label} href={a.href} colorClassName={a.color} />
             ))}
           </div>
         </div>

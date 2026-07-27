@@ -144,7 +144,7 @@ export default async function HomePage() {
       {/* ⑤ Réalisations du moment */}
       {displayPosts.length > 0 && (
         <section className="pt-10">
-          <SectionHeader tag="Inspiration" title="Réalisations du moment" subtitle="Les plus belles créations de la communauté" href="/app/feed" />
+          <SectionHeader tag="Communauté" title="Réalisations du moment" href="/app/feed" />
           <RealisationGrid posts={displayPosts} />
         </section>
       )}

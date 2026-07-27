@@ -15,7 +15,7 @@ export default function CareerProgressCard({ chairLevel }: { chairLevel: ApiChai
         <Crown size={18} className={ls.text} strokeWidth={1.5} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-neutral-400">CHAIR Global</p>
+        <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-neutral-400">Niveau CHAIR</p>
         <p className="text-base font-black text-neutral-900 leading-tight">{chairLevel.name}</p>
         {chairLevel.next ? (
           <div className="flex items-center gap-2 mt-1.5">

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Salon;
 use App\Models\HairdresserProfile;
+use App\Models\Review;
 use App\Models\SalonJoinRequest;
 use App\Services\NotificationService;
+use App\Services\QrTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -48,6 +50,10 @@ class SalonController extends Controller
             'owner',
         ])->where('slug', $slug)->firstOrFail();
 
+        // Fiche unique — pas de risque N+1, contrairement aux endpoints de
+        // liste (index()) qui devraient batcher au lieu d'append() par ligne.
+        $salon->append('is_chair_business');
+
         return response()->json($salon);
     }
 
@@ -57,38 +63,8 @@ class SalonController extends Controller
     public function verifySiret(Request $request)
     {
         $request->validate(['siret' => 'required|string|size:14|regex:/^\d{14}$/']);
-        $siret = $request->siret;
-
-        $ch = curl_init("https://api.annuaire-entreprises.data.gouv.fr/api/v3/etablissement/{$siret}");
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 6,
-            CURLOPT_HTTPHEADER     => ['Accept: application/json', 'User-Agent: CHAIR-App/1.0'],
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode !== 200 || !$response) {
-            return response()->json(['valid' => false, 'message' => 'SIRET introuvable.'], 404);
-        }
-
-        $data         = json_decode($response, true);
-        $activityCode = $data['activite_principale'] ?? '';
-        $isActive     = ($data['etat_administratif'] ?? '') === 'A';
-        $isHairdresser = str_starts_with($activityCode, '9602A');
-        $businessName  = $data['nom_commercial'] ?? $data['nom_complet'] ?? '';
-        $city          = $data['libelle_commune'] ?? '';
-
-        return response()->json([
-            'valid'          => true,
-            'siret'          => $siret,
-            'business_name'  => $businessName,
-            'city'           => $city,
-            'activity_code'  => $activityCode,
-            'is_hairdresser' => $isHairdresser,
-            'is_active'      => $isActive,
-        ]);
+        $result = \App\Services\SiretVerificationService::lookup($request->siret);
+        return response()->json($result, $result['valid'] ? 200 : 404);
     }
 
     // ── PROTECTED ─────────────────────────────────────────────────────────────
@@ -150,6 +126,32 @@ class SalonController extends Controller
         ]);
     }
 
+    /** GET /my-salon/recent-reviews — derniers avis reçus par l'équipe du salon (cockpit) */
+    public function recentReviews(Request $request)
+    {
+        $user  = $request->user();
+        $salon = Salon::where('owner_id', $user->id)->firstOrFail();
+
+        $hairdresserIds = HairdresserProfile::where('salon_id', $salon->id)->pluck('id');
+
+        $reviews = Review::with(['hairdresser.user', 'client'])
+            ->whereIn('hairdresser_id', $hairdresserIds)
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get()
+            ->map(fn (Review $r) => [
+                'id'               => $r->id,
+                'rating'           => $r->rating,
+                'comment'          => $r->comment,
+                'is_verified'      => $r->is_verified,
+                'created_at'       => $r->created_at,
+                'hairdresser_name' => $r->hairdresser?->user?->name,
+                'client_name'      => $r->client?->name,
+            ]);
+
+        return response()->json($reviews);
+    }
+
     /** PUT /my-salon — mise à jour du salon (owner) */
     public function updateMySalon(Request $request)
     {
@@ -162,10 +164,21 @@ class SalonController extends Controller
             'address'      => 'nullable|string|max:500',
             'city'         => 'nullable|string|max:100',
             'postal_code'  => 'nullable|string|max:10',
+            'region'       => 'nullable|string|max:100',
+            'department'   => 'nullable|string|max:100',
             'phone'        => 'nullable|string|max:30',
             'website'      => 'nullable|url|max:500',
             'instagram_url'=> 'nullable|url|max:255',
+            'siret'        => 'nullable|string|size:14|regex:/^\d{14}$/',
         ]);
+
+        // Un SIRET nouveau ou modifié repart en vérification — jamais réputé
+        // vérifié du simple fait qu'il a été saisi (même logique qu'à la
+        // création du salon, voir createMySalon()).
+        if (array_key_exists('siret', $validated) && $validated['siret'] !== $salon->siret) {
+            $validated['verification_status'] = !empty($validated['siret']) ? 'pending_review' : 'unverified';
+            $validated['is_verified'] = false;
+        }
 
         $salon->update($validated);
 
@@ -178,7 +191,7 @@ class SalonController extends Controller
         $user = $request->user();
         $salon = Salon::where('owner_id', $user->id)->firstOrFail();
 
-        $request->validate(['logo' => 'required|image|max:5120']);
+        $request->validate(['logo' => 'required|image|mimes:jpeg,png,webp|max:5120']);
 
         $url = $this->uploadToCloudinary($request->file('logo'), 'chair/salon-logos');
         $salon->update(['logo' => $url]);
@@ -192,7 +205,7 @@ class SalonController extends Controller
         $user = $request->user();
         $salon = Salon::where('owner_id', $user->id)->firstOrFail();
 
-        $request->validate(['cover' => 'required|image|max:10240']);
+        $request->validate(['cover' => 'required|image|mimes:jpeg,png,webp|max:10240']);
 
         $url = $this->uploadToCloudinary($request->file('cover'), 'chair/salon-covers');
         $salon->update(['cover_image' => $url]);
@@ -280,13 +293,20 @@ class SalonController extends Controller
     public function declineJoinRequest(Request $request, int $id)
     {
         $user = $request->user();
-        $joinRequest = SalonJoinRequest::with(['salon'])->findOrFail($id);
+        $joinRequest = SalonJoinRequest::with(['salon', 'hairdresser'])->findOrFail($id);
 
         if ($joinRequest->salon->owner_id !== $user->id) {
             return response()->json(['message' => 'Non autorisé.'], 403);
         }
 
         $joinRequest->update(['status' => 'declined']);
+
+        // Le rattachement à l'inscription est immédiat/non-bloquant (voir
+        // AuthController::register) — refuser doit donc bien détacher le coiffeur,
+        // pas juste rejeter une demande qui n'a jamais pris effet.
+        if ($joinRequest->hairdresser && $joinRequest->hairdresser->salon_id === $joinRequest->salon_id) {
+            $joinRequest->hairdresser->update(['salon_id' => null]);
+        }
 
         // Notifier le coiffeur
         $hairdresserUserId = $joinRequest->hairdresser->user_id ?? 0;
@@ -327,6 +347,48 @@ class SalonController extends Controller
         );
 
         return response()->json(['message' => 'Coiffeur retiré du salon.']);
+    }
+
+    /**
+     * POST /my-salon/hairdressers/{id}/review-invite — owner attribue une
+     * visite / déclenche une demande d'avis pour un membre de son équipe.
+     *
+     * Fallback pour les salariés qui ne facturent pas eux-mêmes (voir
+     * docs/REPUTATION_ARCHITECTURE.md) : le gérant NE PEUT PAS écrire l'avis
+     * à la place du client — il génère juste le même lien QR que le coiffeur
+     * aurait généré lui-même (réutilise QrTokenService), avec une validité
+     * longue (48h au lieu de 30 min) car destiné à être envoyé par SMS/email
+     * plutôt que montré en direct. Le client suit le flow /scan/{token}
+     * habituel : confirme sa visite, laisse son propre avis.
+     */
+    public function inviteReview(Request $request, int $profileId)
+    {
+        $user  = $request->user();
+        $salon = Salon::where('owner_id', $user->id)->firstOrFail();
+
+        $profile = HairdresserProfile::where('id', $profileId)
+            ->where('salon_id', $salon->id)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'specialty_id' => 'nullable|integer|exists:specialties,id',
+        ]);
+
+        $token = QrTokenService::createToken(
+            $profile,
+            $validated['specialty_id'] ?? null,
+            ttlMinutes: 2880, // 48h — lien envoyé de façon asynchrone, pas un QR affiché en direct
+            issuedByUserId: $user->id
+        );
+
+        $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
+
+        return response()->json([
+            'token'        => $token->token_hash,
+            'scan_url'     => $frontendUrl . '/scan/' . $token->token_hash,
+            'valid_until'  => $token->valid_until->toIso8601String(),
+            'specialty_id' => $token->specialty_id,
+        ], 201);
     }
 
     /** DELETE /leave-salon — le coiffeur quitte son salon */

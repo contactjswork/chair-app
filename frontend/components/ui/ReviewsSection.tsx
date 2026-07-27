@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import { Star, BadgeCheck, ShieldCheck, CornerDownRight, Send } from 'lucide-react';
 import StarRating from '@/components/ui/StarRating';
@@ -8,6 +8,9 @@ import { resolveMediaUrl, formatDate } from '@/lib/types';
 import type { ApiReview } from '@/lib/types';
 import { reviews as reviewsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+
+type SortMode = 'recent' | 'top';
+type RatingFilter = 'all' | 5 | 4 | 3 | 2 | 1;
 
 interface Props {
   hairdresserId: number;
@@ -34,8 +37,21 @@ export default function ReviewsSection({
   const { user } = useAuth();
   const isHairdresser = isHairdresserProp || (!!user && user.id === hairdresserUserId);
   const [reviews, setReviews] = useState<ApiReview[]>(initialReviews);
+  const [sort, setSort] = useState<SortMode>('recent');
+  const [ratingFilter, setRatingFilter] = useState<RatingFilter>('all');
+  const [certifiedOnly, setCertifiedOnly] = useState(false);
   const hasRating = reviewsCount > 0;
   const breakdown = buildBreakdown(reviews);
+
+  const visibleReviews = useMemo(() => {
+    let list = reviews;
+    if (ratingFilter !== 'all') list = list.filter((r) => r.rating === ratingFilter);
+    if (certifiedOnly) list = list.filter((r) => r.is_verified);
+    return [...list].sort((a, b) => {
+      if (sort === 'top') return b.rating - a.rating;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [reviews, sort, ratingFilter, certifiedOnly]);
 
   function handleReplySubmitted(reviewId: number, reply: string) {
     setReviews((prev) =>
@@ -87,9 +103,40 @@ export default function ReviewsSection({
             </div>
           </div>
 
-          {reviews.length > 0 && (
+          {/* ── Tri et filtres ── */}
+          <div className="flex items-center gap-1.5 mb-4 overflow-x-auto">
+            <button
+              onClick={() => setSort(sort === 'recent' ? 'top' : 'recent')}
+              className="flex-shrink-0 text-[11px] font-semibold text-neutral-600 bg-neutral-50 border border-neutral-200 px-3 py-1.5 rounded-full hover:border-neutral-400 transition-colors"
+            >
+              {sort === 'recent' ? 'Plus récents' : 'Mieux notés'}
+            </button>
+            <button
+              onClick={() => setCertifiedOnly((v) => !v)}
+              className={`flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+                certifiedOnly ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-neutral-400'
+              }`}
+            >
+              <BadgeCheck size={11} />
+              Certifiés
+            </button>
+            <span className="w-px h-4 bg-neutral-200 flex-shrink-0" />
+            {([5, 4, 3, 2, 1] as const).map((star) => (
+              <button
+                key={star}
+                onClick={() => setRatingFilter(ratingFilter === star ? 'all' : star)}
+                className={`flex-shrink-0 inline-flex items-center gap-0.5 text-[11px] font-semibold px-2.5 py-1.5 rounded-full border transition-colors ${
+                  ratingFilter === star ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
+                {star}<Star size={9} fill="currentColor" strokeWidth={0} />
+              </button>
+            ))}
+          </div>
+
+          {visibleReviews.length > 0 ? (
             <div className="space-y-3 mb-5">
-              {reviews.slice(0, 10).map((review) => (
+              {visibleReviews.map((review) => (
                 <ReviewCard
                   key={review.id}
                   review={review}
@@ -98,6 +145,8 @@ export default function ReviewsSection({
                 />
               ))}
             </div>
+          ) : (
+            <p className="text-sm text-neutral-400 mb-5">Aucun avis ne correspond à ces filtres.</p>
           )}
         </>
       ) : (

@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Review;
+use App\Services\BadgeService;
 use App\Services\NotificationService;
 use App\Services\StreakService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
@@ -199,6 +201,7 @@ class AppointmentController extends Controller
         // Streak : confirmer ou terminer un RDV = action active
         if (in_array($newStatus, ['confirmed', 'completed']) && $profile) {
             StreakService::record($profile);
+            BadgeService::refresh($profile);
         }
 
         $hairdresserName = $appointment->hairdresser->user->name ?? 'votre coiffeur';
@@ -276,6 +279,75 @@ class AppointmentController extends Controller
     }
 
     /**
+     * Déplacer/redimensionner un rendez-vous (drag & drop ou resize dans
+     * l'agenda). PUT /api/appointments/{id}/reschedule.
+     */
+    public function reschedule(Request $request, int $id)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        $appointment = Appointment::where('id', $id)
+            ->where('hairdresser_id', $profile?->id)
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'appointment_date'  => 'required|date_format:Y-m-d',
+            'appointment_time'  => 'required|date_format:H:i',
+            'duration_minutes'  => 'nullable|integer|min:5|max:480',
+        ]);
+
+        $duration = $validated['duration_minutes'] ?? $appointment->duration_minutes ?? 30;
+        $newStart = $validated['appointment_time'];
+        $newEnd   = date('H:i', strtotime($newStart) + $duration * 60);
+
+        // Pas de chevauchement avec un autre RDV actif du même coiffeur ce jour-là.
+        $conflict = Appointment::where('hairdresser_id', $profile->id)
+            ->where('id', '!=', $appointment->id)
+            ->where('appointment_date', $validated['appointment_date'])
+            ->whereIn('status', ['pending', 'pending_payment', 'confirmed'])
+            ->whereNotNull('appointment_time')
+            ->get()
+            ->contains(function ($other) use ($newStart, $newEnd) {
+                $otherStart = $other->appointment_time;
+                $otherEnd   = date('H:i', strtotime($otherStart) + ($other->duration_minutes ?? 30) * 60);
+                return $newStart < $otherEnd && $otherStart < $newEnd;
+            });
+
+        if ($conflict) {
+            return response()->json(['message' => 'Ce créneau chevauche un autre rendez-vous.'], 422);
+        }
+
+        // Pas de chevauchement avec un bloc d'indisponibilité.
+        $blockConflict = DB::table('hairdresser_unavailabilities')
+            ->where('hairdresser_id', $profile->id)
+            ->where('start_datetime', '<', "{$validated['appointment_date']} {$newEnd}:00")
+            ->where('end_datetime', '>', "{$validated['appointment_date']} {$newStart}:00")
+            ->exists();
+
+        if ($blockConflict) {
+            return response()->json(['message' => 'Ce créneau chevauche un bloc indisponible.'], 422);
+        }
+
+        $appointment->appointment_date = $validated['appointment_date'];
+        $appointment->appointment_time = $newStart;
+        if (isset($validated['duration_minutes'])) {
+            $appointment->duration_minutes = $validated['duration_minutes'];
+        }
+        $appointment->save();
+
+        if ($appointment->client_id) {
+            NotificationService::send(
+                $appointment->client_id,
+                'appointment_rescheduled',
+                'Rendez-vous déplacé',
+                "Votre rendez-vous a été déplacé au {$validated['appointment_date']} à {$newStart}.",
+                ['appointment_id' => $appointment->id]
+            );
+        }
+
+        return response()->json($appointment->load(['client', 'serviceModel']));
+    }
+
+    /**
      * Soumettre un avis in-app pour un rendez-vous terminé (client connecté).
      * POST /api/appointments/{id}/review
      */
@@ -283,7 +355,7 @@ class AppointmentController extends Controller
     {
         $user = $request->user();
 
-        $appointment = Appointment::with(['hairdresser'])
+        $appointment = Appointment::with(['hairdresser', 'serviceModel'])
             ->where('id', $id)
             ->where('client_id', $user->id)
             ->firstOrFail();
@@ -306,6 +378,7 @@ class AppointmentController extends Controller
             'hairdresser_id' => $appointment->hairdresser_id,
             'client_id'      => $user->id,
             'appointment_id' => $appointment->id,
+            'specialty_id'   => $appointment->serviceModel->specialty_id ?? null,
             'rating'         => $validated['rating'],
             'comment'        => $validated['comment'] ?? null,
             'is_verified'    => true,
@@ -316,6 +389,9 @@ class AppointmentController extends Controller
         $avg     = Review::where('hairdresser_id', $profile->id)->avg('rating');
         $count   = Review::where('hairdresser_id', $profile->id)->count();
         $profile->update(['avg_rating' => round($avg, 2), 'reviews_count' => $count]);
+
+        // Un avis reçu alimente le score de la spécialité + peut débloquer des badges
+        BadgeService::refresh($profile);
 
         // Notification → coiffeur (nouvel avis reçu)
         $profile->loadMissing('user');
@@ -350,7 +426,8 @@ class AppointmentController extends Controller
      */
     public function reviewByToken(Request $request, string $token)
     {
-        $appointment = Appointment::where('review_token', $token)
+        $appointment = Appointment::with('serviceModel')
+            ->where('review_token', $token)
             ->where('review_unlocked', true)
             ->where('status', 'completed')
             ->firstOrFail();
@@ -376,6 +453,7 @@ class AppointmentController extends Controller
             'hairdresser_id' => $appointment->hairdresser_id,
             'client_id'      => $clientId,
             'appointment_id' => $appointment->id,
+            'specialty_id'   => $appointment->serviceModel->specialty_id ?? null,
             'rating'         => $validated['rating'],
             'comment'        => $validated['comment'] ?? null,
             'is_verified'    => true,
@@ -385,6 +463,7 @@ class AppointmentController extends Controller
         $avg     = Review::where('hairdresser_id', $profile->id)->avg('rating');
         $count   = Review::where('hairdresser_id', $profile->id)->count();
         $profile->update(['avg_rating' => round($avg, 2), 'reviews_count' => $count]);
+        BadgeService::refresh($profile);
 
         return response()->json($review->load('hairdresser'), 201);
     }

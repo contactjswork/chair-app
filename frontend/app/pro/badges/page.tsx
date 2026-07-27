@@ -3,16 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useNewlyUnlockedBadges } from '@/hooks/useNewlyUnlockedBadges';
 import { api, specialtyProgress, streak as streakApi } from '@/lib/api';
 import {
-  type ApiHairdresserProfile, type ApiStats,
-  type ApiChairBadge, type ApiChairLevel, type ApiSpecialtyProgress, type ApiStreak,
+  type ApiHairdresserProfile, type ApiChairBadge, type ApiChairLevel,
+  type ApiSpecialtyProgress, type ApiStreak, type ApiNextBadge, type ApiRarity,
 } from '@/lib/types';
 import {
   Check, Lock, ChevronDown, ArrowLeft, Trophy, Sparkles,
-  Scissors, TrendingUp, Award, ArrowRight,
+  Scissors, TrendingUp, Award, ArrowRight, Flame, Gem,
 } from 'lucide-react';
 import { BadgeMedallion, BadgeExplainSheet, METIER_LEVEL_ICONS } from '@/components/ui/ChairBadges';
+import BadgeUnlockModal from '@/components/ui/BadgeUnlockModal';
 
 // ── Niveau CHAIR global — couleurs héritées du système existant ──────────────
 
@@ -34,29 +36,22 @@ const SPECIALTY_LEVEL_PILL: Record<string, string> = {
   diamond: 'bg-neutral-900 text-white',
 };
 
-// ── Barres de progression pour les badges carrière à seuil numérique ────────
-// Les badges exceptionnels/ancienneté (rang, temps) n'ont pas de barre — leur
-// critère n'est pas un simple compteur à incrémenter.
+const RARITY_LABELS: Record<ApiRarity, string> = {
+  commun: 'Commun', rare: 'Rare', epique: 'Épique', legendaire: 'Légendaire', ultime: 'Ultime',
+};
 
-function careerTargets(stats: ApiStats | null, streak: ApiStreak | null): Record<string, { current: number; target: number }> {
-  const posts     = stats?.posts_count ?? 0;
-  const followers = stats?.followers_count ?? 0;
-  const longest   = streak?.longest_streak ?? 0;
-
-  return {
-    portfolio_10:   { current: Math.min(posts, 10),      target: 10 },
-    portfolio_50:   { current: Math.min(posts, 50),      target: 50 },
-    portfolio_300:  { current: Math.min(posts, 300),     target: 300 },
-    follower_100:   { current: Math.min(followers, 100),   target: 100 },
-    follower_500:   { current: Math.min(followers, 500),   target: 500 },
-    follower_2500:  { current: Math.min(followers, 2500),  target: 2500 },
-    follower_15000: { current: Math.min(followers, 15000), target: 15000 },
-    streak_7:       { current: Math.min(longest, 7),   target: 7 },
-    streak_30:      { current: Math.min(longest, 30),  target: 30 },
-    streak_100:     { current: Math.min(longest, 100), target: 100 },
-    streak_365:     { current: Math.min(longest, 365), target: 365 },
-  };
-}
+// Ordre d'affichage des familles de badges — la collection ne doit jamais
+// être une simple grille de 40 cartes identiques sans contexte (brief).
+const CATEGORY_ORDER = [
+  'demarrage', 'contenu', 'avis', 'visites', 'communauté', 'reseau',
+  'streak', 'discipline', 'ancienneté', 'vérification', 'ambassadeur', 'spécial', 'exceptionnel',
+];
+const CATEGORY_LABELS: Record<string, string> = {
+  demarrage: 'Démarrage', contenu: 'Réalisations', avis: 'Avis & clientèle', visites: 'Visites certifiées',
+  communauté: 'Abonnés', reseau: 'Partages', streak: 'Régularité', discipline: 'Discipline',
+  ancienneté: 'Ancienneté', vérification: 'Certifications CHAIR', ambassadeur: 'Parrainage',
+  spécial: 'Spécial', exceptionnel: 'Exceptionnels',
+};
 
 // ── Section repliable générique ──────────────────────────────────────────────
 
@@ -81,7 +76,7 @@ function Section({
 
 // ── Carte d'une spécialité (Expertise métier) ───────────────────────────────
 
-function SpecialtyCard({ progress, onExplain }: { progress: ApiSpecialtyProgress; onExplain: () => void }) {
+function SpecialtyCard({ progress }: { progress: ApiSpecialtyProgress }) {
   const pill = SPECIALTY_LEVEL_PILL[progress.level_color] ?? SPECIALTY_LEVEL_PILL.neutral;
   const Icon = METIER_LEVEL_ICONS[progress.level] ?? Scissors;
   // Barre visuelle bornée au seuil "Référence locale" (500 pts) — au-delà,
@@ -89,7 +84,7 @@ function SpecialtyCard({ progress, onExplain }: { progress: ApiSpecialtyProgress
   const pct = Math.min(100, Math.round((progress.score / 500) * 100));
 
   return (
-    <button onClick={onExplain} className="w-full text-left bg-white border border-neutral-100 rounded-2xl p-4 hover:border-neutral-200 transition-colors">
+    <div className="w-full text-left bg-white border border-neutral-100 rounded-2xl p-4">
       <div className="flex items-center gap-3 mb-2.5">
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${pill}`}>
           <Icon size={16} strokeWidth={2} />
@@ -111,17 +106,52 @@ function SpecialtyCard({ progress, onExplain }: { progress: ApiSpecialtyProgress
         <p className="text-[11px] text-neutral-500 leading-snug">
           Ajoutez <span className="font-bold text-neutral-800">{progress.next_step.missing} {progress.next_step.label}{progress.next_step.missing > 1 ? 's' : ''}</span> en {progress.specialty_name} pour progresser vers <span className="font-bold text-neutral-800">{progress.next_step.next_level_name}</span>.
         </p>
+      ) : progress.is_national_reference ? (
+        <p className="text-[11px] text-neutral-400 leading-snug">Référence nationale — le palier ultime de cette spécialité.</p>
       ) : (
         <p className="text-[11px] text-neutral-400 leading-snug">Niveau maximum atteint pour cette spécialité.</p>
       )}
+    </div>
+  );
+}
+
+// ── Ligne de défi en cours (badge ou spécialité, unifiés côté backend) ─────
+
+function ChallengeRow({ challenge, onExplain }: { challenge: ApiNextBadge; onExplain: () => void }) {
+  if (challenge.type === 'specialty') {
+    return (
+      <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 text-left hover:border-neutral-200 transition-colors">
+        <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+          <Scissors size={15} className="text-neutral-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-bold text-neutral-900 truncate">{challenge.name}</p>
+          <p className="text-[11px] text-neutral-400 leading-snug line-clamp-1">{challenge.label}</p>
+        </div>
+        <ArrowRight size={14} className="text-neutral-300 flex-shrink-0" />
+      </button>
+    );
+  }
+
+  return (
+    <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 text-left hover:border-neutral-200 transition-colors">
+      <BadgeMedallion code={challenge.code} tier={challenge.tier} size={36} locked />
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-bold text-neutral-900 truncate">{challenge.name}</p>
+        <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden mt-1.5">
+          <div className="h-full bg-neutral-900 rounded-full" style={{ width: `${challenge.pct}%` }} />
+        </div>
+      </div>
+      <span className="text-[11px] font-bold text-neutral-400 flex-shrink-0">{challenge.current}/{challenge.target}</span>
     </button>
   );
 }
 
-// ── Carte badge (carrière / exceptionnel) ───────────────────────────────────
+// ── Carte badge (collection) ───────────────────────────────────────────────
 
-function BadgeCard({ badge, unlocked, onExplain }: { badge: ApiChairBadge; unlocked: boolean; onExplain: () => void }) {
-  const isDark = unlocked && badge.tier === 4;
+function BadgeCard({ badge, onExplain }: { badge: ApiChairBadge; onExplain: () => void }) {
+  const unlocked = !!badge.unlocked;
+  const isDark = unlocked && badge.tier >= 4;
   return (
     <button
       onClick={onExplain}
@@ -143,7 +173,13 @@ function BadgeCard({ badge, unlocked, onExplain }: { badge: ApiChairBadge; unloc
       </div>
       <div>
         <p className={`text-[12px] font-bold leading-tight ${isDark ? 'text-white' : unlocked ? 'text-neutral-900' : 'text-neutral-400'}`}>{badge.name}</p>
-        <p className={`text-[10px] mt-0.5 leading-snug ${isDark ? 'text-white/50' : 'text-neutral-300'}`}>{badge.desc}</p>
+        {unlocked && badge.unlocked_at ? (
+          <p className={`text-[10px] mt-0.5 ${isDark ? 'text-white/40' : 'text-neutral-300'}`}>
+            {new Date(badge.unlocked_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </p>
+        ) : (
+          <p className={`text-[10px] mt-0.5 leading-snug ${isDark ? 'text-white/50' : 'text-neutral-300'}`}>{badge.desc}</p>
+        )}
       </div>
     </button>
   );
@@ -154,9 +190,10 @@ function BadgeCard({ badge, unlocked, onExplain }: { badge: ApiChairBadge; unloc
 export default function BadgesPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
 
-  const [stats,          setStats]          = useState<ApiStats | null>(null);
   const [streak,         setStreak]         = useState<ApiStreak | null>(null);
   const [chairBadgesAll, setChairBadgesAll] = useState<ApiChairBadge[]>([]);
+  const [catalog,        setCatalog]        = useState<ApiChairBadge[]>([]);
+  const [nextBadges,     setNextBadges]     = useState<ApiNextBadge[]>([]);
   const [chairLevel,     setChairLevel]     = useState<ApiChairLevel | null>(null);
   const [specialties,    setSpecialties]    = useState<ApiSpecialtyProgress[]>([]);
   const [dataLoading,    setDataLoading]    = useState(true);
@@ -165,20 +202,28 @@ export default function BadgesPage() {
   useEffect(() => {
     if (!user) return;
     Promise.allSettled([
-      api.get<ApiHairdresserProfile & { chair_badges_all?: ApiChairBadge[]; chair_level?: ApiChairLevel }>('/profile'),
-      api.get<ApiStats>('/stats'),
+      api.get<ApiHairdresserProfile & {
+        chair_badges_all?: ApiChairBadge[];
+        chair_badges_catalog?: ApiChairBadge[];
+        next_badges?: ApiNextBadge[];
+        chair_level?: ApiChairLevel;
+      }>('/profile'),
       streakApi.get(),
       specialtyProgress.mine(),
-    ]).then(([prof, st, sk, sp]) => {
+    ]).then(([prof, sk, sp]) => {
       if (prof.status === 'fulfilled') {
-        if (prof.value.chair_badges_all) setChairBadgesAll(prof.value.chair_badges_all);
-        if (prof.value.chair_level)      setChairLevel(prof.value.chair_level);
+        if (prof.value.chair_badges_all)     setChairBadgesAll(prof.value.chair_badges_all);
+        if (prof.value.chair_badges_catalog) setCatalog(prof.value.chair_badges_catalog);
+        if (prof.value.next_badges)          setNextBadges(prof.value.next_badges);
+        if (prof.value.chair_level)          setChairLevel(prof.value.chair_level);
       }
-      if (st.status === 'fulfilled') setStats(st.value);
       if (sk.status === 'fulfilled') setStreak(sk.value as ApiStreak);
       if (sp.status === 'fulfilled') setSpecialties(sp.value.specialties);
     }).finally(() => setDataLoading(false));
   }, [user]);
+
+  const newlyUnlocked = useNewlyUnlockedBadges(chairBadgesAll, !dataLoading);
+  const [celebrationDismissed, setCelebrationDismissed] = useState(false);
 
   if (isLoading || !user) {
     return (
@@ -188,27 +233,18 @@ export default function BadgesPage() {
     );
   }
 
-  const unlockedCodes  = new Set(chairBadgesAll.map((b) => b.code));
-  const careerBadges       = chairBadgesAll.filter((b) => b.family === 'carriere');
-  const exceptionalBadges  = chairBadgesAll.filter((b) => b.family === 'exceptionnel');
-  const careerUnlocked     = careerBadges.filter((b) => unlockedCodes.has(b.code) && b.pts > 0 && b.tier > 1);
-  const careerLocked       = careerBadges.filter((b) => !unlockedCodes.has(b.code));
-  const exceptionalUnlocked = exceptionalBadges.filter((b) => unlockedCodes.has(b.code));
-  const exceptionalLocked   = exceptionalBadges.filter((b) => !unlockedCodes.has(b.code));
+  const rarestOwned = [...chairBadgesAll].sort((a, b) => b.tier - a.tier)[0] ?? null;
 
-  const targets = careerTargets(stats, streak);
+  const byCategory = new Map<string, ApiChairBadge[]>();
+  for (const badge of catalog) {
+    const list = byCategory.get(badge.category) ?? [];
+    list.push(badge);
+    byCategory.set(badge.category, list);
+  }
+  const orderedCategories = CATEGORY_ORDER.filter((c) => byCategory.has(c));
 
-  // Prochain objectif le plus proche, toutes catégories carrière confondues
-  // (les leviers métier ont déjà leur propre CTA dans "Expertise métier").
-  const nextCareerTarget = careerLocked
-    .map((b) => {
-      const t = targets[b.code];
-      if (!t) return null;
-      const pct = Math.round((t.current / t.target) * 100);
-      return { badge: b, current: t.current, target: t.target, pct };
-    })
-    .filter((x): x is { badge: ApiChairBadge; current: number; target: number; pct: number } => x !== null && x.pct > 0 && x.pct < 100)
-    .sort((a, b) => b.pct - a.pct)[0];
+  const dominant = nextBadges[0] ?? null;
+  const challengeRest = nextBadges.slice(dominant ? 1 : 0, 5);
 
   const levelColor = chairLevel?.color ?? 'neutral';
   const heroBg = LEVEL_HERO[levelColor] ?? LEVEL_HERO.neutral;
@@ -217,9 +253,8 @@ export default function BadgesPage() {
     <div className="min-h-screen bg-neutral-50">
 
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors mr-auto">
-          <ArrowLeft size={16} />
-          <span className="text-xs font-medium">Tableau de bord</span>
+        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+          <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">Badges</span>
       </div>
@@ -227,14 +262,14 @@ export default function BadgesPage() {
       <div className="max-w-2xl mx-auto px-4 md:px-6 pt-5 md:pt-10 pb-28 md:pb-10 space-y-7">
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/pro" className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-700 transition-colors">
-            <ArrowLeft size={14} /><span className="text-xs">Retour</span>
+          <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
+            <ArrowLeft size={16} />
           </Link>
           <span className="text-neutral-200">/</span>
           <h1 className="text-lg font-bold text-neutral-900">Badges CHAIR</h1>
         </div>
 
-        {/* ── MA PROGRESSION ── */}
+        {/* ── HERO PROGRESSION ── */}
         {dataLoading ? (
           <div className="h-40 bg-neutral-200 rounded-2xl animate-pulse" />
         ) : chairLevel ? (
@@ -243,7 +278,7 @@ export default function BadgesPage() {
             <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{chairLevel.name}</h2>
             <p className="text-sm font-semibold text-white/70 mb-4">{chairLevel.points} pts</p>
             {chairLevel.next ? (
-              <div>
+              <div className="mb-4">
                 <div className="h-2.5 bg-white/15 rounded-full overflow-hidden mb-2">
                   <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${chairLevel.progress}%` }} />
                 </div>
@@ -252,84 +287,108 @@ export default function BadgesPage() {
                 </p>
               </div>
             ) : (
-              <p className="text-sm font-bold text-white/60">Niveau maximum — vous êtes une légende</p>
+              <p className="text-sm font-bold text-white/60 mb-4">Niveau maximum — vous êtes une légende</p>
             )}
+            <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+              <div className="flex items-center gap-1.5">
+                <Flame size={13} className="text-white/40" />
+                <span className="text-[11px] font-semibold text-white/60">{streak?.current_streak ?? 0}j actifs</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Trophy size={13} className="text-white/40" />
+                <span className="text-[11px] font-semibold text-white/60">{chairBadgesAll.length} badge{chairBadgesAll.length > 1 ? 's' : ''}</span>
+              </div>
+              {rarestOwned && (
+                <div className="flex items-center gap-1.5">
+                  <Gem size={13} className="text-white/40" />
+                  <span className="text-[11px] font-semibold text-white/60">{RARITY_LABELS[rarestOwned.rarity]}</span>
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
+
+        {/* ── PROCHAIN BADGE — carte dominante ── */}
+        {!dataLoading && dominant && (
+          dominant.type === 'badge' ? (
+            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3.5">
+              <BadgeMedallion code={dominant.code} tier={dominant.tier} size={44} locked />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 mb-0.5">Prochain badge</p>
+                <p className="text-sm font-bold text-white truncate">{dominant.name}</p>
+                <div className="h-1.5 bg-white/15 rounded-full overflow-hidden mt-1.5">
+                  <div className="h-full bg-white rounded-full" style={{ width: `${dominant.pct}%` }} />
+                </div>
+              </div>
+              <span className="text-[11px] font-bold text-white/60 flex-shrink-0">{dominant.current}/{dominant.target}</span>
+            </div>
+          ) : (
+            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                <Scissors size={18} className="text-white/70" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 mb-0.5">Prochain objectif</p>
+                <p className="text-[13px] font-semibold text-white leading-snug">{dominant.label}</p>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* ── DÉFIS EN COURS ── */}
+        {!dataLoading && challengeRest.length > 0 && (
+          <Section title="Défis en cours" icon={TrendingUp}>
+            <div className="space-y-2">
+              {challengeRest.map((c) => (
+                <ChallengeRow
+                  key={c.type === 'badge' ? c.code : `sp-${c.specialty_id}`}
+                  challenge={c}
+                  onExplain={() => {
+                    if (c.type === 'badge') {
+                      const full = catalog.find((b) => b.code === c.code);
+                      if (full) setSelectedBadge(full);
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* ── EXPERTISE MÉTIER ── */}
         {!dataLoading && specialties.length > 0 && (
           <Section title="Expertise métier" icon={Scissors}>
             <div className="space-y-2.5">
               {specialties.map((s) => (
-                <SpecialtyCard
-                  key={s.specialty_id}
-                  progress={s}
-                  onExplain={() => {}}
-                />
+                <SpecialtyCard key={s.specialty_id} progress={s} />
               ))}
             </div>
             <p className="text-[11px] text-neutral-400 mt-3 leading-relaxed">
-              Spécialiste → Expert → Référence locale (top 1% de votre ville) → Référence régionale, le palier ultime — combine score élevé, position régionale, activité récente et plusieurs avis distincts.
+              Spécialiste → Expert → Référence locale → Référence régionale → Référence nationale, le palier ultime — combine score élevé, position relative, activité récente et plusieurs avis distincts. Les avis, visites et réalisations liés à chaque spécialité ne font progresser que cette spécialité-là.
             </p>
           </Section>
         )}
 
-        {/* ── PROCHAIN BADGE À DÉBLOQUER ── */}
-        {!dataLoading && nextCareerTarget && (
-          <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3.5">
-            <BadgeMedallion code={nextCareerTarget.badge.code} tier={nextCareerTarget.badge.tier} size={44} locked />
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 mb-0.5">Prochain badge</p>
-              <p className="text-sm font-bold text-white truncate">{nextCareerTarget.badge.name}</p>
-              <div className="h-1.5 bg-white/15 rounded-full overflow-hidden mt-1.5">
-                <div className="h-full bg-white rounded-full" style={{ width: `${nextCareerTarget.pct}%` }} />
-              </div>
-            </div>
-            <span className="text-[11px] font-bold text-white/60 flex-shrink-0">{nextCareerTarget.current}/{nextCareerTarget.target}</span>
-          </div>
-        )}
-
-        {/* ── CARRIÈRE ── */}
-        {!dataLoading && (
-          <Section title="Carrière" icon={Trophy} count={`${careerUnlocked.length} débloqué${careerUnlocked.length > 1 ? 's' : ''}`}>
-            {careerUnlocked.length > 0 && (
-              <div className="grid grid-cols-3 gap-2.5 mb-3">
-                {careerUnlocked.map((b) => (
-                  <BadgeCard key={b.code} badge={b} unlocked onExplain={() => setSelectedBadge(b)} />
+        {/* ── COLLECTION — organisée par famille ── */}
+        {!dataLoading && orderedCategories.map((cat) => {
+          const badges = byCategory.get(cat) ?? [];
+          const unlockedCount = badges.filter((b) => b.unlocked).length;
+          return (
+            <Section
+              key={cat}
+              title={CATEGORY_LABELS[cat] ?? cat}
+              icon={cat === 'exceptionnel' ? Sparkles : Award}
+              count={`${unlockedCount}/${badges.length}`}
+              defaultOpen={cat === 'demarrage' || cat === 'exceptionnel'}
+            >
+              <div className="grid grid-cols-3 gap-2.5">
+                {[...badges].sort((a, b) => Number(b.unlocked) - Number(a.unlocked) || a.tier - b.tier).map((b) => (
+                  <BadgeCard key={b.code} badge={b} onExplain={() => setSelectedBadge(b)} />
                 ))}
               </div>
-            )}
-            {careerLocked.length > 0 && (
-              <details className="group">
-                <summary className="flex items-center gap-1.5 text-[11px] font-semibold text-neutral-400 cursor-pointer list-none">
-                  <Lock size={11} />À débloquer ({careerLocked.length})
-                  <ChevronDown size={12} className="group-open:rotate-180 transition-transform" />
-                </summary>
-                <div className="grid grid-cols-3 gap-2.5 mt-3">
-                  {careerLocked.map((b) => (
-                    <BadgeCard key={b.code} badge={b} unlocked={false} onExplain={() => setSelectedBadge(b)} />
-                  ))}
-                </div>
-              </details>
-            )}
-          </Section>
-        )}
-
-        {/* ── BADGES EXCEPTIONNELS ── */}
-        {!dataLoading && (
-          <Section title="Badges exceptionnels" icon={Sparkles} count={`${exceptionalUnlocked.length}/${exceptionalBadges.length}`}>
-            <div className="grid grid-cols-3 gap-2.5">
-              {[...exceptionalUnlocked, ...exceptionalLocked].map((b) => (
-                <BadgeCard key={b.code} badge={b} unlocked={unlockedCodes.has(b.code)} onExplain={() => setSelectedBadge(b)} />
-              ))}
-            </div>
-            <p className="text-[11px] text-neutral-400 mt-3 leading-relaxed flex items-start gap-1.5">
-              <TrendingUp size={12} className="flex-shrink-0 mt-0.5" />
-              Ces badges restent difficiles par construction — certains sont verrouillés pour tout le monde tant que la communauté CHAIR n&apos;est pas assez grande pour qu&apos;un classement ait un sens.
-            </p>
-          </Section>
-        )}
+            </Section>
+          );
+        })}
 
         {chairBadgesAll.length === 0 && !dataLoading && specialties.length === 0 && (
           <div className="bg-white rounded-2xl border border-neutral-100 px-5 py-10 text-center">
@@ -344,6 +403,9 @@ export default function BadgesPage() {
       </div>
 
       <BadgeExplainSheet badge={selectedBadge} onClose={() => setSelectedBadge(null)} coiffeurName={user.name} />
+      {!celebrationDismissed && newlyUnlocked.length > 0 && (
+        <BadgeUnlockModal badges={newlyUnlocked} onClose={() => setCelebrationDismissed(true)} />
+      )}
     </div>
   );
 }

@@ -7,13 +7,26 @@ import { api } from '@/lib/api';
 import type { ApiPost, ApiSpecialty } from '@/lib/types';
 import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
 import { getStoredToken } from '@/lib/auth';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
 import {
   Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
-  Eye, Star, TrendingUp,
+  Eye, Star, TrendingUp, Archive, ArchiveRestore, Award, Scissors,
+  Pin, PinOff, GripVertical, Move, Bookmark, Sparkles, Film, Play,
 } from 'lucide-react';
+
+const MAX_VIDEO_MB = 25;
+const MAX_VIDEO_SECONDS = 30;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 const MAX_PHOTOS = 10;
+
+// Fonction top-level (pas dans le corps du composant) — échappe à la règle
+// react-hooks/purity qui interdit Date.now()/new Date() dans le rendu.
+function isChairPlusFromAuth(profile: { is_chair_plus?: boolean; chair_plus_until?: string | null } | null | undefined): boolean {
+  if (!profile) return false;
+  if (profile.is_chair_plus !== undefined) return profile.is_chair_plus;
+  return !!profile.chair_plus_until && new Date(profile.chair_plus_until).getTime() > Date.now();
+}
 
 interface PhotoFile { file: File; preview: string; }
 
@@ -95,12 +108,82 @@ function TagSelector({ specialties, selectedIds, onChange, label = '', max = 6 }
   );
 }
 
-function AddPostForm({ specialties, onSuccess, onCancel }: {
+interface VideoFile { file: File; preview: string; durationSeconds: number | null; }
+
+function VideoPicker({ video, onPick, onRemove }: {
+  video: VideoFile | null;
+  onPick: (v: VideoFile) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const preview = URL.createObjectURL(file);
+    onPick({ file, preview, durationSeconds: null });
+  }
+
+  if (video) {
+    const tooBig = video.file.size > MAX_VIDEO_MB * 1024 * 1024;
+    const tooLong = video.durationSeconds != null && video.durationSeconds > MAX_VIDEO_SECONDS;
+    return (
+      <div>
+        <div className="relative w-32 aspect-[9/16] rounded-xl overflow-hidden bg-neutral-900 mb-2">
+          <video
+            src={video.preview}
+            className="w-full h-full object-cover"
+            muted
+            playsInline
+            controls
+            onLoadedMetadata={(e) => {
+              const d = Math.round(e.currentTarget.duration);
+              onPick({ ...video, durationSeconds: d });
+            }}
+          />
+          <button type="button" onClick={onRemove}
+            className="absolute top-1.5 right-1.5 w-6 h-6 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+            <X size={12} />
+          </button>
+        </div>
+        {(tooBig || tooLong) && (
+          <p className="text-[11px] text-amber-600 mb-1">
+            {tooBig && `Fichier trop lourd (max ${MAX_VIDEO_MB} Mo) — compressez-le avant d'envoyer. `}
+            {tooLong && `Vidéo trop longue (max ${MAX_VIDEO_SECONDS}s) — coupez-la avant d'envoyer.`}
+          </p>
+        )}
+        {video.durationSeconds != null && !tooLong && (
+          <p className="text-[11px] text-neutral-400">{video.durationSeconds}s</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button type="button" onClick={() => inputRef.current?.click()}
+        className="w-32 aspect-[9/16] rounded-xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center gap-1.5 text-neutral-300 hover:border-neutral-400 hover:text-neutral-500 transition-colors">
+        <Film size={22} />
+        <span className="text-[10px] text-center px-2">Choisir une vidéo</span>
+      </button>
+      <p className="text-[11px] text-neutral-400 mt-2">
+        {MAX_VIDEO_SECONDS}s max · {MAX_VIDEO_MB} Mo max · 9:16 recommandé
+      </p>
+      <input ref={inputRef} type="file" accept="video/mp4,video/quicktime" className="hidden" onChange={handleChange} />
+    </div>
+  );
+}
+
+function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   specialties: ApiSpecialty[];
+  isPremium: boolean;
   onSuccess: (post: ApiPost) => void;
   onCancel: () => void;
 }) {
+  const [mode, setMode] = useState<'photos' | 'video'>('photos');
   const [photos, setPhotos] = useState<PhotoFile[]>([]);
+  const [video, setVideo] = useState<VideoFile | null>(null);
   const [description, setDescription] = useState('');
   const [gender, setGender] = useState<'homme' | 'femme' | ''>('');
   const [specialtyId, setSpecialtyId] = useState('');
@@ -134,12 +217,21 @@ function AddPostForm({ specialties, onSuccess, onCancel }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (photos.length === 0) { setError('Ajoutez au moins une photo.'); return; }
+    if (mode === 'video') {
+      if (!video) { setError('Choisissez une vidéo.'); return; }
+      if (video.file.size > MAX_VIDEO_MB * 1024 * 1024) { setError(`Vidéo trop lourde (max ${MAX_VIDEO_MB} Mo).`); return; }
+      if (video.durationSeconds != null && video.durationSeconds > MAX_VIDEO_SECONDS) { setError(`Vidéo trop longue (max ${MAX_VIDEO_SECONDS}s).`); return; }
+    } else if (photos.length === 0) { setError('Ajoutez au moins une photo.'); return; }
     if (tagIds.length === 0) { setError('Sélectionnez au moins une spécialité.'); return; }
     setSaving(true); setError('');
     const finalSpecialtyId = specialtyId || String(tagIds[0]);
     const form = new FormData();
-    photos.forEach((p) => form.append('images[]', p.file));
+    if (mode === 'video' && video) {
+      form.append('video', video.file);
+      if (video.durationSeconds != null) form.append('video_duration_seconds', String(video.durationSeconds));
+    } else {
+      photos.forEach((p) => form.append('images[]', p.file));
+    }
     if (description) form.append('description', description);
     if (gender) form.append('gender', gender);
     if (finalSpecialtyId) form.append('specialty_id', finalSpecialtyId);
@@ -169,7 +261,26 @@ function AddPostForm({ specialties, onSuccess, onCancel }: {
       </div>
       <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4">
         {error && <div className="text-sm text-red-500 bg-red-50 border border-red-100 px-4 py-2.5 rounded-xl">{error}</div>}
-        <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />
+
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setMode('photos')}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all ${
+              mode === 'photos' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+            }`}>
+            Photos
+          </button>
+          <button type="button" onClick={() => isPremium ? setMode('video') : (window.location.href = '/pro/chair-plus')}
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center justify-center gap-1.5 ${
+              mode === 'video' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+            }`}>
+            <Film size={12} /> Vidéo courte
+            {!isPremium && <PremiumBadge />}
+          </button>
+        </div>
+
+        {mode === 'video'
+          ? <VideoPicker video={video} onPick={setVideo} onRemove={() => { if (video) URL.revokeObjectURL(video.preview); setVideo(null); }} />
+          : <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />}
         <div>
           <label className="block text-xs font-semibold text-neutral-600 mb-2">Genre</label>
           <div className="flex gap-2">
@@ -222,7 +333,7 @@ function AddPostForm({ specialties, onSuccess, onCancel }: {
             className="flex-1 py-2.5 border border-neutral-200 text-neutral-600 text-sm font-semibold rounded-xl hover:border-neutral-400 transition-colors">
             Annuler
           </button>
-          <button type="submit" disabled={saving || photos.length === 0 || tagIds.length === 0}
+          <button type="submit" disabled={saving || (mode === 'video' ? !video : photos.length === 0) || tagIds.length === 0}
             className="flex-1 py-2.5 bg-neutral-900 text-white text-sm font-semibold rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
             {saving ? <Loader size={15} className="animate-spin" /> : <Check size={15} />}
             {saving ? 'Publication...' : 'Publier'}
@@ -233,19 +344,31 @@ function AddPostForm({ specialties, onSuccess, onCancel }: {
   );
 }
 
-function PostCard({ post, specialties, onDelete, onUpdate }: {
-  post: ApiPost; specialties: ApiSpecialty[];
-  onDelete: () => void; onUpdate: (updated: ApiPost) => void;
+function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onTogglePin, dragHandlers }: {
+  post: ApiPost; specialties: ApiSpecialty[]; reorderMode: boolean;
+  onDelete: () => void; onUpdate: (updated: ApiPost) => void; onTogglePin: () => void;
+  dragHandlers?: { onPointerDown: (e: React.PointerEvent) => void };
 }) {
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(post.description ?? '');
   const [gender, setGender] = useState<'homme' | 'femme' | ''>(post.gender ?? '');
   const [tagIds, setTagIds] = useState<number[]>((post.tags ?? []).map((t) => t.id));
   const [saving, setSaving] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pinning, setPinning] = useState(false);
 
   const allImages = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const coverImg = allImages[0] ?? null;
+
+  async function handleTogglePin() {
+    setPinning(true);
+    try {
+      await api.post<{ is_pinned: boolean }>(`/posts/${post.id}/pin`, {});
+      onTogglePin();
+    } catch { /* ignore */ }
+    setPinning(false);
+  }
 
   async function handleUpdate() {
     setSaving(true);
@@ -258,6 +381,18 @@ function PostCard({ post, specialties, onDelete, onUpdate }: {
       onUpdate(updated); setEditing(false);
     } catch { /* ignore */ }
     setSaving(false);
+  }
+
+  async function handleToggleArchive() {
+    setArchiving(true);
+    try {
+      // Archiver = dépublier : disparaît du feed public et des classements
+      // (mêmes filtres is_published côté backend), reste visible ici pour
+      // pouvoir republier — jamais une suppression déguisée.
+      const updated = await api.put<ApiPost>(`/posts/${post.id}`, { is_published: !post.is_published });
+      onUpdate(updated);
+    } catch { /* ignore */ }
+    setArchiving(false);
   }
 
   async function handleDelete() {
@@ -306,56 +441,103 @@ function PostCard({ post, specialties, onDelete, onUpdate }: {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden group">
+    <div data-post-id={post.id} className={`relative bg-white rounded-2xl border overflow-hidden group ${post.is_pinned ? 'border-neutral-900' : 'border-neutral-100'} ${reorderMode ? 'select-none' : ''}`}>
       {/* Cover image */}
-      <div className="relative aspect-square bg-neutral-100">
+      <div className={`relative aspect-square bg-neutral-100 ${!post.is_published ? 'opacity-50' : ''}`}>
         {coverImg ? (
-          <Image src={coverImg} alt="" fill className="object-cover" sizes="200px" />
+          <Image src={coverImg} alt="" fill className="object-cover" sizes="200px" draggable={false} />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ImageIcon size={20} className="text-neutral-300" />
           </div>
+        )}
+        {post.is_pinned && (
+          <div className="absolute top-2 left-2 w-6 h-6 bg-neutral-900 rounded-full flex items-center justify-center">
+            <Pin size={11} className="text-white" fill="currentColor" />
+          </div>
+        )}
+        {post.type === 'video' && (
+          <>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center backdrop-blur-sm">
+                <Play size={16} className="text-white ml-0.5" fill="currentColor" />
+              </div>
+            </div>
+            {post.video_duration_seconds != null && (
+              <div className="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                {post.video_duration_seconds}s
+              </div>
+            )}
+          </>
         )}
         {allImages.length > 1 && (
           <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
             {allImages.length} photos
           </div>
         )}
-        {/* Overlay on hover */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
-        {/* Actions overlay */}
-        <div className="absolute top-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => setEditing(true)}
-            className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors">
-            <Edit2 size={12} className="text-neutral-700" />
-          </button>
-          {!confirmDelete ? (
-            <button onClick={() => setConfirmDelete(true)}
-              className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
-              <Trash2 size={12} className="text-neutral-500 hover:text-red-500" />
-            </button>
-          ) : (
-            <div className="flex gap-1">
-              <button onClick={handleDelete}
-                className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded-lg">
-                Suppr.
-              </button>
-              <button onClick={() => setConfirmDelete(false)}
-                className="text-[10px] font-bold bg-white/90 text-neutral-600 px-2 py-1 rounded-lg">
-                Non
-              </button>
+        {!post.is_published && (
+          <div className="absolute top-2 right-2 bg-neutral-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide">
+            Archivé
+          </div>
+        )}
+
+        {reorderMode ? (
+          /* ── Mode réorganisation : toute la carte devient une poignée de drag ── */
+          <div
+            onPointerDown={dragHandlers?.onPointerDown}
+            className="absolute inset-0 bg-black/10 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none"
+          >
+            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <GripVertical size={16} className="text-neutral-700" />
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
+            <div className="absolute top-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button onClick={handleTogglePin} disabled={pinning}
+                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50"
+                title={post.is_pinned ? 'Désépingler' : 'Épingler en tête de portfolio'}
+              >
+                {post.is_pinned ? <PinOff size={12} className="text-neutral-700" /> : <Pin size={12} className="text-neutral-700" />}
+              </button>
+              <button onClick={() => setEditing(true)}
+                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors">
+                <Edit2 size={12} className="text-neutral-700" />
+              </button>
+              <button onClick={handleToggleArchive} disabled={archiving}
+                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50"
+                title={post.is_published ? 'Archiver' : 'Republier'}
+              >
+                {post.is_published ? <Archive size={12} className="text-neutral-700" /> : <ArchiveRestore size={12} className="text-neutral-700" />}
+              </button>
+              {!confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
+                  <Trash2 size={12} className="text-neutral-500 hover:text-red-500" />
+                </button>
+              ) : (
+                <div className="flex gap-1">
+                  <button onClick={handleDelete}
+                    className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded-lg">
+                    Suppr.
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    className="text-[10px] font-bold bg-white/90 text-neutral-600 px-2 py-1 rounded-lg">
+                    Non
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Meta */}
       <div className="px-3 py-2.5">
         <div className="flex flex-wrap gap-1 mb-1.5">
           {post.gender && (
-            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
-              post.gender === 'homme' ? 'bg-blue-50 text-blue-600' : 'bg-pink-50 text-pink-600'
-            }`}>{post.gender}</span>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-neutral-100 text-neutral-600">{post.gender}</span>
           )}
           {(post.tags ?? []).slice(0, 2).map((t) => (
             <span key={t.id} className="text-[9px] font-semibold text-neutral-400 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded-full">
@@ -366,6 +548,9 @@ function PostCard({ post, specialties, onDelete, onUpdate }: {
         <div className="flex items-center gap-2.5 text-[10px] text-neutral-400">
           <span className="flex items-center gap-0.5"><Eye size={10} /> {post.views_count}</span>
           <span className="flex items-center gap-0.5"><Star size={10} /> {post.likes_count}</span>
+          {(post.saved_count ?? 0) > 0 && (
+            <span className="flex items-center gap-0.5"><Bookmark size={10} /> {post.saved_count}</span>
+          )}
         </div>
       </div>
     </div>
@@ -378,6 +563,51 @@ export default function PortfolioPage() {
   const [specialties, setSpecialties] = useState<ApiSpecialty[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const draggedIdRef = useRef<number | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  // ── Drag pour réorganiser — pointer events bruts (cohérent avec l'agenda),
+  //    pas de librairie de DnD : le HTML5 drag-and-drop natif ne fonctionne
+  //    pas au toucher sur mobile, or l'app est mobile-first.
+  function handleDragPointerDown(postId: number) {
+    return (e: React.PointerEvent) => {
+      e.preventDefault();
+      draggedIdRef.current = postId;
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+      function onMove(ev: PointerEvent) {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-post-id]');
+        const overId = el ? Number(el.getAttribute('data-post-id')) : null;
+        if (overId == null || overId === draggedIdRef.current) return;
+        setPosts((prev) => {
+          const from = prev.findIndex((p) => p.id === draggedIdRef.current);
+          const to   = prev.findIndex((p) => p.id === overId);
+          if (from === -1 || to === -1) return prev;
+          const next = [...prev];
+          const [moved] = next.splice(from, 1);
+          next.splice(to, 0, moved);
+          return next;
+        });
+      }
+
+      function onUp() {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        draggedIdRef.current = null;
+        setPosts((current) => {
+          api.put('/posts/reorder', { order: current.map((p) => p.id) }).then(() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 1800);
+          }).catch(() => {});
+          return current;
+        });
+      }
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', onUp, { once: true });
+    };
+  }
 
   const loadData = useCallback(() => {
     if (!user) return;
@@ -403,29 +633,70 @@ export default function PortfolioPage() {
   const totalViews = posts.reduce((acc, p) => acc + (p.views_count ?? 0), 0);
   const totalLikes = posts.reduce((acc, p) => acc + (p.likes_count ?? 0), 0);
 
+  // Meilleure réalisation + spécialité dominante — sur les réalisations
+  // publiées uniquement (ce que les clients voient réellement), calculé côté
+  // client depuis les données déjà chargées, pas de nouvel appel API.
+  const publishedPosts = posts.filter((p) => p.is_published);
+  const bestPost = publishedPosts.length > 0
+    ? [...publishedPosts].sort((a, b) => (b.likes_count ?? 0) - (a.likes_count ?? 0))[0]
+    : null;
+  // La spécialité primaire (specialty_id) est toujours renseignée à la
+  // création — les tags multi-spécialités (post_tags) sont optionnels et
+  // souvent absents en pratique, donc pas fiables seuls pour ce calcul.
+  const specialtyCounts = new Map<string, number>();
+  publishedPosts.forEach((p) => {
+    const names = p.specialty ? [p.specialty.name] : (p.tags ?? []).map((t) => t.name);
+    names.forEach((name) => specialtyCounts.set(name, (specialtyCounts.get(name) ?? 0) + 1));
+  });
+  const dominantSpecialty = [...specialtyCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+
   return (
     <div className="min-h-screen bg-neutral-50 pb-28">
 
       {/* Mobile header */}
       <div className="md:hidden sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-4 h-14 pt-safe flex items-center justify-between">
         <span className="text-base font-bold text-neutral-900">Portfolio</span>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 bg-neutral-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-neutral-700 transition-colors">
-            <Plus size={13} /> Ajouter
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {saved && <span className="text-[11px] font-semibold text-green-600">Enregistré</span>}
+          {!showForm && posts.length > 1 && (
+            <button onClick={() => setReorderMode((v) => !v)}
+              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
+                reorderMode ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600'
+              }`}>
+              {reorderMode ? <Check size={13} /> : <Move size={13} />}
+              {reorderMode ? 'Terminé' : 'Réorganiser'}
+            </button>
+          )}
+          {!showForm && !reorderMode && (
+            <button onClick={() => setShowForm(true)}
+              className="flex items-center gap-1.5 bg-neutral-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-neutral-700 transition-colors">
+              <Plus size={13} /> Ajouter
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Desktop header */}
       <header className="hidden md:flex sticky top-0 z-10 bg-white border-b border-neutral-100 px-8 h-14 items-center justify-between">
         <span className="text-sm font-bold text-neutral-900">Portfolio</span>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 bg-neutral-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-neutral-700 transition-colors">
-            <Plus size={15} /> Ajouter une réalisation
-          </button>
-        )}
+        <div className="flex items-center gap-2.5">
+          {saved && <span className="text-[12px] font-semibold text-green-600">Enregistré</span>}
+          {!showForm && posts.length > 1 && (
+            <button onClick={() => setReorderMode((v) => !v)}
+              className={`flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-colors ${
+                reorderMode ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+              }`}>
+              {reorderMode ? <Check size={15} /> : <Move size={15} />}
+              {reorderMode ? 'Terminé' : 'Réorganiser'}
+            </button>
+          )}
+          {!showForm && !reorderMode && (
+            <button onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 bg-neutral-900 text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-neutral-700 transition-colors">
+              <Plus size={15} /> Ajouter une réalisation
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 pt-5">
@@ -447,6 +718,30 @@ export default function PortfolioPage() {
           </div>
         )}
 
+        {/* Meilleure réalisation + spécialité dominante */}
+        {!loading && (bestPost || dominantSpecialty) && (
+          <div className="flex gap-3 mb-5">
+            {bestPost && (
+              <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl border border-neutral-100 px-3.5 py-3 min-w-0">
+                <Award size={16} className="text-amber-500 flex-shrink-0" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-neutral-400 uppercase tracking-wide font-semibold">Meilleure réalisation</p>
+                  <p className="text-[12px] font-bold text-neutral-900">{bestPost.likes_count} j&apos;aime</p>
+                </div>
+              </div>
+            )}
+            {dominantSpecialty && (
+              <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl border border-neutral-100 px-3.5 py-3 min-w-0">
+                <Scissors size={16} className="text-neutral-400 flex-shrink-0" strokeWidth={1.5} />
+                <div className="min-w-0">
+                  <p className="text-[9px] text-neutral-400 uppercase tracking-wide font-semibold">Spécialité dominante</p>
+                  <p className="text-[12px] font-bold text-neutral-900 truncate">{dominantSpecialty}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Trend hint */}
         {!loading && posts.length >= 3 && totalViews > 0 && (
           <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5 mb-5">
@@ -461,6 +756,7 @@ export default function PortfolioPage() {
         {showForm && (
           <AddPostForm
             specialties={specialties}
+            isPremium={isChairPlusFromAuth(user?.hairdresser_profile)}
             onSuccess={(post) => { setPosts((prev) => [post, ...prev]); setShowForm(false); }}
             onCancel={() => setShowForm(false)}
           />
@@ -476,13 +772,18 @@ export default function PortfolioPage() {
         ) : posts.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {posts.map((post) => (
-              <PostCard key={post.id} post={post} specialties={specialties}
+              <PostCard key={post.id} post={post} specialties={specialties} reorderMode={reorderMode}
                 onDelete={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
                 onUpdate={(updated) => setPosts((prev) => prev.map((p) => p.id === updated.id ? updated : p))}
+                onTogglePin={() => setPosts((prev) => {
+                  const next = prev.map((p) => p.id === post.id ? { ...p, is_pinned: !p.is_pinned } : p);
+                  return [...next].sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned));
+                })}
+                dragHandlers={{ onPointerDown: handleDragPointerDown(post.id) }}
               />
             ))}
             {/* Add tile */}
-            {!showForm && (
+            {!showForm && !reorderMode && (
               <button onClick={() => setShowForm(true)}
                 className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center gap-2 text-neutral-300 hover:border-neutral-400 hover:text-neutral-500 transition-colors">
                 <Plus size={24} />
@@ -491,17 +792,29 @@ export default function PortfolioPage() {
             )}
           </div>
         ) : !showForm ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
-              <Camera size={26} className="text-neutral-300" />
+          <div className="rounded-3xl bg-gradient-to-b from-neutral-900 to-neutral-800 px-6 py-10 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center mb-5 mx-auto">
+              <Sparkles size={26} className="text-white" strokeWidth={1.5} />
             </div>
-            <h3 className="font-semibold text-neutral-900 mb-2">Portfolio vide</h3>
-            <p className="text-sm text-neutral-400 mb-5 max-w-xs">
-              Publiez vos premières réalisations pour commencer votre portfolio beauté.
+            <h3 className="font-bold text-white text-lg mb-2">Votre portfolio commence ici</h3>
+            <p className="text-sm text-white/50 mb-6 max-w-sm mx-auto leading-relaxed">
+              Chaque réalisation publiée travaille pour vous, même quand vous ne coiffez pas.
             </p>
+            <div className="grid grid-cols-1 gap-2.5 max-w-xs mx-auto mb-7 text-left">
+              {[
+                { icon: Eye, text: 'Référencement — vous apparaissez dans plus de recherches CHAIR' },
+                { icon: Award, text: 'Badges — le portfolio alimente directement vos paliers carrière' },
+                { icon: TrendingUp, text: 'Classement — chaque réalisation compte dans votre score spécialité' },
+              ].map(({ icon: Icon, text }) => (
+                <div key={text} className="flex items-start gap-2.5 bg-white/5 rounded-xl px-3.5 py-2.5">
+                  <Icon size={14} className="text-white/60 flex-shrink-0 mt-0.5" strokeWidth={1.5} />
+                  <p className="text-[12px] text-white/70 leading-snug">{text}</p>
+                </div>
+              ))}
+            </div>
             <button onClick={() => setShowForm(true)}
-              className="bg-neutral-900 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
-              Ajouter une réalisation
+              className="bg-white text-neutral-900 text-sm font-semibold px-6 py-3 rounded-2xl hover:bg-white/90 transition-colors">
+              Publier ma première réalisation
             </button>
           </div>
         ) : null}

@@ -13,10 +13,13 @@ class Post extends Model
         'hairdresser_id', 'specialty_id', 'type', 'description', 'gender',
         'duration_minutes', 'price_indication', 'is_published',
         'views_count', 'likes_count', 'cover_image',
+        'is_pinned', 'display_order',
+        'video_url', 'video_thumbnail_url', 'video_duration_seconds',
     ];
 
     protected $casts = [
         'is_published' => 'boolean',
+        'is_pinned'    => 'boolean',
         'price_indication' => 'decimal:2',
     ];
 

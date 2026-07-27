@@ -5,12 +5,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/types';
 import {
   Briefcase, Clock, Search, X, Send, Check,
   ChevronLeft, ExternalLink, Building2, GraduationCap, Filter,
 } from 'lucide-react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
   hairdresser: 'Coiffeur(se)', colorist: 'Coloriste', barber: 'Barbier',
@@ -25,7 +24,7 @@ const LEVEL_LABELS: Record<string, string> = {
 };
 const CONTRACT_COLORS: Record<string, string> = {
   cdi: 'bg-green-100 text-green-700', cdd: 'bg-blue-100 text-blue-700',
-  alternance: 'bg-violet-100 text-violet-700', apprentissage: 'bg-amber-100 text-amber-700',
+  alternance: 'bg-teal-100 text-teal-700', apprentissage: 'bg-amber-100 text-amber-700',
   freelance: 'bg-orange-100 text-orange-700',
 };
 
@@ -134,8 +133,8 @@ export default function OffresEmploiPage() {
         {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
         <div className="max-w-2xl mx-auto px-4 pt-4 pb-6">
-          <button onClick={() => setDetail(null)} className="flex items-center gap-1.5 text-xs text-neutral-500 font-medium mb-4 hover:text-neutral-900 transition-colors">
-            <ChevronLeft size={14} />Retour aux offres
+          <button onClick={() => setDetail(null)} className="flex items-center text-neutral-500 font-medium mb-4 hover:text-neutral-900 transition-colors p-1 -ml-1 rounded-lg">
+            <ChevronLeft size={18} />
           </button>
 
           {/* Entreprise header — style Indeed */}
@@ -143,7 +142,7 @@ export default function OffresEmploiPage() {
             <div className="flex items-start gap-4">
               {detail.salon?.logo ? (
                 <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-100 relative border border-neutral-100">
-                  <Image src={`${API_BASE}${detail.salon.logo}`} alt="" fill className="object-cover" sizes="56px" />
+                  <Image src={resolveMediaUrl(detail.salon.logo)!} alt="" fill className="object-cover" sizes="56px" />
                 </div>
               ) : (
                 <div className="w-14 h-14 rounded-xl flex-shrink-0 bg-neutral-100 flex items-center justify-center">
@@ -222,7 +221,7 @@ export default function OffresEmploiPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   rows={4}
-                  placeholder={`Bonjour,\n\nJe suis intéressé(e) par ce poste de ${JOB_TYPE_LABELS[detail.job_type] ?? detail.job_type}. Je possède [X années] d'expérience et je suis disponible [dates].\n\nCordialement`}
+                  placeholder="Présentez-vous en quelques lignes : expérience, disponibilité..."
                   className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm resize-none focus:outline-none focus:border-neutral-800 transition-colors mb-3"
                 />
                 <button onClick={handleApply} disabled={sending}
@@ -245,7 +244,7 @@ export default function OffresEmploiPage() {
       <div className="max-w-2xl mx-auto px-4 pt-4 pb-6">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-neutral-900">Offres d&apos;emploi</h1>
-          <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} offre{filtered.length !== 1 ? 's' : ''} ouverte{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} offre{filtered.length !== 1 ? 's' : ''}</p>
         </div>
 
         {/* Barre recherche + filtre */}
@@ -279,7 +278,9 @@ export default function OffresEmploiPage() {
           <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
             <Briefcase size={36} className="text-neutral-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-neutral-700">Aucune offre disponible</p>
-            <p className="text-xs text-neutral-400 mt-1">Revenez bientôt ou modifiez vos filtres.</p>
+            <p className="text-xs text-neutral-400 mt-1">
+              {search || contract ? 'Essayez une autre recherche ou un autre filtre.' : 'Revenez bientôt, de nouvelles offres arrivent régulièrement.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -293,7 +294,7 @@ export default function OffresEmploiPage() {
                     {/* Logo */}
                     <div className="w-11 h-11 rounded-xl flex-shrink-0 bg-neutral-100 flex items-center justify-center overflow-hidden relative">
                       {o.salon?.logo
-                        ? <Image src={`${API_BASE}${o.salon.logo}`} alt="" fill className="object-cover" sizes="44px" />
+                        ? <Image src={resolveMediaUrl(o.salon.logo)!} alt="" fill className="object-cover" sizes="44px" />
                         : <Building2 size={16} className="text-neutral-400" />
                       }
                     </div>
@@ -301,7 +302,7 @@ export default function OffresEmploiPage() {
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-bold text-neutral-900 line-clamp-1">{o.title}</p>
                         {myApp && (
-                          <span className={`flex-shrink-0 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                          <span className={`flex-shrink-0 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
                             myApp.status === 'accepted' ? 'bg-green-100 text-green-700' :
                             myApp.status === 'declined' ? 'bg-red-100 text-red-500' :
                             'bg-neutral-100 text-neutral-500'

@@ -71,13 +71,13 @@ export default function PersonalizedSection() {
           <div className="relative z-10">
             <div className="flex items-center gap-1.5 mb-3">
               <Sparkles size={12} className="text-white/50" />
-              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour toi</p>
+              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour vous</p>
             </div>
             <h2 className="text-[20px] font-bold text-white leading-tight mb-2">
-              Trouve les coiffeurs<br />faits pour toi.
+              Le bon coiffeur,<br />selon votre style.
             </h2>
             <p className="text-[13px] text-white/55 leading-relaxed mb-5">
-              Crée un compte gratuit et CHAIR sélectionne les meilleurs profils selon ton style.
+              Créez un compte gratuit, CHAIR sélectionne les profils faits pour vous.
             </p>
             <div className="flex gap-2">
               <Link
@@ -111,7 +111,7 @@ export default function PersonalizedSection() {
           <div className="flex items-center gap-1.5 mb-0.5">
             <Sparkles size={10} className="text-neutral-400" />
             <p className="text-[10px] font-semibold tracking-[0.25em] uppercase text-neutral-400">
-              Pour toi
+              Pour vous
             </p>
           </div>
           <h2 className="text-[17px] md:text-[19px] font-bold text-neutral-900 tracking-tight leading-tight">

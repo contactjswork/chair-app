@@ -23,14 +23,14 @@ class CloudinaryService
     /**
      * Upload a file to Cloudinary and return the secure_url.
      */
-    public function upload(UploadedFile $file, string $folder): string
+    public function upload(UploadedFile $file, string $folder, string $resourceType = 'image'): string
     {
         $timestamp = time();
         $params    = ['folder' => $folder, 'timestamp' => $timestamp];
         $signature = $this->sign($params);
 
         $response = $this->client->post(
-            "https://api.cloudinary.com/v1_1/{$this->cloudName}/image/upload",
+            "https://api.cloudinary.com/v1_1/{$this->cloudName}/{$resourceType}/upload",
             [
                 'multipart' => [
                     [
@@ -52,9 +52,11 @@ class CloudinaryService
     }
 
     /**
-     * Delete an image from Cloudinary by public_id.
+     * Delete a media asset from Cloudinary by public_id. Cloudinary requires
+     * the correct resource_type on the destroy call itself — passing 'image'
+     * for a video public_id silently no-ops (the file stays billed/stored).
      */
-    public function delete(string $publicId): void
+    public function delete(string $publicId, string $resourceType = 'image'): void
     {
         $timestamp = time();
         $params    = ['public_id' => $publicId, 'timestamp' => $timestamp];
@@ -62,7 +64,7 @@ class CloudinaryService
 
         try {
             $this->client->post(
-                "https://api.cloudinary.com/v1_1/{$this->cloudName}/image/destroy",
+                "https://api.cloudinary.com/v1_1/{$this->cloudName}/{$resourceType}/destroy",
                 [
                     'form_params' => [
                         'public_id' => $publicId,
@@ -119,7 +121,7 @@ class CloudinaryService
         if (str_contains($url, 'res.cloudinary.com')) {
             $publicId = $this->publicIdFromUrl($url);
             if ($publicId) {
-                $this->delete($publicId);
+                $this->delete($publicId, str_contains($url, '/video/upload/') ? 'video' : 'image');
             }
         }
     }

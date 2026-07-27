@@ -12,11 +12,20 @@ use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
+    /**
+     * Second layer, en plus du middleware admin.token sur le groupe de
+     * routes — défense en profondeur si une route est un jour ajoutée sans
+     * passer par le groupe. Jamais de secret par défaut : sans
+     * ADMIN_API_TOKEN configuré, aucune requête ne passe.
+     */
     private function checkAdmin(Request $request)
     {
-        $token = $request->bearerToken();
-        $adminToken = config('app.admin_token', env('ADMIN_API_TOKEN', 'chair_admin_secret_2026'));
-        return $token === $adminToken;
+        $configured = env('ADMIN_API_TOKEN');
+        if (!$configured || $configured === 'chair_admin_secret_2026') {
+            return false;
+        }
+
+        return hash_equals($configured, (string) $request->bearerToken());
     }
 
     public function stats(Request $request)
@@ -330,31 +339,43 @@ class AdminController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    /**
+     * Remplace un ancien stub "PRO+" (colonne hairdresser_profiles.pro_plus,
+     * déjà supprimée de la base — cet endpoint plantait silencieusement)
+     * par une vraie lecture de la table subscriptions (voir docs/CHAIR_PLUS.md).
+     */
     public function subscriptions(Request $request)
     {
         if (!$this->checkAdmin($request)) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $proPlus = HairdresserProfile::where('pro_plus', true)
-            ->with('user:id,name,email,created_at')
+        $subs = \App\Models\Subscription::whereIn('status', ['trialing', 'active', 'past_due'])
+            ->with(['hairdresserProfile.user:id,name,email', 'salon:id,name'])
+            ->orderByDesc('id')
             ->paginate(20);
 
-        $proPlus->getCollection()->transform(fn($h) => [
-            'id'         => $h->user_id,
-            'name'       => $h->user?->name,
-            'email'      => $h->user?->email,
-            'plan'       => 'PRO+',
-            'amount'     => 29,
-            'status'     => 'active',
-            'started_at' => $h->pro_plus_started_at ?? $h->updated_at,
+        $subs->getCollection()->transform(fn($s) => [
+            'id'         => $s->id,
+            'name'       => $s->hairdresserProfile?->user?->name ?? $s->salon?->name,
+            'email'      => $s->hairdresserProfile?->user?->email,
+            'plan'       => $s->plan === 'chair_business' ? 'CHAIR BUSINESS' : 'CHAIR+',
+            'amount'     => $s->plan === 'chair_business' ? 49.99 : 9.99,
+            'status'     => $s->status,
+            'started_at' => $s->created_at,
         ]);
 
+        $activeCount = \App\Models\Subscription::whereIn('status', ['active', 'past_due'])->count();
+        $plusMrr     = \App\Models\Subscription::whereIn('status', ['active', 'past_due'])->where('plan', 'chair_plus')->count() * 9.99;
+        $businessMrr = \App\Models\Subscription::whereIn('status', ['active', 'past_due'])->where('plan', 'chair_business')->count() * 49.99;
+
         return response()->json([
-            'data'      => $proPlus->items(),
-            'total'     => $proPlus->total(),
-            'last_page' => $proPlus->lastPage(),
-            'mrr'       => $proPlus->total() * 29,
+            'data'      => $subs->items(),
+            'total'     => $subs->total(),
+            'last_page' => $subs->lastPage(),
+            // MRR réel — trialing exclu volontairement, ne compte que ce qui facture.
+            'mrr'       => round($plusMrr + $businessMrr, 2),
+            'active_paying_count' => $activeCount,
         ]);
     }
 
@@ -390,6 +411,110 @@ class AdminController extends Controller
             'appointments'  => $appointments,
             'top_cities'    => $topCities,
         ]);
+    }
+
+    public function pendingDiplomas(Request $request)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $pending = HairdresserProfile::where('diploma_status', 'pending')
+            ->with('user:id,name,email')
+            ->orderBy('updated_at')
+            ->get()
+            ->map(fn($h) => [
+                'id'                    => $h->id,
+                'name'                  => $h->user?->name,
+                'email'                 => $h->user?->email,
+                'city'                  => $h->city,
+                'diploma'               => $h->diploma,
+                'diploma_document_url'  => $h->diploma_document_url,
+                'submitted_at'          => $h->updated_at,
+            ]);
+
+        return response()->json(['data' => $pending]);
+    }
+
+    public function approveDiploma(Request $request, $id)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $profile = HairdresserProfile::findOrFail($id);
+        $profile->update(['diploma_status' => 'verified']);
+        \App\Services\BadgeService::refresh($profile->fresh());
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function rejectDiploma(Request $request, $id)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        HairdresserProfile::findOrFail($id)->update(['diploma_status' => 'rejected']);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /**
+     * "Coup de cœur CHAIR" — sélection éditoriale manuelle, jamais automatique
+     * ni liée à l'abonnement (voir HairdresserProfile::getIsChairPickAttribute).
+     * POST /admin/hairdressers/{id}/chair-pick {days?: int} — active pour N
+     * jours (défaut 14) ; DELETE retire immédiatement.
+     */
+    public function setChairPick(Request $request, $id)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $days = max(1, min(90, (int) ($request->input('days', 14))));
+        $profile = HairdresserProfile::findOrFail($id);
+        $profile->update(['chair_pick_until' => now()->addDays($days)]);
+
+        return response()->json(['ok' => true, 'chair_pick_until' => $profile->chair_pick_until]);
+    }
+
+    public function removeChairPick(Request $request, $id)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        HairdresserProfile::findOrFail($id)->update(['chair_pick_until' => null]);
+
+        return response()->json(['ok' => true]);
+    }
+
+    /** Support prioritaire CHAIR+ — les tickets priority=true remontent en premier. */
+    public function supportRequests(Request $request)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $requests = \App\Models\SupportRequest::with('user:id,name,email')
+            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->orderByDesc('priority')
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json(['data' => $requests]);
+    }
+
+    public function resolveSupportRequest(Request $request, $id)
+    {
+        if (!$this->checkAdmin($request)) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        \App\Models\SupportRequest::findOrFail($id)->update(['status' => 'closed']);
+
+        return response()->json(['ok' => true]);
     }
 
     public function sendNotification(Request $request)

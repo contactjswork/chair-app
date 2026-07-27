@@ -47,24 +47,37 @@ class JobApplicationController extends Controller
             ->whereHas('jobOffer', fn ($q) => $q->where('salon_id', $salon->id))
             ->findOrFail($id);
 
-        $validated = $request->validate(['status' => 'required|in:viewed,accepted,declined']);
+        $validated = $request->validate(['status' => 'required|in:viewed,interview,accepted,declined']);
         $app->update(['status' => $validated['status']]);
 
-        if (in_array($validated['status'], ['accepted', 'declined'])) {
-            $msg = $validated['status'] === 'accepted'
-                ? "Votre candidature pour \"{$app->jobOffer->title}\" a été retenue."
-                : "Votre candidature pour \"{$app->jobOffer->title}\" n'a pas été retenue.";
+        // Le candidat n'est notifié qu'aux étapes qui le concernent réellement
+        // (contacté / retenu / non retenu) — 'viewed' reste une note interne
+        // au gérant, 'interview' déclenche un contact humain hors app.
+        if (in_array($validated['status'], ['interview', 'accepted', 'declined'])) {
+            $msg = match ($validated['status']) {
+                'interview' => "{$app->jobOffer->title} : un entretien va vous être proposé.",
+                'accepted'  => "Votre candidature pour \"{$app->jobOffer->title}\" a été retenue.",
+                'declined'  => "Votre candidature pour \"{$app->jobOffer->title}\" n'a pas été retenue.",
+            };
+            $title = match ($validated['status']) {
+                'interview' => 'Entretien à venir',
+                'accepted'  => 'Candidature retenue',
+                'declined'  => 'Candidature non retenue',
+            };
 
             NotificationService::send(
                 $app->hairdresser->user_id,
                 'application_' . $validated['status'],
-                $validated['status'] === 'accepted' ? 'Candidature retenue' : 'Candidature non retenue',
+                $title,
                 $msg,
                 ['job_offer_id' => $app->job_offer_id, 'salon_id' => $salon->id]
             );
         }
 
-        return response()->json($app->fresh());
+        // fresh() sans argument perd les relations eager-loadées ci-dessus
+        // (hairdresser.user, jobOffer) — le nom du candidat et le titre de
+        // l'offre disparaissaient de la réponse après chaque changement de statut.
+        return response()->json($app->fresh(['hairdresser.user', 'jobOffer']));
     }
 
     // ── COIFFEUR — postuler ───────────────────────────────────────────────────
@@ -75,6 +88,10 @@ class JobApplicationController extends Controller
         $offer   = JobOffer::where('id', $id)->where('status', 'open')->firstOrFail();
         $profile = HairdresserProfile::where('user_id', $request->user()->id)->firstOrFail();
 
+        // Pas de garde-fou SIRET ici : une candidature à une offre d'emploi
+        // (poste salarié) n'a pas besoin d'entreprise déclarée, contrairement
+        // à la location de fauteuil (ChairRentalController::sendRequest) qui
+        // engage une relation commerciale entre indépendants.
         $validated = $request->validate(['message' => 'nullable|string|max:1000']);
 
         $app = JobApplication::updateOrCreate(

@@ -238,8 +238,10 @@ export default function ReservationsPage() {
           </div>
         ) : (
           <div className="px-4 pt-4">
-            {/* ── 3 prochains RDV confirmés ── */}
-            {!loading && upcomingConfirmed.length > 0 && (
+            {/* ── 3 prochains RDV confirmés — uniquement sur l'onglet Historique,
+                pour ne pas répéter ce qui est déjà affiché juste en dessous
+                dans l'onglet "En cours" ── */}
+            {!loading && tab === 'past' && upcomingConfirmed.length > 0 && (
               <div className="mb-5">
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
                   Prochains rendez-vous

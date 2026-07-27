@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
@@ -11,6 +12,7 @@ import {
   CalendarDays, Clock, ChevronLeft, ChevronRight, Settings,
   Bell, ZoomIn, ZoomOut, User, X, Check, Phone, Mail,
   Calendar, AlertTriangle, CheckCircle2, Ban, UserX, Trash2,
+  List, Euro, Users,
 } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -62,6 +64,7 @@ function fromMin(m: number): string {
   return `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
 }
 function fmtTime(t?: string|null) { return t ? t.slice(0,5) : '—'; }
+function nowMs(): number { return Date.now(); }
 function isoDate(d: Date): string { return d.toISOString().slice(0,10); }
 function addDays(d: Date, n: number): Date { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 function getWeekStart(d: Date): Date {
@@ -97,7 +100,7 @@ function unavailBoundsForDate(u: ApiUnavailability, ds: string): { startMin: num
   return { startMin, endMin };
 }
 
-type ViewMode = 'day'|'week'|'month';
+type ViewMode = 'day'|'week'|'month'|'list';
 
 // ── AppointmentSheet ──────────────────────────────────────────────────────────
 
@@ -244,7 +247,7 @@ function AppointmentSheet({
 
           {/* Notification note */}
           <p className="mt-2.5 text-[11px] text-neutral-400 flex items-center gap-1.5">
-            <Bell size={11} className="text-violet-400 flex-shrink-0" />
+            <Bell size={11} className="text-neutral-400 flex-shrink-0" />
             Le client sera notifié automatiquement de tout changement.
           </p>
         </div>
@@ -283,6 +286,13 @@ function AppointmentSheet({
 
 // ── AppointmentBlock (visual only — drag handled by DayView) ─────────────────
 
+interface SwipeAction {
+  key: string;
+  Icon: React.FC<{ size?: number }>;
+  cls: string;
+  onClick: () => void;
+}
+
 interface BlockProps {
   apt: ApiAppointment;
   hourHeight: number;
@@ -294,16 +304,55 @@ interface BlockProps {
   onPointerDown: (e: React.PointerEvent) => void;
   onResizePointerDown: (e: React.PointerEvent) => void;
   weekMode?: boolean;
+  swipeOffset?: number;
+  swipeActions?: SwipeAction[];
 }
 
 function AppointmentBlock({
   apt, hourHeight, topPx, heightPx,
   isDragging, isResizing, isGhost,
   onPointerDown, onResizePointerDown, weekMode,
+  swipeOffset = 0, swipeActions,
 }: BlockProps) {
   const b = BLOCK[apt.status] ?? BLOCK.confirmed;
   const avatar  = resolveMediaUrl(apt.client?.avatar ?? null);
   const compact = heightPx < 52;
+  const stripW  = swipeActions && swipeActions.length > 0 ? swipeActions.length * 34 + 8 : 0;
+
+  const content = (
+    <div className="px-2 py-1.5 h-full flex flex-col flex-shrink-0" style={{ width: '100%' }}>
+      {compact ? (
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={`text-[11px] font-bold truncate ${b.text}`}>{apt.client_name}</span>
+          <span className={`text-[10px] flex-shrink-0 ${b.sub}`}>{fmtTime(apt.appointment_time)}</span>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            {avatar ? (
+              <div className="relative w-[18px] h-[18px] rounded-full overflow-hidden flex-shrink-0">
+                <Image src={avatar} alt={apt.client_name} fill className="object-cover" sizes="18px" />
+              </div>
+            ) : (
+              <User size={12} className={`${b.sub} flex-shrink-0`} />
+            )}
+            <span className={`text-[12px] font-bold truncate ${b.text}`}>{apt.client_name}</span>
+          </div>
+          <span className={`text-[11px] truncate leading-tight ${b.sub}`}>{apt.service}</span>
+          {!weekMode && heightPx > 76 && (
+            <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap">
+              {apt.duration_minutes && (
+                <span className={`text-[10px] ${b.sub}`}>{apt.duration_minutes} min</span>
+              )}
+              {apt.price && (
+                <span className={`text-[10px] font-bold ${b.text}`}>{parseFloat(apt.price)}€</span>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -323,38 +372,26 @@ function AppointmentBlock({
       }}
       onPointerDown={onPointerDown}
     >
-      <div className="px-2 py-1.5 h-full flex flex-col">
-        {compact ? (
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className={`text-[11px] font-bold truncate ${b.text}`}>{apt.client_name}</span>
-            <span className={`text-[10px] flex-shrink-0 ${b.sub}`}>{fmtTime(apt.appointment_time)}</span>
+      {stripW > 0 ? (
+        <div
+          className="h-full flex"
+          style={{ transform: `translateX(${swipeOffset}px)`, transition: swipeOffset !== 0 && swipeOffset !== -stripW ? 'none' : 'transform 0.2s ease-out' }}
+        >
+          {content}
+          <div className="flex-shrink-0 h-full flex items-center gap-1.5 pl-1.5" style={{ width: stripW }}>
+            {swipeActions!.map(act => (
+              <button
+                key={act.key}
+                onPointerDown={e => e.stopPropagation()}
+                onClick={act.onClick}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${act.cls}`}
+              >
+                <act.Icon size={13} />
+              </button>
+            ))}
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              {avatar ? (
-                <div className="relative w-[18px] h-[18px] rounded-full overflow-hidden flex-shrink-0">
-                  <Image src={avatar} alt={apt.client_name} fill className="object-cover" sizes="18px" />
-                </div>
-              ) : (
-                <User size={12} className={`${b.sub} flex-shrink-0`} />
-              )}
-              <span className={`text-[12px] font-bold truncate ${b.text}`}>{apt.client_name}</span>
-            </div>
-            <span className={`text-[11px] truncate leading-tight ${b.sub}`}>{apt.service}</span>
-            {!weekMode && heightPx > 76 && (
-              <div className="flex items-center gap-2 mt-auto pt-1 flex-wrap">
-                {apt.duration_minutes && (
-                  <span className={`text-[10px] ${b.sub}`}>{apt.duration_minutes} min</span>
-                )}
-                {apt.price && (
-                  <span className={`text-[10px] font-bold ${b.text}`}>{parseFloat(apt.price)}€</span>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+        </div>
+      ) : content}
 
       {/* Resize handle */}
       <div
@@ -532,9 +569,29 @@ interface DayViewProps {
   onSelectApt: (apt:ApiAppointment) => void;
   onSelectUnavailability: (u:ApiUnavailability) => void;
   onQuickCreate: (time:string, date:string) => void;
+  onStatusChange: (id:number, status:AppointmentStatus) => void;
 }
 
-function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate }: DayViewProps) {
+// Prochain créneau libre (>= maintenant si aujourd'hui) en tenant compte des
+// RDV actifs et des blocages — dérivé des données réelles, jamais estimé.
+function nextFreeSlot(dayApts: ApiAppointment[], dayUnavail: ApiUnavailability[], dateStr: string, isToday: boolean): number | null {
+  const now = new Date();
+  let cursor = isToday ? Math.max(START_HOUR*60, snap(now.getHours()*60 + now.getMinutes())) : START_HOUR*60;
+  const busy = [
+    ...dayApts.filter(a => ['confirmed','pending'].includes(a.status)).map(a => {
+      const s = a.appointment_time ? toMin(a.appointment_time) : START_HOUR*60;
+      return { start: s, end: s + (a.duration_minutes ?? 60) };
+    }),
+    ...dayUnavail.map(u => unavailBoundsForDate(u, dateStr)).map(({startMin,endMin}) => ({ start: startMin, end: endMin })),
+  ].sort((a,b) => a.start - b.start);
+  for (const b of busy) {
+    if (b.start > cursor) return cursor;
+    cursor = Math.max(cursor, b.end);
+  }
+  return cursor < END_HOUR*60 ? cursor : null;
+}
+
+function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate, onStatusChange }: DayViewProps) {
   const dateStr      = isoDate(date);
   const dayApts      = aptsForDate(appointments, dateStr);
   const dayUnavail   = unavailForDate(unavailabilities, dateStr);
@@ -543,9 +600,10 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
   const isToday      = dateStr === isoDate(new Date());
   const now          = new Date();
   const nowMin       = now.getHours()*60 + now.getMinutes();
+  const router       = useRouter();
 
   // Drag state
-  const pointerInfo  = useRef<{ aptId:number; startY:number; startMin:number; ts:number } | null>(null);
+  const pointerInfo  = useRef<{ aptId:number; startX:number; startY:number; startMin:number; ts:number; mode:'none'|'vertical'|'horizontal'; wasSwipeOpen:boolean } | null>(null);
   const [dragAptId,   setDragAptId]   = useState<number|null>(null);
   const [dragPreview, setDragPreview] = useState<number|null>(null);
 
@@ -554,9 +612,14 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
   const [resizeAptId, setResizeAptId] = useState<number|null>(null);
   const [resizeDur,   setResizeDur]   = useState<number|null>(null);
 
-  // Long press (quick create)
+  // Swipe-to-reveal actions state (horizontal drag on a block)
+  const [swipeAptId, setSwipeAptId] = useState<number|null>(null);
+  const [swipeX,      setSwipeX]     = useState(0);
+
+  // Long press (quick create) + double-tap (fast create)
   const longTimer  = useRef<ReturnType<typeof setTimeout>|null>(null);
   const longActive = useRef(false);
+  const lastTap    = useRef<{ t:number; min:number } | null>(null);
 
   // Auto-scroll to current time
   useEffect(() => {
@@ -575,10 +638,21 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     return Math.max(START_HOUR*60, Math.min((END_HOUR-1)*60, snap(raw)));
   };
 
+  const closeSwipe = () => { setSwipeAptId(null); setSwipeX(0); };
+
   const onContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only fires on empty area (blocks call e.stopPropagation on pointer down)
+    if (swipeAptId !== null) { closeSwipe(); return; }
     if (longActive.current) return;
     const min = getMinFromY(e.clientY);
+    const now2 = nowMs();
+    if (lastTap.current && now2 - lastTap.current.t < 350 && Math.abs(lastTap.current.min - min) < 30) {
+      // Double-tap → création rapide, on saute le menu contextuel
+      lastTap.current = null;
+      router.push(`/pro/reservations/nouveau?date=${dateStr}&time=${fromMin(min)}`);
+      return;
+    }
+    lastTap.current = { t: now2, min };
     longTimer.current = setTimeout(() => {
       longActive.current = true;
       onQuickCreate(fromMin(min), dateStr);
@@ -588,8 +662,9 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
   const onBlockPointerDown = (e: React.PointerEvent, apt: ApiAppointment) => {
     e.stopPropagation();
     if (longTimer.current) clearTimeout(longTimer.current);
+    if (swipeAptId !== null && swipeAptId !== apt.id) closeSwipe();
     const startMin = apt.appointment_time ? toMin(apt.appointment_time) : START_HOUR*60;
-    pointerInfo.current = { aptId:apt.id, startY:e.clientY, startMin, ts:Date.now() };
+    pointerInfo.current = { aptId:apt.id, startX:e.clientX, startY:e.clientY, startMin, ts:nowMs(), mode:'none', wasSwipeOpen: swipeAptId===apt.id };
   };
 
   const onResizePointerDown = (e: React.PointerEvent, apt: ApiAppointment) => {
@@ -599,13 +674,39 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     setResizeAptId(apt.id);
   };
 
+  function swipeActionsFor(apt: ApiAppointment): SwipeAction[] {
+    const acts: SwipeAction[] = (STATUS_ACTIONS[apt.status] ?? []).slice(0,2).map(a => ({
+      key: a.status, Icon: a.Icon, cls: a.cls.includes('bg-white')||a.cls.includes('border') ? 'bg-neutral-100 text-neutral-600 border border-neutral-200' : a.cls,
+      onClick: () => { onStatusChange(apt.id, a.status); closeSwipe(); },
+    }));
+    if (apt.client_phone) {
+      acts.push({ key:'call', Icon:Phone, cls:'bg-neutral-100 text-neutral-600', onClick: () => { closeSwipe(); window.location.href = `tel:${apt.client_phone}`; } });
+    }
+    return acts.slice(0,3);
+  }
+
   const onPointerMove = (e: React.PointerEvent) => {
-    // Drag
+    // Drag / swipe
     if (pointerInfo.current) {
-      const dy = e.clientY - pointerInfo.current.startY;
-      if (Math.abs(dy) > DRAG_THRESH) {
-        setDragAptId(pointerInfo.current.aptId);
+      const info = pointerInfo.current;
+      const dx = e.clientX - info.startX;
+      const dy = e.clientY - info.startY;
+      if (info.mode === 'none') {
+        if (Math.abs(dx) > DRAG_THRESH && Math.abs(dx) > Math.abs(dy)) {
+          const apt = appointments.find(a=>a.id===info.aptId);
+          if (apt && swipeActionsFor(apt).length > 0) info.mode = 'horizontal';
+        } else if (Math.abs(dy) > DRAG_THRESH) {
+          info.mode = 'vertical';
+        }
+      }
+      if (info.mode === 'vertical') {
+        setDragAptId(info.aptId);
         setDragPreview(getMinFromY(e.clientY));
+      } else if (info.mode === 'horizontal') {
+        const apt = appointments.find(a=>a.id===info.aptId);
+        const stripW = apt ? swipeActionsFor(apt).length * 34 + 8 : 0;
+        setSwipeAptId(info.aptId);
+        setSwipeX(Math.max(-stripW, Math.min(0, dx)));
       }
     }
     // Resize
@@ -625,9 +726,15 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     pointerInfo.current = null;
 
     if (info) {
-      const dy = e.clientY - info.startY;
-      const elapsed = Date.now() - info.ts;
-      if (Math.abs(dy) <= DRAG_THRESH && elapsed < 400) {
+      if (info.mode === 'horizontal') {
+        const apt = appointments.find(a=>a.id===info.aptId);
+        const stripW = apt ? swipeActionsFor(apt).length * 34 + 8 : 0;
+        if (swipeX < -stripW/2) { setSwipeAptId(info.aptId); setSwipeX(-stripW); }
+        else closeSwipe();
+      } else if (info.mode === 'none' && info.wasSwipeOpen) {
+        // Tap on an already-open swiped block → close it instead of opening the sheet
+        closeSwipe();
+      } else if (info.mode === 'none') {
         // Click → open sheet
         const apt = appointments.find(a=>a.id===info.aptId);
         if (apt) onSelectApt(apt);
@@ -662,8 +769,50 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     );
   }
 
+  const revenue  = dayRevenue(appointments, dateStr);
+  const active   = dayApts.filter(a => ['confirmed','pending'].includes(a.status));
+  const upcoming = isToday
+    ? active.filter(a => a.appointment_time && toMin(a.appointment_time) + (a.duration_minutes??60) > nowMin)
+    : active;
+  const next     = [...upcoming].sort((a,b)=>(a.appointment_time??'').localeCompare(b.appointment_time??''))[0] ?? null;
+  const late     = isToday
+    ? active.filter(a => a.status==='confirmed' && a.appointment_time && toMin(a.appointment_time) + (a.duration_minutes??60) < nowMin).length
+    : 0;
+  const freeSlot = nextFreeSlot(dayApts, dayUnavail, dateStr, isToday);
+
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto touch-pan-y" style={{height:'calc(100vh - 160px)'}}>
+    <>
+      {/* Résumé du jour */}
+      <div className="flex items-stretch gap-2 px-3 pt-2 pb-1 overflow-x-auto">
+        <div className="flex-shrink-0 min-w-[104px] bg-neutral-50 rounded-2xl px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400">{next ? (isToday?'Prochain':'Premier') : 'RDV'}</p>
+          {next ? (
+            <p className="text-[12px] font-bold text-neutral-900 truncate">{fmtTime(next.appointment_time)} · {next.client_name}</p>
+          ) : (
+            <p className="text-[12px] font-semibold text-neutral-300">Aucun</p>
+          )}
+        </div>
+        <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Users size={9}/>RDV</p>
+          <p className="text-[14px] font-bold text-neutral-900">{dayApts.length}</p>
+        </div>
+        <div className="flex-shrink-0 min-w-[74px] bg-neutral-50 rounded-2xl px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Euro size={9}/>CA</p>
+          <p className="text-[14px] font-bold text-neutral-900">{revenue}€</p>
+        </div>
+        <div className="flex-shrink-0 min-w-[90px] bg-neutral-50 rounded-2xl px-3 py-2">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Clock size={9}/>Libre</p>
+          <p className="text-[12px] font-bold text-neutral-900">{freeSlot!==null ? fromMin(freeSlot) : '—'}</p>
+        </div>
+        {late>0 && (
+          <div className="flex-shrink-0 min-w-[80px] bg-red-50 rounded-2xl px-3 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-red-400 flex items-center gap-1"><AlertTriangle size={9}/>Retard</p>
+            <p className="text-[14px] font-bold text-red-600">{late}</p>
+          </div>
+        )}
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto touch-pan-y" style={{height:'calc(100vh - 208px)'}}>
       <div
         className="flex"
         style={{minHeight:totalHeight+40}}
@@ -739,6 +888,8 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
                 isGhost={dragAptId===apt.id && dragPreview!==null}
                 onPointerDown={e=>onBlockPointerDown(e,apt)}
                 onResizePointerDown={e=>onResizePointerDown(e,apt)}
+                swipeOffset={swipeAptId===apt.id ? swipeX : 0}
+                swipeActions={swipeActionsFor(apt)}
               />
             );
           })}
@@ -769,7 +920,8 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -801,9 +953,9 @@ function WeekView({
           return (
             <button key={i} onClick={()=>onDayClick(d)}
               className="flex-1 py-2 flex flex-col items-center gap-0.5 hover:bg-neutral-50 transition-colors">
-              <span className={`text-[9px] font-bold uppercase ${isToday?'text-violet-600':'text-neutral-400'}`}>{DAY_LABELS[d.getDay()]}</span>
+              <span className={`text-[9px] font-bold uppercase ${isToday?'text-neutral-900':'text-neutral-400'}`}>{DAY_LABELS[d.getDay()]}</span>
               <span className={`text-[13px] font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday?'bg-neutral-900 text-white':'text-neutral-700'}`}>{d.getDate()}</span>
-              {count>0&&<span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isToday?'bg-violet-100 text-violet-700':'bg-neutral-100 text-neutral-500'}`}>{count}</span>}
+              {count>0&&<span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${isToday?'bg-neutral-900 text-white':'bg-neutral-100 text-neutral-500'}`}>{count}</span>}
             </button>
           );
         })}
@@ -904,6 +1056,68 @@ function MonthView({year,month,appointments,today,onDayClick}:{
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── ListView ─────────────────────────────────────────────────────────────────
+
+function ListView({ appointments, onSelectApt }: { appointments:ApiAppointment[]; onSelectApt:(apt:ApiAppointment)=>void }) {
+  const todayStr = isoDate(new Date());
+  const groups: [string, ApiAppointment[]][] = (() => {
+    const map = new Map<string, ApiAppointment[]>();
+    appointments
+      .filter(a => !['declined','cancelled'].includes(a.status) && apptDateStr(a) >= todayStr)
+      .forEach(a => {
+        const ds = apptDateStr(a);
+        if (!map.has(ds)) map.set(ds, []);
+        map.get(ds)!.push(a);
+      });
+    return Array.from(map.entries())
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([ds, apts]) => [ds, apts.sort((a,b)=>(a.appointment_time??'').localeCompare(b.appointment_time??''))] as [string, ApiAppointment[]]);
+  })();
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center" style={{height:'calc(100vh - 160px)'}}>
+        <List size={32} className="text-neutral-100 mb-2" />
+        <p className="text-[13px] text-neutral-300 font-medium">Aucun rendez-vous à venir</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto" style={{height:'calc(100vh - 160px)'}}>
+      {groups.map(([ds, apts]) => {
+        const d = new Date(ds+'T12:00:00');
+        const label = ds===todayStr ? "Aujourd'hui" : d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+        const rev = dayRevenue(apts, ds);
+        return (
+          <div key={ds}>
+            <div className="sticky top-0 z-10 bg-neutral-50/95 backdrop-blur-sm px-4 py-2 border-b border-neutral-100 flex items-center justify-between">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 capitalize">{label}</p>
+              <p className="text-[11px] text-neutral-400">{apts.length} RDV{rev>0?` · ${rev}€`:''}</p>
+            </div>
+            {apts.map(apt => {
+              const b = BLOCK[apt.status] ?? BLOCK.confirmed;
+              return (
+                <button key={apt.id} onClick={()=>onSelectApt(apt)}
+                  className="w-full flex items-center gap-3 px-4 py-3 border-b border-neutral-50 hover:bg-neutral-50 transition-colors text-left">
+                  <div className="w-11 flex-shrink-0 text-[12px] font-bold text-neutral-900">{fmtTime(apt.appointment_time)}</div>
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${b.bar}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] font-semibold text-neutral-900 truncate">{apt.client_name}</p>
+                    <p className="text-[11px] text-neutral-400 truncate">{apt.service}</p>
+                  </div>
+                  {apt.price && <span className="text-[12px] font-semibold text-neutral-500 flex-shrink-0">{parseFloat(apt.price)}€</span>}
+                  <ChevronRight size={14} className="text-neutral-200 flex-shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -1009,7 +1223,7 @@ export default function AgendaPage() {
   const [hourH,    setHourH]    = useState(72);
   const [updating, setUpdating] = useState<number|null>(null);
   const [pendingCollapsed, setPendingCollapsed] = useState(false);
-  const [selectedApt, setSelectedApt] = useState<ApiAppointment|null>(null);
+  const [selectedAptId, setSelectedAptId] = useState<number|null>(null);
   const [saving,   setSaving]   = useState(false);
   const [quickCreate, setQuickCreate] = useState<{time:string;date:string}|null>(null);
   const [aiHint,   setAiHint]   = useState<string|null>(null);
@@ -1035,12 +1249,8 @@ export default function AgendaPage() {
     loadUnavailabilities();
   },[user]);
 
-  // Keep selectedApt in sync with appointments array
-  useEffect(()=>{
-    if(!selectedApt) return;
-    const updated = appointments.find(a=>a.id===selectedApt.id);
-    if(updated) setSelectedApt(updated);
-  },[appointments]);
+  // Dérivé de appointments — reste toujours synchronisé sans effet ni copie.
+  const selectedApt = selectedAptId!==null ? (appointments.find(a=>a.id===selectedAptId) ?? null) : null;
 
   async function updateStatus(id:number, status:AppointmentStatus) {
     setUpdating(id); setSaving(true);
@@ -1115,17 +1325,22 @@ export default function AgendaPage() {
       {/* Header */}
       <div className="sticky top-content-mobile-pro md:top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100">
         <div className="flex items-center gap-1 px-3 h-12">
-          <button onClick={()=>navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
-            <ChevronLeft size={17}/>
-          </button>
+          {view!=='list' && (
+            <button onClick={()=>navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+              <ChevronLeft size={17}/>
+            </button>
+          )}
           <span className="flex-1 text-center text-[14px] font-bold text-neutral-900 truncate">
             {view==='day'   && formatDayHeader(current)}
             {view==='week'  && formatWeekHeader(weekStart)}
             {view==='month' && `${MONTH_NAMES[current.getMonth()]} ${current.getFullYear()}`}
+            {view==='list'  && 'Rendez-vous à venir'}
           </span>
-          <button onClick={()=>navigate(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
-            <ChevronRight size={17}/>
-          </button>
+          {view!=='list' && (
+            <button onClick={()=>navigate(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+              <ChevronRight size={17}/>
+            </button>
+          )}
           {view==='day'&&<>
             <button onClick={()=>setHourH(h=>Math.max(48,h-16))} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomOut size={13} className="text-neutral-400"/></button>
             <button onClick={()=>setHourH(h=>Math.min(120,h+16))} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomIn size={13} className="text-neutral-400"/></button>
@@ -1136,20 +1351,25 @@ export default function AgendaPage() {
         </div>
         <div className="flex items-center px-3 pb-2.5 gap-1.5">
           <div className="flex items-center gap-0.5 bg-neutral-100 rounded-full p-0.5">
-            {(['day','week','month'] as ViewMode[]).map(v=>(
+            {(['day','week','month','list'] as ViewMode[]).map(v=>(
               <button key={v} onClick={()=>setView(v)}
-                className={`px-3.5 py-1.5 rounded-full text-[11px] font-semibold transition-all ${view===v?'bg-white text-neutral-900 shadow-sm':'text-neutral-500'}`}>
-                {v==='day'?'Jour':v==='week'?'Semaine':'Mois'}
+                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${view===v?'bg-white text-neutral-900 shadow-sm':'text-neutral-500'}`}>
+                {v==='list' && <List size={11}/>}
+                {v==='day'?'Jour':v==='week'?'Semaine':v==='month'?'Mois':'Liste'}
               </button>
             ))}
           </div>
-          <button onClick={()=>setCurrent(new Date())} className="ml-auto text-[11px] font-semibold text-violet-600 px-3 py-1.5 rounded-full hover:bg-violet-50 transition-colors">Auj.</button>
-          {pending.length>0&&(
-            <div className="relative">
-              <Bell size={15} className="text-amber-500"/>
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">{pending.length}</span>
-            </div>
-          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            {view!=='list' && (
+              <button onClick={()=>setCurrent(new Date())} className="text-[11px] font-semibold text-neutral-900 px-3 py-1.5 rounded-full hover:bg-neutral-100 transition-colors">Auj.</button>
+            )}
+            {pending.length>0&&(
+              <div className="relative">
+                <Bell size={15} className="text-amber-500"/>
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">{pending.length}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1160,16 +1380,16 @@ export default function AgendaPage() {
           collapsed={pendingCollapsed} onToggle={()=>setPendingCollapsed(c=>!c)}
           onConfirm={id=>updateStatus(id,'confirmed')}
           onDecline={id=>updateStatus(id,'declined')}
-          onOpen={apt=>setSelectedApt(apt)}
+          onOpen={apt=>setSelectedAptId(apt.id)}
         />
       )}
 
       {/* AI hint */}
       {aiHint&&(
-        <div className="mx-3 mt-2 bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
-          <span className="w-1.5 h-1.5 bg-violet-500 rounded-full flex-shrink-0"/>
-          <p className="text-[12px] text-violet-800 font-medium flex-1">{aiHint}</p>
-          <button onClick={()=>setAiHint(null)} className="text-violet-400"><X size={13}/></button>
+        <div className="mx-3 mt-2 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 bg-neutral-900 rounded-full flex-shrink-0"/>
+          <p className="text-[12px] text-neutral-800 font-medium flex-1">{aiHint}</p>
+          <button onClick={()=>setAiHint(null)} className="text-neutral-400"><X size={13}/></button>
         </div>
       )}
 
@@ -1179,9 +1399,10 @@ export default function AgendaPage() {
           date={current} appointments={appointments} unavailabilities={unavailabilities}
           hourHeight={hourH} loading={loading}
           onMove={moveAppointment}
-          onSelectApt={apt=>setSelectedApt(apt)}
+          onSelectApt={apt=>setSelectedAptId(apt.id)}
           onSelectUnavailability={u=>setSelectedUnavail(u)}
           onQuickCreate={(time,date)=>setQuickCreate({time,date})}
+          onStatusChange={updateStatus}
         />
       )}
       {view==='week'&&(
@@ -1190,7 +1411,7 @@ export default function AgendaPage() {
           hourHeight={Math.max(44,Math.round(hourH*0.7))} loading={loading}
           onMove={moveAppointment}
           onDayClick={d=>{setCurrent(d);setView('day');}}
-          onSelectApt={apt=>setSelectedApt(apt)}
+          onSelectApt={apt=>setSelectedAptId(apt.id)}
           onSelectUnavailability={u=>setSelectedUnavail(u)}
         />
       )}
@@ -1201,12 +1422,15 @@ export default function AgendaPage() {
           onDayClick={d=>{setCurrent(d);setView('day');}}
         />
       )}
+      {view==='list'&&(
+        <ListView appointments={appointments} onSelectApt={apt=>setSelectedAptId(apt.id)} />
+      )}
 
       {/* Appointment detail sheet */}
       {selectedApt&&(
         <AppointmentSheet
           apt={selectedApt}
-          onClose={()=>setSelectedApt(null)}
+          onClose={()=>setSelectedAptId(null)}
           onStatusChange={updateStatus}
           onReschedule={reschedule}
           saving={saving}

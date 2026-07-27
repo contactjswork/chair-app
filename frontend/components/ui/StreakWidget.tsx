@@ -93,7 +93,7 @@ export default function StreakWidget({ compact = false }: Props) {
         </div>
         <div className="text-center border-x border-white/10">
           <p className="text-[16px] font-bold text-white">{data.weekly_streak}</p>
-          <p className="text-[9px] text-white/30 uppercase tracking-wider">Semaines</p>
+          <p className="text-[9px] text-white/30 uppercase tracking-wider">Sem. actives</p>
         </div>
         <div className="text-center">
           <p className="text-[16px] font-bold text-white">{data.total_active_days}</p>

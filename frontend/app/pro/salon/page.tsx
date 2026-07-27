@@ -6,15 +6,14 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
-import { api, salons } from '@/lib/api';
+import { api, geo, salons } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull, type ApiSalonJoinRequest } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
+import ImageCropModal from '@/components/ui/ImageCropModal';
 import {
   Building2, Users, Check, X, MapPin, ExternalLink, Edit2,
-  CheckCircle, AlertCircle, UserMinus, LogOut, Search, Clock, ChevronRight, Mail,
+  CheckCircle, AlertCircle, UserMinus, LogOut, Search, Clock, ChevronRight, Mail, Camera,
 } from 'lucide-react';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
 
 interface SalonInvitation {
   id: number;
@@ -60,13 +59,13 @@ function JoinSalonPanel() {
     return () => clearTimeout(t);
   }, [query]);
 
-  async function handleJoin(salonId: number) {
-    setJoiningId(salonId);
+  async function handleJoin(salon: ApiSalonFull) {
+    setJoiningId(salon.id);
     try {
-      await salons.requestJoin(salonId, joinMsg || undefined);
+      await salons.requestJoin(salon.id, joinMsg || undefined);
       setMyRequests((prev) => [
         ...prev,
-        { id: Date.now(), hairdresser_id: 0, salon_id: salonId, status: 'pending', message: joinMsg || null, created_at: new Date().toISOString() },
+        { id: Date.now(), hairdresser_id: 0, salon_id: salon.id, status: 'pending', message: joinMsg || null, created_at: new Date().toISOString(), salon },
       ]);
       showToast('Demande envoyée ! Le gérant du salon recevra une notification.');
     } catch (e) {
@@ -137,7 +136,7 @@ function JoinSalonPanel() {
                 {myRequests.filter((r) => r.status === 'pending').map((req) => (
                   <div key={req.id} className="flex items-center gap-3 py-2">
                     <Clock size={14} className="text-amber-500 flex-shrink-0" />
-                    <p className="flex-1 min-w-0 text-sm text-neutral-700 truncate">Demande au salon #{req.salon_id} — en attente</p>
+                    <p className="flex-1 min-w-0 text-sm text-neutral-700 truncate">{req.salon?.name ?? 'Salon'} — en attente</p>
                     <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">En attente</span>
                   </div>
                 ))}
@@ -184,7 +183,7 @@ function JoinSalonPanel() {
                           )}
                           {salon.description && <p className="text-xs text-neutral-400 mt-1.5 line-clamp-2">{salon.description}</p>}
                         </div>
-                        <Link href={`/salon/${salon.slug}`} target="_blank" className="flex-shrink-0 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
+                        <Link href={`/app/salon/${salon.slug}`} target="_blank" className="flex-shrink-0 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
                           <ChevronRight size={16} />
                         </Link>
                       </div>
@@ -203,12 +202,12 @@ function JoinSalonPanel() {
                         <div className="mt-3 space-y-2">
                           <input
                             type="text"
-                            placeholder="Message optionnel (ex : 5 ans d'expérience...)"
+                            placeholder="Message (optionnel)"
                             className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-xs focus:outline-none focus:border-neutral-400 transition-all"
                             onChange={(e) => setJoinMsg(e.target.value)}
                           />
                           <button
-                            onClick={() => handleJoin(salon.id)}
+                            onClick={() => handleJoin(salon)}
                             disabled={joiningId === salon.id}
                             className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50"
                           >
@@ -239,7 +238,7 @@ function JoinSalonPanel() {
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-xl bg-neutral-100 flex-shrink-0 relative flex items-center justify-center overflow-hidden">
                     {inv.salon?.logo
-                      ? <Image src={`${API_BASE}${inv.salon.logo}`} alt="" fill className="object-cover" sizes="48px" />
+                      ? <Image src={resolveMediaUrl(inv.salon.logo)!} alt="" fill className="object-cover" sizes="48px" />
                       : <Building2 size={18} className="text-neutral-400" />
                     }
                   </div>
@@ -367,6 +366,13 @@ export default function DashboardSalonPage() {
   const [editing, setEditing]   = useState(false);
   const [editData, setEditData] = useState<Partial<ApiSalonFull>>({});
   const [saving, setSaving]     = useState(false);
+  const [regionsList, setRegionsList]         = useState<string[]>([]);
+  const [departmentsList, setDepartmentsList] = useState<Array<{ code: string; name: string }>>([]);
+
+  const [logoCropSrc, setLogoCropSrc]   = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverCropSrc, setCoverCropSrc] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   const isSalonOwner = user?.role === 'salon_owner';
 
@@ -389,13 +395,30 @@ export default function DashboardSalonPage() {
         address:       salonData.salon.address ?? '',
         city:          salonData.salon.city ?? '',
         postal_code:   salonData.salon.postal_code ?? '',
+        region:        salonData.salon.region ?? '',
+        department:    salonData.salon.department ?? '',
         phone:         salonData.salon.phone ?? '',
         website:       salonData.salon.website ?? '',
         instagram_url: salonData.salon.instagram_url ?? '',
+        siret:         salonData.salon.siret ?? '',
       });
       if (autoEdit && isSalonOwner) setEditing(true);
     }
   }, [salonData, autoEdit, isSalonOwner]);
+
+  useEffect(() => {
+    geo.regions().then((r) => setRegionsList(r.regions)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const currentRegion = editData.region;
+    if (!currentRegion) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDepartmentsList([]);
+      return;
+    }
+    geo.departments(currentRegion).then((r) => setDepartmentsList(r.departments)).catch(() => setDepartmentsList([]));
+  }, [editData.region]);
 
   function toast(msg: string) {
     setActionMsg(msg);
@@ -446,10 +469,44 @@ export default function DashboardSalonPage() {
       setSalonData(fresh);
       setEditing(false);
       toast('Salon mis à jour.');
-    } catch {
-      toast('Erreur lors de la mise à jour.');
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Erreur lors de la mise à jour.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function selectLogo(file: File) { setLogoCropSrc(URL.createObjectURL(file)); }
+
+  async function uploadLogoBlob(blob: Blob) {
+    setLogoCropSrc(null);
+    setLogoUploading(true);
+    try {
+      await salons.uploadLogo(blob);
+      const fresh = await salons.mySalon();
+      setSalonData(fresh);
+      toast('Logo mis à jour.');
+    } catch {
+      toast('Erreur lors de l\'envoi du logo.');
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  function selectCover(file: File) { setCoverCropSrc(URL.createObjectURL(file)); }
+
+  async function uploadCoverBlob(blob: Blob) {
+    setCoverCropSrc(null);
+    setCoverUploading(true);
+    try {
+      await salons.uploadCover(blob);
+      const fresh = await salons.mySalon();
+      setSalonData(fresh);
+      toast('Photo mise à jour.');
+    } catch {
+      toast('Erreur lors de l\'envoi de la photo.');
+    } finally {
+      setCoverUploading(false);
     }
   }
 
@@ -492,6 +549,9 @@ export default function DashboardSalonPage() {
 
   const { salon, pending_requests } = salonData;
   const coverUrl = resolveMediaUrl(salon.cover_image);
+  const logoUrl = resolveMediaUrl(salon.logo);
+
+  function triggerFileInput(id: string) { document.getElementById(id)?.click(); }
 
   const verificationBadge = () => {
     if (salon.is_verified) {
@@ -530,22 +590,56 @@ export default function DashboardSalonPage() {
 
         {/* Header salon */}
         <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-4">
-          <div className="relative h-28 bg-neutral-200">
+          <div className="relative h-28 bg-neutral-200 group">
             {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
+            {isSalonOwner && (
+              <button
+                onClick={() => triggerFileInput('cover-input')}
+                className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors"
+              >
+                <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 text-white text-xs font-semibold transition-opacity">
+                  {coverUploading ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Camera size={14} />}
+                  {coverUrl ? 'Changer la photo' : 'Ajouter une photo'}
+                </span>
+              </button>
+            )}
+            <input id="cover-input" type="file" accept="image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) selectCover(f); e.target.value = ''; }} />
           </div>
           <div className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg font-bold text-neutral-900">{salon.name}</h1>
-                  {verificationBadge()}
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="relative w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center group">
+                  {logoUrl
+                    ? <Image src={logoUrl} alt={salon.name} fill className="object-cover" sizes="48px" />
+                    : <Building2 size={18} className="text-neutral-400" />
+                  }
+                  {isSalonOwner && (
+                    <button
+                      onClick={() => triggerFileInput('logo-input')}
+                      className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/40 transition-colors"
+                    >
+                      {logoUploading
+                        ? <div className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        : <Camera size={12} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                      }
+                    </button>
+                  )}
+                  <input id="logo-input" type="file" accept="image/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) selectLogo(f); e.target.value = ''; }} />
                 </div>
-                {salon.city && (
-                  <div className="flex items-center gap-1 mt-0.5 text-sm text-neutral-500">
-                    <MapPin size={12} />
-                    {salon.city}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-lg font-bold text-neutral-900 truncate">{salon.name}</h1>
+                    {verificationBadge()}
                   </div>
-                )}
+                  {salon.city && (
+                    <div className="flex items-center gap-1 mt-0.5 text-sm text-neutral-500">
+                      <MapPin size={12} />
+                      {salon.city}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <a
@@ -576,12 +670,17 @@ export default function DashboardSalonPage() {
           <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4 space-y-3">
             <h2 className="text-sm font-bold text-neutral-900 mb-3">Modifier les informations</h2>
             {[
+              { key: 'name',        label: 'Nom du salon', type: 'text' },
               { key: 'description', label: 'Description', type: 'textarea' },
               { key: 'address',     label: 'Adresse',     type: 'text' },
               { key: 'city',        label: 'Ville',       type: 'text' },
+              { key: 'postal_code', label: 'Code postal', type: 'text' },
+              { key: 'region',      label: 'Région',      type: 'select' },
+              { key: 'department',  label: 'Département', type: 'select' },
               { key: 'phone',       label: 'Téléphone',   type: 'text' },
               { key: 'website',     label: 'Site web',    type: 'url' },
               { key: 'instagram_url', label: 'Instagram', type: 'url' },
+              { key: 'siret',       label: 'SIRET (14 chiffres)', type: 'text' },
             ].map(({ key, label, type }) => (
               <div key={key}>
                 <label className="block text-xs font-semibold text-neutral-700 mb-1">{label}</label>
@@ -592,6 +691,21 @@ export default function DashboardSalonPage() {
                     rows={3}
                     className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 resize-none"
                   />
+                ) : type === 'select' ? (
+                  <select
+                    value={(editData as Record<string,string>)[key] ?? ''}
+                    onChange={(e) => setEditData((p) => ({
+                      ...p,
+                      [key]: e.target.value,
+                      ...(key === 'region' ? { department: '' } : {}),
+                    }))}
+                    disabled={key === 'department' && !editData.region}
+                    className="w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 disabled:opacity-50"
+                  >
+                    <option value="">—</option>
+                    {(key === 'region' ? regionsList.map((r) => ({ value: r, label: r })) : departmentsList.map((d) => ({ value: d.name, label: d.name })))
+                      .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 ) : (
                   <input
                     type={type}
@@ -729,6 +843,13 @@ export default function DashboardSalonPage() {
           </div>
         )}
       </main>
+
+      {logoCropSrc && (
+        <ImageCropModal imageSrc={logoCropSrc} aspect={1} shape="rect" onConfirm={(blob) => uploadLogoBlob(blob)} onCancel={() => setLogoCropSrc(null)} />
+      )}
+      {coverCropSrc && (
+        <ImageCropModal imageSrc={coverCropSrc} aspect={3} shape="rect" onConfirm={(blob) => uploadCoverBlob(blob)} onCancel={() => setCoverCropSrc(null)} />
+      )}
     </div>
   );
 }

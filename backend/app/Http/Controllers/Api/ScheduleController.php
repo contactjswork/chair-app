@@ -125,4 +125,31 @@ class ScheduleController extends Controller
         $item->delete();
         return response()->json(null, 204);
     }
+
+    /**
+     * GET /api/booking-window
+     * null = pas de limite, les clients peuvent réserver à n'importe quelle échéance.
+     */
+    public function getBookingWindow(Request $request)
+    {
+        $profile = $this->getProfile($request);
+        return response()->json(['booking_window_days' => $profile->booking_window_days]);
+    }
+
+    /**
+     * PUT /api/booking-window
+     * Body: { booking_window_days: int|null }
+     */
+    public function updateBookingWindow(Request $request)
+    {
+        $profile = $this->getProfile($request);
+
+        $validated = $request->validate([
+            'booking_window_days' => 'nullable|integer|min:1|max:365',
+        ]);
+
+        $profile->update(['booking_window_days' => $validated['booking_window_days'] ?? null]);
+
+        return response()->json(['booking_window_days' => $profile->fresh()->booking_window_days]);
+    }
 }

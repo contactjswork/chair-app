@@ -40,11 +40,8 @@ export default function TopRatedGeoSection({ fallback }: { fallback: ApiHairdres
         <div>
           <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5">Excellence</p>
           <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">
-            {isGeo ? 'Les mieux notés près de vous' : 'Les mieux notés'}
+            {isGeo ? 'Les mieux notés près de chez vous' : 'Les mieux notés'}
           </h2>
-          <p className="text-[12px] text-neutral-400 mt-1 leading-relaxed max-w-sm">
-            {isGeo ? 'TOP 5 coiffeurs plébiscités dans votre secteur' : 'Les coiffeurs plébiscités par leurs clients'}
-          </p>
         </div>
         <Link href="/app/classements" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
           <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />

@@ -35,6 +35,12 @@ class AvailabilityController extends Controller
         $date     = Carbon::createFromFormat('Y-m-d', $request->date);
         $dayOfWeek = (int) $date->format('w'); // 0=Dimanche
 
+        // 0. Fenêtre de réservation — le coiffeur peut limiter jusqu'à combien
+        // de jours à l'avance les clients ont le droit de réserver.
+        if ($profile->booking_window_days !== null && $date->isAfter(now()->addDays($profile->booking_window_days)->endOfDay())) {
+            return response()->json(['slots' => [], 'reason' => 'outside_booking_window']);
+        }
+
         // 1. Vérifier que ce jour est ouvert dans le planning
         $schedule = HairdresserSchedule::where('hairdresser_id', $profile->id)
             ->where('day_of_week', $dayOfWeek)
@@ -159,19 +165,47 @@ class AvailabilityController extends Controller
         $monthStart = Carbon::createFromFormat('Y-m', $request->month)->startOfMonth();
         $monthEnd   = $monthStart->copy()->endOfMonth();
 
-        // Jours ouverts selon le planning
-        $openDays = HairdresserSchedule::where('hairdresser_id', $profile->id)
+        // Fenêtre de réservation — ne pas proposer de jours au-delà
+        $windowEnd = $profile->booking_window_days !== null
+            ? now()->addDays($profile->booking_window_days)->endOfDay()
+            : null;
+
+        // Jours ouverts selon le planning, avec leurs horaires (pour détecter
+        // les journées entièrement bloquées par une indisponibilité)
+        $schedulesByDow = HairdresserSchedule::where('hairdresser_id', $profile->id)
             ->where('is_open', true)
-            ->pluck('day_of_week')
-            ->toArray();
+            ->get()
+            ->keyBy('day_of_week');
+
+        // Indisponibilités qui recouvrent le mois demandé
+        $unavailabilities = HairdresserUnavailability::where('hairdresser_id', $profile->id)
+            ->where('start_datetime', '<=', $monthEnd)
+            ->where('end_datetime', '>=', $monthStart)
+            ->get(['start_datetime', 'end_datetime']);
 
         $availableDates = [];
         $day = $monthStart->copy();
 
         while ($day->lte($monthEnd)) {
             $dow = (int) $day->format('w');
-            if (in_array($dow, $openDays) && !$day->isPast()) {
-                $availableDates[] = $day->format('Y-m-d');
+            $schedule = $schedulesByDow->get($dow);
+
+            $withinWindow = $windowEnd === null || $day->lte($windowEnd);
+
+            if ($schedule && $withinWindow && !$day->isPast()) {
+                // Une indisponibilité qui couvre entièrement les horaires d'ouverture
+                // du jour rend la journée indisponible (sinon slots() renverrait 0 créneau
+                // mais le jour resterait cliquable dans le calendrier client)
+                $dayStart = Carbon::createFromFormat('Y-m-d H:i:s', $day->format('Y-m-d') . ' ' . $schedule->start_time);
+                $dayEnd   = Carbon::createFromFormat('Y-m-d H:i:s', $day->format('Y-m-d') . ' ' . $schedule->end_time);
+
+                $fullyBlocked = $unavailabilities->contains(fn($u) =>
+                    Carbon::parse($u->start_datetime)->lte($dayStart) && Carbon::parse($u->end_datetime)->gte($dayEnd)
+                );
+
+                if (!$fullyBlocked) {
+                    $availableDates[] = $day->format('Y-m-d');
+                }
             }
             $day->addDay();
         }

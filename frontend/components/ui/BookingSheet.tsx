@@ -19,9 +19,12 @@ interface Props {
   slug: string;
   open: boolean;
   onClose: () => void;
+  /** Présélectionne une prestation (bouton "Réserver" depuis une ligne de service) — saute directement à l'étape date. */
+  initialCategoryId?: number;
+  initialServiceId?: number;
 }
 
-export default function BookingSheet({ slug, open, onClose }: Props) {
+export default function BookingSheet({ slug, open, onClose, initialCategoryId, initialServiceId }: Props) {
   const { user } = useAuth();
 
   const [step, setStep] = useState<Step>('category');
@@ -66,15 +69,25 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
     setLoading(true);
     servicesApi.publicList(slug)
       .then((data) => {
-        const cats = data as ApiServiceCategory[];
-        setCategories(cats.filter((c) => (c.services ?? []).length > 0));
+        const cats = (data as ApiServiceCategory[]).filter((c) => (c.services ?? []).length > 0);
+        setCategories(cats);
+
+        if (initialServiceId != null) {
+          const cat = cats.find((c) => c.id === initialCategoryId) ?? cats.find((c) => (c.services ?? []).some((s) => s.id === initialServiceId));
+          const svc = cat?.services?.find((s) => s.id === initialServiceId);
+          if (cat && svc) {
+            setSelectedCategory(cat);
+            setSelectedService(svc);
+            setStep('date');
+          }
+        }
         setLoading(false);
       })
       .catch(() => {
         setError('Impossible de charger les services de ce coiffeur.');
         setLoading(false);
       });
-  }, [open, slug]);
+  }, [open, slug, initialCategoryId, initialServiceId]);
 
   useEffect(() => {
     if (user) {
@@ -176,7 +189,7 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
       <div
         className="fixed bottom-0 left-0 right-0 z-[201] bg-white rounded-t-3xl shadow-2xl flex flex-col"
         style={{
-          height: '90vh',
+          height: '90dvh',
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 250ms ease-out',
         }}
@@ -229,7 +242,7 @@ export default function BookingSheet({ slug, open, onClose }: Props) {
         </div>
 
         {/* Contenu scrollable */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div className="flex-1 overflow-y-auto overscroll-contain pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-6 h-6 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />

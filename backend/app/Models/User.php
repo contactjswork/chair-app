@@ -19,6 +19,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name', 'email', 'password', 'role', 'avatar', 'city', 'postal_code', 'latitude', 'longitude', 'bio', 'phone',
+        'referral_code', 'referred_by_user_id', 'active_pro_mode',
     ];
 
     protected $hidden = [
@@ -63,5 +64,28 @@ class User extends Authenticatable
     public function isSalonOwner(): bool
     {
         return $this->role === 'salon_owner';
+    }
+
+    /** Double identité : ce compte possède-t-il un salon (Mode Gérant disponible) ? */
+    public function canManageSalon(): bool
+    {
+        return $this->salon()->exists();
+    }
+
+    /** Double identité : ce compte a-t-il un profil coiffeur (Mode Coiffeur disponible) ? */
+    public function hasHairdresserProfile(): bool
+    {
+        return $this->hairdresserProfile()->exists();
+    }
+
+    public function referredBy()
+    {
+        return $this->belongsTo(User::class, 'referred_by_user_id');
+    }
+
+    /** Utilisateurs que CE compte a parrainés (peu importe leur rôle). */
+    public function referrals()
+    {
+        return $this->hasMany(User::class, 'referred_by_user_id');
     }
 }

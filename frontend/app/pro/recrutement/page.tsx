@@ -6,7 +6,11 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { jobOffers, api } from '@/lib/api';
 import type { ApiJobOffer } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
-import { Plus, Edit2, Trash2, MapPin, ExternalLink, Briefcase, Check, X, ChevronDown, ChevronUp, GraduationCap } from 'lucide-react';
+import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
+import OwnerOfferCard from '@/components/owner/OwnerOfferCard';
+import OwnerApplicantCard, { type ApplicantStatus, APPLICANT_STATUS_LABELS } from '@/components/owner/OwnerApplicantCard';
+import OwnerWizardShell from '@/components/owner/OwnerWizardShell';
+import { Plus, ExternalLink, Briefcase } from 'lucide-react';
 
 const JOB_TYPE_OPTIONS = [
   { value: 'hairdresser', label: 'Coiffeur(se)' },
@@ -48,26 +52,33 @@ type FormData = {
 };
 const EMPTY_FORM: FormData = { title: '', job_type: 'hairdresser', level: '', contract_type: 'cdi', description: '', city: '' };
 
+const WIZARD_STEPS = ['Poste', 'Niveau & lieu', 'Description', 'Aperçu'];
+
 interface JobApplication {
   id: number;
-  status: 'pending' | 'viewed' | 'accepted' | 'declined';
+  status: ApplicantStatus;
   message?: string;
   created_at: string;
   hairdresser?: { user?: { name?: string } };
   job_offer?: { title?: string; id?: number };
 }
 
-const APP_STATUS_STYLES: Record<string, string> = {
-  pending:  'bg-amber-100 text-amber-700',
-  viewed:   'bg-neutral-100 text-neutral-600',
-  accepted: 'bg-green-100 text-green-700',
-  declined: 'bg-red-100 text-red-600',
-};
-const APP_STATUS_LABELS: Record<string, string> = {
-  pending: 'En attente', viewed: 'Vue', accepted: 'Acceptée', declined: 'Refusée',
+// Pipeline ATS à 4 étapes actives — 'declined' est une sortie possible depuis
+// n'importe quelle étape, pas une étape de la progression normale.
+const STAGE_ORDER: ApplicantStatus[] = ['pending', 'viewed', 'interview', 'accepted'];
+const ADVANCE_LABELS: Partial<Record<ApplicantStatus, string>> = {
+  pending:   'Contacter',
+  viewed:    "Passer à l'entretien",
+  interview: 'Accepter',
 };
 
-const inputCls  = 'w-full px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors';
+function nextStage(current: ApplicantStatus): ApplicantStatus | null {
+  const idx = STAGE_ORDER.indexOf(current);
+  if (idx === -1 || idx === STAGE_ORDER.length - 1) return null;
+  return STAGE_ORDER[idx + 1];
+}
+
+const inputCls  = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors';
 
 export default function RecrutementPage() {
   const { user, isLoading } = useRequireAuth(['salon_owner']);
@@ -75,7 +86,8 @@ export default function RecrutementPage() {
   const [offers,      setOffers]      = useState<ApiJobOffer[]>([]);
   const [applications,setApplications]= useState<JobApplication[]>([]);
   const [loading,     setLoading]     = useState(true);
-  const [showForm,    setShowForm]    = useState(false);
+  const [showWizard,  setShowWizard]  = useState(false);
+  const [wizardStep,  setWizardStep]  = useState(0);
   const [editOffer,   setEditOffer]   = useState<ApiJobOffer | null>(null);
   const [form,        setForm]        = useState<FormData>(EMPTY_FORM);
   const [saving,      setSaving]      = useState(false);
@@ -99,16 +111,16 @@ export default function RecrutementPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  function openCreate() { setEditOffer(null); setForm(EMPTY_FORM); setShowForm(true); }
+  function openCreate() { setEditOffer(null); setForm(EMPTY_FORM); setWizardStep(0); setShowWizard(true); }
 
   function openEdit(offer: ApiJobOffer) {
     setEditOffer(offer);
     setForm({ title: offer.title, job_type: offer.job_type, level: offer.level ?? '', contract_type: offer.contract_type, description: offer.description ?? '', city: offer.city ?? '' });
-    setShowForm(true);
+    setWizardStep(0);
+    setShowWizard(true);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handlePublish() {
     if (!form.title.trim()) return;
     setSaving(true);
     try {
@@ -122,7 +134,7 @@ export default function RecrutementPage() {
         setOffers((prev) => [created, ...prev]);
         showToast('Offre publiée.');
       }
-      setShowForm(false);
+      setShowWizard(false);
     } catch { showToast('Erreur lors de la sauvegarde.'); }
     finally { setSaving(false); }
   }
@@ -144,11 +156,11 @@ export default function RecrutementPage() {
     } catch { showToast('Erreur.'); }
   }
 
-  async function handleAppStatus(appId: number, status: 'viewed' | 'accepted' | 'declined') {
+  async function handleAppStatus(appId: number, status: ApplicantStatus) {
     try {
       const updated = await api.put<JobApplication>(`/my-salon/applications/${appId}`, { status });
       setApplications((prev) => prev.map((a) => a.id === updated.id ? updated : a));
-      showToast(status === 'accepted' ? 'Candidature acceptée.' : status === 'declined' ? 'Candidature refusée.' : 'Marquée comme vue.');
+      showToast(`Candidature : ${APPLICANT_STATUS_LABELS[status]}.`);
     } catch { showToast('Erreur.'); }
   }
 
@@ -161,6 +173,7 @@ export default function RecrutementPage() {
   }
 
   const pendingCount = applications.filter((a) => a.status === 'pending').length;
+  const isLastStep = wizardStep === WIZARD_STEPS.length - 1;
 
   return (
     <div className="min-h-screen bg-neutral-50 flex">
@@ -207,104 +220,29 @@ export default function RecrutementPage() {
               </div>
             </div>
 
-            {showForm && (
-              <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4 space-y-3">
-                <h2 className="text-sm font-bold text-neutral-900">{editOffer ? "Modifier l'offre" : 'Nouvelle offre'}</h2>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Titre du poste</label>
-                  <input type="text" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                    placeholder="Recherche coloriste expérimenté(e)" required className={inputCls} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1">Type de poste</label>
-                    <select value={form.job_type} onChange={(e) => setForm((p) => ({ ...p, job_type: e.target.value as ApiJobOffer['job_type'] }))} className={inputCls}>
-                      {JOB_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-neutral-700 mb-1">Contrat</label>
-                    <select value={form.contract_type} onChange={(e) => setForm((p) => ({ ...p, contract_type: e.target.value as ApiJobOffer['contract_type'] }))} className={inputCls}>
-                      {CONTRACT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">
-                    Niveau requis <span className="font-normal text-neutral-400">(optionnel)</span>
-                  </label>
-                  <select value={form.level ?? ''} onChange={(e) => setForm((p) => ({ ...p, level: e.target.value as ApiJobOffer['level'] | '' }))} className={inputCls}>
-                    {LEVEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Ville <span className="font-normal text-neutral-400">(optionnelle)</span></label>
-                  <input type="text" value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} placeholder="Strasbourg" className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-neutral-700 mb-1">Description <span className="font-normal text-neutral-400">(optionnelle)</span></label>
-                  <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                    rows={3} placeholder="Expérience souhaitée, ambiance du salon, avantages..." className={`${inputCls} resize-none`} />
-                </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setShowForm(false)}
-                    className="flex-1 py-2.5 text-sm font-semibold text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
-                    Annuler
-                  </button>
-                  <button type="submit" disabled={saving}
-                    className="flex-1 py-2.5 text-sm font-semibold bg-neutral-900 text-white rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50">
-                    {saving ? 'Enregistrement...' : (editOffer ? 'Mettre à jour' : 'Publier')}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {offers.length === 0 && !showForm ? (
-              <div className="bg-white rounded-2xl border border-neutral-100 p-10 text-center">
-                <Briefcase size={32} className="text-neutral-300 mx-auto mb-3" />
-                <p className="text-sm text-neutral-500 mb-1">Aucune offre publiée.</p>
-                <p className="text-xs text-neutral-400">Créez votre première offre pour attirer des coiffeurs.</p>
-              </div>
+            {offers.length === 0 ? (
+              <OwnerEmptyState
+                icon={Briefcase}
+                title="Aucune offre publiée."
+                subtitle="Créez votre première offre pour attirer des coiffeurs."
+                action={{ label: 'Créer une offre', onClick: openCreate, icon: Plus }}
+              />
             ) : (
               <div className="space-y-3">
                 {offers.map((offer) => (
-                  <div key={offer.id} className={`bg-white rounded-2xl border border-neutral-100 p-4 ${offer.status !== 'open' ? 'opacity-60' : ''}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-bold text-neutral-900 truncate">{offer.title}</h3>
-                          <span className={`flex-shrink-0 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${offer.status === 'open' ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                            {offer.status === 'open' ? 'Active' : 'Clôturée'}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          <span className="text-[10px] font-semibold bg-neutral-900 text-white px-2 py-0.5 rounded-full">{CONTRACT_LABELS[offer.contract_type]}</span>
-                          <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{JOB_LABELS[offer.job_type]}</span>
-                          {offer.level && (
-                            <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                              <GraduationCap size={9} />{LEVEL_LABELS[offer.level]}
-                            </span>
-                          )}
-                          {offer.city && <span className="text-[10px] text-neutral-400 flex items-center gap-0.5"><MapPin size={9} />{offer.city}</span>}
-                        </div>
-                        {offer.description && <p className="text-xs text-neutral-500 mt-1.5 line-clamp-2">{offer.description}</p>}
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button onClick={() => handleToggleStatus(offer)}
-                          className="text-xs text-neutral-500 border border-neutral-200 px-2.5 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors whitespace-nowrap">
-                          {offer.status === 'open' ? 'Clôturer' : 'Réouvrir'}
-                        </button>
-                        <button onClick={() => openEdit(offer)}
-                          className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors">
-                          <Edit2 size={13} />
-                        </button>
-                        <button onClick={() => handleDelete(offer.id)}
-                          className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center hover:bg-red-100 hover:text-red-500 transition-colors">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <OwnerOfferCard
+                    key={offer.id}
+                    title={offer.title}
+                    status={offer.status === 'open' ? 'open' : 'closed'}
+                    contractLabel={CONTRACT_LABELS[offer.contract_type]}
+                    jobTypeLabel={JOB_LABELS[offer.job_type]}
+                    levelLabel={offer.level ? LEVEL_LABELS[offer.level] : undefined}
+                    city={offer.city ?? undefined}
+                    description={offer.description ?? undefined}
+                    onToggleStatus={() => handleToggleStatus(offer)}
+                    onEdit={() => openEdit(offer)}
+                    onDelete={() => handleDelete(offer.id)}
+                  />
                 ))}
               </div>
             )}
@@ -315,75 +253,113 @@ export default function RecrutementPage() {
         {tab === 'candidatures' && (
           <>
             {applications.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-neutral-100 p-10 text-center">
-                <Briefcase size={32} className="text-neutral-300 mx-auto mb-3" />
-                <p className="text-sm text-neutral-500 mb-1">Aucune candidature reçue.</p>
-                <p className="text-xs text-neutral-400">Les candidatures apparaîtront ici dès qu&apos;un coiffeur postule.</p>
-              </div>
+              <OwnerEmptyState
+                icon={Briefcase}
+                title="Aucune candidature reçue."
+                subtitle="Les candidatures apparaîtront ici dès qu'un coiffeur postule."
+              />
             ) : (
               <div className="space-y-3">
-                {applications.map((app) => (
-                  <div key={app.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-                    <div className="flex items-start gap-3 p-4">
-                      <div className="w-9 h-9 rounded-full bg-neutral-200 flex-shrink-0 flex items-center justify-center">
-                        <span className="text-sm font-bold text-neutral-500">
-                          {app.hairdresser?.user?.name?.[0] ?? '?'}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-bold text-neutral-900">{app.hairdresser?.user?.name ?? 'Coiffeur'}</p>
-                          <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full ${APP_STATUS_STYLES[app.status]}`}>
-                            {APP_STATUS_LABELS[app.status]}
-                          </span>
-                        </div>
-                        {app.job_offer?.title && (
-                          <p className="text-xs text-neutral-500 mt-0.5">Pour : {app.job_offer.title}</p>
-                        )}
-                        <p className="text-[10px] text-neutral-400 mt-0.5">
-                          {new Date(app.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {(app.status === 'pending' || app.status === 'viewed') && (
-                          <>
-                            <button onClick={() => handleAppStatus(app.id, 'accepted')}
-                              className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors">
-                              <Check size={14} className="text-white" />
-                            </button>
-                            <button onClick={() => handleAppStatus(app.id, 'declined')}
-                              className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors">
-                              <X size={14} />
-                            </button>
-                          </>
-                        )}
-                        {app.message && (
-                          <button onClick={() => setExpandedApp((v) => v === app.id ? null : app.id)}
-                            className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors">
-                            {expandedApp === app.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {expandedApp === app.id && app.message && (
-                      <div className="px-4 pb-4 pt-0 border-t border-neutral-100">
-                        <p className="text-xs text-neutral-600 pt-3 italic">&quot;{app.message}&quot;</p>
-                        {app.status === 'pending' && (
-                          <button onClick={() => handleAppStatus(app.id, 'viewed')}
-                            className="mt-2 text-[11px] text-neutral-400 hover:text-neutral-600 underline">
-                            Marquer comme vue
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                {applications.map((app) => {
+                  const next = app.status === 'declined' ? null : nextStage(app.status);
+                  return (
+                    <OwnerApplicantCard
+                      key={app.id}
+                      name={app.hairdresser?.user?.name ?? 'Coiffeur'}
+                      status={app.status}
+                      subtitle={app.job_offer?.title ? `Pour : ${app.job_offer.title}` : undefined}
+                      date={new Date(app.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      message={app.message}
+                      expanded={expandedApp === app.id}
+                      onToggleExpand={app.message ? () => setExpandedApp((v) => v === app.id ? null : app.id) : undefined}
+                      onAdvance={next ? () => handleAppStatus(app.id, next) : undefined}
+                      advanceLabel={next ? ADVANCE_LABELS[app.status] : undefined}
+                      onDecline={app.status !== 'accepted' && app.status !== 'declined' ? () => handleAppStatus(app.id, 'declined') : undefined}
+                    />
+                  );
+                })}
               </div>
             )}
           </>
         )}
       </div>
       </div>
+
+      {showWizard && (
+        <OwnerWizardShell
+          title={editOffer ? "Modifier l'offre" : 'Nouvelle offre'}
+          steps={WIZARD_STEPS}
+          currentStep={wizardStep}
+          onClose={() => setShowWizard(false)}
+          onBack={wizardStep > 0 ? () => setWizardStep((s) => s - 1) : undefined}
+          onNext={isLastStep ? handlePublish : () => setWizardStep((s) => s + 1)}
+          nextDisabled={wizardStep === 0 && !form.title.trim()}
+          saving={saving}
+        >
+          {wizardStep === 0 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Titre du poste</label>
+                <input type="text" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
+                  placeholder="Recherche coloriste expérimenté(e)" autoFocus className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Type de poste</label>
+                <select value={form.job_type} onChange={(e) => setForm((p) => ({ ...p, job_type: e.target.value as ApiJobOffer['job_type'] }))} className={inputCls}>
+                  {JOB_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Contrat</label>
+                <select value={form.contract_type} onChange={(e) => setForm((p) => ({ ...p, contract_type: e.target.value as ApiJobOffer['contract_type'] }))} className={inputCls}>
+                  {CONTRACT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                  Niveau requis <span className="font-normal text-neutral-400">(optionnel)</span>
+                </label>
+                <select value={form.level ?? ''} onChange={(e) => setForm((p) => ({ ...p, level: e.target.value as ApiJobOffer['level'] | '' }))} className={inputCls}>
+                  {LEVEL_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Ville <span className="font-normal text-neutral-400">(optionnelle)</span></label>
+                <input type="text" value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} placeholder="Strasbourg" className={inputCls} />
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 2 && (
+            <div>
+              <label className="block text-xs font-semibold text-neutral-700 mb-1.5">Description <span className="font-normal text-neutral-400">(optionnelle)</span></label>
+              <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
+                rows={8} placeholder="Expérience souhaitée, ambiance du salon, avantages..." className={`${inputCls} resize-none`} autoFocus />
+            </div>
+          )}
+
+          {wizardStep === 3 && (
+            <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <h3 className="text-base font-bold text-neutral-900">{form.title || 'Sans titre'}</h3>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                <span className="text-[10px] font-semibold bg-neutral-900 text-white px-2 py-0.5 rounded-full">{CONTRACT_LABELS[form.contract_type]}</span>
+                <span className="text-[10px] font-semibold bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full">{JOB_LABELS[form.job_type]}</span>
+                {form.level && <span className="text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">{LEVEL_LABELS[form.level]}</span>}
+                {form.city && <span className="text-[10px] text-neutral-400">{form.city}</span>}
+              </div>
+              {form.description && <p className="text-sm text-neutral-600 whitespace-pre-wrap">{form.description}</p>}
+              <p className="text-xs text-neutral-400 mt-3">Cette offre sera visible publiquement dès sa publication.</p>
+            </div>
+          )}
+        </OwnerWizardShell>
+      )}
     </div>
   );
 }

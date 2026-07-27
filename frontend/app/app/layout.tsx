@@ -12,6 +12,9 @@ const PUBLIC_PREFIXES = [
   '/app/avis/',
   '/app/scan/',
   '/app/classements',
+  // Suppression de compte doit rester atteignable depuis CHAIR PRO (gérant/coiffeur) —
+  // pas de flow de suppression dédié côté pro, celui-ci est réutilisé tel quel.
+  '/app/compte/supprimer',
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

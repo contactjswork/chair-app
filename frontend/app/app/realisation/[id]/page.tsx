@@ -57,7 +57,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
 
           <div className="flex items-center gap-1">
             {prevPost ? (
-              <Link href={`/realisation/${prevPost.id}`}
+              <Link href={`/app/realisation/${prevPost.id}`}
                 className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
                 aria-label="Réalisation précédente">
                 <ChevronLeft size={18} />
@@ -69,7 +69,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
               {currentIndex + 1} / {allPosts.length}
             </span>
             {nextPost ? (
-              <Link href={`/realisation/${nextPost.id}`}
+              <Link href={`/app/realisation/${nextPost.id}`}
                 className="p-2 text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50 rounded-lg transition-colors"
                 aria-label="Réalisation suivante">
                 <ChevronRight size={18} />

@@ -1,476 +1,367 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { api } from '@/lib/api';
+import { salons, chairRentals } from '@/lib/api';
+import { resolveMediaUrl, type ApiSalonFull, type ApiChairRental, type ApiChairRentalRequest, type ChairRentalRequestStatus } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
+import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
+import OwnerChairCard from '@/components/owner/OwnerChairCard';
+import OwnerChairWizard from '@/components/owner/OwnerChairWizard';
+import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
+import OwnerChairRequestSheet from '@/components/owner/OwnerChairRequestSheet';
+import OwnerStat from '@/components/owner/OwnerStat';
 import {
-  Armchair, Plus, Edit2, Trash2, Check, X, Camera, Euro,
-  Calendar, MapPin, ChevronRight, Package, AlertCircle,
+  Armchair, Plus, ExternalLink, Copy, EyeOff, Eye, Trash2,
+  Inbox, FileEdit, Clock, Percent, TrendingUp,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') ?? 'http://localhost:8000';
+type TabKey = 'listings' | 'drafts' | 'requests' | 'stats';
 
-const DAY_LABELS: Record<number, string> = {
-  1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Jeu', 5: 'Ven', 6: 'Sam', 7: 'Dim',
-};
-
-interface ChairRental {
-  id: number;
-  title: string;
-  description?: string;
-  price_per_day?: number;
-  price_per_week?: number;
-  price_per_month?: number;
-  available_days?: number[];
-  equipment?: string;
-  conditions?: string;
-  photos?: string[];
-  status: 'available' | 'rented' | 'disabled';
-  requests?: ChairRentalRequest[];
-}
-interface ChairRentalRequest {
-  id: number;
-  status: 'pending' | 'accepted' | 'declined';
-  message?: string;
-  hairdresser?: { user?: { name?: string } };
-}
-
-type FormData = Omit<ChairRental, 'id' | 'requests' | 'photos'>;
-const EMPTY: FormData = {
-  title: '', description: '', price_per_day: undefined, price_per_week: undefined,
-  price_per_month: undefined, available_days: [], equipment: '', conditions: '', status: 'available',
-};
-const inputCls = 'w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-800 transition-colors';
+const REQUEST_COLUMNS: { key: ChairRentalRequestStatus; label: string }[] = [
+  { key: 'pending', label: 'Nouveau' },
+  { key: 'in_discussion', label: 'Discussion' },
+  { key: 'accepted', label: 'Accepté' },
+  { key: 'declined', label: 'Refusé' },
+  { key: 'cancelled', label: 'Annulé' },
+];
 
 export default function FauteuilsPage() {
-  const { user, isLoading } = useRequireAuth(['salon_owner']);
-  const [rentals,   setRentals]   = useState<ChairRental[]>([]);
-  const [requests,  setRequests]  = useState<ChairRentalRequest[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [view,      setView]      = useState<'list' | 'form' | 'detail'>('list');
-  const [editItem,  setEditItem]  = useState<ChairRental | null>(null);
-  const [detailId,  setDetailId]  = useState<number | null>(null);
-  const [form,      setForm]      = useState<FormData>(EMPTY);
-  const [saving,    setSaving]    = useState(false);
-  const [toast,     setToast]     = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { user, isLoading: authLoading } = useRequireAuth(['salon_owner']);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const [salon, setSalon] = useState<ApiSalonFull | null>(null);
+  const [rentals, setRentals] = useState<ApiChairRental[]>([]);
+  const [requests, setRequests] = useState<ApiChairRentalRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<TabKey>('listings');
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [editingRental, setEditingRental] = useState<ApiChairRental | null>(null);
+  const [detailRequest, setDetailRequest] = useState<ApiChairRentalRequest | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000); }
 
   useEffect(() => {
     if (!user) return;
-    Promise.allSettled([
-      api.get<ChairRental[]>('/my-salon/rentals'),
-      api.get<ChairRentalRequest[]>('/my-salon/rental-requests'),
-    ]).then(([r, rr]) => {
-      if (r.status === 'fulfilled'  && Array.isArray(r.value))  setRentals(r.value);
-      if (rr.status === 'fulfilled' && Array.isArray(rr.value)) setRequests(rr.value);
-    }).finally(() => setLoading(false));
+    Promise.all([salons.mySalon(), chairRentals.myRentals(), chairRentals.myRequests()])
+      .then(([salonData, rentalsData, requestsData]) => {
+        setSalon(salonData.salon);
+        setRentals(rentalsData);
+        setRequests(requestsData);
+      })
+      .finally(() => setLoading(false));
   }, [user]);
 
-  function openCreate() { setEditItem(null); setForm(EMPTY); setView('form'); }
-  function openEdit(r: ChairRental) {
-    setEditItem(r);
-    setForm({ title: r.title, description: r.description ?? '', price_per_day: r.price_per_day, price_per_week: r.price_per_week, price_per_month: r.price_per_month, available_days: r.available_days ?? [], equipment: r.equipment ?? '', conditions: r.conditions ?? '', status: r.status });
-    setView('form');
-  }
-  function openDetail(id: number) { setDetailId(id); setView('detail'); }
+  const activeListings = rentals.filter((r) => r.status !== 'draft');
+  const drafts = rentals.filter((r) => r.status === 'draft');
+  const pendingOrDiscussion = requests.filter((r) => r.status === 'pending' || r.status === 'in_discussion').length;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title.trim()) return;
-    setSaving(true);
-    try {
-      if (editItem) {
-        const updated = await api.put<ChairRental>(`/my-salon/rentals/${editItem.id}`, form);
-        setRentals((prev) => prev.map((r) => r.id === updated.id ? { ...updated, photos: r.photos } : r));
-        showToast('Annonce mise à jour.');
-      } else {
-        const created = await api.post<ChairRental>('/my-salon/rentals', form);
-        setRentals((prev) => [{ ...created, photos: [] }, ...prev]);
-        showToast('Annonce publiée !');
-        setDetailId(created.id);
-        setView('detail');
-        return;
-      }
-      setView('list');
-    } catch { showToast('Erreur lors de la sauvegarde.'); }
-    finally { setSaving(false); }
+  function openCreate() { setEditingRental(null); setWizardOpen(true); }
+  function openEdit(r: ApiChairRental) { setEditingRental(r); setWizardOpen(true); }
+
+  async function handleSaved(r: ApiChairRental) {
+    // Ne ferme PAS le wizard ici : il affiche son propre écran de succès
+    // plein écran juste après avoir appelé onSaved, et se ferme lui-même
+    // (bouton "Terminer") via onClose. Fermer depuis ici le démonterait
+    // avant que l'utilisateur ne voie l'animation de publication.
+    const fresh = await chairRentals.myRentals();
+    setRentals(fresh);
+    showToast(r.status === 'available' ? 'Annonce publiée.' : 'Brouillon enregistré.');
   }
 
-  async function handleDelete(id: number) {
-    if (!confirm('Supprimer cette annonce ?')) return;
-    try {
-      await api.delete(`/my-salon/rentals/${id}`);
-      setRentals((prev) => prev.filter((r) => r.id !== id));
-      setView('list');
-      showToast('Annonce supprimée.');
-    } catch { showToast('Erreur.'); }
+  async function duplicateRental(r: ApiChairRental) {
+    const copy = await chairRentals.create({
+      space_type: r.space_type ?? undefined,
+      title: `${r.title} (copie)`,
+      description: r.description ?? undefined,
+      address: r.address ?? undefined,
+      city: r.city ?? undefined,
+      access_instructions: r.access_instructions ?? undefined,
+      price_per_day: r.price_per_day ?? undefined,
+      price_per_week: r.price_per_week ?? undefined,
+      price_per_month: r.price_per_month ?? undefined,
+      deposit_amount: r.deposit_amount ?? undefined,
+      available_days: r.available_days ?? undefined,
+      equipment: r.equipment ?? undefined,
+      conditions: r.conditions ?? undefined,
+      insurance_required: r.insurance_required,
+      insurance_notes: r.insurance_notes ?? undefined,
+      products_policy: r.products_policy ?? undefined,
+      photos: r.photos ?? undefined,
+      status: 'draft',
+    });
+    setRentals((prev) => [copy, ...prev]);
+    showToast('Annonce dupliquée en brouillon.');
   }
 
-  async function handleToggleStatus(r: ChairRental) {
-    const newStatus = r.status === 'available' ? 'disabled' : 'available';
-    const updated = await api.put<ChairRental>(`/my-salon/rentals/${r.id}`, { status: newStatus });
-    setRentals((prev) => prev.map((x) => x.id === updated.id ? { ...x, status: updated.status } : x));
+  async function toggleDisabled(r: ApiChairRental) {
+    const next = r.status === 'disabled' ? 'available' : 'disabled';
+    const updated = await chairRentals.update(r.id, { status: next });
+    setRentals((prev) => prev.map((x) => (x.id === r.id ? updated : x)));
+    showToast(next === 'disabled' ? 'Annonce masquée.' : 'Annonce republiée.');
   }
 
-  async function handleUploadPhoto(rentalId: number, file: File) {
-    setUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('photo', file);
-      const token = typeof window !== 'undefined' ? localStorage.getItem('chair_token') : null;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my-salon/rentals/${rentalId}/photos`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: fd,
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json() as { photos: string[] };
-      setRentals((prev) => prev.map((r) => r.id === rentalId ? { ...r, photos: data.photos } : r));
-      showToast('Photo ajoutée.');
-    } catch { showToast('Erreur lors du téléversement.'); }
-    finally { setUploading(false); }
+  async function deleteRental(r: ApiChairRental) {
+    if (!confirm(`Supprimer "${r.title}" définitivement ?`)) return;
+    await chairRentals.remove(r.id);
+    setRentals((prev) => prev.filter((x) => x.id !== r.id));
+    showToast('Annonce supprimée.');
   }
 
-  async function handleDeletePhoto(rentalId: number, url: string) {
-    try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('chair_token') : null;
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/my-salon/rentals/${rentalId}/photos`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ url }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json() as { photos: string[] };
-      setRentals((prev) => prev.map((r) => r.id === rentalId ? { ...r, photos: data.photos } : r));
-    } catch { showToast('Erreur.'); }
+  async function openRequestDetail(req: ApiChairRentalRequest) {
+    const full = await chairRentals.showRequest(req.id);
+    setDetailRequest(full);
   }
 
-  async function handleRequest(reqId: number, action: 'accept' | 'decline') {
-    await api.post(`/my-salon/rental-requests/${reqId}/${action}`, {});
-    setRequests((prev) => prev.filter((r) => r.id !== reqId));
-    showToast(action === 'accept' ? 'Demande acceptée.' : 'Demande refusée.');
+  async function refreshRequests() {
+    const fresh = await chairRentals.myRequests();
+    setRequests(fresh);
   }
 
-  function toggleDay(day: number) {
-    const days = form.available_days ?? [];
-    setForm((p) => ({ ...p, available_days: days.includes(day) ? days.filter((d) => d !== day) : [...days, day].sort() }));
+  async function handleAccept() {
+    if (!detailRequest) return;
+    await chairRentals.acceptRequest(detailRequest.id);
+    setDetailRequest(null);
+    showToast('Demande acceptée.');
+    refreshRequests();
+    chairRentals.myRentals().then(setRentals);
   }
 
-  if (isLoading || loading) {
-    return <div className="min-h-screen bg-neutral-50 flex items-center justify-center"><div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" /></div>;
+  async function handleDecline() {
+    if (!detailRequest) return;
+    await chairRentals.declineRequest(detailRequest.id);
+    setDetailRequest(null);
+    showToast('Demande refusée.');
+    refreshRequests();
   }
 
-  const detailRental = rentals.find((r) => r.id === detailId);
+  async function handleSendMessage(text: string) {
+    if (!detailRequest) return;
+    await chairRentals.sendMessage(detailRequest.id, text);
+    const full = await chairRentals.showRequest(detailRequest.id);
+    setDetailRequest(full);
+    refreshRequests();
+  }
 
-  // ── VUE DÉTAIL / GESTION ANNONCE ─────────────────────────────────────────
-  if (view === 'detail' && detailRental) {
-    const photos = detailRental.photos ?? [];
+  const acceptedCount = requests.filter((r) => r.status === 'accepted').length;
+  const declinedCount = requests.filter((r) => r.status === 'declined').length;
+  const acceptanceRate = acceptedCount + declinedCount > 0
+    ? Math.round((acceptedCount / (acceptedCount + declinedCount)) * 100)
+    : null;
+
+  if (authLoading || loading || !salon) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex">
-        {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
-        <div className="flex-1">
-        <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
-          <DashboardPageHeader title={detailRental.title} backHref="#" right={
-            <button onClick={() => setView('list')} className="text-xs text-neutral-500 font-medium">← Retour</button>
-          } />
-
-          {/* Photos */}
-          <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-4">
-            {photos.length > 0 ? (
-              <div className="grid grid-cols-3 gap-0.5 bg-neutral-100">
-                {photos.map((url) => (
-                  <div key={url} className="relative aspect-square group">
-                    <Image src={`${API_BASE}${url}`} alt="" fill className="object-cover" sizes="150px" />
-                    <button
-                      onClick={() => handleDeletePhoto(detailRental.id, url)}
-                      className="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full items-center justify-center hidden group-hover:flex hover:bg-red-600 transition-colors">
-                      <X size={10} className="text-white" />
-                    </button>
-                  </div>
-                ))}
-                {photos.length < 6 && (
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    className="aspect-square flex flex-col items-center justify-center gap-1 bg-neutral-50 hover:bg-neutral-100 transition-colors">
-                    <Camera size={18} className="text-neutral-400" />
-                    <span className="text-[10px] text-neutral-400 font-medium">{uploading ? '...' : 'Ajouter'}</span>
-                  </button>
-                )}
-              </div>
-            ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="w-full h-40 flex flex-col items-center justify-center gap-2 hover:bg-neutral-50 transition-colors">
-                <Camera size={28} className="text-neutral-300" />
-                <p className="text-sm text-neutral-400">Ajouter des photos</p>
-                <p className="text-xs text-neutral-300">6 photos max · JPEG, PNG</p>
-              </button>
-            )}
-            <input ref={fileRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadPhoto(detailRental.id, f); e.target.value = ''; }} />
-          </div>
-
-          {/* Détails */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h2 className="text-base font-bold text-neutral-900">{detailRental.title}</h2>
-                <span className={`inline-block mt-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${detailRental.status === 'available' ? 'bg-green-100 text-green-700' : detailRental.status === 'rented' ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                  {detailRental.status === 'available' ? 'Disponible' : detailRental.status === 'rented' ? 'Loué' : 'Désactivée'}
-                </span>
-              </div>
-              <div className="flex gap-1.5 flex-shrink-0">
-                <button onClick={() => openEdit(detailRental)} className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"><Edit2 size={13} /></button>
-                <button onClick={() => handleDelete(detailRental.id)} className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center hover:bg-red-100 hover:text-red-500 transition-colors"><Trash2 size={13} /></button>
-              </div>
-            </div>
-
-            {/* Prix */}
-            {(detailRental.price_per_day || detailRental.price_per_week || detailRental.price_per_month) && (
-              <div className="flex gap-4 pt-1">
-                {detailRental.price_per_day   && <div className="text-center"><p className="text-lg font-bold text-neutral-900">{detailRental.price_per_day}€</p><p className="text-[10px] text-neutral-400">/ jour</p></div>}
-                {detailRental.price_per_week  && <div className="text-center"><p className="text-lg font-bold text-neutral-900">{detailRental.price_per_week}€</p><p className="text-[10px] text-neutral-400">/ semaine</p></div>}
-                {detailRental.price_per_month && <div className="text-center"><p className="text-lg font-bold text-neutral-900">{detailRental.price_per_month}€</p><p className="text-[10px] text-neutral-400">/ mois</p></div>}
-              </div>
-            )}
-
-            {detailRental.description && <p className="text-sm text-neutral-600 leading-relaxed">{detailRental.description}</p>}
-
-            {(detailRental.available_days?.length ?? 0) > 0 && (
-              <div className="flex items-center gap-2 pt-1">
-                <Calendar size={13} className="text-neutral-400 flex-shrink-0" />
-                <div className="flex gap-1 flex-wrap">
-                  {detailRental.available_days!.map((d) => (
-                    <span key={d} className="text-[10px] bg-neutral-100 text-neutral-600 px-2 py-0.5 rounded-full font-medium">{DAY_LABELS[d]}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {detailRental.equipment && (
-              <div className="flex items-start gap-2 pt-1">
-                <Package size={13} className="text-neutral-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-neutral-500">{detailRental.equipment}</p>
-              </div>
-            )}
-
-            {detailRental.conditions && (
-              <div className="flex items-start gap-2 pt-1">
-                <AlertCircle size={13} className="text-neutral-400 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-neutral-500">{detailRental.conditions}</p>
-              </div>
-            )}
-
-            <button onClick={() => handleToggleStatus(detailRental)}
-              className="w-full mt-1 py-2 text-xs font-semibold text-neutral-600 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition-colors">
-              {detailRental.status === 'available' ? 'Mettre en pause' : 'Remettre en ligne'}
-            </button>
-          </div>
-
-          {/* Demandes reçues pour cette annonce */}
-          {requests.filter((r) => (r as ChairRentalRequest & { chair_rental_id?: number }).chair_rental_id === detailRental.id || true).length > 0 && (
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4">
-              <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-widest mb-3">Demandes reçues</h3>
-              {requests.length === 0
-                ? <p className="text-xs text-neutral-400">Aucune demande pour le moment.</p>
-                : requests.map((req) => (
-                  <div key={req.id} className="flex items-center gap-3 py-2 border-b border-neutral-50 last:border-0">
-                    <div className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center flex-shrink-0 text-xs font-bold text-neutral-500">
-                      {req.hairdresser?.user?.name?.[0] ?? '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-neutral-900">{req.hairdresser?.user?.name ?? 'Coiffeur'}</p>
-                      {req.message && <p className="text-xs text-neutral-400 truncate">&quot;{req.message}&quot;</p>}
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button onClick={() => handleRequest(req.id, 'accept')} className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors"><Check size={13} className="text-white" /></button>
-                      <button onClick={() => handleRequest(req.id, 'decline')} className="w-8 h-8 rounded-full bg-neutral-200 flex items-center justify-center hover:bg-red-100 hover:text-red-500 transition-colors"><X size={13} /></button>
-                    </div>
-                  </div>
-                ))
-              }
-            </div>
-          )}
-        </div>
-        </div>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
 
-  // ── VUE FORMULAIRE ────────────────────────────────────────────────────────
-  if (view === 'form') {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex">
-        <div className="flex-1">
-        <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
-          <DashboardPageHeader title={editItem ? 'Modifier l\'annonce' : 'Nouvelle annonce'} right={
-            <button onClick={() => setView(editItem ? 'detail' : 'list')} className="text-xs text-neutral-500 font-medium">← Retour</button>
-          } />
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Informations</h3>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1">Titre de l&apos;annonce *</label>
-                <input type="text" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Ex: Fauteuil disponible du lundi au vendredi" required className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                  rows={4} placeholder="Décrivez l'espace, l'ambiance du salon, les services possibles, la clientèle..." className={`${inputCls} resize-none`} />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Tarifs</h3>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: 'price_per_day',   label: 'Par jour (€)' },
-                  { key: 'price_per_week',  label: 'Par sem. (€)' },
-                  { key: 'price_per_month', label: 'Par mois (€)' },
-                ].map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="block text-[10px] font-semibold text-neutral-600 mb-1">{label}</label>
-                    <input type="number" min="0" step="0.5"
-                      value={(form as Record<string, unknown>)[key] as number ?? ''}
-                      onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value ? parseFloat(e.target.value) : undefined }))}
-                      className={inputCls} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Disponibilités</h3>
-              <div className="flex gap-1.5 flex-wrap">
-                {[1,2,3,4,5,6,7].map((d) => {
-                  const active = (form.available_days ?? []).includes(d);
-                  return (
-                    <button key={d} type="button" onClick={() => toggleDay(d)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${active ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'}`}>
-                      {DAY_LABELS[d]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
-              <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Équipements & Conditions</h3>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1">Équipements inclus</label>
-                <input type="text" value={form.equipment} onChange={(e) => setForm((p) => ({ ...p, equipment: e.target.value }))}
-                  placeholder="Bac à shampoing, miroir, tablette, Wi-Fi, climatisation..." className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-neutral-700 mb-1">Conditions</label>
-                <textarea value={form.conditions} onChange={(e) => setForm((p) => ({ ...p, conditions: e.target.value }))}
-                  rows={2} placeholder="Caution requise, préavis de 15j, règlement intérieur..." className={`${inputCls} resize-none`} />
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setView(editItem ? 'detail' : 'list')}
-                className="flex-1 py-3 text-sm font-semibold text-neutral-600 border border-neutral-200 rounded-2xl hover:bg-neutral-50 transition-colors">
-                Annuler
-              </button>
-              <button type="submit" disabled={saving}
-                className="flex-1 py-3 text-sm font-semibold bg-neutral-900 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50">
-                {saving ? 'Publication...' : editItem ? 'Mettre à jour' : 'Publier l\'annonce'}
-              </button>
-            </div>
-          </form>
-        </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── VUE LISTE ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-neutral-50 flex">
-      {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
-      <div className="flex-1">
+    <div className="min-h-screen bg-neutral-50">
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">
+          {toast}
+        </div>
+      )}
+
       <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
-        <DashboardPageHeader title="Fauteuils" />
+        <DashboardPageHeader title="Fauteuils" backHref="/pro/salon-owner" />
 
-        {/* Demandes globales */}
-        {requests.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 flex items-center gap-3">
-            <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
-            <p className="text-xs text-amber-800 font-medium flex-1">
-              {requests.length} demande(s) en attente — ouvrez une annonce pour y répondre
-            </p>
+        <div className="hidden md:flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900">Fauteuils</h1>
+            <p className="text-sm text-neutral-400 mt-0.5">Louez vos espaces libres à des coiffeurs indépendants</p>
           </div>
-        )}
-
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-neutral-400">{rentals.filter((r) => r.status === 'available').length} en ligne</p>
-          <button onClick={openCreate}
-            className="flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors">
-            <Plus size={13} />Nouvelle annonce
+          <button onClick={openCreate} className="flex items-center gap-1.5 text-sm font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
+            <Plus size={14} />Nouvelle annonce
           </button>
         </div>
 
-        {rentals.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
-            <Armchair size={36} className="text-neutral-200 mx-auto mb-4" />
-            <p className="text-sm font-semibold text-neutral-700 mb-1">Aucune annonce publiée</p>
-            <p className="text-xs text-neutral-400 mb-4">Créez votre première annonce pour louer un fauteuil à des coiffeurs indépendants.</p>
-            <button onClick={openCreate} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
-              <Plus size={13} />Créer une annonce
+        {/* Tabs */}
+        <div className="flex gap-1 bg-neutral-100 rounded-xl p-1 mb-4 overflow-x-auto">
+          {([
+            ['listings', 'Annonces', activeListings.length],
+            ['drafts', 'Brouillons', drafts.length],
+            ['requests', 'Demandes', pendingOrDiscussion],
+            ['stats', 'Stats', 0],
+          ] as const).map(([key, label, count]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap px-2 ${
+                tab === key ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
+              }`}
+            >
+              {label}
+              {count > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-bold min-w-[16px] h-4 rounded-full flex items-center justify-center px-1 leading-none">
+                  {count}
+                </span>
+              )}
             </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {rentals.map((r) => {
-              const firstPhoto = r.photos?.[0];
-              const reqCount = requests.filter((_rq) => true).length; // approx
-              return (
-                <button key={r.id} onClick={() => openDetail(r.id)}
-                  className={`w-full text-left bg-white rounded-2xl border overflow-hidden hover:border-neutral-300 transition-colors flex ${r.status === 'disabled' ? 'opacity-60' : 'border-neutral-100'}`}>
-                  {/* Miniature photo */}
-                  <div className="w-24 h-24 bg-neutral-100 flex-shrink-0 relative">
-                    {firstPhoto
-                      ? <Image src={`${API_BASE}${firstPhoto}`} alt="" fill className="object-cover" sizes="96px" />
-                      : <div className="absolute inset-0 flex items-center justify-center"><Camera size={20} className="text-neutral-300" /></div>
-                    }
-                    {(r.photos?.length ?? 0) > 1 && (
-                      <span className="absolute bottom-1 right-1 text-[9px] bg-black/50 text-white px-1 rounded font-medium">+{(r.photos?.length ?? 0) - 1}</span>
-                    )}
+          ))}
+        </div>
+
+        {/* ── ANNONCES ── */}
+        {tab === 'listings' && (
+          <>
+            <div className="flex items-center justify-between mb-3 md:hidden">
+              <p className="text-sm text-neutral-500">{activeListings.length} annonce{activeListings.length > 1 ? 's' : ''}</p>
+              <button onClick={openCreate} className="flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors">
+                <Plus size={13} />Nouvelle annonce
+              </button>
+            </div>
+            {activeListings.length === 0 ? (
+              <OwnerEmptyState
+                icon={Armchair}
+                title="Aucune annonce publiée"
+                subtitle="Créez votre première annonce pour louer un fauteuil libre."
+                action={{ label: 'Créer une annonce', icon: Plus, onClick: openCreate }}
+              />
+            ) : (
+              <div className="space-y-2">
+                {activeListings.map((r) => (
+                  <div key={r.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+                    <OwnerChairCard
+                      bare
+                      title={r.title}
+                      thumbnailUrl={r.photos?.[0] ? resolveMediaUrl(r.photos[0]) : null}
+                      photoCount={r.photos?.length}
+                      pricePerDay={r.price_per_day}
+                      status={r.status}
+                      onClick={() => openEdit(r)}
+                    />
+                    <div className="flex border-t border-neutral-100 text-xs font-semibold">
+                      <button onClick={() => duplicateRental(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-neutral-600 hover:bg-neutral-50 transition-colors">
+                        <Copy size={12} />Dupliquer
+                      </button>
+                      <button onClick={() => toggleDisabled(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border-l border-neutral-100 text-neutral-600 hover:bg-neutral-50 transition-colors">
+                        {r.status === 'disabled' ? <><Eye size={12} />Republier</> : <><EyeOff size={12} />Masquer</>}
+                      </button>
+                      <button onClick={() => deleteRental(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border-l border-neutral-100 text-red-500 hover:bg-red-50 transition-colors">
+                        <Trash2 size={12} />Supprimer
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex-1 p-3 min-w-0">
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <p className="text-sm font-bold text-neutral-900 line-clamp-1">{r.title}</p>
-                      <ChevronRight size={14} className="text-neutral-300 flex-shrink-0 mt-0.5" />
-                    </div>
-                    <div className="flex gap-2 text-xs text-neutral-500 mb-1.5">
-                      {r.price_per_day   && <span className="flex items-center gap-0.5"><Euro size={9} />{r.price_per_day}€/j</span>}
-                      {r.price_per_week  && <span>{r.price_per_week}€/sem.</span>}
-                      {r.price_per_month && <span>{r.price_per_month}€/mois</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${r.status === 'available' ? 'bg-green-100 text-green-700' : r.status === 'rented' ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                        {r.status === 'available' ? 'En ligne' : r.status === 'rented' ? 'Loué' : 'Pausée'}
-                      </span>
-                      {!firstPhoto && <span className="text-[9px] text-amber-600 font-medium flex items-center gap-0.5"><Camera size={9} />Ajouter des photos</span>}
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── BROUILLONS ── */}
+        {tab === 'drafts' && (
+          drafts.length === 0 ? (
+            <OwnerEmptyState icon={FileEdit} title="Aucun brouillon" subtitle="Les annonces non terminées apparaissent ici — reprenez-les à tout moment." />
+          ) : (
+            <div className="space-y-2">
+              {drafts.map((r) => (
+                <div key={r.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+                  <OwnerChairCard
+                    bare
+                    title={r.title}
+                    thumbnailUrl={r.photos?.[0] ? resolveMediaUrl(r.photos[0]) : null}
+                    photoCount={r.photos?.length}
+                    pricePerDay={r.price_per_day}
+                    status={r.status}
+                    hint="Reprendre"
+                    onClick={() => openEdit(r)}
+                  />
+                  <div className="flex border-t border-neutral-100 text-xs font-semibold">
+                    <button onClick={() => deleteRental(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-red-500 hover:bg-red-50 transition-colors">
+                      <Trash2 size={12} />Supprimer le brouillon
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* ── DEMANDES ── */}
+        {tab === 'requests' && (
+          requests.length === 0 ? (
+            <OwnerEmptyState icon={Inbox} title="Aucune demande reçue" subtitle="Les demandes de location apparaîtront ici." />
+          ) : (
+            <div className="space-y-5">
+              {REQUEST_COLUMNS.map(({ key, label }) => {
+                const items = requests.filter((r) => r.status === key);
+                if (items.length === 0) return null;
+                return (
+                  <div key={key}>
+                    <p className="text-xs font-semibold tracking-wide uppercase text-neutral-400 mb-2 flex items-center gap-2">
+                      {label}<span className="bg-neutral-100 text-neutral-500 rounded-full px-1.5 py-0.5 text-[10px]">{items.length}</span>
+                    </p>
+                    <div className="space-y-2">
+                      {items.map((req) => (
+                        <button
+                          key={req.id}
+                          onClick={() => openRequestDetail(req)}
+                          className="w-full flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-3 text-left hover:border-neutral-300 transition-colors"
+                        >
+                          <div className="w-9 h-9 rounded-full bg-neutral-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                            <span className="text-sm font-bold text-neutral-500">{req.hairdresser?.user?.name?.charAt(0).toUpperCase() ?? '?'}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-neutral-900 truncate">{req.hairdresser?.user?.name ?? 'Coiffeur'}</p>
+                            <p className="text-xs text-neutral-400 truncate">{req.chair_rental?.title ?? rentals.find((r) => r.id === req.chair_rental_id)?.title}</p>
+                          </div>
+                          <Clock size={13} className="text-neutral-300 flex-shrink-0" />
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
+          )
+        )}
+
+        {/* ── STATISTIQUES ── */}
+        {tab === 'stats' && (
+          <div className="grid grid-cols-2 gap-3">
+            <OwnerStat icon={Armchair} value={activeListings.filter((r) => r.status === 'available').length} label="Annonces disponibles" />
+            <OwnerStat icon={FileEdit} value={drafts.length} label="Brouillons" />
+            <OwnerStat icon={Inbox} value={requests.length} label="Demandes reçues" />
+            <OwnerStat icon={Clock} value={pendingOrDiscussion} label="En attente de réponse" />
+            <OwnerStat icon={Percent} value={acceptanceRate !== null ? `${acceptanceRate}%` : '—'} label="Taux d’acceptation" />
+            <OwnerStat icon={TrendingUp} value={activeListings.filter((r) => r.status === 'rented').length} label="Fauteuils loués" />
           </div>
         )}
+
+        <div className="mt-4">
+          <Link href="/fauteuils-a-louer" target="_blank" className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">
+            <ExternalLink size={12} />Voir la recherche côté coiffeurs
+          </Link>
+        </div>
       </div>
-      </div>
+
+      {wizardOpen && (
+        <OwnerChairWizard
+          salon={salon}
+          initial={editingRental}
+          onClose={() => setWizardOpen(false)}
+          onSaved={handleSaved}
+        />
+      )}
+
+      <OwnerBottomSheet
+        open={!!detailRequest}
+        onClose={() => setDetailRequest(null)}
+        title={detailRequest?.chair_rental?.title ?? 'Demande'}
+        subtitle={detailRequest ? new Date(detailRequest.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : undefined}
+      >
+        {detailRequest && (
+          <OwnerChairRequestSheet
+            request={detailRequest}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+            onSendMessage={handleSendMessage}
+          />
+        )}
+      </OwnerBottomSheet>
     </div>
   );
 }

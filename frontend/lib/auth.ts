@@ -13,7 +13,11 @@ export interface HairdresserProfile {
   city: string | null;
   salon_id: number | null;
   verified_visits_count: number;
+  siret_verification_status?: 'none' | 'pending' | 'verified' | 'rejected';
   salon?: { id: number; name: string; slug: string } | null;
+  /** Entitlement fusionné réel — voir HairdresserProfile::getIsChairPlusAttribute() côté backend. */
+  is_chair_plus?: boolean;
+  chair_plus_until?: string | null;
 }
 
 export interface AuthSalon {
@@ -37,6 +41,10 @@ export interface AuthUser {
   bio: string | null;
   hairdresser_profile?: HairdresserProfile | null;
   salon?: AuthSalon | null;
+  /** Double identité gérant/coiffeur — voir AuthController::withEntitlement(). */
+  can_manage_salon?: boolean;
+  has_hairdresser_profile?: boolean;
+  active_pro_mode?: 'salon_owner' | 'hairdresser' | null;
 }
 
 export interface AuthResponse {
@@ -82,6 +90,9 @@ export function redirectPathForRole(role: UserRole, isNewUser = false): string {
     if (isNewUser && SKIP_PRO_ONBOARDING) return '/pro';
     return isNewUser ? '/onboarding' : '/pro';
   }
-  if (role === 'salon_owner') return isNewUser ? '/pro/salon' : '/pro/salon-owner';
+  if (role === 'salon_owner') {
+    if (isNewUser && SKIP_PRO_ONBOARDING) return '/pro/salon-owner';
+    return isNewUser ? '/onboarding/gerant' : '/pro/salon-owner';
+  }
   return isNewUser ? '/app/onboarding' : '/app';
 }

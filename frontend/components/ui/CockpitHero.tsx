@@ -5,20 +5,13 @@ import { Scissors, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import type { ApiSpecialtyProgress } from '@/lib/types';
 
-function rankMedal(rank: number): string {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `#${rank}`;
-}
-
 export default function CockpitHero({
   firstName, bestSpecialty, city,
 }: { firstName: string; bestSpecialty: ApiSpecialtyProgress | null; city: string | null }) {
   if (!bestSpecialty) {
     return (
       <div className="bg-neutral-900 rounded-2xl p-6">
-        <h1 className="text-xl font-bold text-white mb-1">Bonjour, {firstName} 👋</h1>
+        <h1 className="text-xl font-bold text-white mb-1">Bonjour, {firstName}</h1>
         <p className="text-sm text-neutral-400">Choisissez vos spécialités pour commencer à construire votre réputation CHAIR.</p>
         <Link href="/pro/profil" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold bg-white text-neutral-900 px-4 py-2.5 rounded-xl">
           Choisir mes spécialités <ArrowRight size={12} />
@@ -35,7 +28,7 @@ export default function CockpitHero({
 
   return (
     <div className="bg-neutral-900 rounded-2xl p-6">
-      <h1 className="text-xl font-bold text-white mb-4">Bonjour, {firstName} 👋</h1>
+      <h1 className="text-xl font-bold text-white mb-4">Bonjour, {firstName}</h1>
 
       <div className="flex items-center gap-3 mb-4">
         <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
@@ -49,7 +42,7 @@ export default function CockpitHero({
         </div>
         {bestSpecialty.local_rank && city && (bestSpecialty.local_total ?? 0) >= 2 && (
           <div className="ml-auto text-right flex-shrink-0">
-            <p className="text-lg font-black text-white leading-none">{rankMedal(bestSpecialty.local_rank)}</p>
+            <p className="text-lg font-black text-white leading-none">#{bestSpecialty.local_rank}</p>
             <p className="text-[10px] text-white/40 mt-0.5">{city}</p>
           </div>
         )}

@@ -72,7 +72,7 @@ export default function HomePersonalized() {
         const cards = toCards(slugsToShow);
         if (cards.length > 0) {
           setInspirations(cards);
-          setSectionTitle('Inspirations pour vous');
+          setSectionTitle('Vos inspirations');
           setIsPersonalized(true);
           return;
         }

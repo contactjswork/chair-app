@@ -49,6 +49,21 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
+/** Upload multipart — jamais de Content-Type manuel (casserait la frontière générée par le navigateur). */
+async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: formData,
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
+    throw new Error(error.message || `Erreur ${res.status}`);
+  }
+  return res.json();
+}
+
 // ── Géolocalisation ──────────────────────────────────────────────────
 
 export const geo = {
@@ -66,6 +81,13 @@ export const geo = {
     });
     return api.get<import('./types').PaginatedResponse<import('./types').ApiHairdresserProfile>>(`/hairdressers?${qs}`);
   },
+
+  /** Liste des régions officielles France — sélecteur en cascade inscription pro. */
+  regions: () => api.get<{ regions: string[] }>('/geo/regions'),
+
+  /** Départements d'une région donnée, triés par nom. */
+  departments: (region: string) =>
+    api.get<{ departments: Array<{ code: string; name: string }> }>(`/geo/departments?region=${encodeURIComponent(region)}`),
 };
 
 // ── Search ───────────────────────────────────────────────────────────
@@ -172,10 +194,12 @@ export const streak = {
 
 // ── Analytics ────────────────────────────────────────────────────────
 
-import type { ApiAnalytics } from './types';
+import type { ApiAnalytics, ApiAnalyticsTimeseries } from './types';
 
 export const analytics = {
   get: () => api.get<ApiAnalytics>('/my-analytics'),
+  timeseries: (period: '7d' | '30d' | '90d' | '12mo') =>
+    api.get<ApiAnalyticsTimeseries>(`/my-analytics/timeseries?period=${period}`),
 };
 
 // ── Abonnements CHAIR+ / CHAIR BUSINESS ─────────────────────────────────
@@ -199,6 +223,16 @@ export const stories = {
   byHairdresser: (hairdresserId: number) => api.get<ApiStory[]>(`/stories/by-hairdresser/${hairdresserId}`),
   view: (id: number) => api.post<{ views_count: number }>(`/stories/${id}/view`, {}),
   remove: (id: number) => api.delete<{ message: string }>(`/stories/${id}`),
+};
+
+// ── Support prioritaire CHAIR+ ──────────────────────────────────────────
+
+import type { ApiSupportRequest } from './types';
+
+export const support = {
+  send: (subject: string, message: string) =>
+    api.post<ApiSupportRequest>('/support-requests', { subject, message }),
+  mine: () => api.get<ApiSupportRequest[]>('/support-requests/mine'),
 };
 
 // ── Programme ambassadeur ──────────────────────────────────────────────
@@ -234,14 +268,25 @@ export const leaderboard = {
     if (params.limit) qs.set('limit', String(params.limit));
     return api.get(`/leaderboard?${qs.toString()}`);
   },
-  /** Classement par spécialité, filtré ville/département/région/France. */
-  bySpecialty: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country'; geoValue?: string; limit?: number }) => {
+  /** Classement par spécialité, filtré ville/département/région/France.
+   *  geo='auto' (défaut si geoValue fourni) : un champ libre unique, le niveau
+   *  est deviné côté backend (département/région en priorité, sinon ville). */
+  bySpecialty: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country' | 'auto'; geoValue?: string; limit?: number }) => {
     const qs = new URLSearchParams();
     qs.set('specialty_id', String(params.specialtyId));
     if (params.geo)      qs.set('geo', params.geo);
     if (params.geoValue) qs.set('geo_value', params.geoValue);
     if (params.limit)    qs.set('limit', String(params.limit));
     return api.get<import('./types').ApiSpecialtyLeaderboard>(`/leaderboard?${qs.toString()}`);
+  },
+  /** Rang du coiffeur connecté dans EXACTEMENT la même vue (spécialité + zone)
+   *  que bySpecialty() — pour se situer même hors du top affiché. */
+  mySpecialtyRank: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country' | 'auto'; geoValue?: string }) => {
+    const qs = new URLSearchParams();
+    qs.set('specialty_id', String(params.specialtyId));
+    if (params.geo)      qs.set('geo', params.geo);
+    if (params.geoValue) qs.set('geo_value', params.geoValue);
+    return api.get<import('./types').ApiMySpecialtyRank>(`/my-specialty-rank?${qs.toString()}`);
   },
 };
 
@@ -318,9 +363,11 @@ export const visits = {
   getScanInfo: (token: string) =>
     api.get<ApiScanInfo>(`/scan/${token}`),
 
-  /** Auth requis : confirme la visite, retourne visit_id */
-  confirmVisit: (token: string, serviceType: string) =>
-    api.post<ApiVisitConfirmed>(`/scan/${token}`, { service_type: serviceType }),
+  /** Auth requis : confirme la visite, retourne visit_id. serviceId (prestation réelle du
+   *  coiffeur) alimente correctement specialty_id — serviceName ne reste qu'un repli quand
+   *  le coiffeur n'a configuré aucune prestation. */
+  confirmVisit: (token: string, serviceId: number | null, serviceName?: string) =>
+    api.post<ApiVisitConfirmed>(`/scan/${token}`, serviceId != null ? { service_id: serviceId } : { service_name: serviceName }),
 
   /** Auth requis : soumet un avis certifié */
   submitReview: (data: { visit_id: number; rating: number; comment: string }) =>
@@ -404,7 +451,7 @@ export const availability = {
 
 // ── Salons ───────────────────────────────────────────────────────────
 
-import type { ApiAvailableHairdresser, ApiSalonFull, ApiSalonJoinRequest, ApiTrainingBadge, ApiJobOffer } from './types';
+import type { ApiAvailableHairdresser, ApiSalonFull, ApiSalonJoinRequest, ApiTrainingBadge, ApiJobOffer, ApiSalonInvitation, ApiSalonInvitationPreview } from './types';
 
 export const salons = {
   list: (params?: { q?: string; city?: string }) => {
@@ -415,7 +462,18 @@ export const salons = {
   },
   show: (slug: string) => api.get<ApiSalonFull>(`/salons/${slug}`),
   mySalon: () => api.get<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] }>('/my-salon'),
+  recentReviews: () => api.get<import('./types').ApiSalonRecentReview[]>('/my-salon/recent-reviews'),
   updateMySalon: (data: Partial<ApiSalonFull>) => api.put<ApiSalonFull>('/my-salon', data),
+  uploadLogo: (file: Blob) => {
+    const form = new FormData();
+    form.append('logo', file, 'logo.jpg');
+    return requestMultipart<{ url: string }>('/my-salon/logo', form);
+  },
+  uploadCover: (file: Blob) => {
+    const form = new FormData();
+    form.append('cover', file, 'cover.jpg');
+    return requestMultipart<{ url: string }>('/my-salon/cover', form);
+  },
   createMySalon: (data: { name: string; city?: string; siret?: string }) =>
     api.post<ApiSalonFull>('/my-salon', data),
   removeHairdresser: (profileId: number) =>
@@ -434,6 +492,27 @@ export const salons = {
   acceptRequest: (requestId: number) => api.post<{ message: string }>(`/join-requests/${requestId}/accept`, {}),
   declineRequest: (requestId: number) => api.post<{ message: string }>(`/join-requests/${requestId}/decline`, {}),
   leaveSalon: () => api.delete<{ message: string }>('/leave-salon'),
+};
+
+// ── Invitations salon → coiffeur ───────────────────────────────────────
+
+export const invitations = {
+  /** Gérant : invite un coiffeur déjà sur CHAIR (hairdresser_id) ou par email. */
+  invite: (data: { hairdresser_id?: number; email?: string; message?: string | null }) =>
+    api.post<ApiSalonInvitation>('/my-salon/invite', data),
+  sent: () => api.get<ApiSalonInvitation[]>('/my-salon/invitations'),
+  resend: (id: number) => api.post<ApiSalonInvitation>(`/my-salon/invitations/${id}/resend`, {}),
+  cancel: (id: number) => api.delete<{ ok: boolean }>(`/my-salon/invitations/${id}`),
+
+  /** Coiffeur : invitations reçues sur un compte déjà lié au salon owner. */
+  received: () => api.get<ApiSalonInvitation[]>('/my-invitations'),
+  accept: (id: number) => api.post<{ ok: boolean }>(`/my-invitations/${id}/accept`, {}),
+  decline: (id: number) => api.post<{ ok: boolean }>(`/my-invitations/${id}/decline`, {}),
+
+  /** Arrivée via le lien partagé (email) — fonctionne avec ou sans compte. */
+  previewByToken: (token: string) => api.get<ApiSalonInvitationPreview>(`/invitations/${token}`),
+  acceptByToken: (token: string) => api.post<{ ok: boolean }>(`/invitations/${token}/accept`, {}),
+  declineByToken: (token: string) => api.post<{ ok: boolean }>(`/invitations/${token}/decline`, {}),
 };
 
 // ── Training badges ────────────────────────────────────────────────────
@@ -497,3 +576,60 @@ export interface SavedHairdresser {
   };
   specialties: Array<{ id: number; name: string; slug: string }>;
 }
+
+// ── Location de fauteuil ───────────────────────────────────────────────
+
+import type { ApiChairRental, ApiChairRentalRequest, ApiChairRentalRequestMessage, ChairEquipmentKey, ChairSpaceType } from './types';
+
+export interface ChairRentalPublicParams {
+  city?: string;
+  space_type?: ChairSpaceType;
+  min_price?: number;
+  max_price?: number;
+  day?: number;
+  equipment?: ChairEquipmentKey[];
+  lat?: number;
+  lng?: number;
+  radius?: number;
+}
+
+export const chairRentals = {
+  // ── Gérant ──
+  myRentals: () => api.get<ApiChairRental[]>('/my-salon/rentals'),
+  create: (data: Partial<ApiChairRental>) => api.post<ApiChairRental>('/my-salon/rentals', data),
+  update: (id: number, data: Partial<ApiChairRental>) => api.put<ApiChairRental>(`/my-salon/rentals/${id}`, data),
+  remove: (id: number) => api.delete<{ ok: boolean }>(`/my-salon/rentals/${id}`),
+  uploadPhotos: (id: number, files: File[]) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('photos[]', f, f.name));
+    return requestMultipart<{ photos: string[] }>(`/my-salon/rentals/${id}/photos`, form);
+  },
+  reorderPhotos: (id: number, photos: string[]) => api.put<{ photos: string[] }>(`/my-salon/rentals/${id}/photos/order`, { photos }),
+  deletePhoto: (id: number, url: string) => api.delete<{ photos: string[] }>(`/my-salon/rentals/${id}/photos?url=${encodeURIComponent(url)}`),
+  myRequests: (status?: string) => api.get<ApiChairRentalRequest[]>(`/my-salon/rental-requests${status ? `?status=${status}` : ''}`),
+  acceptRequest: (id: number) => api.post<{ ok: boolean }>(`/my-salon/rental-requests/${id}/accept`, {}),
+  declineRequest: (id: number) => api.post<{ ok: boolean }>(`/my-salon/rental-requests/${id}/decline`, {}),
+
+  // ── Fil de discussion (gérant + coiffeur) ──
+  showRequest: (id: number) => api.get<ApiChairRentalRequest>(`/chair-rental-requests/${id}`),
+  sendMessage: (id: number, message: string) => api.post<ApiChairRentalRequestMessage>(`/chair-rental-requests/${id}/messages`, { message }),
+
+  // ── Coiffeur indépendant ──
+  list: (params?: ChairRentalPublicParams) => {
+    const qs = new URLSearchParams();
+    if (params?.city)       qs.set('city', params.city);
+    if (params?.space_type) qs.set('space_type', params.space_type);
+    if (params?.min_price != null) qs.set('min_price', String(params.min_price));
+    if (params?.max_price != null) qs.set('max_price', String(params.max_price));
+    if (params?.day != null) qs.set('day', String(params.day));
+    if (params?.equipment?.length) qs.set('equipment', params.equipment.join(','));
+    if (params?.lat != null) qs.set('lat', String(params.lat));
+    if (params?.lng != null) qs.set('lng', String(params.lng));
+    if (params?.radius != null) qs.set('radius', String(params.radius));
+    return api.get<ApiChairRental[]>(`/chair-rentals?${qs}`);
+  },
+  show: (slug: string) => api.get<ApiChairRental>(`/chair-rentals/slug/${slug}`),
+  sendRequest: (id: number, message?: string) => api.post<ApiChairRentalRequest>(`/chair-rentals/${id}/request`, { message }),
+  myRequestsSent: () => api.get<ApiChairRentalRequest[]>('/my-chair-requests'),
+  cancelRequest: (id: number) => api.post<{ ok: boolean }>(`/my-chair-requests/${id}/cancel`, {}),
+};

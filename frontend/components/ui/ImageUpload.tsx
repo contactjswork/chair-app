@@ -13,6 +13,9 @@ interface Props {
   label: string;
   aspectClass?: string;
   shape?: 'circle' | 'rect';
+  /** 'hero' : remplit son conteneur (pas de label/caption autour) — pour
+   *  composer une bannière/avatar qui se chevauchent, comme Instagram/LinkedIn. */
+  variant?: 'default' | 'hero';
 }
 
 export default function ImageUpload({
@@ -22,6 +25,7 @@ export default function ImageUpload({
   label,
   aspectClass = 'aspect-square',
   shape = 'rect',
+  variant = 'default',
 }: Props) {
   const inputRef   = useRef<HTMLInputElement>(null);
   const [preview,  setPreview]  = useState<string | null>(null);
@@ -79,50 +83,61 @@ export default function ImageUpload({
     }
   }
 
+  const isHero = variant === 'hero';
+
+  const box = (
+    <div
+      className={`relative ${isHero ? 'w-full h-full' : `${aspectClass} w-full max-w-[200px]`} ${rounded} overflow-hidden bg-neutral-100 ${isHero ? '' : 'border border-neutral-200'} cursor-pointer group`}
+      onClick={() => inputRef.current?.click()}
+    >
+      {displayUrl ? (
+        <Image
+          src={displayUrl.startsWith('/storage/')
+            ? `${(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api$/, '')}${displayUrl}`
+            : displayUrl}
+          alt={label}
+          fill
+          className="object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-300">
+          <Upload size={isHero ? 18 : 24} />
+        </div>
+      )}
+
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        {uploading ? (
+          <Loader size={isHero ? 16 : 20} className="text-white animate-spin" />
+        ) : (
+          <Upload size={isHero ? 16 : 20} className="text-white" />
+        )}
+      </div>
+
+      {/* En variante hero, l'erreur d'upload s'affiche par-dessus l'image (pas de bloc de légende séparé) */}
+      {isHero && error && (
+        <p className="absolute left-1/2 -translate-x-1/2 bottom-1 text-[10px] text-red-500 bg-white/90 px-2 py-0.5 rounded-full whitespace-nowrap">{error}</p>
+      )}
+    </div>
+  );
+
   return (
     <>
-      <div className="flex flex-col items-start gap-2">
-        <span className="text-xs font-semibold text-neutral-600">{label}</span>
-
-        <div
-          className={`relative ${aspectClass} w-full max-w-[200px] ${rounded} overflow-hidden bg-neutral-100 border border-neutral-200 cursor-pointer group`}
-          onClick={() => inputRef.current?.click()}
-        >
-          {displayUrl ? (
-            <Image
-              src={displayUrl.startsWith('/storage/')
-                ? `${(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api').replace(/\/api$/, '')}${displayUrl}`
-                : displayUrl}
-              alt={label}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-300">
-              <Upload size={24} />
-            </div>
-          )}
-
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-            {uploading ? (
-              <Loader size={20} className="text-white animate-spin" />
-            ) : (
-              <Upload size={20} className="text-white" />
-            )}
-          </div>
+      {isHero ? box : (
+        <div className="flex flex-col items-start gap-2">
+          <span className="text-xs font-semibold text-neutral-600">{label}</span>
+          {box}
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          {!error && <p className="text-[11px] text-neutral-400">JPG, PNG ou WebP — max 10 Mo</p>}
         </div>
+      )}
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ''; }}
-        />
-
-        {error && <p className="text-xs text-red-500">{error}</p>}
-        {!error && <p className="text-[11px] text-neutral-400">JPG, PNG ou WebP — max 10 Mo</p>}
-      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ''; }}
+      />
 
       {/* Modal de recadrage */}
       {cropSrc && (

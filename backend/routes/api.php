@@ -30,9 +30,16 @@ use App\Http\Controllers\Api\ChairRentalController;
 use App\Http\Controllers\Api\JobApplicationController;
 use App\Http\Controllers\Api\SalonInvitationController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\SpecialtyProgressController;
+use App\Http\Controllers\Api\ReferralController;
+use App\Http\Controllers\Api\StoryController;
+use App\Http\Controllers\Api\SubscriptionController;
+use App\Http\Controllers\Api\StripeWebhookController;
+use App\Http\Controllers\Api\GeoController;
+use App\Http\Controllers\Api\SupportController;
 
-// Admin (token statique via Bearer)
-Route::prefix('admin')->group(function () {
+// Admin (token statique via Bearer, ADMIN_API_TOKEN — jamais de secret par défaut)
+Route::prefix('admin')->middleware('admin.token')->group(function () {
     Route::get('/stats',                        [AdminController::class, 'stats']);
     Route::get('/top-hairdressers',             [AdminController::class, 'topHairdressers']);
     Route::get('/activity',                     [AdminController::class, 'recentActivity']);
@@ -50,19 +57,31 @@ Route::prefix('admin')->group(function () {
     Route::get('/reports',                      [AdminController::class, 'reports']);
     Route::post('/reports/{id}/ignore',         [AdminController::class, 'ignoreReport']);
     Route::get('/subscriptions',                [AdminController::class, 'subscriptions']);
+    Route::get('/diplomas/pending',             [AdminController::class, 'pendingDiplomas']);
+    Route::post('/diplomas/{id}/approve',       [AdminController::class, 'approveDiploma']);
+    Route::post('/diplomas/{id}/reject',        [AdminController::class, 'rejectDiploma']);
     Route::get('/analytics',                    [AdminController::class, 'analyticsStats']);
     Route::post('/notifications/send',          [AdminController::class, 'sendNotification']);
     Route::get('/notifications/history',        [AdminController::class, 'notificationHistory']);
+    Route::post('/hairdressers/{id}/chair-pick',   [AdminController::class, 'setChairPick']);
+    Route::delete('/hairdressers/{id}/chair-pick', [AdminController::class, 'removeChairPick']);
+    Route::get('/support-requests',                [AdminController::class, 'supportRequests']);
+    Route::post('/support-requests/{id}/resolve',  [AdminController::class, 'resolveSupportRequest']);
 });
 
-// Auth
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+// Auth — throttle dédié : le seul throttle:api global (60/min) laisse trop de
+// marge pour du brute-force login/mot de passe (voir audit pré-lancement).
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:4,1');
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 
 // Scan QR — info publique (affichage avant connexion)
 Route::get('/scan/{token}', [VisitController::class, 'getTokenInfo']);
+
+// Stripe webhook — PUBLIC par nécessité (Stripe n'a pas de token Sanctum),
+// sécurisé uniquement par la vérification de signature (voir StripeWebhookController).
+Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
 
 // Public
 Route::get('/feed', [HairdresserController::class, 'feed']);
@@ -74,48 +93,68 @@ Route::get('/hairdressers/{slug}/availability', [AvailabilityController::class, 
 Route::get('/hairdressers/{slug}/available-dates', [AvailabilityController::class, 'availableDates']);
 Route::get('/specialties', [SpecialtyController::class, 'index']);
 Route::get('/geocode', [GeocodingController::class, 'geocode']);
+Route::get('/geo/regions', [GeoController::class, 'regions']);
+Route::get('/geo/departments', [GeoController::class, 'departments']);
 Route::get('/search', [SearchController::class, 'search']);
 Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
+Route::get('/explore', [App\Http\Controllers\Api\ExploreController::class, 'index']);
 Route::get('/posts/{postId}', [PostController::class, 'show']);
-Route::post('/appointments', [AppointmentController::class, 'store']);
-Route::post('/review-by-token/{token}', [AppointmentController::class, 'reviewByToken']);
+Route::post('/appointments', [AppointmentController::class, 'store'])->middleware('throttle:15,1');
+Route::post('/review-by-token/{token}', [AppointmentController::class, 'reviewByToken'])->middleware('throttle:10,1');
 Route::get('/leaderboard', [LeaderboardController::class, 'index']);
+Route::get('/invitations/{token}', [SalonInvitationController::class, 'showByToken']);
 
 // Salons publics
 Route::get('/salons', [SalonController::class, 'index']);
 Route::get('/salons/{slug}', [SalonController::class, 'show']);
-Route::get('/verify-siret', [SalonController::class, 'verifySiret']);
+Route::get('/verify-siret', [SalonController::class, 'verifySiret'])->middleware('throttle:10,1');
 Route::get('/job-offers', [JobOfferController::class, 'index']);
 Route::get('/training-badges', [TrainingController::class, 'catalogue']);
 
 // Coiffeurs disponibles
 Route::get('/available-hairdressers', [AvailableHairdressersController::class, 'index']);
 
+// Fauteuils publics — consultable sans compte (seule l'envoi d'une demande exige d'être connecté + SIRET vérifié)
+Route::get('/chair-rentals', [ChairRentalController::class, 'publicList']);
+Route::get('/chair-rentals/slug/{slug}', [ChairRentalController::class, 'show']);
+
 // Protected
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::delete('/account', [AuthController::class, 'deleteAccount']);
     Route::post('/preferences', [PreferenceController::class, 'store']);
+
+    // Double identité gérant/coiffeur
+    Route::post('/my-account/enable-hairdresser-mode', [AuthController::class, 'enableHairdresserMode']);
+    Route::post('/my-account/enable-salon-owner-mode', [AuthController::class, 'enableSalonOwnerMode']);
+    Route::post('/my-account/switch-pro-mode',         [AuthController::class, 'switchProMode']);
 
     // Profil coiffeur (édition)
     Route::get('/profile',               [ProfileController::class, 'show']);
     Route::put('/profile',               [ProfileController::class, 'update']);
     Route::post('/profile/avatar',       [ProfileController::class, 'uploadAvatar']);
     Route::post('/profile/banner',       [ProfileController::class, 'uploadBanner']);
+    Route::post('/profile/diploma-document', [ProfileController::class, 'uploadDiplomaDocument']);
+    Route::post('/profile/siret',        [ProfileController::class, 'submitSiret']);
 
     // Profil utilisateur (tous rôles)
     Route::put('/user/profile',          [UserController::class, 'updateProfile']);
+    Route::put('/user/password',         [UserController::class, 'updatePassword']);
     Route::post('/user/avatar',          [UserController::class, 'uploadAvatar']);
 
     // Géolocalisation utilisateur
     Route::put('/user/location',         [ProfileController::class, 'updateLocation']);
 
-    // Réalisations (posts)
+    // Réalisations (posts) — /posts/reorder AVANT /posts/{postId} (sinon
+    // Laravel matche "reorder" comme un {postId} littéral et route vers update()).
     Route::get('/posts',                    [PostController::class, 'index']);
     Route::post('/posts',                   [PostController::class, 'store']);
+    Route::put('/posts/reorder',            [PostController::class, 'reorder']);
     Route::put('/posts/{postId}',           [PostController::class, 'update']);
     Route::delete('/posts/{postId}',        [PostController::class, 'destroy']);
     Route::post('/posts/{postId}/like',     [PostController::class, 'toggleLike']);
+    Route::post('/posts/{postId}/pin',      [PostController::class, 'togglePin']);
 
     // Inspirations (saved posts)
     Route::get('/saved-posts',                  [SavedPostController::class, 'index']);
@@ -139,6 +178,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Rendez-vous (coiffeur)
     Route::get('/appointments',               [AppointmentController::class, 'index']);
     Route::put('/appointments/{id}/status',   [AppointmentController::class, 'updateStatus']);
+    Route::put('/appointments/{id}/reschedule', [AppointmentController::class, 'reschedule']);
     Route::get('/stats',                      [AppointmentController::class, 'stats']);
 
     // Rendez-vous (client)
@@ -174,6 +214,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/unavailabilities',          [ScheduleController::class, 'storeUnavailability']);
     Route::delete('/unavailabilities/{id}',   [ScheduleController::class, 'destroyUnavailability']);
 
+    // Fenêtre de réservation (jusqu'à combien de jours à l'avance les clients peuvent réserver)
+    Route::get('/booking-window', [ScheduleController::class, 'getBookingWindow']);
+    Route::put('/booking-window', [ScheduleController::class, 'updateBookingWindow']);
+
     // Scan QR — confirmation visite + avis (auth client requise)
     // /scan/review AVANT /scan/{token} pour éviter le conflit de route wildcard
     Route::post('/scan/review',          [VisitController::class, 'submitReview']);
@@ -198,10 +242,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Salons (gestion)
     Route::post('/my-salon',                               [SalonController::class, 'createMySalon']);
     Route::get('/my-salon',                                [SalonController::class, 'mySalon']);
+    Route::get('/my-salon/recent-reviews',                 [SalonController::class, 'recentReviews']);
     Route::put('/my-salon',                                [SalonController::class, 'updateMySalon']);
     Route::post('/my-salon/logo',                          [SalonController::class, 'uploadLogo']);
     Route::post('/my-salon/cover',                         [SalonController::class, 'uploadCover']);
     Route::delete('/my-salon/hairdressers/{id}',           [SalonController::class, 'removeHairdresser']);
+    Route::post('/my-salon/hairdressers/{id}/review-invite', [SalonController::class, 'inviteReview']);
 
     // Demandes de rejoindre un salon
     Route::post('/join-salon',                         [SalonController::class, 'requestJoin']);
@@ -216,14 +262,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/my-salon/rentals/{id}',                     [ChairRentalController::class, 'update']);
     Route::delete('/my-salon/rentals/{id}',                  [ChairRentalController::class, 'destroy']);
     Route::post('/my-salon/rentals/{id}/photos',             [ChairRentalController::class, 'uploadPhoto']);
+    Route::put('/my-salon/rentals/{id}/photos/order',        [ChairRentalController::class, 'reorderPhotos']);
     Route::delete('/my-salon/rentals/{id}/photos',           [ChairRentalController::class, 'deletePhoto']);
     Route::get('/my-salon/rental-requests',                  [ChairRentalController::class, 'myRequests']);
     Route::post('/my-salon/rental-requests/{id}/accept',     [ChairRentalController::class, 'acceptRequest']);
     Route::post('/my-salon/rental-requests/{id}/decline',    [ChairRentalController::class, 'declineRequest']);
 
+    // Fauteuils — fil de discussion d'une demande (gérant ET coiffeur)
+    Route::get('/chair-rental-requests/{id}',                [ChairRentalController::class, 'showRequest']);
+    Route::post('/chair-rental-requests/{id}/messages',      [ChairRentalController::class, 'sendMessage']);
+
     // Invitations (salon_owner → coiffeur)
     Route::post('/my-salon/invite',                          [SalonInvitationController::class, 'invite']);
     Route::get('/my-salon/invitations',                      [SalonInvitationController::class, 'sentInvitations']);
+    Route::post('/my-salon/invitations/{id}/resend',         [SalonInvitationController::class, 'resend']);
     Route::delete('/my-salon/invitations/{id}',              [SalonInvitationController::class, 'cancel']);
 
     // Invitations (coiffeur)
@@ -231,10 +283,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/my-invitations/{id}/accept',               [SalonInvitationController::class, 'accept']);
     Route::post('/my-invitations/{id}/decline',              [SalonInvitationController::class, 'decline']);
 
-    // Fauteuils (coiffeur indépendant)
-    Route::get('/chair-rentals',                             [ChairRentalController::class, 'publicList']);
+    // Invitations par lien (email, avec ou sans compte existant au moment de l'envoi)
+    Route::post('/invitations/{token}/accept',                [SalonInvitationController::class, 'acceptByToken']);
+    Route::post('/invitations/{token}/decline',                [SalonInvitationController::class, 'declineByToken']);
+
+    // Fauteuils (coiffeur indépendant) — listing/fiche publics déplacés hors de ce groupe (voir plus haut)
     Route::post('/chair-rentals/{id}/request',               [ChairRentalController::class, 'sendRequest']);
     Route::get('/my-chair-requests',                         [ChairRentalController::class, 'myRequests_hairdresser']);
+    Route::post('/my-chair-requests/{id}/cancel',            [ChairRentalController::class, 'cancelRequest']);
 
     // Candidatures (salon_owner)
     Route::get('/my-salon/applications',                     [JobApplicationController::class, 'myApplications']);
@@ -248,6 +304,35 @@ Route::middleware('auth:sanctum')->group(function () {
     // Streak
     Route::get('/my-streak', [StreakController::class, 'show']);
 
+    // Rang privé (classement public déjà exposé sur GET /leaderboard)
+    Route::get('/my-rank', [LeaderboardController::class, 'myRank']);
+    Route::get('/my-specialty-rank', [LeaderboardController::class, 'mySpecialtyRank']);
+
+    // Réputation par spécialité (voir docs/REPUTATION_ARCHITECTURE.md)
+    Route::get('/my-specialty-progress', [SpecialtyProgressController::class, 'mine']);
+
+    // Programme ambassadeur (voir docs/GROWTH.md)
+    Route::get('/my-referral',  [ReferralController::class, 'mine']);
+    Route::post('/share-events',[ReferralController::class, 'share']);
+
+    // Abonnements CHAIR+ / CHAIR BUSINESS (voir docs/CHAIR_PLUS.md)
+    Route::get('/my-subscription',    [SubscriptionController::class, 'mine']);
+    Route::post('/subscribe',         [SubscriptionController::class, 'subscribe']);
+    Route::post('/subscribe/manage',  [SubscriptionController::class, 'manage']);
+
+    // Stories CHAIR+ (voir docs/CHAIR_PLUS.md)
+    Route::get('/stories/feed',                    [StoryController::class, 'feed']);
+    Route::get('/stories/mine',                     [StoryController::class, 'mine']);
+    Route::get('/stories/by-hairdresser/{id}',      [StoryController::class, 'byHairdresser']);
+    Route::post('/stories',                         [StoryController::class, 'store']);
+    Route::post('/stories/{id}/view',                [StoryController::class, 'view']);
+    Route::delete('/stories/{id}',                   [StoryController::class, 'destroy']);
+
     // Analytics
     Route::get('/my-analytics', [AnalyticsController::class, 'show']);
+    Route::get('/my-analytics/timeseries', [AnalyticsController::class, 'timeseries']);
+
+    // Support prioritaire CHAIR+ (voir docs/CHAIR_PLUS.md)
+    Route::post('/support-requests', [SupportController::class, 'store']);
+    Route::get('/support-requests/mine', [SupportController::class, 'mine']);
 });

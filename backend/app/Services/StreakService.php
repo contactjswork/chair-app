@@ -89,6 +89,7 @@ class StreakService
                 'longest_streak'    => 0,
                 'weekly_streak'     => 0,
                 'total_active_days' => 0,
+                'perfect_days_count'=> 0,
                 'last_activity_date'=> null,
                 'is_active_today'   => false,
             ];
@@ -99,8 +100,37 @@ class StreakService
             'longest_streak'    => $row->longest_streak,
             'weekly_streak'     => $row->weekly_streak,
             'total_active_days' => $row->total_active_days,
+            'perfect_days_count'=> $row->perfect_days_count,
             'last_activity_date'=> $row->last_activity_date,
             'is_active_today'   => $row->last_activity_date === now()->toDateString(),
         ];
+    }
+
+    /**
+     * Enregistre une "journée parfaite" (les 3 anneaux du jour complétés à 100%).
+     * Appelé depuis RingService::get() — idempotent, une seule fois par jour.
+     * Retourne true si c'est une nouvelle journée parfaite (pas déjà comptée aujourd'hui).
+     */
+    public static function recordPerfectDay(int $hairdresserId): bool
+    {
+        $today = now()->toDateString();
+
+        $row = DB::table('hairdresser_streaks')
+            ->where('hairdresser_id', $hairdresserId)
+            ->first();
+
+        if (!$row || $row->last_perfect_date === $today) {
+            return false;
+        }
+
+        DB::table('hairdresser_streaks')
+            ->where('hairdresser_id', $hairdresserId)
+            ->update([
+                'perfect_days_count' => $row->perfect_days_count + 1,
+                'last_perfect_date'  => $today,
+                'updated_at'         => now(),
+            ]);
+
+        return true;
     }
 }

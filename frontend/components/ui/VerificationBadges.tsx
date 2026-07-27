@@ -26,7 +26,7 @@ function getBadges(profile: Props['profile']): VerifBadge[] {
   }
   const hasSiretBadge = profile.chair_badges?.some((b: ApiChairBadge) => b.code === 'siret_verified');
   if (hasSiretBadge) {
-    badges.push({ key: 'siret', label: 'SIRET vérifié', icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-50 border-purple-200' });
+    badges.push({ key: 'siret', label: 'SIRET vérifié', icon: ShieldCheck, color: 'text-teal-600', bg: 'bg-teal-50 border-teal-200' });
   }
   const hasFormation = profile.chair_badges?.some((b: ApiChairBadge) => b.code === 'formation_badge');
   if (hasFormation) {

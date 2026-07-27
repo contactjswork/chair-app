@@ -15,7 +15,7 @@ import {
   apptDateStr,
 } from '@/lib/types';
 import {
-  ChevronRight, Eye, Plus, Clock, LogOut, Gift, Pencil, CalendarDays,
+  ChevronRight, Eye, Clock, LogOut, Gift, Pencil, CalendarDays,
 } from 'lucide-react';
 import CockpitHero from '@/components/ui/CockpitHero';
 import NextStepCard from '@/components/ui/NextStepCard';
@@ -25,6 +25,9 @@ import ProfileCompletionCard from '@/components/ui/ProfileCompletionCard';
 import BusinessSnapshotCard from '@/components/ui/BusinessSnapshotCard';
 import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
 import StoryCreateCard from '@/components/ui/StoryCreateCard';
+import PremiumUpsellCard from '@/components/ui/PremiumUpsellCard';
+import StreakWidget from '@/components/ui/StreakWidget';
+import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
 export default function CockpitPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
@@ -113,6 +116,14 @@ export default function CockpitPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-6 space-y-4">
 
+      {/* ── Double identité : Mode Gérant / Mode Coiffeur (mobile — la
+          sidebar desktop a la sienne) ── */}
+      {(user.can_manage_salon && user.has_hairdresser_profile) && (
+        <div className="md:hidden">
+          <ProModeSwitcher />
+        </div>
+      )}
+
       {/* ── Identité + accès profil public ── */}
       <div className="flex items-center gap-3">
         <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 flex-shrink-0 ring-2 ring-white shadow-sm">
@@ -149,27 +160,30 @@ export default function CockpitPage() {
         </Link>
       )}
 
-      {/* ══════════ ZONE 1 — LA seule chose à faire maintenant ══════════ */}
+      {/* ══════════ ZONE 1 — Contexte : qui je suis, où j'en suis ══════════ */}
+      {!dataLoading ? (
+        <CockpitHero firstName={firstName} bestSpecialty={bestSpecialty} city={profile?.city ?? null} />
+      ) : (
+        <div className="h-32 bg-neutral-100 rounded-2xl animate-pulse" />
+      )}
+
+      {/* ══════════ ZONE 2 — LA seule chose à faire maintenant ══════════ */}
       {!dataLoading ? (
         <NextStepCard profileScore={score} topProfileItem={missingItems[0] ?? null} bestSpecialty={bestSpecialty} />
       ) : (
         <div className="h-24 bg-neutral-100 rounded-2xl animate-pulse" />
       )}
 
-      {/* ══════════ ZONE 2 — Où j'en suis (niveau, spécialité, classement) ══════════ */}
-      {!dataLoading ? (
-        <div className="space-y-2">
-          <CockpitHero firstName={firstName} bestSpecialty={bestSpecialty} city={profile?.city ?? null} />
-          <div className="grid grid-cols-1 gap-2">
-            <CareerProgressCard chairLevel={chairLevel} />
-            <LocalReputationCard specialties={specialties} city={profile?.city ?? null} />
-          </div>
+      {/* ══════════ ZONE 3 — Détail de la progression ══════════ */}
+      {!dataLoading && (
+        <div className="grid grid-cols-1 gap-2">
+          <CareerProgressCard chairLevel={chairLevel} />
+          <StreakWidget />
+          <LocalReputationCard specialties={specialties} city={profile?.city ?? null} />
         </div>
-      ) : (
-        <div className="h-44 bg-neutral-100 rounded-2xl animate-pulse" />
       )}
 
-      {/* ══════════ ZONE 3 — Ma journée ══════════ */}
+      {/* ══════════ ZONE 4 — Ma journée ══════════ */}
       <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
         <div className="px-5 py-4 flex items-center justify-between">
           <p className="text-sm font-bold text-neutral-900">{isIndependent ? "Aujourd'hui" : 'Votre journée'}</p>
@@ -238,11 +252,12 @@ export default function CockpitPage() {
         )}
       </div>
 
-      {/* ══════════ ZONE 4 — Activité, portfolio, découverte (secondaire) ══════════ */}
+      {/* ══════════ ZONE 5 — Activité, portfolio, découverte (secondaire) ══════════ */}
       {!dataLoading && <PortfolioSnapshotCard posts={posts} />}
       {!dataLoading && <StoryCreateCard profile={fullProfile} />}
       {!dataLoading && <ProfileCompletionCard score={score} missingItems={missingItems} isIndependent={isIndependent} />}
       {!dataLoading && isIndependent && <BusinessSnapshotCard stats={stats} />}
+      {!dataLoading && <PremiumUpsellCard profile={fullProfile} />}
 
       <Link href="/pro/parrainage" className="flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 transition-colors">
         <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
@@ -255,25 +270,13 @@ export default function CockpitPage() {
         <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
       </Link>
 
-      {/* ── Actions rapides ── */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <Link href="/pro/portfolio"
-          className="bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col items-center gap-2 hover:border-neutral-200 hover:shadow-sm transition-all text-center"
-        >
-          <div className="w-10 h-10 bg-neutral-900 rounded-xl flex items-center justify-center">
-            <Plus size={18} className="text-white" />
-          </div>
-          <p className="text-xs font-semibold text-neutral-700 leading-tight">Ajouter<br />réalisation</p>
-        </Link>
-        <Link href="/pro/profil"
-          className="bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col items-center gap-2 hover:border-neutral-200 hover:shadow-sm transition-all text-center"
-        >
-          <div className="w-10 h-10 bg-neutral-100 rounded-xl flex items-center justify-center">
-            <Pencil size={18} className="text-neutral-600" />
-          </div>
-          <p className="text-xs font-semibold text-neutral-700 leading-tight">Modifier<br />profil</p>
-        </Link>
-      </div>
+      {/* ── Action rapide (l'ajout de réalisation vit déjà dans le bloc Portfolio ci-dessus) ── */}
+      <Link href="/pro/profil"
+        className="flex items-center justify-center gap-2 bg-white rounded-2xl border border-neutral-100 py-3.5 hover:border-neutral-200 hover:shadow-sm transition-all"
+      >
+        <Pencil size={15} className="text-neutral-600" />
+        <p className="text-sm font-semibold text-neutral-700">Modifier mon profil</p>
+      </Link>
 
       {/* ── Déconnexion mobile ── */}
       <div className="pb-2 md:hidden text-center">

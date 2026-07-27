@@ -8,6 +8,8 @@ class QrToken extends Model
 {
     protected $fillable = [
         'hairdresser_id',
+        'specialty_id',
+        'issued_by_user_id',
         'token_hash',
         'valid_from',
         'valid_until',
@@ -22,6 +24,11 @@ class QrToken extends Model
     public function hairdresser()
     {
         return $this->belongsTo(HairdresserProfile::class, 'hairdresser_id');
+    }
+
+    public function specialty()
+    {
+        return $this->belongsTo(Specialty::class, 'specialty_id');
     }
 
     public function visits()

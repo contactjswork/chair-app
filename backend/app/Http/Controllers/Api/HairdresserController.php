@@ -8,11 +8,66 @@ use App\Models\Post;
 use App\Models\SavedPost;
 use App\Models\UserPreference;
 use App\Services\BadgeService;
+use App\Services\SpecialtyReputationService;
+use App\Services\StreakService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class HairdresserController extends Controller
 {
+    /**
+     * Boost local CHAIR+ — borné et additif, jamais un multiplicateur : un
+     * profil au mérite fort reste devant un profil boosté mais faible (mêmes
+     * valeurs que is_featured mais volontairement plus petites — CHAIR+ est
+     * un "léger coup de pouce", pas un classement acheté). Calcul batché
+     * (une requête pour tout le lot) pour éviter un N+1 dans les ->map().
+     */
+    private function batchChairPlusMap($hairdressers): array
+    {
+        $ids = $hairdressers->pluck('id')->all();
+        if (empty($ids)) return [];
+
+        $now = now();
+        $map = [];
+
+        // 1. Banqué (déjà chargé sur le modèle, coût nul)
+        foreach ($hairdressers as $h) {
+            if ($h->chair_plus_until && $now->lt($h->chair_plus_until)) {
+                $map[$h->id] = true;
+            }
+        }
+
+        // 2. Abonnement individuel payé — une requête pour tout le lot
+        $remaining = array_diff($ids, array_keys($map));
+        if (!empty($remaining)) {
+            \App\Models\Subscription::whereIn('hairdresser_profile_id', $remaining)
+                ->where('plan', 'chair_plus')
+                ->whereIn('status', ['trialing', 'active', 'past_due'])
+                ->get()
+                ->groupBy('hairdresser_profile_id')
+                ->each(function ($subs, $hid) use (&$map) {
+                    if ($subs->first(fn($s) => $s->coversToday())) $map[$hid] = true;
+                });
+        }
+
+        // 3. CHAIR BUSINESS du salon — une requête pour tous les salons du lot
+        $salonIds = $hairdressers->pluck('salon_id')->filter()->unique()->all();
+        if (!empty($salonIds)) {
+            $businessSalonIds = \App\Models\Subscription::whereIn('salon_id', $salonIds)
+                ->where('plan', 'chair_business')
+                ->whereIn('status', ['trialing', 'active', 'past_due'])
+                ->get()
+                ->groupBy('salon_id')
+                ->filter(fn($subs) => $subs->first(fn($s) => $s->coversToday()))
+                ->keys();
+            foreach ($hairdressers as $h) {
+                if ($h->salon_id && $businessSalonIds->contains($h->salon_id)) $map[$h->id] = true;
+            }
+        }
+
+        return $map;
+    }
+
     // ════════════════════════════════════════════════════════════════
     // LISTE COIFFEURS
     // ════════════════════════════════════════════════════════════════
@@ -47,7 +102,12 @@ class HairdresserController extends Controller
                     return $h;
                 })
                 ->filter(fn($h) => $h->distance_km <= $radius)
-                ->map(function ($h) {
+                ->values();
+
+            $chairPlusMap = $this->batchChairPlusMap($hairdressers);
+
+            $hairdressers = $hairdressers
+                ->map(function ($h) use ($chairPlusMap) {
                     // Score qualité + complétion profil
                     $score = 0;
 
@@ -57,6 +117,9 @@ class HairdresserController extends Controller
                     $score += min($h->visits_count ?? 0, 300) * 0.5;
                     $score += $h->is_verified ? 25 : 0;
                     $score += $h->is_featured ? 50 : 0;
+                    // Boost CHAIR+ — volontairement inférieur à is_featured (50) :
+                    // léger coup de pouce, jamais un dépassement garanti du mérite.
+                    $score += ($chairPlusMap[$h->id] ?? false) ? 15 : 0;
 
                     // Complétion profil
                     $score += $this->profileCompletionScore($h);
@@ -74,8 +137,11 @@ class HairdresserController extends Controller
                 ->sortByDesc('_score')
                 ->values();
 
+            $page = $hairdressers->take($perPage)->values();
+            BadgeService::attachGamification($page);
+
             return response()->json([
-                'data'         => $hairdressers->take($perPage)->values(),
+                'data'         => $page,
                 'total'        => $hairdressers->count(),
                 'per_page'     => $perPage,
                 'current_page' => 1,
@@ -86,8 +152,11 @@ class HairdresserController extends Controller
         // ── Mode featured (Coiffeurs à la une) ───────────────────────────────
         // Score composite : featured bonus + note×avis + abonnés + visites + complétion
         if ($request->sort === 'featured') {
-            $hairdressers = $query->get()
-                ->map(function ($h) {
+            $hairdressers = $query->get();
+            $chairPlusMap = $this->batchChairPlusMap($hairdressers);
+
+            $hairdressers = $hairdressers
+                ->map(function ($h) use ($chairPlusMap) {
                     $score = 0;
                     $score += $h->is_featured ? 100 : 0;
                     $score += (float)($h->avg_rating ?? 0) * min($h->reviews_count ?? 0, 50) * 4;
@@ -95,6 +164,8 @@ class HairdresserController extends Controller
                     $score += min($h->visits_count ?? 0, 500) * 0.6;
                     $score += min($h->posts_count ?? 0, 50) * 1.5;
                     $score += $h->is_verified ? 30 : 0;
+                    // Boost CHAIR+ — même logique bornée que le mode géoloc.
+                    $score += ($chairPlusMap[$h->id] ?? false) ? 30 : 0;
                     $score += $this->profileCompletionScore($h);
                     $h->_score = $score;
                     return $h;
@@ -103,8 +174,11 @@ class HairdresserController extends Controller
                 ->sortByDesc('_score')
                 ->values();
 
+            $page = $hairdressers->take($perPage)->values();
+            BadgeService::attachGamification($page);
+
             return response()->json([
-                'data'         => $hairdressers->take($perPage)->values(),
+                'data'         => $page,
                 'total'        => $hairdressers->count(),
                 'per_page'     => $perPage,
                 'current_page' => 1,
@@ -131,8 +205,11 @@ class HairdresserController extends Controller
                 ->sortByDesc('_score')
                 ->values();
 
+            $page = $hairdressers->take($perPage)->values();
+            BadgeService::attachGamification($page);
+
             return response()->json([
-                'data'         => $hairdressers->take($perPage)->values(),
+                'data'         => $page,
                 'total'        => $hairdressers->count(),
                 'per_page'     => $perPage,
                 'current_page' => 1,
@@ -150,7 +227,10 @@ class HairdresserController extends Controller
             $query->orderByDesc('avg_rating');
         }
 
-        return response()->json($query->paginate($perPage));
+        $paginated = $query->paginate($perPage);
+        BadgeService::attachGamification($paginated->items());
+
+        return response()->json($paginated);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -162,6 +242,17 @@ class HairdresserController extends Controller
         $hairdresser = HairdresserProfile::with(['user', 'specialties', 'salon', 'reviews.client', 'trainingBadges'])
             ->where('slug', $slug)
             ->firstOrFail();
+        // Profil unique (pas une liste) — coût de hasChairPlus() acceptable ici,
+        // voir HairdresserProfile::getIsChairPlusAttribute(). Badge Certifié
+        // CHAIR visible sur le profil public (une des 4 surfaces demandées).
+        $hairdresser->append('is_chair_plus');
+
+        // Vue réelle — jamais comptée pour le propriétaire (même logique que
+        // PostController::show) ; alimente les analytics premium "portée".
+        $viewer = Auth::guard('sanctum')->user();
+        if (!$viewer || $viewer->id !== $hairdresser->user_id) {
+            \App\Models\ProfileView::create(['hairdresser_profile_id' => $hairdresser->id]);
+        }
 
         $points = BadgeService::computePoints($hairdresser);
         $data   = $hairdresser->toArray();
@@ -169,6 +260,16 @@ class HairdresserController extends Controller
         $data['chair_points']        = $points;
         $data['chair_level']         = BadgeService::getLevel($points);
         $data['chair_badges_all']    = BadgeService::getUnlockedBadges($hairdresser);
+        // "Pourquoi ce coiffeur est reconnu" — computePoints() vient de rafraîchir
+        // hairdresser_specialty_progress, les highlights lisent des données à jour.
+        $data['specialty_highlights'] = SpecialtyReputationService::publicHighlights($hairdresser);
+
+        // Streak public — juste de quoi afficher la flamme, pas le détail interne
+        $streak = StreakService::get($hairdresser->id);
+        $data['chair_streak'] = [
+            'current_streak'  => $streak['current_streak'],
+            'is_active_today' => $streak['is_active_today'],
+        ];
 
         return response()->json($data);
     }

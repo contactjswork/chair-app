@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, ChevronLeft, Users, Star, CheckCircle } from 'lucide-react';
+import { MapPin, Phone, Globe, ChevronLeft, Users, Star, CheckCircle, Sparkles } from 'lucide-react';
 import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -64,6 +64,11 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
               <h1 className="text-xl font-bold text-neutral-900">{salon.name}</h1>
               {salon.is_verified && (
                 <CheckCircle size={16} className="text-neutral-900 fill-neutral-900" />
+              )}
+              {salon.is_chair_business && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wide bg-neutral-900 text-white rounded-full">
+                  <Sparkles size={9} />CHAIR Business
+                </span>
               )}
             </div>
             {salon.city && (

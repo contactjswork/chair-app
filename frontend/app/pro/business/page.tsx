@@ -5,11 +5,16 @@ import { useEffect, useState } from 'react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import StarRating from '@/components/ui/StarRating';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { appointments as apptApi, analytics as analyticsApi } from '@/lib/api';
-import type { ApiStats, ApiAppointment, ApiAnalytics } from '@/lib/types';
+import { appointments as apptApi, analytics as analyticsApi, api, streak as streakApi } from '@/lib/api';
+import type {
+  ApiStats, ApiAppointment, ApiAnalytics, ApiAnalyticsTimeseries,
+  ApiChairLevel, ApiNextBadge, ApiStreak, ApiHairdresserProfile,
+} from '@/lib/types';
+import { BadgeMedallion } from '@/components/ui/ChairBadges';
 import {
   Users, Star, Eye, Bookmark, Euro, Percent, TrendingUp, TrendingDown, Minus,
   Crown, ChevronRight, Calendar, CheckCircle2, Clock, ImageIcon, Lightbulb, ArrowRight,
+  Flame, Medal, Scissors, MessageSquare, UserPlus,
 } from 'lucide-react';
 
 // ── Tendance ──────────────────────────────────────────────────────────
@@ -80,12 +85,52 @@ function RecoCard({ rec }: { rec: ApiAnalytics['recommendations'][0] }) {
   );
 }
 
+// ── Mini graphique en barres — pas de librairie externe, SVG brut ──────
+
+const CHART_METRICS = [
+  { key: 'appointments' as const, label: 'Rendez-vous', color: '#171717' },
+  { key: 'posts'        as const, label: 'Publications', color: '#a3a3a3' },
+  { key: 'followers'    as const, label: 'Abonnés',      color: '#f59e0b' },
+];
+
+function MiniBarChart({ data, labels, period }: { data: number[]; labels: string[]; period: '7d' | '30d' | '12mo' }) {
+  const max = Math.max(1, ...data);
+  const showEvery = period === '30d' ? 5 : period === '12mo' ? 1 : 1;
+  return (
+    <div className="flex items-end gap-[3px] h-24">
+      {data.map((v, i) => (
+        <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+          <div className="w-full flex items-end justify-center" style={{ height: 72 }}>
+            <div
+              className="w-full max-w-[14px] rounded-t bg-neutral-900 transition-all"
+              style={{ height: `${Math.max(2, (v / max) * 72)}px`, opacity: v === 0 ? 0.15 : 1 }}
+              title={`${labels[i]} : ${v}`}
+            />
+          </div>
+          {i % showEvery === 0 && (
+            <span className="text-[8px] text-neutral-300 truncate max-w-full">
+              {period === '12mo' ? labels[i].slice(5) : labels[i].slice(8)}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PerformancePage() {
   const { user, isLoading: authLoading } = useRequireAuth(['hairdresser']);
   const [stats,        setStats]        = useState<ApiStats | null>(null);
   const [analyticsData, setAnalytics]   = useState<ApiAnalytics | null>(null);
   const [appointments, setAppointments] = useState<ApiAppointment[]>([]);
+  const [chairLevel,   setChairLevel]   = useState<ApiChairLevel | null>(null);
+  const [nextBadges,   setNextBadges]   = useState<ApiNextBadge[]>([]);
+  const [streak,       setStreak]       = useState<ApiStreak | null>(null);
   const [loading,      setLoading]      = useState(true);
+  const [chartPeriod,  setChartPeriod]  = useState<'7d' | '30d' | '12mo'>('7d');
+  const [chartMetric,  setChartMetric]  = useState<typeof CHART_METRICS[number]['key']>('appointments');
+  const [timeseries,   setTimeseries]   = useState<ApiAnalyticsTimeseries | null>(null);
+  const [chartLoading, setChartLoading] = useState(true);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
 
@@ -95,12 +140,24 @@ export default function PerformancePage() {
       apptApi.getStats(),
       analyticsApi.get(),
       isIndependent ? apptApi.list() : Promise.resolve([]),
-    ]).then(([st, an, apts]) => {
+      api.get<ApiHairdresserProfile & { chair_level?: ApiChairLevel; next_badges?: ApiNextBadge[] }>('/profile'),
+      streakApi.get(),
+    ]).then(([st, an, apts, prof, sk]) => {
       if (st.status === 'fulfilled') setStats(st.value);
       if (an.status === 'fulfilled') setAnalytics(an.value);
       if (apts.status === 'fulfilled' && Array.isArray(apts.value)) setAppointments(apts.value as ApiAppointment[]);
+      if (prof.status === 'fulfilled') {
+        if (prof.value.chair_level) setChairLevel(prof.value.chair_level);
+        if (prof.value.next_badges) setNextBadges(prof.value.next_badges);
+      }
+      if (sk.status === 'fulfilled') setStreak(sk.value as ApiStreak);
     }).finally(() => setLoading(false));
   }, [user, isIndependent]);
+
+  useEffect(() => {
+    if (!user) return;
+    analyticsApi.timeseries(chartPeriod).then(setTimeseries).catch(() => {}).finally(() => setChartLoading(false));
+  }, [user, chartPeriod]);
 
   if (authLoading || !user) {
     return <div className="min-h-screen bg-white flex items-center justify-center"><div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" /></div>;
@@ -135,6 +192,53 @@ export default function PerformancePage() {
         ) : (
           <div className="px-4 pt-2 space-y-7">
 
+            {/* ── Hero : niveau, streak, objectif principal ── */}
+            {chairLevel && (
+              <section className="bg-neutral-900 rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Niveau CHAIR</p>
+                    <p className="text-2xl font-black text-white leading-none">{chairLevel.name}</p>
+                    <p className="text-xs font-semibold text-white/50 mt-1">{chairLevel.points} pts</p>
+                  </div>
+                  {streak && streak.current_streak > 0 && (
+                    <div className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5">
+                      <Flame size={13} className={streak.is_active_today ? 'text-orange-400' : 'text-white/40'} />
+                      <span className="text-xs font-bold text-white">{streak.current_streak}j</span>
+                    </div>
+                  )}
+                </div>
+                {chairLevel.next && (
+                  <div className="mb-4">
+                    <div className="h-2 bg-white/15 rounded-full overflow-hidden mb-1.5">
+                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${chairLevel.progress}%` }} />
+                    </div>
+                    <p className="text-[10px] font-semibold text-white/40">
+                      {chairLevel.next.min - chairLevel.points} pts pour <span className="text-white/70">{chairLevel.next.name}</span>
+                    </p>
+                  </div>
+                )}
+                {nextBadges[0] && (
+                  <Link href="/pro/badges" className="flex items-center gap-3 bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-3.5 py-3">
+                    {nextBadges[0].type === 'badge' ? (
+                      <BadgeMedallion code={nextBadges[0].code} tier={nextBadges[0].tier} size={32} locked />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                        <Scissors size={14} className="text-white/60" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-bold tracking-wide uppercase text-white/30">Objectif principal</p>
+                      <p className="text-[12px] font-semibold text-white truncate">
+                        {nextBadges[0].type === 'badge' ? nextBadges[0].name : nextBadges[0].label}
+                      </p>
+                    </div>
+                    <ChevronRight size={13} className="text-white/30 flex-shrink-0" />
+                  </Link>
+                )}
+              </section>
+            )}
+
             {/* ── Recommandations ── */}
             {analyticsData && analyticsData.recommendations.length > 0 && (
               <section>
@@ -153,10 +257,8 @@ export default function PerformancePage() {
                   trend={analyticsData?.followers.trend}
                   context={analyticsData && analyticsData.followers.this_week > 0 ? `+${analyticsData.followers.this_week} cette semaine` : undefined} />
                 <StatCard icon={Star} label="Avis clients" value={stats?.reviews_count ?? 0} />
-                <StatCard icon={Eye} label="Visites profil" value={stats?.visits_count ?? 0}
-                  context={(stats?.visits_count ?? 0) >= 100 ? 'Profil très consulté' : undefined} />
-                <StatCard icon={Bookmark} label="Favoris" value={stats?.saved_count ?? 0}
-                  context={(stats?.saved_count ?? 0) >= 20 ? 'Très attractif' : undefined} />
+                <StatCard icon={Eye} label="Visites profil" value={stats?.visits_count ?? 0} />
+                <StatCard icon={Bookmark} label="Favoris" value={stats?.saved_count ?? 0} />
               </div>
               {analyticsData?.top_specialty && (
                 <p className="text-xs text-neutral-400 mt-3">
@@ -176,6 +278,40 @@ export default function PerformancePage() {
                     : 'Aucune publication cette semaine'} />
               </section>
             )}
+
+            {/* ── Graphiques ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Évolution</p>
+                <div className="flex items-center gap-1 bg-neutral-100 rounded-full p-0.5">
+                  {(['7d', '30d', '12mo'] as const).map((p) => (
+                    <button key={p} onClick={() => { setChartPeriod(p); setChartLoading(true); }}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                        chartPeriod === p ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'
+                      }`}>
+                      {p === '7d' ? '7j' : p === '30d' ? '30j' : '12mois'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+                <div className="flex items-center gap-1.5 mb-3">
+                  {CHART_METRICS.map((m) => (
+                    <button key={m.key} onClick={() => setChartMetric(m.key)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                        chartMetric === m.key ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200'
+                      }`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                {chartLoading || !timeseries ? (
+                  <div className="h-24 bg-neutral-50 rounded-xl animate-pulse" />
+                ) : (
+                  <MiniBarChart data={timeseries[chartMetric]} labels={timeseries.labels} period={chartPeriod} />
+                )}
+              </div>
+            </section>
 
             {/* ── Revenus (indépendants) ── */}
             {isIndependent && (
@@ -271,9 +407,83 @@ export default function PerformancePage() {
                   )}
                   {stats.reviews_count === 0 && (
                     <p className="text-[12px] text-neutral-400 mt-3 pt-3 border-t border-neutral-100 leading-relaxed">
-                      Les profils avec 5+ avis reçoivent 4× plus de demandes. Partagez votre lien d&apos;avis.
+                      Générez votre QR d&apos;avis certifié pour récolter vos premiers retours clients.
                     </p>
                   )}
+                </div>
+              </section>
+            )}
+
+            {/* ── Objectifs de la semaine ── */}
+            {analyticsData && (
+              <section>
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Objectifs de la semaine</p>
+                <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50">
+                  {[
+                    { icon: ImageIcon, label: 'Publier 1 réalisation', done: analyticsData.posts.this_week >= 1, progress: `${Math.min(analyticsData.posts.this_week, 1)}/1` },
+                    { icon: MessageSquare, label: 'Obtenir 1 nouvel avis ce mois', done: analyticsData.reviews.this_month >= 1, progress: `${Math.min(analyticsData.reviews.this_month, 1)}/1` },
+                    { icon: UserPlus, label: 'Gagner 3 abonnés', done: analyticsData.followers.this_week >= 3, progress: `${Math.min(analyticsData.followers.this_week, 3)}/3` },
+                    ...(isIndependent ? [{ icon: Calendar, label: 'Réaliser 3 rendez-vous', done: analyticsData.appointments.this_week >= 3, progress: `${Math.min(analyticsData.appointments.this_week, 3)}/3` }] : []),
+                  ].map(({ icon: Icon, label, done, progress }) => (
+                    <div key={label} className="flex items-center gap-3 px-4 py-3">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${done ? 'bg-green-500' : 'bg-neutral-100'}`}>
+                        {done ? <CheckCircle2 size={14} className="text-white" /> : <Icon size={13} className="text-neutral-400" />}
+                      </div>
+                      <p className={`flex-1 text-[13px] font-medium ${done ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>{label}</p>
+                      <span className="text-[11px] font-bold text-neutral-300 flex-shrink-0">{progress}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Classements ── */}
+            <section>
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Classements</p>
+              <Link href="/app/classements"
+                className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 hover:shadow-sm transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                  <Medal size={17} className="text-neutral-600" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-neutral-900">Voir mon classement</p>
+                  <p className="text-xs text-neutral-400 mt-0.5">Par ville, région, spécialité — face aux autres coiffeurs CHAIR</p>
+                </div>
+                <ChevronRight size={14} className="text-neutral-300 group-hover:text-neutral-700 flex-shrink-0" />
+              </Link>
+            </section>
+
+            {/* ── Badges proches ── */}
+            {nextBadges.length > 0 && (
+              <section>
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Badges proches</p>
+                <div className="space-y-2">
+                  {nextBadges.slice(0, 3).map((b) => (
+                    <Link
+                      key={b.type === 'badge' ? b.code : `sp-${b.specialty_id}`}
+                      href="/pro/badges"
+                      className="flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 hover:border-neutral-200 transition-colors"
+                    >
+                      {b.type === 'badge' ? (
+                        <BadgeMedallion code={b.code} tier={b.tier} size={36} locked />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                          <Scissors size={15} className="text-neutral-500" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-bold text-neutral-900 truncate">{b.type === 'badge' ? b.name : b.name}</p>
+                        {b.type === 'badge' ? (
+                          <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden mt-1.5">
+                            <div className="h-full bg-neutral-900 rounded-full" style={{ width: `${b.pct}%` }} />
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-neutral-400 truncate">{b.label}</p>
+                        )}
+                      </div>
+                      {b.type === 'badge' && <span className="text-[10px] font-bold text-neutral-400 flex-shrink-0">{b.current}/{b.target}</span>}
+                    </Link>
+                  ))}
                 </div>
               </section>
             )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users } from 'lucide-react';
+import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,6 +86,7 @@ export default function ProNotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  const [showRead, setShowRead] = useState(false);
 
   const load = useCallback(() => {
     if (!user) return;
@@ -177,10 +178,7 @@ export default function ProNotificationsPage() {
           <div className="w-14 h-14 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
             <Bell size={22} className="text-neutral-400" />
           </div>
-          <p className="text-[14px] font-semibold text-neutral-700">Aucune notification</p>
-          <p className="text-[12px] text-neutral-400 mt-1">
-            Vos alertes (réservations, avis, abonnés) apparaîtront ici.
-          </p>
+          <p className="text-[14px] font-semibold text-neutral-700">Aucune notification pour le moment</p>
         </div>
       )}
 
@@ -199,14 +197,20 @@ export default function ProNotificationsPage() {
 
       {!loading && read.length > 0 && (
         <section className="mt-4">
-          <p className="px-4 py-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400">
-            Lues
-          </p>
-          <div className="border-t border-neutral-100">
-            {read.map((n) => (
-              <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
-            ))}
-          </div>
+          <button
+            onClick={() => setShowRead((v) => !v)}
+            className="flex items-center gap-1.5 px-4 py-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            Lues ({read.length})
+            <ChevronDown size={12} className={`transition-transform ${showRead ? 'rotate-180' : ''}`} />
+          </button>
+          {showRead && (
+            <div className="border-t border-neutral-100 mt-1">
+              {read.map((n) => (
+                <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 

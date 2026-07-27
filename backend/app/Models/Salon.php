@@ -11,7 +11,7 @@ class Salon extends Model
 
     protected $fillable = [
         'owner_id', 'name', 'slug', 'description', 'address', 'city',
-        'postal_code', 'latitude', 'longitude', 'phone', 'website',
+        'postal_code', 'department', 'region', 'latitude', 'longitude', 'phone', 'website',
         'instagram_url', 'cover_image', 'logo', 'is_verified',
         'siret', 'verification_status',
     ];
@@ -28,5 +28,28 @@ class Salon extends Model
     public function hairdressers()
     {
         return $this->hasMany(HairdresserProfile::class);
+    }
+
+    public function subscriptions()
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
+    /** CHAIR BUSINESS actif — voir HairdresserProfile::hasChairPlus() pour comment ça se propage à l'équipe. */
+    public function hasChairBusiness(): bool
+    {
+        $sub = $this->subscriptions()
+            ->where('plan', 'chair_business')
+            ->whereIn('status', ['trialing', 'active', 'past_due'])
+            ->latest('id')
+            ->first();
+
+        return $sub !== null && $sub->coversToday();
+    }
+
+    /** Même principe que HairdresserProfile::getIsChairPlusAttribute() — à append() explicitement, jamais global. */
+    public function getIsChairBusinessAttribute(): bool
+    {
+        return $this->hasChairBusiness();
     }
 }

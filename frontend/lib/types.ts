@@ -58,6 +58,13 @@ export interface ApiSpecialtyLeaderboard {
   results: ApiSpecialtyLeaderboardEntry[];
 }
 
+export interface ApiMySpecialtyRank {
+  ranked: boolean;
+  rank?: number;
+  total?: number;
+  points_to_next?: number | null;
+}
+
 export interface ApiSpecialtyHighlight {
   specialty_id: number;
   specialty_name: string | null;
@@ -88,6 +95,22 @@ export interface ApiAnalytics {
   recommendations: Array<{
     type: string; title: string; desc: string; cta: string; href: string; urgency: 'high' | 'medium' | 'low';
   }>;
+}
+
+export interface ApiAnalyticsTimeseries {
+  period: '7d' | '30d' | '90d' | '12mo';
+  is_premium: boolean;
+  labels: string[];
+  posts: number[];
+  appointments: number[];
+  followers: number[];
+  revenue: number[];
+  /** Réservé CHAIR+ (is_premium=true uniquement) — visites réelles du profil public. */
+  visits?: number[];
+  /** Réservé CHAIR+ — réalisations enregistrées en favoris. */
+  saves?: number[];
+  /** Réservé CHAIR+ — % de visites converties en RDV honorés, par période. */
+  conversion?: number[];
 }
 
 
@@ -150,13 +173,36 @@ export interface ApiSubscriptionDetail {
   trial_ends_at: string | null;
   current_period_end: string | null;
   canceled_at: string | null;
+  /** true = annulé côté Stripe mais accès conservé jusqu'à current_period_end. */
+  cancel_at_period_end: boolean;
   covers_today: boolean;
+}
+
+/** Les 5 états produit CHAIR+ — dérivés de ApiSubscriptionDetail, jamais recalculés à la main ailleurs. */
+export type ChairPlusState = 'free' | 'trial' | 'premium' | 'expired' | 'cancel_scheduled';
+
+export function chairPlusState(hasPlus: boolean, sub: ApiSubscriptionDetail | null): ChairPlusState {
+  if (!sub) return hasPlus ? 'premium' : 'free'; // premium banqué (parrainage) sans ligne Stripe
+  if (sub.status === 'canceled') return hasPlus ? 'premium' : 'expired';
+  if (sub.cancel_at_period_end) return 'cancel_scheduled';
+  if (sub.status === 'trialing') return 'trial';
+  return 'premium'; // active | past_due (Stripe retente, accès conservé — voir coversToday())
 }
 
 export interface ApiMySubscription {
   has_chair_plus: boolean;
+  has_chair_business: boolean;
   subscription: ApiSubscriptionDetail | null;
   salon_subscription: ApiSubscriptionDetail | null;
+}
+
+export interface ApiSupportRequest {
+  id: number;
+  subject: string;
+  message: string;
+  priority: boolean;
+  status: 'open' | 'answered' | 'closed';
+  created_at: string;
 }
 
 // ── Stories CHAIR+ (voir docs/CHAIR_PLUS.md) ──
@@ -216,6 +262,8 @@ export interface ApiSpecialtyNextStep {
   gaps: ApiSpecialtyNextStepGap[];
 }
 
+export type ApiRarity = 'commun' | 'rare' | 'epique' | 'legendaire' | 'ultime';
+
 export interface ApiSpecialtyProgress {
   specialty_id: number;
   specialty_name: string | null;
@@ -223,13 +271,18 @@ export interface ApiSpecialtyProgress {
   level: number;
   level_name: string;
   level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
+  rarity: ApiRarity;
   is_reference: boolean;
+  /** Niveau 6 — top 1% France entière sur cette spécialité précise. */
+  is_national_reference: boolean;
   posts_count: number;
   reviews_count: number;
   avg_rating: number;
   visits_count: number;
   local_rank: number | null;
   local_total: number | null;
+  /** Écart de points avec le rang juste au-dessus — null si déjà #1 ou non classé. */
+  points_to_next: number | null;
   next_step: ApiSpecialtyNextStep | null;
 }
 
@@ -248,7 +301,7 @@ export interface ApiScanInfo {
   city: string | null;
   verified_visits_count: number;
   token_valid_until: string;
-  services: { id: number; name: string }[];
+  services: { id: number; name: string; specialty_id: number | null; specialty_name: string | null }[];
 }
 
 export interface ApiVisitConfirmed {
@@ -257,6 +310,7 @@ export interface ApiVisitConfirmed {
   hairdresser_name: string;
   hairdresser_slug: string;
   service_type: string | null;
+  specialty_id: number | null;
 }
 
 export interface ApiVerifiedVisit {
@@ -277,8 +331,12 @@ export interface ApiPostImage {
 
 export interface ApiPost {
   id: number;
-  type: 'before_after' | 'result' | 'technique';
+  type: 'before_after' | 'result' | 'technique' | 'video';
   description: string;
+  /** Vidéo courte CHAIR+ (type='video' uniquement) — 30s max, 25 Mo max. */
+  video_url?: string | null;
+  video_thumbnail_url?: string | null;
+  video_duration_seconds?: number | null;
   /** 'homme' | 'femme' | null (unisexe) — champ propre à la réalisation */
   gender: 'homme' | 'femme' | null;
   duration_minutes: number | null;
@@ -287,8 +345,12 @@ export interface ApiPost {
   likes_count: number;
   views_count: number;
   is_published: boolean;
+  is_pinned?: boolean;
+  display_order?: number;
   liked_by_user?: boolean;
   saved_by_user?: boolean;
+  /** Uniquement renvoyé par GET /posts (dashboard) et GET /posts/{id} — pas de compteur dénormalisé, calculé à la volée. */
+  saved_count?: number;
   /** Tags multi-spécialités de la réalisation (post_tags pivot) */
   tags?: ApiSpecialty[];
   created_at: string;
@@ -306,9 +368,19 @@ export interface ApiChairBadge {
   category: string;
   family: 'carriere' | 'exceptionnel';
   pts: number;
-  tier: 1 | 2 | 3 | 4;
+  tier: 1 | 2 | 3 | 4 | 5;
+  rarity: ApiRarity;
   visible: boolean;
+  /** Uniquement présent dans le catalogue complet (chair_badges_catalog) — absent de chair_badges/chair_badges_all, qui ne contiennent que des badges débloqués. */
+  unlocked?: boolean;
+  /** Date réelle de déblocage (uniquement présent si débloqué) — jamais recalculée côté front. */
+  unlocked_at?: string | null;
 }
+
+/** Un des deux types renvoyés par /profile → next_badges (voir BadgeService::nextBadges). */
+export type ApiNextBadge =
+  | { type: 'badge'; code: string; name: string; tier: 1 | 2 | 3 | 4 | 5; rarity: ApiRarity; current: number; target: number; pct: number }
+  | { type: 'specialty'; specialty_id: number; specialty_name: string | null; name: string; label: string; pct: number };
 
 export interface ApiChairLevel {
   level: number;
@@ -349,6 +421,9 @@ export interface ApiHairdresserProfile {
   work_address: string | null;
   work_availability: 'employed' | 'looking_salon' | 'looking_gig' | 'not_available' | null;
   booking_window_days?: number | null;
+  salon_id?: number | null;
+  siret?: string | null;
+  siret_verification_status?: 'none' | 'pending' | 'verified' | 'rejected';
   training_badges?: ApiTrainingBadge[];
   user: ApiUser;
   specialties: ApiSpecialty[];
@@ -362,6 +437,16 @@ export interface ApiHairdresserProfile {
   chair_streak?: { current_streak: number; is_active_today: boolean };
   specialty_highlights?: ApiSpecialtyHighlight[];
   chair_plus_until?: string | null;
+  /**
+   * Entitlement fusionné réel (banqué OU abonnement payé OU CHAIR BUSINESS
+   * salon) — présent uniquement sur les réponses "profil unique" qui
+   * l'append() explicitement (login/me/profile), absent des listes de
+   * recherche (coût requêtes). Toujours préférer ce champ à chair_plus_until
+   * quand il est présent — voir hasChairPlus() plus bas.
+   */
+  is_chair_plus?: boolean;
+  /** "Coup de cœur CHAIR" — sélection éditoriale, indépendante de l'abonnement. */
+  is_chair_pick?: boolean;
 }
 
 export type AppointmentStatus =
@@ -459,6 +544,7 @@ export type NotificationType =
   | 'appointment_created'
   | 'appointment_confirmed'
   | 'appointment_cancelled'
+  | 'appointment_rescheduled'
   | 'review_request'
   | 'review_received'
   | 'new_follower'
@@ -529,9 +615,17 @@ export function resolveMediaUrl(url: string | null | undefined): string | null {
   return url;
 }
 
-/** CHAIR+ actif — payé ou banqué (récompenses ambassadeur), même champ. */
+/**
+ * CHAIR+ actif — payé, banqué (récompenses ambassadeur) ou CHAIR BUSINESS du
+ * salon. Préfère is_chair_plus (entitlement fusionné réel, calculé backend)
+ * quand présent ; ne retombe sur chair_plus_until (banqué uniquement) que si
+ * absent — sinon un abonné payant Stripe pur apparaîtrait comme non-premium
+ * partout où seul chair_plus_until était lu (bug corrigé le 2026-07-24).
+ */
 export function hasChairPlus(profile: ApiHairdresserProfile | null | undefined): boolean {
-  if (!profile?.chair_plus_until) return false;
+  if (!profile) return false;
+  if (profile.is_chair_plus !== undefined) return profile.is_chair_plus;
+  if (!profile.chair_plus_until) return false;
   return new Date(profile.chair_plus_until).getTime() > Date.now();
 }
 
@@ -599,6 +693,106 @@ export interface ApiJobOffer {
   salon?: ApiSalon & { logo?: string | null; slug?: string };
 }
 
+// ── Location de fauteuil ────────────────────────────────────────────
+
+export type ChairSpaceType = 'chair' | 'barber_post' | 'private_cabin' | 'coloring_corner' | 'independent_post';
+
+export const CHAIR_SPACE_TYPES: { value: ChairSpaceType; label: string }[] = [
+  { value: 'chair', label: 'Fauteuil coiffure' },
+  { value: 'barber_post', label: 'Poste barbier' },
+  { value: 'private_cabin', label: 'Cabine privée' },
+  { value: 'coloring_corner', label: 'Coin coloration' },
+  { value: 'independent_post', label: 'Poste indépendant' },
+];
+
+export type ChairEquipmentKey =
+  | 'mirror' | 'premium_chair' | 'sink' | 'wifi' | 'ac' | 'heating' | 'parking'
+  | 'break_room' | 'products_included' | 'card_terminal' | 'city_center' | 'near_station' | 'pmr';
+
+export const CHAIR_EQUIPMENT_LABELS: Record<ChairEquipmentKey, string> = {
+  mirror: 'Grand miroir',
+  premium_chair: 'Fauteuil premium',
+  sink: 'Bac à shampoing',
+  wifi: 'Wi-Fi',
+  ac: 'Climatisation',
+  heating: 'Chauffage',
+  parking: 'Parking',
+  break_room: 'Salle de pause',
+  products_included: 'Produits inclus',
+  card_terminal: 'Terminal CB',
+  city_center: 'Centre-ville',
+  near_station: 'Gare proche',
+  pmr: 'Accès PMR',
+};
+
+/** Hypothèse produit — taux plateforme utilisé pour l'estimation de revenu affichée au gérant, aucun paiement réel ne transite (Stripe Connect non branché). Doit rester identique à ChairRental::COMMISSION_RATE côté backend. */
+export const CHAIR_COMMISSION_RATE = 0.10;
+
+export type ChairRentalStatus = 'draft' | 'available' | 'rented' | 'disabled';
+export type ChairRentalRequestStatus = 'pending' | 'in_discussion' | 'accepted' | 'declined' | 'cancelled';
+
+export interface ApiChairRentalRequestMessage {
+  id: number;
+  chair_rental_request_id: number;
+  sender_type: 'owner' | 'hairdresser';
+  body: string;
+  created_at: string;
+}
+
+export interface ApiChairRentalRequest {
+  id: number;
+  chair_rental_id: number;
+  hairdresser_id: number;
+  status: ChairRentalRequestStatus;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+  chair_rental?: ApiChairRental;
+  hairdresser?: ApiHairdresserProfile & { user: ApiUser };
+  messages?: ApiChairRentalRequestMessage[];
+}
+
+export interface ApiChairRental {
+  id: number;
+  salon_id: number;
+  space_type: ChairSpaceType | null;
+  title: string;
+  slug: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  access_instructions: string | null;
+  price_per_day: number | null;
+  price_per_week: number | null;
+  price_per_month: number | null;
+  deposit_amount: number | null;
+  available_days: number[] | null;
+  start_date: string | null;
+  end_date: string | null;
+  blocked_dates: string[] | null;
+  equipment: ChairEquipmentKey[] | null;
+  conditions: string | null;
+  insurance_required: boolean;
+  insurance_notes: string | null;
+  products_policy: string | null;
+  photos: string[] | null;
+  status: ChairRentalStatus;
+  published_at: string | null;
+  created_at: string;
+  distance_km?: number | null;
+  estimated_monthly_revenue?: number | null;
+  requests?: ApiChairRentalRequest[];
+  salon?: ApiSalon & {
+    logo?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    is_verified?: boolean;
+    hairdressers?: (ApiHairdresserProfile & { user: ApiUser })[];
+  };
+}
+
 // ── Salon ───────────────────────────────────────────────────────────
 
 export interface ApiSalonFull {
@@ -609,12 +803,16 @@ export interface ApiSalonFull {
   address: string | null;
   city: string | null;
   postal_code: string | null;
+  region: string | null;
+  department: string | null;
   phone: string | null;
   website: string | null;
   instagram_url: string | null;
   cover_image: string | null;
   logo: string | null;
   is_verified: boolean;
+  /** CHAIR BUSINESS actif — appendu uniquement sur la fiche publique unique (show()), jamais sur les listes. */
+  is_chair_business?: boolean;
   siret: string | null;
   verification_status: 'unverified' | 'pending_review' | 'verified' | 'rejected';
   hairdressers_count?: number;
@@ -631,6 +829,50 @@ export interface ApiSalonJoinRequest {
   created_at: string;
   salon?: ApiSalonFull;
   hairdresser?: ApiHairdresserProfile & { user: ApiUser };
+}
+
+// ── Invitations salon → coiffeur ──────────────────────────────────────
+
+export type ApiSalonInvitationStatus = 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
+
+export interface ApiSalonInvitation {
+  id: number;
+  salon_id: number;
+  hairdresser_id: number | null;
+  email: string | null;
+  token: string;
+  message: string | null;
+  /** Statut persisté en base — peut rester 'pending' même après l'échéance
+   *  tant qu'aucune action n'a déclenché la transition réelle. */
+  status: ApiSalonInvitationStatus;
+  /** Statut à afficher — 'expired' dès l'échéance dépassée, sans attendre
+   *  une action serveur. Toujours préférer ce champ pour l'UI. */
+  effective_status: ApiSalonInvitationStatus;
+  expires_at: string | null;
+  created_at: string;
+  salon?: ApiSalonFull;
+  hairdresser?: ApiHairdresserProfile & { user: ApiUser };
+  /** Présent uniquement sur la réponse d'un invite/resend — lien à copier
+   *  et transmettre manuellement (SMS, WhatsApp, email) : aucun envoi
+   *  d'email n'est effectué côté serveur. */
+  share_link?: string;
+}
+
+export interface ApiSalonInvitationPreview {
+  salon: { name: string; slug: string; logo: string | null; city: string | null };
+  message: string | null;
+  status: ApiSalonInvitationStatus;
+  already_claimed: boolean;
+}
+
+export interface ApiSalonRecentReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  is_verified: boolean;
+  created_at: string;
+  hairdresser_name: string | null;
+  client_name: string | null;
 }
 
 // ── Available hairdressers ───────────────────────────────────────────

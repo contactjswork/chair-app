@@ -58,9 +58,8 @@ export default function ParrainagePage() {
       )}
 
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors mr-auto">
-          <ArrowLeft size={16} />
-          <span className="text-xs font-medium">Tableau de bord</span>
+        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+          <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">Parrainage</span>
       </div>
@@ -68,8 +67,8 @@ export default function ParrainagePage() {
       <div className="max-w-2xl mx-auto px-4 md:px-6 pt-5 md:pt-10 pb-28 md:pb-10 space-y-5">
 
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/pro" className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-700 transition-colors">
-            <ArrowLeft size={14} /><span className="text-xs">Retour</span>
+          <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
+            <ArrowLeft size={16} />
           </Link>
           <span className="text-neutral-200">/</span>
           <h1 className="text-lg font-bold text-neutral-900">Programme ambassadeur</h1>

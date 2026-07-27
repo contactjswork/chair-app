@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { services as servicesApi, api } from '@/lib/api';
 import type { ApiServiceCategory, ApiService, ApiSpecialty, ApiHairdresserProfile } from '@/lib/types';
-import { Plus, Pencil, Trash2, Eye, EyeOff, Scissors, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, Scissors, AlertTriangle, Sparkles } from 'lucide-react';
 
 // ── Formulaire d'ajout/édition de service (spécialité déjà fixée par le contexte) ──
 
@@ -51,7 +51,7 @@ function ServiceForm({
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Nom du service (ex : Balayage blond, Taper Bas...)"
+        placeholder="Nom du service (ex : balayage blond, taper bas...)"
         className="w-full border border-neutral-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-neutral-400 bg-white"
         autoFocus
         required
@@ -158,9 +158,9 @@ function ServiceRow({
 
 function SpecialtyServiceCard({
   specialty, services, isIndependent, showAddForm, onOpenAdd, onCloseAdd, onCreate,
-  editingId, onEdit, onCancelEdit, onSaveEdit, onToggle,
+  editingId, onEdit, onCancelEdit, onSaveEdit, onToggle, footer,
 }: {
-  specialty: ApiSpecialty;
+  specialty: ApiSpecialty | null;
   services: ApiService[];
   isIndependent: boolean;
   showAddForm: boolean;
@@ -172,30 +172,36 @@ function SpecialtyServiceCard({
   onCancelEdit: () => void;
   onSaveEdit: (svc: ApiService, data: { name: string; description: string; price: number | null; duration_minutes: number | null }) => Promise<void>;
   onToggle: (svc: ApiService) => void;
+  footer?: ReactNode;
 }) {
+  const label = specialty?.name ?? 'Autres services';
   return (
     <div className="border border-neutral-200 rounded-2xl overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3.5 bg-neutral-50">
         <div className="w-11 h-11 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
-          {specialty.icon
+          {specialty?.icon
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={specialty.icon} alt={specialty.name} className="w-full h-full object-cover" />
-            : <Scissors size={18} className="text-neutral-400" strokeWidth={1.5} />
+            : specialty
+              ? <Scissors size={18} className="text-neutral-400" strokeWidth={1.5} />
+              : <Sparkles size={18} className="text-neutral-400" strokeWidth={1.5} />
           }
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-neutral-900 text-sm">{specialty.name}</p>
-          <p className={`text-xs ${services.length === 0 ? 'text-amber-600 font-semibold' : 'text-neutral-400'}`}>
+          <p className="font-bold text-neutral-900 text-sm">{label}</p>
+          <p className={`text-xs ${services.length === 0 && specialty ? 'text-amber-600 font-semibold' : 'text-neutral-400'}`}>
             {services.length === 0 ? 'Aucun service' : `${services.length} service${services.length !== 1 ? 's' : ''}`}
           </p>
         </div>
       </div>
 
       {services.length === 0 && !showAddForm && (
-        <div className="flex items-start gap-2.5 px-4 py-3 bg-amber-50/60 border-t border-amber-100">
-          <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
-          <p className="text-[11px] text-amber-700 leading-relaxed">
-            Cette spécialité reste invisible dans les recherches précises tant qu&apos;aucun service n&apos;y est rattaché.
+        <div className={`flex items-start gap-2.5 px-4 py-3 border-t ${specialty ? 'bg-amber-50/60 border-amber-100' : 'bg-neutral-50/60 border-neutral-100'}`}>
+          {specialty && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />}
+          <p className={`text-[11px] leading-relaxed ${specialty ? 'text-amber-700' : 'text-neutral-500'}`}>
+            {specialty
+              ? "Cette spécialité reste invisible dans les recherches précises tant qu'aucun service n'y est rattaché."
+              : "Pas de spécialité qui correspond à une prestation ? Créez un service personnalisé — il reste référencé par son nom dans la recherche CHAIR."}
           </p>
         </div>
       )}
@@ -227,9 +233,11 @@ function SpecialtyServiceCard({
           className="w-full flex items-center gap-2 px-4 py-3 text-sm text-neutral-500 hover:bg-neutral-50 border-t border-neutral-100"
         >
           <Plus size={14} />
-          Ajouter un service {specialty.name.toLowerCase()}
+          {specialty ? `Ajouter un service ${specialty.name.toLowerCase()}` : 'Ajouter un service personnalisé'}
         </button>
       )}
+
+      {footer}
     </div>
   );
 }
@@ -304,6 +312,23 @@ export default function DashboardServicesPage() {
     setAddingFor(null);
   }
 
+  const OTHER_CATEGORY_NAME = 'Autres services';
+
+  async function ensureOtherCategory(): Promise<number> {
+    const existing = categories.find((c) => c.name === OTHER_CATEGORY_NAME);
+    if (existing) return existing.id;
+    const cat = await servicesApi.categories.create({ name: OTHER_CATEGORY_NAME }) as ApiServiceCategory;
+    setCategories((prev) => [...prev, cat]);
+    return cat.id;
+  }
+
+  async function handleCreateOrphan(data: { name: string; description: string; price: number | null; duration_minutes: number | null }) {
+    const categoryId = await ensureOtherCategory();
+    const svc = await servicesApi.items.create({ ...data, category_id: categoryId, specialty_id: null }) as ApiService;
+    setServices((prev) => [...prev, svc]);
+    setAddingFor(null);
+  }
+
   async function handleSaveEdit(svc: ApiService, data: { name: string; description: string; price: number | null; duration_minutes: number | null }) {
     const updated = await servicesApi.items.update(svc.id, data) as ApiService;
     setServices((prev) => prev.map((s) => (s.id === svc.id ? updated : s)));
@@ -331,7 +356,13 @@ export default function DashboardServicesPage() {
   }
 
   const orphanServices = services.filter((s) => !s.specialty_id || !mySpecialties.some((sp) => sp.id === s.specialty_id));
-  const orphanCategoryIds = new Set(orphanServices.map((s) => s.category_id));
+  // Catégories héritées d'une spécialité désélectionnée — proposées à la suppression.
+  // La catégorie "Autres services" est exclue : elle est intentionnelle (services personnalisés).
+  const staleCategoryIds = new Set(
+    orphanServices
+      .map((s) => s.category_id)
+      .filter((catId) => categories.find((c) => c.id === catId)?.name !== OTHER_CATEGORY_NAME)
+  );
 
   return (
     <div className="min-h-screen bg-white pb-32">
@@ -339,7 +370,7 @@ export default function DashboardServicesPage() {
         <DashboardPageHeader title="Mes services" />
       </div>
       <p className="px-4 pt-1 pb-2 text-[12px] text-neutral-400 leading-relaxed">
-        Un service détaillé dans chaque spécialité vous rend visible dans des recherches précises, pas juste générales.
+        Un service détaillé par spécialité vous rend visible dans les recherches précises.
       </p>
 
       {error && (
@@ -348,10 +379,10 @@ export default function DashboardServicesPage() {
 
       <div className="px-4 space-y-4">
         {mySpecialties.length === 0 && (
-          <div className="text-center py-12 border border-dashed border-neutral-200 rounded-xl">
+          <div className="text-center py-8 border border-dashed border-neutral-200 rounded-xl">
             <p className="text-neutral-500 text-sm mb-1">Aucune spécialité sélectionnée</p>
-            <p className="text-neutral-400 text-xs mb-4 px-6 leading-relaxed">
-              Choisissez d&apos;abord vos spécialités depuis votre profil pour pouvoir y rattacher des services.
+            <p className="text-neutral-400 text-xs mb-1 px-6 leading-relaxed">
+              Choisissez vos spécialités depuis votre profil, ou ajoutez directement un service personnalisé ci-dessous.
             </p>
           </div>
         )}
@@ -374,43 +405,35 @@ export default function DashboardServicesPage() {
           />
         ))}
 
-        {/* Services orphelins — pas (ou plus) rattachés à une spécialité active */}
-        {orphanServices.length > 0 && (
-          <div className="border border-neutral-200 rounded-2xl overflow-hidden">
-            <div className="px-4 py-3.5 bg-neutral-50">
-              <p className="font-bold text-neutral-900 text-sm">Autres services</p>
-              <p className="text-xs text-neutral-400">Non rattachés à une spécialité active</p>
-            </div>
-            <div className="divide-y divide-neutral-100 border-t border-neutral-100">
-              {orphanServices.map((svc) => (
-                <ServiceRow
-                  key={svc.id}
-                  svc={svc}
-                  isIndependent={isIndependent}
-                  isEditing={editingId === svc.id}
-                  onEdit={() => setEditingId(svc.id)}
-                  onCancelEdit={() => setEditingId(null)}
-                  onSave={(data) => handleSaveEdit(svc, data)}
-                  onToggle={() => handleToggle(svc)}
-                />
+        {/* Autres services — sans spécialité rattachée (personnalisés, ou hérités d'une spécialité désélectionnée) */}
+        <SpecialtyServiceCard
+          specialty={null}
+          services={orphanServices}
+          isIndependent={isIndependent}
+          showAddForm={addingFor === -1}
+          onOpenAdd={() => setAddingFor(-1)}
+          onCloseAdd={() => setAddingFor(null)}
+          onCreate={handleCreateOrphan}
+          editingId={editingId}
+          onEdit={(svc) => setEditingId(svc.id)}
+          onCancelEdit={() => setEditingId(null)}
+          onSaveEdit={handleSaveEdit}
+          onToggle={handleToggle}
+          footer={staleCategoryIds.size > 0 && (
+            <div className="px-4 py-2.5 border-t border-neutral-100">
+              {Array.from(staleCategoryIds).map((catId) => (
+                <button
+                  key={catId}
+                  onClick={() => handleDeleteOrphanCategory(catId)}
+                  className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 size={11} />
+                  Supprimer la catégorie &quot;{categories.find((c) => c.id === catId)?.name}&quot;
+                </button>
               ))}
             </div>
-            {orphanCategoryIds.size > 0 && (
-              <div className="px-4 py-2.5 border-t border-neutral-100">
-                {Array.from(orphanCategoryIds).map((catId) => (
-                  <button
-                    key={catId}
-                    onClick={() => handleDeleteOrphanCategory(catId)}
-                    className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 size={11} />
-                    Supprimer la catégorie &quot;{categories.find((c) => c.id === catId)?.name}&quot;
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        />
       </div>
 
     </div>

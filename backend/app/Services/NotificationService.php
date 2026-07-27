@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Notification;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class NotificationService
 {
@@ -26,8 +28,13 @@ class NotificationService
     }
 
     /**
-     * Envoie une notification push (Firebase / OneSignal).
-     * TODO: brancher un provider réel quand nécessaire.
+     * Envoie une notification push via OneSignal.
+     *
+     * Cible l'External User ID OneSignal = notre user_id (voir OneSignal.login()
+     * côté app mobile après authentification — pas de gestion de token côté nous).
+     *
+     * No-op silencieux tant que ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY ne sont
+     * pas configurés (voir services.onesignal dans config/services.php).
      */
     public static function sendPush(
         int    $userId,
@@ -36,8 +43,29 @@ class NotificationService
         string $message,
         array  $data = []
     ): void {
-        // TODO: intégrer Firebase ou OneSignal ici.
-        // Les tokens sont stockés dans push_subscriptions.
+        $appId  = config('services.onesignal.app_id');
+        $apiKey = config('services.onesignal.rest_api_key');
+
+        if (empty($appId) || empty($apiKey)) {
+            return;
+        }
+
+        try {
+            Http::withHeaders([
+                'Authorization' => 'Basic ' . $apiKey,
+                'Content-Type'  => 'application/json',
+            ])->post('https://onesignal.com/api/v1/notifications', [
+                'app_id'                   => $appId,
+                'include_external_user_ids' => [(string) $userId],
+                'headings'                 => ['en' => $title, 'fr' => $title],
+                'contents'                 => ['en' => $message, 'fr' => $message],
+                'data'                     => array_merge($data, ['type' => $type]),
+            ]);
+        } catch (\Throwable $e) {
+            // Une erreur push ne doit jamais faire échouer l'action qui a
+            // déclenché la notification (déblocage de badge, RDV, etc.).
+            Log::warning('OneSignal push failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
+        }
     }
 
     /**

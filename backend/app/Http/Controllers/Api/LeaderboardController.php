@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\BadgeService;
+use App\Services\SpecialtyReputationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,18 +14,31 @@ class LeaderboardController extends Controller
      * GET /leaderboard?city=Paris&type=engagement&limit=20
      * Types: engagement | posts | reviews | progression
      * Filtre: city | department | region
+     *
+     * GET /leaderboard?specialty_id=5&geo=city&geo_value=Haguenau&limit=20
+     * Classement PAR SPÉCIALITÉ (voir docs/REPUTATION_ARCHITECTURE.md) — basé
+     * sur specialty_score (avis certifiés + réalisations + visites, déjà
+     * résistant à la manipulation) avec pénalité/exclusion si inactif.
+     * geo : city | department | region | country (défaut country).
      */
     public function index(Request $request)
     {
+        if ($request->filled('specialty_id')) {
+            return $this->specialtyIndex($request);
+        }
+
         $type   = $request->input('type', 'engagement');
         $city   = $request->input('city');
         $dept   = $request->input('department');
         $region = $request->input('region');
         $limit  = min((int) $request->input('limit', 20), 50);
 
+        // Pas de leftJoin sur les spécialités ici : c'est une relation many-to-many
+        // (table hairdresser_specialties), pas une colonne hp.specialty_id — un
+        // join direct ferait planter la requête (colonne inexistante) et dupliquerait
+        // les lignes pour les coiffeurs multi-spécialités. Récupéré séparément plus bas.
         $query = DB::table('hairdresser_profiles as hp')
             ->join('users as u', 'u.id', '=', 'hp.user_id')
-            ->leftJoin('specialties as s', 's.id', '=', 'hp.specialty_id')
             ->where('hp.posts_count', '>', 0)
             ->select([
                 'hp.id',
@@ -40,8 +54,6 @@ class LeaderboardController extends Controller
                 'hp.identity_verified',
                 'u.name',
                 'u.avatar',
-                's.name as specialty_name',
-                's.slug as specialty_slug',
             ]);
 
         if ($city) {
@@ -83,21 +95,30 @@ class LeaderboardController extends Controller
 
         $results = $query->limit($limit)->get();
 
+        // Première spécialité de chaque coiffeur (many-to-many), en une requête batchée
+        $specialtiesByHairdresser = DB::table('hairdresser_specialties as hs')
+            ->join('specialties as s', 's.id', '=', 'hs.specialty_id')
+            ->whereIn('hs.hairdresser_id', $results->pluck('id'))
+            ->select('hs.hairdresser_id', 's.name', 's.slug')
+            ->get()
+            ->groupBy('hairdresser_id');
+
         // Ajouter le rang et les badges visibles
-        $ranked = $results->values()->map(function ($row, $index) use ($type) {
+        $ranked = $results->values()->map(function ($row, $index) use ($type, $specialtiesByHairdresser) {
             $score = $this->computeScore((array) $row, $type);
+            $specialty = $specialtiesByHairdresser->get($row->id)?->first();
             return [
                 'rank'           => $index + 1,
                 'id'             => $row->id,
                 'slug'           => $row->slug,
                 'name'           => $row->name,
-                'avatar'         => $row->avatar ? (
-                    str_starts_with($row->avatar, 'http') ? $row->avatar
-                    : (config('app.url') . '/storage/' . ltrim($row->avatar, '/storage/'))
-                ) : null,
+                // Valeur brute — résolue côté front par resolveMediaUrl(), comme
+                // partout ailleurs dans l'app (HairdresserController ne la
+                // transforme pas non plus).
+                'avatar'         => $row->avatar,
                 'city'           => $row->city,
-                'specialty'      => $row->specialty_name,
-                'specialty_slug' => $row->specialty_slug,
+                'specialty'      => $specialty->name ?? null,
+                'specialty_slug' => $specialty->slug ?? null,
                 'avg_rating'     => (float) $row->avg_rating,
                 'reviews_count'  => (int) $row->reviews_count,
                 'followers_count'=> (int) $row->followers_count,
@@ -113,6 +134,117 @@ class LeaderboardController extends Controller
             'city'    => $city,
             'results' => $ranked,
         ]);
+    }
+
+    private function specialtyIndex(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'specialty_id' => 'required|integer|exists:specialties,id',
+            'geo'          => 'nullable|string|in:city,department,region,country,auto',
+            'geo_value'    => 'nullable|string|max:100',
+        ]);
+
+        $specialtyId = (int) $request->specialty_id;
+        // 'auto' : le client envoie un champ libre unique (ville, département ou
+        // région) sans préciser le niveau — voir SpecialtyReputationService::filterByGeo.
+        $geo         = $request->input('geo', $request->filled('geo_value') ? 'auto' : 'country');
+        $geoValue    = $request->input('geo_value');
+        $limit       = min((int) $request->input('limit', 20), 50);
+
+        $specialty = DB::table('specialties')->where('id', $specialtyId)->first();
+
+        $results = SpecialtyReputationService::leaderboard($specialtyId, $geo, $geoValue, $limit);
+
+        return response()->json([
+            'type'           => 'specialty',
+            'specialty_id'   => $specialtyId,
+            'specialty_name' => $specialty->name ?? null,
+            'geo'            => $geo,
+            'geo_value'      => $geoValue,
+            'results'        => $results,
+        ]);
+    }
+
+    /**
+     * GET /my-rank — rang privé du coiffeur connecté dans sa ville.
+     * Réutilise la même formule "engagement" que le classement public pour
+     * rester cohérent avec ce que les clients voient sur /app/classements.
+     */
+    public function myRank(Request $request)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        $city = $profile->city;
+
+        $query = DB::table('hairdresser_profiles as hp')
+            ->where('hp.posts_count', '>', 0)
+            ->select(['hp.id', 'hp.avg_rating', 'hp.reviews_count', 'hp.followers_count', 'hp.posts_count', 'hp.visits_count', 'hp.verified_visits_count']);
+
+        if ($city) {
+            $query->where('hp.city', 'LIKE', '%' . $city . '%');
+        }
+
+        $rows = $query->get();
+
+        if ($rows->isEmpty() || !$rows->contains('id', $profile->id)) {
+            return response()->json([
+                'ranked'     => false,
+                'city'       => $city,
+                'message'    => 'Publiez au moins une réalisation pour apparaître dans le classement.',
+            ]);
+        }
+
+        $scored = $rows->map(fn($row) => [
+            'id'    => $row->id,
+            'score' => $this->computeScore((array) $row, 'engagement'),
+        ])->sortByDesc('score')->values();
+
+        $rank  = $scored->search(fn($r) => $r['id'] === $profile->id) + 1;
+        $total = $scored->count();
+        $percentile = (int) ceil($rank / $total * 100);
+
+        return response()->json([
+            'ranked'     => true,
+            'city'       => $city,
+            'rank'       => $rank,
+            'total'      => $total,
+            'percentile' => $percentile,
+        ]);
+    }
+
+    /**
+     * GET /my-specialty-rank?specialty_id=&geo=&geo_value= — rang du coiffeur
+     * connecté dans EXACTEMENT la même vue (spécialité + zone) que celle
+     * affichée sur /app/classements, pour afficher "vous êtes #7, à 14 points
+     * du 6e" même quand il n'est pas dans le top de la liste publique.
+     */
+    public function mySpecialtyRank(Request $request)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        $request->validate([
+            'specialty_id' => 'required|integer|exists:specialties,id',
+            'geo'          => 'nullable|string|in:city,department,region,country,auto',
+            'geo_value'    => 'nullable|string|max:100',
+        ]);
+
+        $specialtyId = (int) $request->specialty_id;
+        $geo         = $request->input('geo', $request->filled('geo_value') ? 'auto' : 'country');
+        $geoValue    = $request->input('geo_value');
+
+        $rank = SpecialtyReputationService::rankFor($profile, $specialtyId, $geo, $geoValue);
+
+        if (!$rank) {
+            return response()->json(['ranked' => false]);
+        }
+
+        return response()->json(array_merge(['ranked' => true], $rank));
     }
 
     private function computeScore(array $row, string $type): int

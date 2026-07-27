@@ -19,10 +19,11 @@ export default function ScanPage() {
   const { token }                       = useParams<{ token: string }>();
   const { user, isLoading: authLoading } = useAuth();
 
-  const [step,        setStep]        = useState<Step>('loading');
-  const [info,        setInfo]        = useState<ApiScanInfo | null>(null);
-  const [confirmed,   setConfirmed]   = useState<ApiVisitConfirmed | null>(null);
-  const [serviceType, setServiceType] = useState('');
+  const [step,             setStep]             = useState<Step>('loading');
+  const [info,             setInfo]             = useState<ApiScanInfo | null>(null);
+  const [confirmed,        setConfirmed]        = useState<ApiVisitConfirmed | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(null);
+  const [freeTextService,  setFreeTextService]  = useState('');
   const [confirming,  setConfirming]  = useState(false);
   const [rating,      setRating]      = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
@@ -57,12 +58,15 @@ export default function ScanPage() {
     }
   }
 
+  const hasServices = (info?.services.length ?? 0) > 0;
+  const canConfirm = hasServices ? selectedServiceId !== null : freeTextService.trim().length > 0;
+
   async function confirmVisit() {
-    if (!token || !serviceType) return;
+    if (!token || !canConfirm) return;
     setConfirming(true);
     setErrorMsg('');
     try {
-      const data = await visits.confirmVisit(token, serviceType);
+      const data = await visits.confirmVisit(token, hasServices ? selectedServiceId : null, freeTextService);
       setConfirmed(data);
       setStep('review');
     } catch (err: unknown) {
@@ -187,44 +191,54 @@ export default function ScanPage() {
               </p>
             </div>
 
-            {/* Sélection prestation — obligatoire */}
-            {info.services.length > 0 ? (
+            {/* Sélection prestation — obligatoire. Vraies prestations du coiffeur
+                (Service, groupées par spécialité) : c'est ce qui alimente
+                correctement les classements par spécialité, pas un texte libre. */}
+            {hasServices ? (
               <div>
                 <p className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wide">
                   Quelle prestation ? <span className="text-red-500">*</span>
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {info.services.map((svc) => (
-                    <button
-                      key={svc.id}
-                      type="button"
-                      onClick={() => setServiceType(svc.name === serviceType ? '' : svc.name)}
-                      className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all ${
-                        serviceType === svc.name
-                          ? 'bg-neutral-900 text-white border-neutral-900'
-                          : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
-                      }`}
-                    >
-                      {svc.name}
-                    </button>
+                <div className="space-y-3">
+                  {groupServicesBySpecialty(info.services).map(([specialtyName, services]) => (
+                    <div key={specialtyName}>
+                      <p className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5">{specialtyName}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {services.map((svc) => (
+                          <button
+                            key={svc.id}
+                            type="button"
+                            onClick={() => setSelectedServiceId(svc.id === selectedServiceId ? null : svc.id)}
+                            className={`px-4 py-2 rounded-full text-xs font-semibold border transition-all ${
+                              selectedServiceId === svc.id
+                                ? 'bg-neutral-900 text-white border-neutral-900'
+                                : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
+                            }`}
+                          >
+                            {svc.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
                 </div>
-                {!serviceType && (
+                {selectedServiceId === null && (
                   <p className="text-[11px] text-neutral-400 mt-2">
                     Sélectionnez la prestation reçue pour continuer.
                   </p>
                 )}
               </div>
             ) : (
-              // Aucun service configuré → champ texte libre
+              // Aucune prestation configurée par ce coiffeur → repli texte libre
+              // (la visite compte quand même, juste sans spécialité attribuée).
               <div>
                 <p className="text-xs font-semibold text-neutral-500 mb-2 uppercase tracking-wide">
                   Quelle prestation ? <span className="text-red-500">*</span>
                 </p>
                 <input
                   type="text"
-                  value={serviceType}
-                  onChange={(e) => setServiceType(e.target.value)}
+                  value={freeTextService}
+                  onChange={(e) => setFreeTextService(e.target.value)}
                   placeholder="Ex : Coupe homme, Balayage..."
                   maxLength={100}
                   className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-all"
@@ -235,7 +249,7 @@ export default function ScanPage() {
             <button
               type="button"
               onClick={confirmVisit}
-              disabled={confirming || !serviceType.trim()}
+              disabled={confirming || !canConfirm}
               className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-4 rounded-2xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {confirming
@@ -378,6 +392,19 @@ export default function ScanPage() {
       </div>
     </div>
   );
+}
+
+// ── Regroupement des prestations par spécialité ───────────────────────────────
+
+function groupServicesBySpecialty(services: ApiScanInfo['services']): [string, ApiScanInfo['services']][] {
+  const groups = new Map<string, ApiScanInfo['services']>();
+  for (const svc of services) {
+    const key = svc.specialty_name ?? 'Autres';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(svc);
+  }
+  // "Autres" (prestations sans spécialité rattachée) toujours en dernier.
+  return Array.from(groups.entries()).sort(([a], [b]) => (a === 'Autres' ? 1 : b === 'Autres' ? -1 : 0));
 }
 
 // ── Composant carte coiffeur ──────────────────────────────────────────────────

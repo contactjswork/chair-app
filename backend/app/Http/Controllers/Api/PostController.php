@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\PostImage;
+use App\Services\BadgeService;
 use App\Services\CloudinaryService;
 use App\Services\StreakService;
 use Illuminate\Http\Request;
@@ -24,6 +25,13 @@ class PostController extends Controller
             ->firstOrFail();
 
         $user = \Auth::guard('sanctum')->user();
+
+        // Vue réelle — jamais comptée pour le propriétaire qui consulte sa
+        // propre réalisation, sinon le compteur ne voudrait plus rien dire.
+        if (!$user || $user->id !== ($post->hairdresser->user_id ?? null)) {
+            $post->increment('views_count');
+        }
+
         $data = $post->toArray();
         $data['liked_by_user'] = $user
             ? DB::table('post_likes')->where('post_id', $postId)->where('user_id', $user->id)->exists()
@@ -31,6 +39,7 @@ class PostController extends Controller
         $data['saved_by_user'] = $user
             ? DB::table('saved_posts')->where('post_id', $postId)->where('user_id', $user->id)->exists()
             : false;
+        $data['saved_count'] = DB::table('saved_posts')->where('post_id', $postId)->count();
 
         return response()->json($data);
     }
@@ -48,8 +57,22 @@ class PostController extends Controller
 
         $posts = Post::with(['specialty', 'tags', 'images'])
             ->where('hairdresser_id', $profile->id)
+            ->orderByDesc('is_pinned')
+            ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->get();
+
+        // saved_count réel (pas de compteur dénormalisé sur posts, contrairement
+        // à likes_count) — une seule requête groupée plutôt qu'une par post.
+        $savedCounts = DB::table('saved_posts')
+            ->whereIn('post_id', $posts->pluck('id'))
+            ->selectRaw('post_id, COUNT(*) as cnt')
+            ->groupBy('post_id')
+            ->pluck('cnt', 'post_id');
+
+        $posts->each(function ($post) use ($savedCounts) {
+            $post->saved_count = (int) ($savedCounts[$post->id] ?? 0);
+        });
 
         return response()->json($posts);
     }
@@ -66,6 +89,57 @@ class PostController extends Controller
         }
 
         $cloudinary = new CloudinaryService();
+
+        // ── Vidéo courte (CHAIR+) ─────────────────────────────────────
+        if ($request->hasFile('video')) {
+            if (!$profile->hasChairPlus()) {
+                return response()->json([
+                    'message'              => 'Les vidéos courtes sont réservées aux abonnés CHAIR+.',
+                    'chair_plus_required'  => true,
+                ], 403);
+            }
+
+            $request->validate([
+                // 25 Mo — plafond volontaire pour maîtriser le coût de stockage
+                // Cloudinary (voir docs/CHAIR_PLUS.md) ; durée/résolution/codec
+                // (30s max, 1080x1920, H264) sont des contraintes déclarées côté
+                // client (enregistrement/compression avant envoi) — aucune lib de
+                // transcodage serveur n'existe dans ce stack pour les vérifier ici.
+                'video'            => 'required|mimes:mp4,mov|max:25600',
+                'video_duration_seconds' => 'nullable|integer|min:1|max:30',
+                'description'      => 'nullable|string|max:1000',
+                'gender'           => 'nullable|string|in:homme,femme',
+                'specialty_id'     => 'nullable|integer|exists:specialties,id',
+                'tag_ids'          => 'nullable|string',
+            ]);
+
+            $videoUrl = $cloudinary->upload($request->file('video'), 'chair/post-videos', 'video');
+            // Cloudinary génère une vignette JPG automatique pour toute vidéo
+            // uploadée (même chemin, extension changée) — pas d'appel séparé.
+            $thumbnailUrl = preg_replace('/\.(mp4|mov|MP4|MOV)$/', '.jpg', $videoUrl);
+
+            $post = Post::create([
+                'hairdresser_id'          => $profile->id,
+                'specialty_id'            => $request->input('specialty_id'),
+                'gender'                  => $request->input('gender'),
+                'type'                    => 'video',
+                'description'             => $request->input('description'),
+                'cover_image'             => $thumbnailUrl,
+                'video_url'               => $videoUrl,
+                'video_thumbnail_url'     => $thumbnailUrl,
+                'video_duration_seconds'  => $request->input('video_duration_seconds'),
+                'is_published'            => true,
+                'views_count'             => 0,
+                'likes_count'             => 0,
+            ]);
+
+            $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
+            $profile->increment('posts_count');
+            StreakService::record($profile);
+            BadgeService::refresh($profile);
+
+            return response()->json($post->load(['specialty', 'tags', 'images']), 201);
+        }
 
         // ── Nouveau format : images[] ────────────────────────────────
         if ($request->hasFile('images')) {
@@ -108,6 +182,7 @@ class PostController extends Controller
             $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
             $profile->increment('posts_count');
             StreakService::record($profile);
+            BadgeService::refresh($profile);
 
             return response()->json($post->load(['specialty', 'tags', 'images']), 201);
         }
@@ -152,6 +227,7 @@ class PostController extends Controller
         $this->syncTags($post, $request->input('specialty_id'), $request->input('tag_ids'));
         $profile->increment('posts_count');
         StreakService::record($profile);
+        BadgeService::refresh($profile);
 
         return response()->json($post->load(['specialty', 'tags', 'images']), 201);
     }
@@ -172,12 +248,18 @@ class PostController extends Controller
             'gender'       => 'nullable|string|in:homme,femme',
             'specialty_id' => 'nullable|integer|exists:specialties,id',
             'tag_ids'      => 'nullable|string',
+            // Archiver = dépublier sans supprimer : disparaît du feed public et
+            // des classements/scores (mêmes filtres que show()/index() public),
+            // reste visible sur le portfolio du coiffeur lui-même (index() ici
+            // ne filtre pas is_published).
+            'is_published' => 'nullable|boolean',
         ]);
 
         $post->update([
             'description'  => $validated['description'] ?? $post->description,
             'gender'       => array_key_exists('gender', $validated) ? $validated['gender'] : $post->gender,
             'specialty_id' => array_key_exists('specialty_id', $validated) ? $validated['specialty_id'] : $post->specialty_id,
+            'is_published' => array_key_exists('is_published', $validated) ? $validated['is_published'] : $post->is_published,
         ]);
 
         if (array_key_exists('specialty_id', $validated) || array_key_exists('tag_ids', $validated)) {
@@ -205,6 +287,9 @@ class PostController extends Controller
         $cloudinary = new CloudinaryService();
         foreach ($post->images as $image) {
             $cloudinary->deleteOldMedia($image->url);
+        }
+        if ($post->video_url) {
+            $cloudinary->deleteOldMedia($post->video_url);
         }
         $post->images()->delete();
         $post->tags()->detach();
@@ -238,6 +323,60 @@ class PostController extends Controller
         DB::table('post_likes')->insert(['post_id' => $postId, 'user_id' => $userId, 'created_at' => now()]);
         $post->increment('likes_count');
         return response()->json(['liked' => true, 'likes_count' => $post->fresh()->likes_count]);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // ÉPINGLER
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * POST /posts/{id}/pin — épingle/désépingle une réalisation en tête de
+     * portfolio. Pas de limite en base — la limite (3 max, cohérence
+     * visuelle) est appliquée côté frontend au moment d'épingler.
+     */
+    public function togglePin(Request $request, int $postId)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        $post    = Post::where('id', $postId)
+            ->where('hairdresser_id', $profile?->id)
+            ->firstOrFail();
+
+        $post->update(['is_pinned' => !$post->is_pinned]);
+
+        return response()->json(['is_pinned' => $post->is_pinned]);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RÉORGANISER
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * PUT /posts/reorder — réordonne le portfolio après un drag & drop.
+     * Reçoit la liste COMPLÈTE des IDs dans le nouvel ordre souhaité.
+     */
+    public function reorder(Request $request)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        $validated = $request->validate([
+            'order'   => 'required|array|min:1',
+            'order.*' => 'integer',
+        ]);
+
+        $ownedIds = Post::where('hairdresser_id', $profile->id)
+            ->whereIn('id', $validated['order'])
+            ->pluck('id')
+            ->all();
+
+        foreach ($validated['order'] as $index => $postId) {
+            if (!in_array($postId, $ownedIds, true)) continue; // ignore un id qui n'appartient pas au coiffeur
+            Post::where('id', $postId)->update(['display_order' => $index]);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     // ════════════════════════════════════════════════════════════════

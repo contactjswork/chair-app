@@ -3,10 +3,21 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Heart } from 'lucide-react';
 import type { ApiPost } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 
 const INITIAL_COUNT = 6;
+
+function LikesBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold text-white bg-black/35 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+      <Heart size={10} fill="currentColor" strokeWidth={0} />
+      {count}
+    </span>
+  );
+}
 
 function PortfolioItem({ post }: { post: ApiPost }) {
   const url = resolveMediaUrl(getAfterImage(post));
@@ -23,6 +34,7 @@ function PortfolioItem({ post }: { post: ApiPost }) {
         className="object-cover group-hover:scale-[1.06] transition-transform duration-500 ease-out"
         sizes="(max-width: 768px) 33vw, 224px"
       />
+      <LikesBadge count={post.likes_count} />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors duration-300 flex flex-col justify-end p-2">
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-0.5">
           {post.specialty && (
@@ -56,6 +68,7 @@ function FeaturedItem({ post }: { post: ApiPost }) {
         sizes="(max-width: 768px) 67vw, 450px"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+      <LikesBadge count={post.likes_count} />
       <div className="absolute bottom-0 left-0 right-0 p-3">
         {post.specialty && (
           <span className="block text-[10px] text-white/75 font-semibold tracking-[0.15em] uppercase mb-0.5">

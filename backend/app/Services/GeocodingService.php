@@ -29,6 +29,7 @@ class GeocodingService
         'schweighouse sur moder'      => [48.8297,  7.7411, 'Schweighouse-sur-Moder'],
         'schweighouse-sur-moder'      => [48.8297,  7.7411, 'Schweighouse-sur-Moder'],
         'brumath'                     => [48.7308,  7.7106, 'Brumath'],
+        'gundershoffen'               => [48.9069,  7.6608, 'Gundershoffen'],
         'soufflenheim'                => [48.8322,  7.9789, 'Soufflenheim'],
         'niederbronn les bains'       => [48.9494,  7.6494, 'Niederbronn-les-Bains'],
         'niederbronn-les-bains'       => [48.9494,  7.6494, 'Niederbronn-les-Bains'],

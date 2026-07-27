@@ -21,7 +21,7 @@ class ServiceController extends Controller
 
         $categories = ServiceCategory::where('hairdresser_id', $profile->id)
             ->with(['services' => function ($q) {
-                $q->where('is_active', true)->orderBy('name');
+                $q->where('is_active', true)->orderBy('name')->with('specialty');
             }])
             ->orderBy('display_order')
             ->get();
@@ -100,7 +100,7 @@ class ServiceController extends Controller
     {
         $profile  = $this->getProfile($request);
         $services = Service::where('hairdresser_id', $profile->id)
-            ->with('category')
+            ->with(['category', 'specialty'])
             ->orderBy('category_id')
             ->orderBy('name')
             ->get();
@@ -113,6 +113,7 @@ class ServiceController extends Controller
 
         $validated = $request->validate([
             'category_id'      => 'required|integer|exists:service_categories,id',
+            'specialty_id'      => 'nullable|integer|exists:specialties,id',
             'name'             => 'required|string|max:150',
             'description'      => 'nullable|string|max:500',
             'price'            => 'nullable|numeric|min:0|max:9999.99',
@@ -128,7 +129,7 @@ class ServiceController extends Controller
             'hairdresser_id' => $profile->id,
         ]));
 
-        return response()->json($service->load('category'), 201);
+        return response()->json($service->fresh(['category', 'specialty']), 201);
     }
 
     public function updateService(Request $request, int $id)
@@ -138,6 +139,7 @@ class ServiceController extends Controller
 
         $validated = $request->validate([
             'category_id'      => 'sometimes|integer|exists:service_categories,id',
+            'specialty_id'      => 'nullable|integer|exists:specialties,id',
             'name'             => 'sometimes|string|max:150',
             'description'      => 'nullable|string|max:500',
             'price'            => 'sometimes|numeric|min:0|max:9999.99',
@@ -146,7 +148,7 @@ class ServiceController extends Controller
         ]);
 
         $service->update($validated);
-        return response()->json($service->load('category'));
+        return response()->json($service->load(['category', 'specialty']));
     }
 
     public function destroyService(Request $request, int $id)

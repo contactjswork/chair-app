@@ -117,9 +117,8 @@ export default function MonQrPage() {
 
       {/* Mobile top bar */}
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center gap-2 text-neutral-500 hover:text-neutral-900 transition-colors mr-auto">
-          <ArrowLeft size={16} />
-          <span className="text-xs font-medium">Tableau de bord</span>
+        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+          <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">
           Mon QR Code
@@ -130,21 +129,11 @@ export default function MonQrPage() {
 
         {/* Desktop header */}
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/pro" className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-700 transition-colors">
-            <ArrowLeft size={14} />
-            <span className="text-xs">Retour</span>
+          <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
+            <ArrowLeft size={16} />
           </Link>
           <span className="text-neutral-200">/</span>
           <h1 className="text-lg font-bold text-neutral-900">Mon QR Code CHAIR</h1>
-        </div>
-
-        {/* Explication */}
-        <div className="bg-neutral-900 text-white rounded-2xl px-5 py-4">
-          <p className="text-sm font-bold mb-1">Comment ça marche</p>
-          <p className="text-xs text-neutral-300 leading-relaxed">
-            Après chaque prestation, montrez ce QR à votre client. Il le scanne, confirme sa visite,
-            et peut laisser un avis certifié. Chaque visite validée alimente le score de la spécialité concernée.
-          </p>
         </div>
 
         {/* Sélection de la spécialité — la visite/l'avis qui en découle sont
@@ -174,8 +163,8 @@ export default function MonQrPage() {
               ))}
             </div>
             {!specialtyId && (
-              <p className="text-[11px] text-neutral-400 mt-2">
-                Optionnel, mais recommandé — sans ça, la visite n&apos;alimente aucune spécialité précise.
+              <p className="text-[11px] text-amber-600 mt-2">
+                Choisissez une prestation pour que la visite compte dans le bon classement.
               </p>
             )}
           </div>
@@ -216,7 +205,7 @@ export default function MonQrPage() {
                   value={qr.scan_url}
                   size={220}
                   level="M"
-                  includeMargin={false}
+                  includeMargin={true}
                   style={{ display: 'block' }}
                 />
               </div>

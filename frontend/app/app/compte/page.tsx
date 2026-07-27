@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, Lock, HelpCircle, Scissors, Trash2,
-  MapPin, Edit3, FileText, Shield,
+  MapPin, Edit3, FileText, Shield, Heart,
 } from 'lucide-react';
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
@@ -265,6 +265,24 @@ export default function ComptePage() {
               </section>
             )}
 
+
+            {/* ══════════════════════════════════════
+                MES INSPIRATIONS (clients uniquement)
+            ══════════════════════════════════════ */}
+            {user.role === 'client' && (
+              <section className="mt-6 px-4">
+                <Link
+                  href="/app/inspirations"
+                  className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-neutral-100 hover:bg-neutral-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <Heart size={17} className="text-neutral-400" />
+                    <span className="font-medium text-[14px] text-neutral-900">Mes inspirations</span>
+                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+              </section>
+            )}
 
             {/* ══════════════════════════════════════
                 MES RÉSERVATIONS (clients uniquement)

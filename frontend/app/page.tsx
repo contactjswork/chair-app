@@ -107,10 +107,8 @@ export default function HomePage() {
                   Je suis professionnel →
                 </Link>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 border-t border-white/[0.07] pt-8 text-center lg:text-left">
+              <div className="grid grid-cols-2 gap-5 border-t border-white/[0.07] pt-8 text-center lg:text-left max-w-[320px] lg:max-w-none">
                 {[
-                  { v: '+500', l: 'Professionnels' },
-                  { v: '4.9', l: 'Note moyenne' },
                   { v: '100%', l: 'Avis certifiés' },
                   { v: '0€', l: 'Pour les clients' },
                 ].map((s, i) => (

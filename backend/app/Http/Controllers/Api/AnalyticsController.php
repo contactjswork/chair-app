@@ -57,12 +57,22 @@ class AnalyticsController extends Controller
         $reviewsThisMonth = DB::table('reviews')
             ->where('hairdresser_id', $id)->where('created_at', '>=', $monthAgo)->count();
 
-        // ── Top spécialité (par likes/saves sur les posts) ─────────
+        // ── Top spécialité (par likes + favoris sur les réalisations) ──
+        // saved_posts n'a pas de compteur dénormalisé sur `posts` (contrairement
+        // à likes_count) — sous-requête plutôt qu'une colonne inexistante
+        // (bug trouvé en auditant : l'ancienne requête référençait
+        // `p.saves_count`, une colonne qui n'existe pas, 500 garanti dès
+        // qu'un coiffeur a un post avec spécialité).
         $topSpecialty = DB::table('posts as p')
             ->join('specialties as s', 's.id', '=', 'p.specialty_id')
+            ->leftJoinSub(
+                DB::table('saved_posts')->selectRaw('post_id, COUNT(*) as cnt')->groupBy('post_id'),
+                'sp',
+                'sp.post_id', '=', 'p.id'
+            )
             ->where('p.hairdresser_id', $id)
             ->where('p.is_published', true)
-            ->selectRaw('s.name, s.slug, SUM(p.likes_count + p.saves_count * 3) as engagement_score')
+            ->selectRaw('s.name, s.slug, SUM(p.likes_count + COALESCE(sp.cnt, 0) * 3) as engagement_score')
             ->groupBy('s.id', 's.name', 's.slug')
             ->orderByDesc('engagement_score')
             ->first();
@@ -107,6 +117,106 @@ class AnalyticsController extends Controller
             ] : null,
             'recommendations' => $recommendations,
         ]);
+    }
+
+    /**
+     * GET /analytics/timeseries?period=7d|30d|90d|12mo — séries réelles pour
+     * les graphiques (Performance). Group-by SQL sur les dates réelles,
+     * jamais de données interpolées/inventées — un jour sans activité vaut 0.
+     *
+     * 90d + visits/saves/conversion sont réservés CHAIR+ (analytics premium) —
+     * 7d/30d/12mo + posts/appointments/followers/revenue restent gratuits et
+     * inchangés (aucune fonctionnalité gratuite existante ne devient payante,
+     * voir docs/CHAIR_PLUS.md).
+     */
+    public function timeseries(Request $request)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+        $id = $profile->id;
+        $isPremium = $profile->hasChairPlus();
+
+        $period = $request->query('period', '7d');
+        if (!in_array($period, ['7d', '30d', '90d', '12mo'], true)) {
+            $period = '7d';
+        }
+        if ($period === '90d' && !$isPremium) {
+            $period = '30d';
+        }
+
+        if ($period === '12mo') {
+            $since = now()->subMonths(11)->startOfMonth();
+            $buckets = collect(range(0, 11))->map(fn($i) => now()->subMonths(11 - $i)->format('Y-m'));
+            $dateFormat = '%Y-%m';
+        } else {
+            $days  = $period === '90d' ? 89 : ($period === '30d' ? 29 : 6);
+            $since = now()->subDays($days)->startOfDay();
+            $buckets = collect(range(0, $days))->map(fn($i) => now()->subDays($days - $i)->format('Y-m-d'));
+            $dateFormat = '%Y-%m-%d';
+        }
+
+        $postsRaw = DB::table('posts')
+            ->where('hairdresser_id', $id)->where('is_published', true)
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as bucket, COUNT(*) as cnt")
+            ->groupBy('bucket')->pluck('cnt', 'bucket');
+
+        $apptRaw = DB::table('appointments')
+            ->where('hairdresser_id', $id)->where('status', 'completed')
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as bucket, COUNT(*) as cnt")
+            ->groupBy('bucket')->pluck('cnt', 'bucket');
+
+        $followersRaw = DB::table('follows')
+            ->where('hairdresser_id', $id)
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as bucket, COUNT(*) as cnt")
+            ->groupBy('bucket')->pluck('cnt', 'bucket');
+
+        $revenueRaw = DB::table('appointments')
+            ->where('hairdresser_id', $id)->where('status', 'completed')
+            ->where('created_at', '>=', $since)
+            ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as bucket, SUM(price) as total")
+            ->groupBy('bucket')->pluck('total', 'bucket');
+
+        $payload = [
+            'period'    => $period,
+            'is_premium' => $isPremium,
+            'labels'    => $buckets->values(),
+            'posts'     => $buckets->map(fn($b) => (int) ($postsRaw[$b] ?? 0))->values(),
+            'appointments' => $buckets->map(fn($b) => (int) ($apptRaw[$b] ?? 0))->values(),
+            'followers' => $buckets->map(fn($b) => (int) ($followersRaw[$b] ?? 0))->values(),
+            'revenue'   => $buckets->map(fn($b) => round((float) ($revenueRaw[$b] ?? 0), 2))->values(),
+        ];
+
+        if ($isPremium) {
+            $visitsRaw = DB::table('profile_views')
+                ->where('hairdresser_profile_id', $id)
+                ->where('created_at', '>=', $since)
+                ->selectRaw("DATE_FORMAT(created_at, '{$dateFormat}') as bucket, COUNT(*) as cnt")
+                ->groupBy('bucket')->pluck('cnt', 'bucket');
+
+            $savesRaw = DB::table('saved_posts as sp')
+                ->join('posts as p', 'p.id', '=', 'sp.post_id')
+                ->where('p.hairdresser_id', $id)
+                ->where('sp.created_at', '>=', $since)
+                ->selectRaw("DATE_FORMAT(sp.created_at, '{$dateFormat}') as bucket, COUNT(*) as cnt")
+                ->groupBy('bucket')->pluck('cnt', 'bucket');
+
+            $payload['visits'] = $buckets->map(fn($b) => (int) ($visitsRaw[$b] ?? 0))->values();
+            $payload['saves']  = $buckets->map(fn($b) => (int) ($savesRaw[$b] ?? 0))->values();
+            // Conversion réelle par bucket (visites → RDV honorés) — 0 si pas de
+            // visite ce bucket-là, jamais une division par zéro déguisée en 0%.
+            $payload['conversion'] = $buckets->map(function ($b) use ($visitsRaw, $apptRaw) {
+                $v = (int) ($visitsRaw[$b] ?? 0);
+                $a = (int) ($apptRaw[$b] ?? 0);
+                return $v > 0 ? round(($a / $v) * 100, 1) : 0.0;
+            })->values();
+        }
+
+        return response()->json($payload);
     }
 
     private function trend(int $current, int $previous): array

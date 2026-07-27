@@ -169,9 +169,8 @@ export function CoupDeCoeurStrip({ fallback }: { fallback: ApiHairdresserProfile
   return (
     <section className="pt-10">
       <SectionHeader
-        tag="Sélection éditoriale"
-        title={isGeo ? 'Coups de cœur près de vous' : 'Coup de cœur CHAIR'}
-        subtitle={isGeo ? 'Les profils qu\'on adore dans votre région' : 'Les profils que notre équipe adore'}
+        tag="Sélection CHAIR"
+        title={isGeo ? 'Coups de cœur dans votre région' : 'Coup de cœur CHAIR'}
         href="/app/recherche"
       />
       <FeaturedAvatarStrip hairdressers={hairdressers} />
@@ -201,8 +200,7 @@ export function PopularStrip({ fallback }: { fallback: ApiHairdresserProfile[] }
     <section className="pt-10">
       <SectionHeader
         tag="Tendance"
-        title={isGeo ? 'Les plus demandés près de vous' : 'Les plus demandés'}
-        subtitle={isGeo ? 'Les coiffeurs qui cartonnent dans votre secteur' : 'Les coiffeurs qui cartonnent en ce moment'}
+        title={isGeo ? 'Les plus demandés dans votre secteur' : 'Les plus demandés'}
         href="/app/recherche"
       />
       <HDStrip hairdressers={hairdressers} badge="Tendance" badgeCls="bg-white/90 !text-neutral-900" />
@@ -231,9 +229,8 @@ export function NewTalentsStrip({ fallback }: { fallback: ApiHairdresserProfile[
   return (
     <section className="pt-10">
       <SectionHeader
-        tag="À découvrir"
-        title={isGeo ? 'Nouveaux talents près de vous' : 'Nouveaux talents'}
-        subtitle={isGeo ? 'Les nouvelles têtes de votre région' : 'Ils viennent de rejoindre CHAIR'}
+        tag="Nouveau sur CHAIR"
+        title={isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents'}
         href="/app/recherche"
       />
       <HDStrip hairdressers={hairdressers} badge="Nouveau" badgeCls="bg-neutral-900" />

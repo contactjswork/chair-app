@@ -114,6 +114,7 @@ export default function StoryViewer({
             className="w-full h-full object-contain"
             autoPlay
             playsInline
+            muted
             onEnded={goNext}
             onTimeUpdate={(e) => {
               const v = e.currentTarget;

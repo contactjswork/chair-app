@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\HairdresserProfile;
 use App\Models\Specialty;
 use App\Models\Service;
+use App\Services\BadgeService;
 
 class SearchController extends Controller
 {
@@ -141,6 +142,8 @@ class SearchController extends Controller
             }
             unset($h->_score, $h->_distance_km);
         });
+
+        BadgeService::attachGamification($items);
 
         return response()->json([
             'data'         => $items,

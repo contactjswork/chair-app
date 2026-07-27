@@ -7,6 +7,7 @@ import { useNotificationCount } from '@/contexts/NotificationContext';
 import { useProNav } from '@/hooks/useProNav';
 import { Bell, ArrowLeft, LogOut } from 'lucide-react';
 import ChairLogo from '@/components/ui/ChairLogo';
+import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
 export default function ProSidebar() {
   const pathname = usePathname();
@@ -28,6 +29,11 @@ export default function ProSidebar() {
           <ArrowLeft size={12} /><span>App</span>
         </Link>
       </div>
+      {(user?.can_manage_salon && user?.has_hairdresser_profile) && (
+        <div className="px-4 pt-3">
+          <ProModeSwitcher />
+        </div>
+      )}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {primary.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href}

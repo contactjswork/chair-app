@@ -1,6 +1,6 @@
 import {
   Home, CalendarDays, Images, TrendingUp, User, Building2, Briefcase, QrCode,
-  Users, Clock, Scissors, Crown, Gift, Sparkles, Armchair,
+  Users, Clock, Scissors, Crown, Gift, Sparkles, Armchair, Trophy,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,6 +35,7 @@ function salarieNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/services',      label: 'Mes expertises',  icon: Scissors },
       { href: '/pro/business',      label: 'Performance',     icon: TrendingUp },
       { href: '/pro/badges',        label: 'Badges',          icon: Crown },
+      { href: '/app/classements',   label: 'Classement',      icon: Trophy },
       { href: '/pro/parrainage',    label: 'Parrainage',      icon: Gift },
       { href: '/pro/chair-plus',    label: 'CHAIR+',          icon: Sparkles },
       { href: '/pro/offres-emploi', label: "Offres d'emploi", icon: Briefcase },
@@ -59,6 +60,7 @@ function independantNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/reservations',      label: 'Réservations',      icon: Clock },
       { href: '/pro/services',          label: 'Services',          icon: Scissors },
       { href: '/pro/badges',            label: 'Badges',            icon: Crown },
+      { href: '/app/classements',       label: 'Classement',        icon: Trophy },
       { href: '/pro/parrainage',        label: 'Parrainage',        icon: Gift },
       { href: '/pro/chair-plus',        label: 'CHAIR+',            icon: Sparkles },
       { href: '/pro/fauteuils-a-louer', label: 'Louer un fauteuil', icon: Armchair },
@@ -75,23 +77,31 @@ function salonOwnerNav(): ProNavConfig {
   return {
     primary: [
       { href: '/pro/salon-owner', label: 'Accueil',     icon: Home },
-      { href: '/pro/salon',       label: 'Salon',       icon: Building2 },
       { href: '/pro/equipe',      label: 'Équipe',      icon: Users },
+      { href: '/pro/fauteuils',   label: 'Fauteuils',   icon: Armchair },
       { href: '/pro/recrutement', label: 'Recrutement', icon: Briefcase },
-      { href: '/pro/profil',      label: 'Profil',      icon: User },
+      { href: '/pro/compte',      label: 'Profil',      icon: User },
     ],
     secondary: [
-      { href: '/pro/fauteuils', label: 'Fauteuils', icon: Armchair },
+      { href: '/pro/salon',          label: 'Salon',          icon: Building2 },
+      { href: '/pro/salon/business', label: 'CHAIR Business', icon: Sparkles },
     ],
     homeHref: '/pro/salon-owner',
   };
 }
 
+/**
+ * Double identité gérant/coiffeur : un compte qui possède les deux capacités
+ * (canManageSalon + hasHairdresserProfile) affiche la nav du mode ACTIF
+ * (active_pro_mode), pas celle de son `role` d'inscription — sinon un gérant
+ * qui bascule en Mode Coiffeur resterait coincé sur la nav Salon.
+ */
 export function useProNav(): ProNavConfig {
   const { user } = useAuth();
   const hasSalon = !!user?.hairdresser_profile?.salon_id;
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
+  const effectiveMode = user?.active_pro_mode ?? user?.role;
 
-  if (user?.role === 'salon_owner') return salonOwnerNav();
+  if (effectiveMode === 'salon_owner') return salonOwnerNav();
   return isIndependent ? independantNav(hasSalon) : salarieNav(hasSalon);
 }

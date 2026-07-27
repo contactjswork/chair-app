@@ -13,13 +13,26 @@ class Review extends Model
         'hairdresser_id',
         'client_id',
         'appointment_id',
+        'verified_visit_id',
         'rating',
         'comment',
         'hairdresser_reply',
         'replied_at',
         'specialty',
+        'specialty_id',
         'is_verified',
+        'is_certified',
     ];
+
+    protected $casts = [
+        'is_verified'  => 'boolean',
+        'is_certified' => 'boolean',
+    ];
+
+    public function specialtyModel()
+    {
+        return $this->belongsTo(Specialty::class, 'specialty_id');
+    }
 
     public function client()
     {
