@@ -136,14 +136,11 @@ export default function FauteuilsALouerPage() {
           </div>
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
-            <Armchair size={36} className="text-neutral-200 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-neutral-700">Aucune annonce disponible</p>
-            <p className="text-xs text-neutral-400 mt-1">Revenez plus tard ou modifiez vos filtres.</p>
-          </div>
-        ) : view === 'map' ? (
+        {view === 'map' ? (
           <div>
+            {/* La carte reste toujours montée en vue carte, même à 0 résultat —
+                sinon l'utilisateur qui tape sur "carte" ne voit jamais la carte
+                elle-même et croit qu'elle est cassée. */}
             <div className="rounded-2xl overflow-hidden border border-neutral-100 h-[45vh] mb-3">
               <ChairSearchMap
                 items={filtered
@@ -155,6 +152,13 @@ export default function FauteuilsALouerPage() {
                 initialZoom={DEFAULT_MAP_ZOOM}
               />
             </div>
+            {filtered.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-neutral-100 p-8 text-center">
+                <Armchair size={32} className="text-neutral-200 mx-auto mb-2.5" />
+                <p className="text-sm font-semibold text-neutral-700">Aucune annonce disponible</p>
+                <p className="text-xs text-neutral-400 mt-1">Revenez plus tard ou modifiez vos filtres.</p>
+              </div>
+            ) : (
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
               {filtered.map((r) => {
                 const firstPhoto = r.photos?.[0];
@@ -186,6 +190,13 @@ export default function FauteuilsALouerPage() {
                 );
               })}
             </div>
+            )}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
+            <Armchair size={36} className="text-neutral-200 mx-auto mb-3" />
+            <p className="text-sm font-semibold text-neutral-700">Aucune annonce disponible</p>
+            <p className="text-xs text-neutral-400 mt-1">Revenez plus tard ou modifiez vos filtres.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

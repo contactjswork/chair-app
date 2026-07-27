@@ -19,13 +19,23 @@ export default function ParrainagePage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
   const [data, setData] = useState<ApiReferral | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  function loadReferral() {
+    setDataLoading(true);
+    setLoadError(false);
+    referral.mine()
+      .then(setData)
+      .catch(() => setLoadError(true))
+      .finally(() => setDataLoading(false));
+  }
+
   useEffect(() => {
     if (!user) return;
-    referral.mine().then(setData).catch(() => {}).finally(() => setDataLoading(false));
+    loadReferral();
   }, [user]);
 
   function showRewardToast(points: number) {
@@ -161,7 +171,18 @@ export default function ParrainagePage() {
           </>
         ) : (
           <div className="bg-white rounded-2xl border border-neutral-100 px-5 py-10 text-center">
-            <p className="text-sm font-semibold text-neutral-400">Impossible de charger votre parrainage.</p>
+            <p className="text-sm font-semibold text-neutral-700 mb-1">
+              {loadError ? 'Connexion impossible' : 'Impossible de charger votre parrainage'}
+            </p>
+            <p className="text-xs text-neutral-400 mb-4">
+              {loadError ? 'Vérifiez votre connexion et réessayez.' : 'Une erreur est survenue de notre côté.'}
+            </p>
+            <button
+              onClick={loadReferral}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors"
+            >
+              Réessayer
+            </button>
           </div>
         )}
       </div>

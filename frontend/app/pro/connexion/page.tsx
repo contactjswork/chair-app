@@ -1,16 +1,35 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ChairLogo from '@/components/ui/ChairLogo';
+import OnboardingCarousel, { type OnboardingSlide } from '@/components/ui/OnboardingCarousel';
+import { TrendingUp, Award, CalendarClock, Briefcase } from 'lucide-react';
+
+const ONBOARDING_KEY = 'chair_pro_onboarding_seen';
+
+const SLIDES: OnboardingSlide[] = [
+  { Icon: TrendingUp,   title: 'Fais connaître ton talent.',           body: "CHAIR PRO aide les coiffeurs à gagner en visibilité et à développer leur clientèle." },
+  { Icon: Award,        title: 'Construis ta réputation.',              body: 'Portfolio, avis certifiés, spécialités, badges et classements.' },
+  { Icon: CalendarClock,title: 'Gère ton activité.',                    body: 'Agenda, performances, profil, demandes et outils professionnels.' },
+  { Icon: Briefcase,    title: 'Trouve de nouvelles opportunités.',     body: 'Location de fauteuil, recrutement et réseau professionnel.' },
+];
 
 export default function ProConnexionPage() {
   const { login } = useAuth();
+  const router = useRouter();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => typeof window !== 'undefined' && !localStorage.getItem(ONBOARDING_KEY));
+
+  function dismissOnboarding() {
+    localStorage.setItem(ONBOARDING_KEY, '1');
+    setShowOnboarding(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,6 +43,20 @@ export default function ProConnexionPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (showOnboarding) {
+    return (
+      <OnboardingCarousel
+        slides={SLIDES}
+        dark
+        primaryLabel="Créer mon profil"
+        secondaryLabel="J'ai déjà un compte — Se connecter"
+        onPrimary={() => { dismissOnboarding(); router.push('/pro/inscription'); }}
+        onSecondary={dismissOnboarding}
+        onSkip={dismissOnboarding}
+      />
+    );
   }
 
   return (

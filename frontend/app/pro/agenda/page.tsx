@@ -356,7 +356,7 @@ function AppointmentBlock({
 
   return (
     <div
-      className={`absolute left-0.5 right-1 rounded-xl overflow-hidden select-none ${b.bg} border-l-2 ${b.bar.replace('bg-','border-')} ${
+      className={`absolute left-0.5 right-1 rounded-xl overflow-hidden select-none touch-none ${b.bg} border-l-2 ${b.bar.replace('bg-','border-')} ${
         isGhost ? 'opacity-30' : ''
       } ${
         isDragging
@@ -393,12 +393,14 @@ function AppointmentBlock({
         </div>
       ) : content}
 
-      {/* Resize handle */}
+      {/* Resize handle — zone tactile agrandie (h-6 = 24px, plus grande que
+          la barre visuelle) pour rester saisissable au doigt sans envahir
+          visuellement les blocs courts. */}
       <div
-        className="absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-end justify-center pb-0.5"
+        className="absolute bottom-0 left-0 right-0 h-6 cursor-ns-resize touch-none flex items-end justify-center pb-1"
         onPointerDown={onResizePointerDown}
       >
-        <div className={`w-6 h-0.5 rounded-full opacity-40 ${b.bar}`} />
+        <div className={`w-8 h-1 rounded-full opacity-50 ${b.bar}`} />
       </div>
     </div>
   );
@@ -640,6 +642,23 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
 
   const closeSwipe = () => { setSwipeAptId(null); setSwipeX(0); };
 
+  // Fait défiler la vue quand le doigt approche du haut/bas pendant un
+  // drag ou un redimensionnement, pour pouvoir déplacer un RDV vers un
+  // horaire hors écran sans devoir relâcher puis re-scroller manuellement.
+  const EDGE_ZONE = 60;
+  const autoScrollIfNearEdge = (clientY: number) => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    const rect = scrollEl.getBoundingClientRect();
+    const distTop = clientY - rect.top;
+    const distBottom = rect.bottom - clientY;
+    if (distTop < EDGE_ZONE) {
+      scrollEl.scrollTop -= (EDGE_ZONE - distTop) / 3;
+    } else if (distBottom < EDGE_ZONE) {
+      scrollEl.scrollTop += (EDGE_ZONE - distBottom) / 3;
+    }
+  };
+
   const onContainerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only fires on empty area (blocks call e.stopPropagation on pointer down)
     if (swipeAptId !== null) { closeSwipe(); return; }
@@ -661,6 +680,10 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
 
   const onBlockPointerDown = (e: React.PointerEvent, apt: ApiAppointment) => {
     e.stopPropagation();
+    // Capture le pointeur sur CE bloc : tous les events suivants (move/up)
+    // lui sont garantis même si le doigt sort de ses limites en cours de
+    // geste (cause principale du "ça marche une fois sur deux" en tactile).
+    e.currentTarget.setPointerCapture(e.pointerId);
     if (longTimer.current) clearTimeout(longTimer.current);
     if (swipeAptId !== null && swipeAptId !== apt.id) closeSwipe();
     const startMin = apt.appointment_time ? toMin(apt.appointment_time) : START_HOUR*60;
@@ -669,7 +692,9 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
 
   const onResizePointerDown = (e: React.PointerEvent, apt: ApiAppointment) => {
     e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
     if (longTimer.current) clearTimeout(longTimer.current);
+    navigator.vibrate?.(10);
     resizeInfo.current = { aptId:apt.id, startY:e.clientY, origDur: apt.duration_minutes??60 };
     setResizeAptId(apt.id);
   };
@@ -697,11 +722,13 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
           if (apt && swipeActionsFor(apt).length > 0) info.mode = 'horizontal';
         } else if (Math.abs(dy) > DRAG_THRESH) {
           info.mode = 'vertical';
+          navigator.vibrate?.(10);
         }
       }
       if (info.mode === 'vertical') {
         setDragAptId(info.aptId);
         setDragPreview(getMinFromY(e.clientY));
+        autoScrollIfNearEdge(e.clientY);
       } else if (info.mode === 'horizontal') {
         const apt = appointments.find(a=>a.id===info.aptId);
         const stripW = apt ? swipeActionsFor(apt).length * 34 + 8 : 0;
@@ -711,6 +738,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     }
     // Resize
     if (resizeInfo.current) {
+      autoScrollIfNearEdge(e.clientY);
       const dy = e.clientY - resizeInfo.current.startY;
       const delta = snap((dy/hourHeight)*60);
       const newDur = Math.max(SNAP_MIN, resizeInfo.current.origDur + delta);
@@ -819,7 +847,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerDown={onContainerPointerDown}
-        onPointerLeave={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         {/* Hour labels */}
         <div className="flex-shrink-0 w-12 relative select-none pointer-events-none" style={{height:totalHeight}}>

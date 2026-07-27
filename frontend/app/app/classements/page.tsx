@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { leaderboard, api } from '@/lib/api';
 import type { ApiLeaderboard, ApiLeaderboardEntry, ApiMySpecialtyRank, ApiSpecialty, ApiSpecialtyLeaderboard, ApiSpecialtyLeaderboardEntry } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
-import { Trophy, Star, TrendingUp, ImageIcon, Users, BadgeCheck, Crown, Scissors, MapPin, Award, Pencil } from 'lucide-react';
+import { Trophy, Star, TrendingUp, ImageIcon, Users, BadgeCheck, Crown, Scissors, MapPin, Award, Pencil, Search } from 'lucide-react';
 
 const TYPES = [
   { key: 'engagement',  label: 'Engagement',   icon: Trophy,     note: 'Abonnés, avis, réalisations et activité, combinés.' },
@@ -58,14 +58,29 @@ function LocationChip({ value, inputPlaceholder, onSubmit }: { value: string; in
     );
   }
 
+  // Deux styles distincts : "aucun filtre" (recherche vide, look neutre en
+  // pointillés, jamais confondu avec un chip de filtre spécialité actif) vs
+  // "filtré sur X" (rempli, même look que les autres filtres actifs).
+  if (!value) {
+    return (
+      <button
+        onClick={() => { setDraft(''); setEditing(true); }}
+        className="inline-flex items-center gap-1.5 max-w-full text-[12px] font-medium px-3 py-2 rounded-xl border border-dashed border-neutral-200 text-neutral-400 hover:border-neutral-300 hover:text-neutral-500 transition-all"
+      >
+        <Search size={11} className="flex-shrink-0" />
+        <span className="truncate">Toute la France — chercher une zone</span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={() => { setDraft(value); setEditing(true); }}
-      className="inline-flex items-center gap-1.5 max-w-full text-[12px] font-semibold px-3 py-2 rounded-xl border border-neutral-200 text-neutral-700 hover:border-neutral-400 transition-all"
+      className="inline-flex items-center gap-1.5 max-w-full text-[12px] font-semibold px-3 py-2 rounded-xl border border-neutral-900 bg-neutral-900 text-white transition-all"
     >
-      <MapPin size={11} className="text-neutral-400 flex-shrink-0" />
-      <span className="truncate">{value || 'France entière'}</span>
-      <Pencil size={10} className="text-neutral-300 flex-shrink-0" />
+      <MapPin size={11} className="text-white/60 flex-shrink-0" />
+      <span className="truncate">{value}</span>
+      <Pencil size={10} className="text-white/40 flex-shrink-0" />
     </button>
   );
 }
