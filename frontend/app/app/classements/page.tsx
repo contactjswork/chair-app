@@ -1,214 +1,271 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { leaderboard, api } from '@/lib/api';
-import type { ApiLeaderboard, ApiLeaderboardEntry, ApiMySpecialtyRank, ApiSpecialty, ApiSpecialtyLeaderboard, ApiSpecialtyLeaderboardEntry } from '@/lib/types';
+import type { ApiLeaderboard, ApiLeaderboardEntry, ApiSpecialty, ApiSpecialtyLeaderboard, ApiSpecialtyLeaderboardEntry } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
-import { Trophy, Star, TrendingUp, ImageIcon, Users, BadgeCheck, Crown, Scissors, MapPin, Award, Pencil, Search } from 'lucide-react';
+import {
+  Trophy, Star, BadgeCheck, Search, X, ChevronRight,
+  HelpCircle, RotateCcw, WifiOff,
+} from 'lucide-react';
 
-const TYPES = [
-  { key: 'engagement',  label: 'Engagement',   icon: Trophy,     note: 'Abonnés, avis, réalisations et activité, combinés.' },
-  { key: 'reviews',     label: 'Avis',         icon: Star,       note: 'Note moyenne pondérée par le nombre d\'avis.' },
-  { key: 'posts',       label: 'Réalisations', icon: ImageIcon,  note: 'Nombre de réalisations publiées.' },
-  { key: 'progression', label: 'Progression',  icon: TrendingUp, note: 'Les talents qui progressent le plus vite.' },
-];
+// ── Type d'entrée normalisé pour l'affichage — les deux endpoints backend
+// (global / par spécialité) renvoient des formes différentes, unifiées ici
+// pour que le podium et la liste n'aient qu'un seul type à gérer. ──────────
+interface DisplayEntry {
+  rank: number;
+  id: number;
+  slug: string;
+  name: string;
+  avatar: string | null;
+  city: string | null;
+  metaLabel: string | null;   // spécialité (mode global) ou niveau (mode spécialité)
+  ratingLabel: string | null; // "4,9 · 86 avis" — seulement quand la donnée existe réellement
+  isVerified: boolean;
+}
 
-const LEVEL_PILL: Record<string, string> = {
-  neutral: 'bg-neutral-100 text-neutral-500',
-  bronze:  'bg-amber-100 text-amber-700',
-  silver:  'bg-neutral-200 text-neutral-700',
-  gold:    'bg-yellow-100 text-yellow-700',
-  purple:  'bg-purple-100 text-purple-700',
-  diamond: 'bg-neutral-900 text-white',
-};
+function fromGlobal(e: ApiLeaderboardEntry): DisplayEntry {
+  return {
+    rank: e.rank, id: e.id, slug: e.slug, name: e.name, avatar: e.avatar, city: e.city,
+    metaLabel: e.specialty,
+    ratingLabel: e.avg_rating > 0 ? `${e.avg_rating.toFixed(1)} · ${e.reviews_count} avis` : null,
+    isVerified: e.is_verified,
+  };
+}
 
-/**
- * Pastille lieu éditable en un tap. Pas de bouton "France" séparé : le champ
- * accepte directement "France" (ou vide) pour revenir au classement national
- * — un seul endroit où taper une zone, quelle qu'elle soit.
- */
-function LocationChip({ value, inputPlaceholder, onSubmit }: { value: string; inputPlaceholder: string; onSubmit: (v: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(value);
+function fromSpecialty(e: ApiSpecialtyLeaderboardEntry): DisplayEntry {
+  return {
+    rank: e.rank, id: e.id, slug: e.slug, name: e.name, avatar: e.avatar, city: e.city,
+    metaLabel: e.is_reference ? 'Référence — Top 1%' : e.level_name,
+    ratingLabel: null,
+    isVerified: e.is_verified,
+  };
+}
 
-  if (editing) {
-    return (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const trimmed = draft.trim();
-          onSubmit(/^france$/i.test(trimmed) ? '' : trimmed);
-          setEditing(false);
-        }}
-        className="flex gap-2 w-full"
-      >
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={inputPlaceholder}
-          className="flex-1 min-w-0 border border-neutral-200 rounded-xl px-3 py-2 text-[13px] focus:outline-none focus:border-neutral-400 placeholder:text-neutral-400"
-        />
-        <button type="submit" className="bg-neutral-900 text-white text-[12px] font-semibold px-4 py-2 rounded-xl flex-shrink-0">OK</button>
-      </form>
-    );
-  }
+function buildTitle(specialtyName: string | null, geoValue: string): { title: string; subtitle: string } {
+  if (specialtyName && geoValue) return { title: `Meilleurs coiffeurs en ${specialtyName}`, subtitle: `à ${geoValue}` };
+  if (specialtyName) return { title: `Meilleurs coiffeurs en ${specialtyName}`, subtitle: 'Toute la communauté CHAIR' };
+  if (geoValue) return { title: 'Les mieux classés', subtitle: `à ${geoValue}` };
+  return { title: 'Les meilleurs coiffeurs', subtitle: 'Découvrez les professionnels les mieux notés de la communauté CHAIR.' };
+}
 
-  // Deux styles distincts : "aucun filtre" (recherche vide, look neutre en
-  // pointillés, jamais confondu avec un chip de filtre spécialité actif) vs
-  // "filtré sur X" (rempli, même look que les autres filtres actifs).
-  if (!value) {
-    return (
-      <button
-        onClick={() => { setDraft(''); setEditing(true); }}
-        className="inline-flex items-center gap-1.5 max-w-full text-[12px] font-medium px-3 py-2 rounded-xl border border-dashed border-neutral-200 text-neutral-400 hover:border-neutral-300 hover:text-neutral-500 transition-all"
-      >
-        <Search size={11} className="flex-shrink-0" />
-        <span className="truncate">Toute la France — chercher une zone</span>
-      </button>
-    );
-  }
+// ── Barre de recherche géo — texte libre, jamais pré-rempli ────────────────
+function GeoSearchBar({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
 
   return (
-    <button
-      onClick={() => { setDraft(value); setEditing(true); }}
-      className="inline-flex items-center gap-1.5 max-w-full text-[12px] font-semibold px-3 py-2 rounded-xl border border-neutral-900 bg-neutral-900 text-white transition-all"
+    <form
+      onSubmit={(e) => { e.preventDefault(); onChange(draft.trim()); }}
+      className="relative"
     >
-      <MapPin size={11} className="text-white/60 flex-shrink-0" />
-      <span className="truncate">{value}</span>
-      <Pencil size={10} className="text-white/40 flex-shrink-0" />
+      <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+      <input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => onChange(draft.trim())}
+        placeholder="Rechercher une ville, une région ou un département"
+        className="w-full pl-11 pr-9 py-3.5 bg-neutral-100 rounded-2xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all"
+      />
+      {draft && (
+        <button
+          type="button"
+          onClick={() => { setDraft(''); onChange(''); }}
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+        >
+          <X size={15} />
+        </button>
+      )}
+    </form>
+  );
+}
+
+function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-shrink-0 text-[12px] font-semibold px-3.5 py-2 rounded-xl border transition-all ${
+        active ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
+      }`}
+    >
+      {label}
     </button>
   );
 }
 
-function SpecialtyLeaderboardCard({ entry, isMe }: { entry: ApiSpecialtyLeaderboardEntry; isMe?: boolean }) {
+function RemovableChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <button
+      onClick={onRemove}
+      className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full bg-neutral-900 text-white"
+    >
+      {label}
+      <X size={11} className="text-white/60" />
+    </button>
+  );
+}
+
+// ── Bottom sheet spécialité ─────────────────────────────────────────────
+function SpecialtySheet({
+  specialties, selectedId, onSelect, onClose,
+}: { specialties: ApiSpecialty[]; selectedId: number | null; onSelect: (id: number | null) => void; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-t-3xl w-full max-w-lg shadow-2xl p-5 pb-8 max-h-[75vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[16px] font-bold text-neutral-900">Spécialité</p>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100">
+            <X size={15} />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => { onSelect(null); onClose(); }}
+            className={`text-left px-4 py-3 rounded-2xl text-[13px] font-semibold border transition-all ${
+              selectedId === null ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-700 hover:border-neutral-400'
+            }`}
+          >
+            Toutes spécialités
+          </button>
+          {specialties.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => { onSelect(s.id); onClose(); }}
+              className={`text-left px-4 py-3 rounded-2xl text-[13px] font-semibold border transition-all ${
+                selectedId === s.id ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-700 hover:border-neutral-400'
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Bottom sheet explication ────────────────────────────────────────────
+function ExplainSheet({ onClose }: { onClose: () => void }) {
+  const points = [
+    'La qualité et la quantité des avis certifiés (un avis isolé ne suffit jamais à dépasser un profil avec beaucoup d\'avis constants).',
+    'L\'activité récente et la régularité des publications.',
+    'La qualité du profil et du portfolio.',
+    'La pertinence dans la spécialité choisie.',
+    'La zone géographique lorsqu\'un filtre local est appliqué.',
+  ];
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-t-3xl w-full max-w-lg shadow-2xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[16px] font-bold text-neutral-900">Comment fonctionne le classement ?</p>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
+            <X size={15} />
+          </button>
+        </div>
+        <p className="text-[13px] text-neutral-500 mb-4 leading-relaxed">
+          La position d&apos;un coiffeur dépend de plusieurs signaux combinés, pas d&apos;un seul chiffre :
+        </p>
+        <ul className="space-y-2.5 mb-4">
+          {points.map((p, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-[13px] text-neutral-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 flex-shrink-0" />
+              {p}
+            </li>
+          ))}
+        </ul>
+        <p className="text-[12px] text-neutral-400 leading-relaxed">
+          Les nouveaux talents avec une activité forte peuvent progresser rapidement — l&apos;ancienneté seule ne garantit pas une bonne place.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Podium (top 3) ──────────────────────────────────────────────────────
+function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' }) {
   const avatar = resolveMediaUrl(entry.avatar);
   const initial = (entry.name ?? '?').charAt(0).toUpperCase();
-  const isTop3 = entry.rank <= 3;
+  const isFirst = size === 'lg';
 
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors ${
-        isMe ? 'bg-neutral-900/[0.03] ring-1 ring-inset ring-neutral-300' : entry.rank === 1 ? 'bg-yellow-50/60' : ''
+      className={`flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-sm transition-all ${
+        isFirst ? 'p-5 flex-[1.15]' : 'p-3.5 flex-1'
       }`}
     >
-      <RankBadge rank={entry.rank} />
-      <div className={`relative flex-shrink-0 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center ${isTop3 ? 'w-11 h-11' : 'w-9 h-9'}`}>
-        {avatar ? (
-          <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="44px" />
-        ) : (
-          <span className="text-sm font-bold text-neutral-500">{initial}</span>
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <p className={`font-semibold truncate ${isTop3 ? 'text-[14px]' : 'text-[13px]'} text-neutral-900`}>{entry.name}</p>
-          {isMe && <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Vous</span>}
-          {entry.is_verified && <BadgeCheck size={12} className="text-blue-500 flex-shrink-0" />}
+      <div className="relative mb-2">
+        <div className={`relative rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center ${isFirst ? 'w-20 h-20' : 'w-14 h-14'}`}>
+          {avatar ? (
+            <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="80px" />
+          ) : (
+            <span className={`font-bold text-neutral-500 ${isFirst ? 'text-2xl' : 'text-lg'}`}>{initial}</span>
+          )}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-neutral-400">
-          {entry.city && <span>{entry.city}</span>}
-          <span className={`font-bold px-1.5 py-0.5 rounded-full text-[9px] uppercase tracking-wide ${LEVEL_PILL[entry.level_color] ?? LEVEL_PILL.neutral}`}>
-            {entry.is_reference ? 'Légende — Top 1%' : entry.level_name}
-          </span>
-        </div>
+        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full font-bold border-2 border-white ${
+          entry.rank === 1 ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600'
+        } ${isFirst ? 'w-7 h-7 text-[12px]' : 'w-6 h-6 text-[11px]'}`}>
+          {entry.rank}
+        </span>
       </div>
-      <div className="text-right flex-shrink-0">
-        <p className={`font-bold ${isTop3 ? 'text-[15px] text-neutral-900' : 'text-[13px] text-neutral-600'}`}>{entry.score.toLocaleString('fr-FR')}</p>
-        <p className="text-[10px] text-neutral-400">pts</p>
-      </div>
+      <p className={`font-bold text-neutral-900 truncate w-full flex items-center justify-center gap-1 ${isFirst ? 'text-[14px]' : 'text-[12px]'}`}>
+        {entry.name}
+        {entry.isVerified && <BadgeCheck size={isFirst ? 13 : 11} className="text-blue-500 flex-shrink-0" />}
+      </p>
+      {entry.city && <p className={`text-neutral-400 truncate w-full ${isFirst ? 'text-[11px]' : 'text-[10px]'} mt-0.5`}>{entry.city}</p>}
+      {entry.metaLabel && (
+        <span className={`mt-1.5 inline-block px-2 py-0.5 rounded-full font-semibold truncate max-w-full ${isFirst ? 'text-[10px]' : 'text-[9px]'} bg-neutral-100 text-neutral-600`}>
+          {entry.metaLabel}
+        </span>
+      )}
+      {entry.ratingLabel && (
+        <p className={`mt-1 font-semibold text-neutral-700 flex items-center gap-1 ${isFirst ? 'text-[11px]' : 'text-[10px]'}`}>
+          <Star size={isFirst ? 10 : 9} className="fill-amber-400 text-amber-400" />{entry.ratingLabel}
+        </p>
+      )}
     </Link>
   );
 }
 
-const RANK_COLORS: Record<number, string> = {
-  1: 'text-yellow-500',
-  2: 'text-neutral-400',
-  3: 'text-amber-600',
-};
-
-function RankBadge({ rank }: { rank: number }) {
-  const color = RANK_COLORS[rank] ?? 'text-neutral-300';
-  if (rank <= 3) {
-    return (
-      <div className={`w-8 h-8 flex items-center justify-center`}>
-        <Crown size={18} className={color} />
-      </div>
-    );
-  }
-  return (
-    <span className="w-8 h-8 flex items-center justify-center text-[13px] font-bold text-neutral-400">
-      {rank}
-    </span>
-  );
-}
-
-function LeaderboardCard({ entry }: { entry: ApiLeaderboardEntry }) {
+// ── Ligne de liste (rang 4+) ────────────────────────────────────────────
+function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
   const avatar = resolveMediaUrl(entry.avatar);
   const initial = (entry.name ?? '?').charAt(0).toUpperCase();
-  const isTop3 = entry.rank <= 3;
 
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors ${
-        entry.rank === 1 ? 'bg-yellow-50/60' : ''
-      }`}
+      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors ${isMe ? 'bg-neutral-900/[0.03] ring-1 ring-inset ring-neutral-300' : ''}`}
     >
-      <RankBadge rank={entry.rank} />
-
-      {/* Avatar */}
-      <div className={`relative flex-shrink-0 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center ${isTop3 ? 'w-11 h-11' : 'w-9 h-9'}`}>
-        {avatar ? (
-          <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="44px" />
-        ) : (
-          <span className="text-sm font-bold text-neutral-500">{initial}</span>
-        )}
+      <span className="w-7 text-center text-[13px] font-bold text-neutral-400 flex-shrink-0">{entry.rank}</span>
+      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center flex-shrink-0">
+        {avatar ? <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="40px" /> : <span className="text-sm font-bold text-neutral-500">{initial}</span>}
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <p className={`font-semibold truncate ${isTop3 ? 'text-[14px]' : 'text-[13px]'} text-neutral-900`}>
-            {entry.name}
-          </p>
-          {entry.is_verified && <BadgeCheck size={12} className="text-blue-500 flex-shrink-0" />}
-          {entry.identity_verified && <BadgeCheck size={12} className="text-green-500 flex-shrink-0" />}
+        <div className="flex items-center gap-1.5">
+          <p className="text-[13px] font-semibold text-neutral-900 truncate">{entry.name}</p>
+          {isMe && <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Vous</span>}
+          {entry.isVerified && <BadgeCheck size={11} className="text-blue-500 flex-shrink-0" />}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-neutral-400">
-          {entry.specialty && <span>{entry.specialty}</span>}
-          {entry.city && <span>· {entry.city}</span>}
-        </div>
-        <div className="flex items-center gap-3 mt-0.5 text-[11px] text-neutral-500">
-          {entry.avg_rating > 0 && (
-            <span className="flex items-center gap-0.5">
-              <Star size={10} className="fill-amber-400 text-amber-400" />
-              {entry.avg_rating.toFixed(1)} ({entry.reviews_count})
-            </span>
-          )}
-          <span className="flex items-center gap-0.5">
-            <Users size={10} />
-            {entry.followers_count}
-          </span>
-          <span className="flex items-center gap-0.5">
-            <ImageIcon size={10} />
-            {entry.posts_count}
-          </span>
+        <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 truncate">
+          {entry.metaLabel && <span className="truncate">{entry.metaLabel}</span>}
+          {entry.metaLabel && entry.city && <span>·</span>}
+          {entry.city && <span>{entry.city}</span>}
         </div>
       </div>
-
-      {/* Score */}
-      <div className="text-right flex-shrink-0">
-        <p className={`font-bold ${isTop3 ? 'text-[15px] text-neutral-900' : 'text-[13px] text-neutral-600'}`}>
-          {entry.score.toLocaleString('fr-FR')}
-        </p>
-        <p className="text-[10px] text-neutral-400">pts</p>
-      </div>
+      {entry.ratingLabel && (
+        <div className="text-right flex-shrink-0">
+          <p className="text-[12px] font-bold text-neutral-900 flex items-center gap-0.5"><Star size={10} className="fill-amber-400 text-amber-400" />{entry.ratingLabel.split(' · ')[0]}</p>
+          <p className="text-[10px] text-neutral-400">{entry.ratingLabel.split(' · ')[1]}</p>
+        </div>
+      )}
+      <ChevronRight size={14} className="text-neutral-200 flex-shrink-0" />
     </Link>
   );
 }
@@ -217,71 +274,60 @@ export default function ClassementsPage() {
   const { user } = useAuth();
   const myProfileId = user?.hairdresser_profile?.id ?? null;
 
-  const [mode, setMode] = useState<'global' | 'specialty'>('specialty');
+  const [geoValue, setGeoValue]         = useState('');
+  const [specialtyId, setSpecialtyId]   = useState<number | null>(null);
+  const [sortType, setSortType]         = useState<'engagement' | 'reviews' | 'progression'>('engagement');
+  const [specialties, setSpecialties]   = useState<ApiSpecialty[]>([]);
+  const [sheetOpen, setSheetOpen]       = useState<'specialty' | 'explain' | null>(null);
 
-  // ── Classement global ──
-  const [activeType, setActiveType] = useState('engagement');
-  const [city, setCity] = useState('');
-  const [data, setData] = useState<ApiLeaderboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [globalData, setGlobalData]       = useState<ApiLeaderboard | null>(null);
+  const [specialtyData, setSpecialtyData] = useState<ApiSpecialtyLeaderboard | null>(null);
+  const [loading, setLoading]             = useState(true);
+  const [loadError, setLoadError]         = useState(false);
 
-  async function load(type: string, cityFilter: string) {
+  useEffect(() => {
+    api.get<ApiSpecialty[]>('/specialties').then(setSpecialties).catch(() => {});
+  }, []);
+
+  function load() {
     setLoading(true);
-    try {
-      const res = await leaderboard.get({ type, city: cityFilter || undefined, limit: 30 }) as ApiLeaderboard;
-      setData(res);
-    } catch { setData(null); }
-    setLoading(false);
+    setLoadError(false);
+    if (specialtyId) {
+      leaderboard.bySpecialty({ specialtyId, geo: geoValue ? 'auto' : 'country', geoValue: geoValue || undefined, limit: 30 })
+        .then((res) => { setSpecialtyData(res); setGlobalData(null); })
+        .catch(() => setLoadError(true))
+        .finally(() => setLoading(false));
+    } else {
+      leaderboard.get({ type: sortType, city: geoValue || undefined, limit: 30 })
+        .then((res) => { setGlobalData(res as ApiLeaderboard); setSpecialtyData(null); })
+        .catch(() => setLoadError(true))
+        .finally(() => setLoading(false));
+    }
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (mode === 'global') load(activeType, city);
-  }, [mode, activeType, city]);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specialtyId, geoValue, sortType]);
 
-  // ── Classement par spécialité ──
-  const [specialties, setSpecialties] = useState<ApiSpecialty[]>([]);
-  const [specialtyId, setSpecialtyId] = useState<number | null>(null);
-  // Champ libre unique — ville, département ou région : le niveau est deviné
-  // côté backend (voir SpecialtyReputationService::filterByGeo), pas choisi
-  // via des boutons "Ville / Département / Région" qui n'aidaient personne.
-  // Vide par défaut — jamais pré-rempli, à l'utilisateur de taper sa zone.
-  const [geoValue, setGeoValue] = useState('');
-  const [specialtyData, setSpecialtyData] = useState<ApiSpecialtyLeaderboard | null>(null);
-  const [specialtyLoading, setSpecialtyLoading] = useState(false);
+  const specialtyName = specialtyId ? (specialties.find((s) => s.id === specialtyId)?.name ?? null) : null;
+  const { title, subtitle } = buildTitle(specialtyName, geoValue);
 
-  useEffect(() => {
-    api.get<ApiSpecialty[]>('/specialties').then((list) => {
-      setSpecialties(list);
-      if (list.length > 0) setSpecialtyId((prev) => prev ?? list[0].id);
-    }).catch(() => {});
-  }, []);
+  const entries: DisplayEntry[] = useMemo(() => {
+    if (specialtyData) return specialtyData.results.map(fromSpecialty);
+    if (globalData) return globalData.results.map(fromGlobal);
+    return [];
+  }, [specialtyData, globalData]);
 
-  useEffect(() => {
-    if (mode !== 'specialty' || !specialtyId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSpecialtyLoading(true);
-    leaderboard.bySpecialty({ specialtyId, geo: geoValue ? 'auto' : 'country', geoValue: geoValue || undefined, limit: 30 })
-      .then(setSpecialtyData)
-      .catch(() => setSpecialtyData(null))
-      .finally(() => setSpecialtyLoading(false));
-  }, [mode, specialtyId, geoValue]);
+  const podium = entries.slice(0, 3);
+  const rest   = entries.slice(3);
+  const hasActiveFilters = !!geoValue || !!specialtyId || sortType !== 'engagement';
 
-  // ── Ma position — même vue exacte que la liste, pour se situer même hors du top affiché ──
-  const [myRank, setMyRank] = useState<ApiMySpecialtyRank | null>(null);
-
-  useEffect(() => {
-    if (mode !== 'specialty' || !specialtyId || !myProfileId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMyRank(null);
-      return;
-    }
-    leaderboard.mySpecialtyRank({ specialtyId, geo: geoValue ? 'auto' : 'country', geoValue: geoValue || undefined })
-      .then(setMyRank)
-      .catch(() => setMyRank(null));
-  }, [mode, specialtyId, geoValue, myProfileId]);
-
-  const iAmInVisibleResults = !!specialtyData?.results.some((r) => r.id === myProfileId);
+  function resetFilters() {
+    setGeoValue('');
+    setSpecialtyId(null);
+    setSortType('engagement');
+  }
 
   return (
     <AppShell>
@@ -289,178 +335,120 @@ export default function ClassementsPage() {
         {/* Header */}
         <div className="px-4 pt-6 pb-4">
           <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-1">CHAIR</p>
-          <h1 className="text-[26px] font-bold text-neutral-900 tracking-tight">Classements</h1>
-          <p className="text-[13px] text-neutral-400 mt-1">
-            Les meilleurs coiffeurs de la communauté
-          </p>
+          <h1 className="text-[24px] font-bold text-neutral-900 tracking-tight">{title}</h1>
+          <p className="text-[13px] text-neutral-400 mt-1">{subtitle}</p>
         </div>
 
-        {/* Mode : Spécialité (défaut, "Top X en Y") vs Global (ancien) */}
-        <div className="px-4 mb-4 flex bg-neutral-100 rounded-2xl p-1 gap-1">
-          <button
-            onClick={() => setMode('specialty')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mode === 'specialty' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
-          >
-            <Scissors size={12} />Par spécialité
-          </button>
-          <button
-            onClick={() => setMode('global')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${mode === 'global' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}
-          >
-            <Trophy size={12} />Global
+        {/* Recherche géo */}
+        <div className="px-4 mb-3">
+          <GeoSearchBar value={geoValue} onChange={setGeoValue} />
+        </div>
+
+        {/* Chips filtres */}
+        <div className="px-4 mb-3 flex gap-2 overflow-x-auto no-scrollbar">
+          <FilterChip label={specialtyName ? specialtyName : 'Spécialité'} active={!!specialtyId} onClick={() => setSheetOpen('specialty')} />
+          {!specialtyId && (
+            <>
+              <FilterChip label="Mieux notés" active={sortType === 'reviews'} onClick={() => setSortType((t) => t === 'reviews' ? 'engagement' : 'reviews')} />
+              <FilterChip label="Nouveaux talents" active={sortType === 'progression'} onClick={() => setSortType((t) => t === 'progression' ? 'engagement' : 'progression')} />
+            </>
+          )}
+        </div>
+
+        {/* Filtres actifs + reset */}
+        {hasActiveFilters && (
+          <div className="px-4 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {geoValue && <RemovableChip label={geoValue} onRemove={() => setGeoValue('')} />}
+            {specialtyName && <RemovableChip label={specialtyName} onRemove={() => setSpecialtyId(null)} />}
+            {sortType !== 'engagement' && (
+              <RemovableChip label={sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'} onRemove={() => setSortType('engagement')} />
+            )}
+            <button onClick={resetFilters} className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors px-1">
+              <RotateCcw size={11} />Réinitialiser
+            </button>
+          </div>
+        )}
+
+        {/* Comment ça marche */}
+        <div className="px-4 mb-4">
+          <button onClick={() => setSheetOpen('explain')} className="inline-flex items-center gap-1.5 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors">
+            <HelpCircle size={12} />Comment fonctionne le classement ?
           </button>
         </div>
 
-        {mode === 'specialty' ? (
+        {/* Contenu */}
+        {loading ? (
+          <div className="px-4 space-y-3">
+            <div className="flex gap-2">
+              {[1, 2, 3].map((i) => <div key={i} className="flex-1 h-40 bg-neutral-100 rounded-2xl animate-pulse" />)}
+            </div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 py-2">
+                <div className="w-10 h-10 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
+                <div className="flex-1 space-y-1.5"><div className="h-3 bg-neutral-100 rounded animate-pulse w-32" /></div>
+              </div>
+            ))}
+          </div>
+        ) : loadError ? (
+          <div className="px-4">
+            <div className="bg-white rounded-2xl border border-neutral-100 py-14 text-center">
+              <WifiOff size={32} className="text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
+              <p className="text-sm font-semibold text-neutral-900 mb-1">Impossible de charger le classement</p>
+              <p className="text-xs text-neutral-400 mb-4">Vérifiez votre connexion et réessayez.</p>
+              <button onClick={load} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
+                Réessayer
+              </button>
+            </div>
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="px-4">
+            <div className="bg-white rounded-2xl border border-neutral-100 py-14 text-center px-6">
+              <Trophy size={32} className="text-neutral-200 mx-auto mb-3" strokeWidth={1.5} />
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-sm font-semibold text-neutral-900 mb-1">Aucun coiffeur ne correspond à ces filtres</p>
+                  <p className="text-xs text-neutral-400 mb-4">Élargissez la zone ou retirez la spécialité.</p>
+                  <button onClick={resetFilters} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
+                    Réinitialiser les filtres
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-neutral-900 mb-1">Pas encore assez de données</p>
+                  <p className="text-xs text-neutral-400">Le classement sera disponible dès que suffisamment d&apos;avis certifiés auront été publiés.</p>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
           <>
-            {/* Spécialité */}
-            <div className="px-4 mb-3 flex gap-2 overflow-x-auto no-scrollbar">
-              {specialties.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setSpecialtyId(s.id)}
-                  className={`flex-shrink-0 text-[12px] font-semibold px-3 py-2 rounded-xl border transition-all ${
-                    specialtyId === s.id
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Zone — champ libre, vide par défaut (ville, département, région, pays) */}
-            <div className="px-4 mb-3">
-              <LocationChip value={geoValue} inputPlaceholder="Ville, département, région, pays" onSubmit={setGeoValue} />
-            </div>
-
-            <div className="px-4 mb-3">
-              <p className="text-[11px] text-neutral-400 leading-relaxed">
-                Basé sur les avis certifiés et l&apos;activité récente.
-              </p>
-            </div>
-
-            {/* Votre position — visible même hors du top affiché, jamais dupliquée si déjà dans la liste */}
-            {myProfileId && !iAmInVisibleResults && myRank && (
-              <div className="px-4 mb-3">
-                {myRank.ranked ? (
-                  <div className="flex items-center justify-between bg-neutral-900 rounded-2xl px-4 py-3.5">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">Votre position</p>
-                      <p className="text-sm font-bold text-white">#{myRank.rank} sur {myRank.total}</p>
-                    </div>
-                    {!!myRank.points_to_next && (
-                      <p className="text-[12px] text-white/60 text-right max-w-[45%]">
-                        {myRank.points_to_next} pt{myRank.points_to_next > 1 ? 's' : ''} avant la {(myRank.rank ?? 1) - 1}e place
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="bg-neutral-50 rounded-2xl px-4 py-3.5">
-                    <p className="text-[12px] text-neutral-400">Pas encore classé(e) dans cette vue.</p>
-                  </div>
-                )}
+            {/* Podium */}
+            {podium.length > 0 && (
+              <div className="px-4 mb-4 flex items-end gap-2">
+                {podium[1] && <PodiumCard entry={podium[1]} size="sm" />}
+                {podium[0] && <PodiumCard entry={podium[0]} size="lg" />}
+                {podium[2] && <PodiumCard entry={podium[2]} size="sm" />}
               </div>
             )}
 
-            <div className="border-t border-neutral-100">
-              {specialtyLoading ? (
-                <div className="space-y-0">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
-                      <div className="w-10 h-10 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3 bg-neutral-100 rounded animate-pulse w-32" />
-                        <div className="h-2.5 bg-neutral-100 rounded animate-pulse w-20" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : specialtyData && specialtyData.results.length > 0 ? (
-                <div className="divide-y divide-neutral-50">
-                  {specialtyData.results.map((entry) => (
-                    <SpecialtyLeaderboardCard key={entry.id} entry={entry} isMe={entry.id === myProfileId} />
-                  ))}
-                </div>
-              ) : (
-                <div className="py-20 text-center px-4">
-                  <Award size={36} className="text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
-                  <p className="text-sm font-semibold text-neutral-900 mb-1">Aucun résultat</p>
-                  <p className="text-xs text-neutral-400">
-                    {geoValue ? `Aucun coiffeur reconnu à "${geoValue}" pour l'instant.` : 'Aucun coiffeur reconnu dans cette spécialité pour l\'instant.'}
-                  </p>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Tabs type */}
-            <div className="px-4 mb-3 flex gap-2 overflow-x-auto no-scrollbar">
-              {TYPES.map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveType(key)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 text-[12px] font-semibold px-3 py-2 rounded-xl border transition-all ${
-                    activeType === key
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
-                  }`}
-                >
-                  <Icon size={13} />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Zone — champ libre, vide par défaut */}
-            <div className="px-4 mb-3">
-              <LocationChip value={city} inputPlaceholder="Ville ou pays" onSubmit={setCity} />
-            </div>
-
-            {/* Contexte */}
-            <div className="px-4 mb-3">
-              <p className="text-[11px] text-neutral-400 leading-relaxed">
-                {TYPES.find((t) => t.key === activeType)?.note}
-              </p>
-            </div>
-
             {/* Liste */}
-            <div className="border-t border-neutral-100">
-              {loading ? (
-                <div className="space-y-0">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-4 py-3">
-                      <div className="w-8 h-8 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
-                      <div className="w-10 h-10 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3 bg-neutral-100 rounded animate-pulse w-32" />
-                        <div className="h-2.5 bg-neutral-100 rounded animate-pulse w-20" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : data && data.results.length > 0 ? (
+            {rest.length > 0 && (
+              <div className="border-t border-neutral-100">
                 <div className="divide-y divide-neutral-50">
-                  {data.results.map((entry) => (
-                    <LeaderboardCard key={entry.id} entry={entry} />
+                  {rest.map((entry) => (
+                    <RankRow key={entry.id} entry={entry} isMe={entry.id === myProfileId} />
                   ))}
                 </div>
-              ) : (
-                <div className="py-20 text-center px-4">
-                  <Trophy size={36} className="text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
-                  <p className="text-sm font-semibold text-neutral-900 mb-1">Aucun résultat</p>
-                  <p className="text-xs text-neutral-400">
-                    {city ? `Aucun coiffeur à "${city}" pour l'instant.` : 'Aucun coiffeur actif pour l\'instant.'}
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {sheetOpen === 'specialty' && (
+        <SpecialtySheet specialties={specialties} selectedId={specialtyId} onSelect={setSpecialtyId} onClose={() => setSheetOpen(null)} />
+      )}
+      {sheetOpen === 'explain' && <ExplainSheet onClose={() => setSheetOpen(null)} />}
     </AppShell>
   );
 }

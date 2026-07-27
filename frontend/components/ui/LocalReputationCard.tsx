@@ -20,30 +20,38 @@ export default function LocalReputationCard({ specialties, city }: { specialties
     <Link href="/app/classements" className="block bg-white rounded-2xl border border-neutral-100 p-5 hover:border-neutral-200 transition-colors">
       <div className="flex items-center gap-2 mb-3">
         <MapPin size={13} className="text-neutral-400" />
-        <p className="text-sm font-bold text-neutral-900">{city}</p>
-        <ChevronRight size={14} className="text-neutral-300 ml-auto" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Votre classement</p>
       </div>
       {ranked.length > 0 ? (
-        <div className="space-y-2.5">
-          {ranked.map((s) => (
-            <div key={s.specialty_id} className="flex items-center justify-between text-sm gap-3">
-              <span className="text-neutral-600 truncate">{s.specialty_name}</span>
-              <span className="text-right flex-shrink-0">
-                <span className="font-bold text-neutral-900">#{s.local_rank}</span>
-                {!!s.points_to_next && (
-                  <span className="block text-[11px] text-neutral-400 font-normal">
-                    {s.points_to_next} pt{s.points_to_next > 1 ? 's' : ''} avant la {(s.local_rank ?? 1) - 1}e place
-                  </span>
-                )}
-              </span>
-            </div>
-          ))}
+        <div className="space-y-2.5 mb-3">
+          {ranked.map((s) => {
+            const percentile = s.local_total ? Math.max(1, Math.round(((s.local_rank ?? s.local_total) / s.local_total) * 100)) : null;
+            return (
+              <div key={s.specialty_id} className="flex items-center justify-between text-sm gap-3">
+                <span className="text-neutral-600 truncate">{s.specialty_name} · {city}</span>
+                <span className="text-right flex-shrink-0">
+                  <span className="font-bold text-neutral-900">#{s.local_rank}</span>
+                  {percentile !== null && (
+                    <span className="block text-[11px] text-neutral-400 font-normal">Top {percentile}%</span>
+                  )}
+                  {!!s.points_to_next && (
+                    <span className="block text-[11px] text-neutral-400 font-normal">
+                      {s.points_to_next} pt{s.points_to_next > 1 ? 's' : ''} avant la {(s.local_rank ?? 1) - 1}e place
+                    </span>
+                  )}
+                </span>
+              </div>
+            );
+          })}
         </div>
       ) : (
-        <p className="text-[13px] text-neutral-400 leading-relaxed">
-          Publiez quelques réalisations et récoltez vos premiers avis pour entrer dans le classement local.
+        <p className="text-[13px] text-neutral-400 leading-relaxed mb-3">
+          Publiez quelques réalisations et récoltez vos premiers avis pour entrer dans le classement local à {city}.
         </p>
       )}
+      <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-neutral-900">
+        Voir mon classement<ChevronRight size={13} className="text-neutral-400" />
+      </span>
     </Link>
   );
 }
