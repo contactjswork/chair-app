@@ -127,15 +127,24 @@ Composants frontend présents et intégrés dans le cockpit (`StoryCreateCard.ts
 
 ---
 
-## 8. État Git — CRITIQUE à comprendre avant de committer quoi que ce soit
+## 8. État Git & déploiement — CRITIQUE
 
-Au 2026-07-23, le repo a un **working tree très chargé** : en plus du commit de refonte CHAIR PRO déjà poussé (`9cb1019`), il reste ~70 fichiers backend **non commités**, jamais écrits ni testés par moi, qui semblent correspondre à un chantier gamification/monétisation antérieur à mes sessions récentes : `ReferralController`/`ReferralService`, `StoryController`/`StoryService`, `SubscriptionController`, `StripeWebhookController`, `SpecialtyProgressController`/`SpecialtyReputationService` (réputation par spécialité, section 4), `GeoLookupService`, des commandes Artisan (`BackfillHairdresserBadges`, `PurgeExpiredStories`), et des modifications non commitées dans des controllers/modèles/services existants (`AuthController`, `AppointmentController`, `User`, `BadgeService`, `StreakService`, etc.), plus `composer.json`/`composer.lock`/`config/services.php`.
+**Mise à jour du 2026-07-27** : le bloc backend ~70 fichiers mentionné comme "non commité" plus tôt dans cette session (Referral/Story/Subscription/SpecialtyProgress) a depuis été committé et poussé par Julien lui-même dans `fe750d8` ("chantier complet weekend"). Le repo GitHub est donc à jour et cohérent — plus de working tree chargé à surveiller au moment de l'écriture de cette note.
 
-**Important : ce bloc backend n'a PAS été committé lors de la refonte CHAIR PRO**, sur demande explicite de Julien (il a choisi cette option quand je l'ai questionné) — parce que je ne l'ai ni écrit ni testé, et le pousser aveuglément en prod aurait été risqué (routes Stripe/webhooks non vérifiées par exemple). **Ne pas committer ce bloc sans validation explicite de Julien.**
+**Perte réelle à garder en tête** : `backend/app/Services/RingService.php` a été supprimé par erreur pendant un nettoyage de dette technique en début de session, jamais lu avant suppression, jamais commité, irrécupérable. Impact fonctionnel nul (code mort confirmé avant suppression), mais perte de source si Julien veut un jour relancer le concept "anneaux".
 
-**Perte réelle à signaler si le sujet revient** : `backend/app/Services/RingService.php` a été supprimé par erreur pendant le nettoyage de dette technique (jamais lu avant suppression, jamais commité, irrécupérable — vérifié Corbeille Windows et historique local VSCode, rien trouvé). Impact fonctionnel nul (code mort confirmé avant suppression), mais c'est une perte de source si Julien voulait un jour relancer le concept "anneaux".
+### Le backend de PRODUCTION n'est PAS déployé automatiquement — à faire manuellement, régulièrement
 
-**Le frontend, lui, est intégralement commité et poussé** (73 fichiers, refonte CHAIR PRO + tous les fixes iOS de cette session). C'est ce qui est actuellement live sur `getchair.app/pro`.
+**Découverte critique du 2026-07-27** : le frontend (Vercel) se déploie automatiquement à chaque `git push origin main`. **Le backend (Infomaniak) non — jamais.** Le 2026-07-27, on a découvert que `api.getchair.app` tournait encore sur du code de début juin (près de 2 mois de retard : pas de consolidation des spécialités, pas de parrainage, pas d'abonnements CHAIR+, un bug de classement jamais corrigé). Rien de tout ça n'était un bug de code — c'était juste un déploiement backend jamais fait.
+
+**Procédure complète et à jour, avec les pièges rencontrés, dans `docs/DEPLOY.md`** — à suivre à chaque fois que du code backend est modifié/committé. Résumé des pièges découverts ce jour-là (détail complet dans DEPLOY.md) :
+1. Le dossier serveur est un clone du mono-repo entier, mais le site attend les fichiers Laravel à plat à la racine — un `git pull`/`reset` classique les recrée imbriqués dans un sous-dossier `backend/` sans toucher aux fichiers réellement servis. Il faut fusionner manuellement (`cp -a backend/. . && rm -rf backend frontend`).
+2. Le PHP utilisé en SSH (8.4) diffère de celui qui sert le site (8.2.31) — chaque `composer install` génère un `platform_check.php` qui casse tout en 500 tant qu'on ne le neutralise pas (`sed -i 's/PHP_VERSION_ID >= 80401/true/' vendor/composer/platform_check.php`).
+3. `FRONTEND_URL` n'était pas définie en prod → tous les liens partageables (parrainage, QR visite, invitations salon, Stripe checkout) pointaient vers `localhost:3000`. Corrigé (`config/app.php` + `.env` du serveur), mais si un nouveau `.env` de prod est un jour recréé, ne pas oublier cette variable.
+
+**Un token GitHub avec accès complet (`repo` scope) est passé en clair dans le terminal de cette session** (visible dans `git remote -v` côté serveur) — Julien a été prévenu de le régénérer sur GitHub par précaution.
+
+**Le frontend est intégralement commité et poussé** (refonte CHAIR PRO + tous les fixes iOS + corrections FRONTEND_URL de cette session). C'est ce qui est actuellement live sur `getchair.app/pro`.
 
 ---
 
