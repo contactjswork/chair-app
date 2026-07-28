@@ -6,7 +6,7 @@ import HomeCTASection from '@/components/ui/HomeCTASection';
 import HomePersonalized from '@/components/ui/HomePersonalized';
 import { CoupDeCoeurStrip, PopularStrip, NewTalentsStrip } from '@/components/ui/HomeGeoStrips';
 import PersonalizedSection from '@/components/ui/PersonalizedSection';
-import TopRatedGeoSection from '@/components/ui/TopRatedGeoSection';
+import HomeRankingSection, { type RankedEntry } from '@/components/ui/HomeRankingSection';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ApiHairdresserProfile, ApiPost, ApiUser, PaginatedResponse } from '@/lib/types';
@@ -35,6 +35,17 @@ async function getFeedPosts(sort: string, perPage = 12): Promise<ApiPost[]> {
     if (!res.ok) return [];
     const data: PaginatedResponse<ApiPost> = await res.json();
     return data.data;
+  } catch { return []; }
+}
+
+/** Vrai classement CHAIR (score "engagement", même formule que /app/classements). */
+async function getRanking(limit = 5): Promise<RankedEntry[]> {
+  try {
+    const params = new URLSearchParams({ type: 'engagement', limit: String(limit) });
+    const res = await fetch(`${API}/leaderboard?${params}`, { cache: 'no-store' });
+    if (!res.ok) return [];
+    const data: { results: RankedEntry[] } = await res.json();
+    return data.results;
   } catch { return []; }
 }
 
@@ -106,11 +117,11 @@ function RealisationGrid({ posts }: { posts: ApiPost[] }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const [featuredHD, newTalentsHD, popularHD, ratedHD, trendingPosts] = await Promise.all([
+  const [featuredHD, newTalentsHD, popularHD, ranking, trendingPosts] = await Promise.all([
     getHairdressers('featured', 10),
     getHairdressers('new_quality', 8, 60),
     getHairdressers('popular', 8),
-    getHairdressers('rating', 5),
+    getRanking(5),
     getFeedPosts('trending', 24),
   ]);
 
@@ -138,10 +149,13 @@ export default async function HomePage() {
       {/* ③ Spécialiste — dépend de l'onboarding */}
       <PersonalizedSection />
 
-      {/* ④ Les plus demandés */}
+      {/* ④ Classement — vrai score CHAIR, pas un simple tri par note */}
+      <HomeRankingSection fallback={ranking} />
+
+      {/* ⑤ Les plus demandés */}
       <PopularStrip fallback={popularHD} />
 
-      {/* ⑤ Réalisations du moment */}
+      {/* ⑥ Réalisations du moment */}
       {displayPosts.length > 0 && (
         <section className="pt-10">
           <SectionHeader tag="Communauté" title="Réalisations du moment" href="/app/feed" />
@@ -149,11 +163,8 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ⑥ Nouveaux talents */}
+      {/* ⑦ Nouveaux talents */}
       <NewTalentsStrip fallback={newTalentsHD} />
-
-      {/* ⑦ Les mieux notés — géolocalisé */}
-      <TopRatedGeoSection fallback={ratedHD} />
 
       <div className="mx-4 md:mx-8 mt-10 h-px bg-neutral-100 max-w-6xl md:mx-auto" />
 
