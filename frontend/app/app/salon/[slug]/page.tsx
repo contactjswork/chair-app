@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, ChevronLeft, Users, Star, CheckCircle, Sparkles } from 'lucide-react';
+import { MapPin, Phone, Globe, Users, Star, CheckCircle, Sparkles } from 'lucide-react';
 import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
+import AppShell from '@/components/layout/AppShell';
+import BackButton from '@/components/ui/BackButton';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -27,7 +29,7 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
   const hairdressers = salon.hairdressers ?? [];
 
   return (
-    <div className="min-h-screen bg-white">
+    <AppShell>
       {/* Bannière */}
       <div className="relative h-48 md:h-64 bg-neutral-800 overflow-hidden">
         {coverUrl ? (
@@ -37,13 +39,7 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-        {/* Back */}
-        <Link
-          href="/"
-          className="absolute top-4 left-4 w-9 h-9 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center md:hidden"
-        >
-          <ChevronLeft size={18} className="text-white" />
-        </Link>
+        <BackButton fallbackHref="/app/recherche" />
       </div>
 
       {/* Header identité */}
@@ -205,6 +201,6 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
           )}
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
