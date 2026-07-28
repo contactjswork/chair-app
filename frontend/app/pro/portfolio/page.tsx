@@ -574,7 +574,7 @@ export default function PortfolioPage() {
     return (e: React.PointerEvent) => {
       e.preventDefault();
       draggedIdRef.current = postId;
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch {}
 
       function onMove(ev: PointerEvent) {
         const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-post-id]');

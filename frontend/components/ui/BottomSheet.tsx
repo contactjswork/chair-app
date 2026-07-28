@@ -34,7 +34,7 @@ export default function BottomSheet({ onClose, children, className = '', maxHeig
   function onHandlePointerDown(e: React.PointerEvent) {
     startY.current = e.clientY;
     setDragging(true);
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
   }
   function onHandlePointerMove(e: React.PointerEvent) {
     if (startY.current == null) return;

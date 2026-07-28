@@ -60,7 +60,7 @@ export default function SearchResultsSheet({ position, onPositionChange, header,
 
   function onPointerDown(e: React.PointerEvent) {
     if (height === 0) return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch {}
     dragRef.current = {
       startY: e.clientY,
       baseOffset: offsetFor(position),

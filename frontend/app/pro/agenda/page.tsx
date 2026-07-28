@@ -675,7 +675,10 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     // Capture le pointeur sur CE bloc : tous les events suivants (move/up)
     // lui sont garantis même si le doigt sort de ses limites en cours de
     // geste (cause principale du "ça marche une fois sur deux" en tactile).
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // setPointerCapture peut lever NotFoundError si le pointeur n'est déjà
+    // plus actif (relâchement très rapide) : ne doit jamais casser le reste
+    // du geste, qui fonctionne très bien sans capture dans ce cas.
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     if (longTimer.current) clearTimeout(longTimer.current);
     if (swipeAptId !== null && swipeAptId !== apt.id) closeSwipe();
     const startMin = apt.appointment_time ? toMin(apt.appointment_time) : START_HOUR*60;
@@ -684,7 +687,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
 
   const onResizePointerDown = (e: React.PointerEvent, apt: ApiAppointment) => {
     e.stopPropagation();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch {}
     if (longTimer.current) clearTimeout(longTimer.current);
     navigator.vibrate?.(10);
     resizeInfo.current = { aptId:apt.id, startY:e.clientY, origDur: apt.duration_minutes??60 };
