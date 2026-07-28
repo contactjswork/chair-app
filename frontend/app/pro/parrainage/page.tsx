@@ -7,6 +7,8 @@ import { referral } from '@/lib/api';
 import type { ApiReferral } from '@/lib/types';
 import { ArrowLeft, Share2, Send, Users, Gift, Zap, Check, Copy } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
+import StatCard from '@/components/ui/StatCard';
+import { PrimaryButton } from '@/components/ui/Button';
 
 const MILESTONE_LABELS: Record<number, string> = {
   5:   '1 mois de CHAIR+ offert',
@@ -88,31 +90,16 @@ export default function ParrainagePage() {
                 </button>
               </div>
 
-              <button
-                onClick={() => setShareOpen(true)}
-                className="w-full flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-3 rounded-xl text-sm hover:bg-neutral-100 transition-colors"
-              >
-                <Share2 size={15} />Partager mon profil
-              </button>
+              <PrimaryButton onClick={() => setShareOpen(true)} icon={<Share2 size={15} />} fullWidth className="!bg-white !text-neutral-900 hover:!bg-neutral-100">
+                Partager mon profil
+              </PrimaryButton>
             </div>
 
             {/* ── Stats ── */}
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
-                <Send size={16} className="text-neutral-300 mx-auto mb-1.5" />
-                <p className="text-xl font-bold text-neutral-900 leading-none">{data.shares_count}</p>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Partagés</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
-                <Users size={16} className="text-neutral-300 mx-auto mb-1.5" />
-                <p className="text-xl font-bold text-neutral-900 leading-none">{data.referral_count}</p>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Comptes créés</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
-                <Zap size={16} className="text-neutral-300 mx-auto mb-1.5" />
-                <p className="text-xl font-bold text-neutral-900 leading-none">{data.points_earned}</p>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Points gagnés</p>
-              </div>
+              <StatCard icon={Send} value={data.shares_count} label="Partagés" />
+              <StatCard icon={Users} value={data.referral_count} label="Comptes créés" />
+              <StatCard icon={Zap} value={data.points_earned} label="Points gagnés" />
             </div>
 
             {(data.chair_plus_until || data.boost_until) && (
