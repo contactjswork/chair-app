@@ -461,6 +461,19 @@ export default function DashboardSalonPage() {
     }
   }
 
+  async function handleLeaveSalon() {
+    if (!confirm('Quitter ce salon ? Vous ne ferez plus partie de son équipe.')) return;
+    try {
+      await salons.leaveSalon();
+      toast('Vous avez quitté le salon.');
+      // Recharge complète : plus simple et plus sûr que de recomposer l'état
+      // local pour repasser sur la vue "rejoindre un salon" (JoinSalonPanel).
+      window.location.reload();
+    } catch {
+      toast('Erreur lors du départ du salon.');
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
@@ -839,6 +852,19 @@ export default function DashboardSalonPage() {
             >
               <LogOut size={15} />
               Se déconnecter
+            </button>
+          </div>
+        )}
+
+        {/* Quitter le salon (coiffeur membre, pas le gérant) */}
+        {!isSalonOwner && (
+          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <button
+              onClick={handleLeaveSalon}
+              className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors"
+            >
+              <LogOut size={15} />
+              Quitter ce salon
             </button>
           </div>
         )}
