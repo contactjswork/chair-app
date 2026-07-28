@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Star, ShieldCheck, BadgeCheck, X } from 'lucide-react';
 import StarRating from '@/components/ui/StarRating';
 import ReviewsSection from '@/components/ui/ReviewsSection';
+import BottomSheet from '@/components/ui/BottomSheet';
 import { resolveMediaUrl, formatDate } from '@/lib/types';
 import type { ApiReview } from '@/lib/types';
 
@@ -154,13 +155,8 @@ export default function ReviewsCompact({
 
       {/* Bottom sheet — tous les avis */}
       {sheetOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setSheetOpen(false)}
-          />
-          <div className="relative bg-white rounded-t-3xl max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-neutral-100 flex-shrink-0">
+        <BottomSheet onClose={() => setSheetOpen(false)} maxHeight="max-h-[90vh]">
+            <div className="sticky top-0 bg-white z-10 flex items-center justify-between px-5 pb-4 border-b border-neutral-100">
               <div className="flex items-center gap-2">
                 <p className="text-[16px] font-bold text-neutral-900">Avis clients</p>
                 {hasRating && (
@@ -177,17 +173,14 @@ export default function ReviewsCompact({
                 <X size={15} />
               </button>
             </div>
-            <div className="overflow-y-auto flex-1">
-              <ReviewsSection
-                hairdresserId={hairdresserId}
-                hairdresserUserId={hairdresserUserId}
-                initialReviews={initialReviews}
-                avgRating={avgRating}
-                reviewsCount={reviewsCount}
-              />
-            </div>
-          </div>
-        </div>
+            <ReviewsSection
+              hairdresserId={hairdresserId}
+              hairdresserUserId={hairdresserUserId}
+              initialReviews={initialReviews}
+              avgRating={avgRating}
+              reviewsCount={reviewsCount}
+            />
+        </BottomSheet>
       )}
     </section>
   );

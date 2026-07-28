@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Flame, X } from 'lucide-react';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 interface Props {
   days: number;
@@ -29,9 +30,8 @@ export default function StreakFlameBadge({ days, active, coiffeurName }: Props) 
           le volet hérite du contexte d'empilement de l'avatar (relative z-10)
           et se retrouve sous le CTA / la bottom nav, texte coupé. */}
       {open && createPortal(
-        <div className="fixed inset-0 z-[70] flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[80vh] overflow-y-auto">
+        <BottomSheet onClose={() => setOpen(false)} maxHeight="max-h-[80vh]" zIndexClassName="z-[70]">
+          <div className="px-5 pb-8">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[16px] font-bold text-neutral-900">Série active</p>
               <button
@@ -54,7 +54,7 @@ export default function StreakFlameBadge({ days, active, coiffeurName }: Props) 
               {coiffeurName} publie des réalisations, répond à ses avis et suit ses rendez-vous sans interruption depuis {days} jours d&apos;affilée. Un signe de régularité.
             </p>
           </div>
-        </div>,
+        </BottomSheet>,
         document.body
       )}
     </>

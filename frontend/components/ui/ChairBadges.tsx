@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 import {
   Camera, Image as ImageIcon, Sparkles,
@@ -228,9 +229,8 @@ export function BadgeExplainSheet({
   // `relative z-10`) — sans ça le volet peut se retrouver piégé sous un CTA
   // sticky ou la bottom nav, et son texte coupé.
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[80vh] overflow-y-auto">
+    <BottomSheet onClose={onClose} maxHeight="max-h-[80vh]" zIndexClassName="z-[70]">
+      <div className="px-5 pb-8">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[16px] font-bold text-neutral-900">{isLocked ? 'Badge à débloquer' : 'Badge débloqué'}</p>
           <button
@@ -254,7 +254,7 @@ export function BadgeExplainSheet({
           </p>
         )}
       </div>
-    </div>,
+    </BottomSheet>,
     document.body
   );
 }

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Image from 'next/image';
 import { X, Star } from 'lucide-react';
 import { resolveMediaUrl, formatApptDate, type ApiAppointment } from '@/lib/types';
 import { appointments as apptApi } from '@/lib/api';
+import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface Props {
   appointment: ApiAppointment;
@@ -27,6 +28,27 @@ export default function ReviewPromptModal({ appointment, onClose, onSubmitted }:
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted]   = useState(false);
   const [error, setError]       = useState<string | null>(null);
+
+  useScrollLock(true);
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startY = useRef<number | null>(null);
+  function onHandlePointerDown(e: React.PointerEvent) {
+    startY.current = e.clientY;
+    setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onHandlePointerMove(e: React.PointerEvent) {
+    if (startY.current == null) return;
+    const delta = e.clientY - startY.current;
+    if (delta > 0) setDragY(delta);
+  }
+  function endDrag() {
+    if (dragY > 110) onClose();
+    setDragY(0);
+    setDragging(false);
+    startY.current = null;
+  }
 
   const hairdresserName = appointment.hairdresser?.user?.name ?? 'votre coiffeur';
   const hairdresserAvatar = resolveMediaUrl(appointment.hairdresser?.user?.avatar ?? null);
@@ -58,7 +80,23 @@ export default function ReviewPromptModal({ appointment, onClose, onSubmitted }:
       style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div
+        className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{
+          transform: `translateY(${dragY}px)`,
+          transition: dragging ? 'none' : 'transform 250ms ease-out',
+        }}
+      >
+        {/* Poignée (mobile uniquement — glisser vers le bas pour fermer) */}
+        <div
+          onPointerDown={onHandlePointerDown}
+          onPointerMove={onHandlePointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          className="sm:hidden flex-shrink-0 pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-10 h-1 rounded-full bg-neutral-200 mx-auto" />
+        </div>
 
         {/* Close */}
         {!submitted && (
@@ -71,6 +109,7 @@ export default function ReviewPromptModal({ appointment, onClose, onSubmitted }:
           </button>
         )}
 
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         {submitted ? (
           /* ── Écran de succès ── */
           <div className="flex flex-col items-center justify-center px-8 py-14 text-center">
@@ -79,7 +118,7 @@ export default function ReviewPromptModal({ appointment, onClose, onSubmitted }:
             </div>
             <h2 className="text-xl font-bold text-neutral-900 mb-2">Merci !</h2>
             <p className="text-sm text-neutral-500 leading-relaxed">
-              Votre avis a été publié et aide d'autres clients à choisir {hairdresserName}.
+              Votre avis a été publié et aide d&apos;autres clients à choisir {hairdresserName}.
             </p>
           </div>
         ) : (
@@ -194,6 +233,7 @@ export default function ReviewPromptModal({ appointment, onClose, onSubmitted }:
             </div>
           </>
         )}
+        </div>
       </div>
     </div>
   );

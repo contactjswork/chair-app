@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 interface Props {
   open: boolean;
@@ -13,18 +14,11 @@ export default function SignupPromptModal({ open, onClose, message }: Props) {
   if (!open) return null;
 
   return (
-    <>
-      <div
-        className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="fixed bottom-0 left-0 right-0 z-[201] bg-white rounded-t-3xl shadow-2xl">
-        <div className="px-6 pt-5 pb-8">
-          <div className="w-10 h-1 rounded-full bg-neutral-200 mx-auto mb-6" />
-
+    <BottomSheet onClose={onClose} zIndexClassName="z-[201]">
+        <div className="relative px-6 pt-1 pb-8">
           <button
             onClick={onClose}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+            className="absolute top-0 right-5 w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
           >
             <X size={14} className="text-neutral-500" />
           </button>
@@ -56,7 +50,6 @@ export default function SignupPromptModal({ open, onClose, message }: Props) {
             </Link>
           </div>
         </div>
-      </div>
-    </>
+    </BottomSheet>
   );
 }

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 interface OwnerBottomSheetProps {
   open: boolean;
@@ -16,9 +17,8 @@ export default function OwnerBottomSheet({ open, onClose, title, subtitle, child
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto">
+    <BottomSheet onClose={onClose} zIndexClassName="z-[100]">
+      <div className="px-5 pb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-[16px] font-bold text-neutral-900">{title}</p>
@@ -30,6 +30,6 @@ export default function OwnerBottomSheet({ open, onClose, title, subtitle, child
         </div>
         {children}
       </div>
-    </div>
+    </BottomSheet>
   );
 }

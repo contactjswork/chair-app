@@ -7,6 +7,7 @@ import { X, Copy, Check, QrCode, MessageCircle, MessageSquare, MoreHorizontal } 
 import { referral } from '@/lib/api';
 import type { ShareActionType, ShareChannel } from '@/lib/types';
 import { InstagramGlyph, SnapchatGlyph } from './BrandIcons';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 interface Props {
   open: boolean;
@@ -112,9 +113,8 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
   const labelCls = 'text-[10px] font-semibold text-neutral-500';
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-8 max-h-[85vh] overflow-y-auto">
+    <BottomSheet onClose={onClose} maxHeight="max-h-[85vh]" zIndexClassName="z-[70]">
+      <div className="px-5 pb-8">
         <div className="flex items-center justify-between mb-1">
           <p className="text-[16px] font-bold text-neutral-900">{title}</p>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
@@ -176,7 +176,7 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
           </p>
         )}
       </div>
-    </div>,
+    </BottomSheet>,
     document.body
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
+import BottomSheet from '@/components/ui/BottomSheet';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -114,9 +115,8 @@ function SpecialtySheet({
   specialties, selectedId, onSelect, onClose,
 }: { specialties: ApiSpecialty[]; selectedId: number | null; onSelect: (id: number | null) => void; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-t-3xl w-full max-w-lg shadow-2xl p-5 pb-8 max-h-[75vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+    <BottomSheet onClose={onClose} maxHeight="max-h-[75vh]">
+      <div className="p-5 pb-8">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[16px] font-bold text-neutral-900">Spécialité</p>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100">
@@ -145,7 +145,7 @@ function SpecialtySheet({
           ))}
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -159,9 +159,8 @@ function ExplainSheet({ onClose }: { onClose: () => void }) {
     'La zone géographique lorsqu\'un filtre local est appliqué.',
   ];
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-t-3xl w-full max-w-lg shadow-2xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
+    <BottomSheet onClose={onClose}>
+      <div className="p-5 pb-8">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[16px] font-bold text-neutral-900">Comment fonctionne le classement ?</p>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
@@ -183,7 +182,7 @@ function ExplainSheet({ onClose }: { onClose: () => void }) {
           Les nouveaux talents avec une activité forte peuvent progresser rapidement — l&apos;ancienneté seule ne garantit pas une bonne place.
         </p>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useScrollLock } from '@/hooks/useScrollLock';
 import type { ApiServiceCategory, ApiService } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Check, Clock, MapPin, X, LogIn, UserPlus } from 'lucide-react';
 
@@ -49,6 +50,8 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const [clientPhone, setClientPhone] = useState('');
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useScrollLock(open);
 
   // Drag to dismiss
   const [dragY, setDragY] = useState(0);
@@ -158,6 +161,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   function onHandlePointerDown(e: React.PointerEvent) {
     startY.current = e.clientY;
     setDragging(true);
+    e.currentTarget.setPointerCapture(e.pointerId);
   }
   function onHandlePointerMove(e: React.PointerEvent) {
     if (startY.current == null) return;
@@ -199,6 +203,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
           onPointerDown={onHandlePointerDown}
           onPointerMove={onHandlePointerMove}
           onPointerUp={onHandlePointerUp}
+          onPointerCancel={onHandlePointerUp}
           className="flex-shrink-0 pt-3 pb-2 cursor-grab active:cursor-grabbing touch-none"
         >
           <div className="w-10 h-1 rounded-full bg-neutral-200 mx-auto" />

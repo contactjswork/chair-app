@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { ShieldCheck, X, Loader, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import BottomSheet from '@/components/ui/BottomSheet';
 
 interface Props {
   open: boolean;
@@ -54,13 +55,8 @@ export default function SiretVerificationSheet({ open, onClose, onVerified, acti
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl px-5 pt-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))] max-h-[85vh] overflow-y-auto">
-        <div className="flex justify-center pb-3">
-          <div className="w-10 h-1 rounded-full bg-neutral-200" />
-        </div>
-
+    <BottomSheet onClose={onClose} maxHeight="max-h-[85vh]" zIndexClassName="z-[100]">
+      <div className="px-5 pb-[calc(2rem+env(safe-area-inset-bottom,0px))]">
         <div className="flex items-center justify-between mb-5">
           <div className="w-11 h-11 rounded-2xl bg-neutral-900 flex items-center justify-center">
             <ShieldCheck size={19} className="text-white" />
@@ -139,7 +135,7 @@ export default function SiretVerificationSheet({ open, onClose, onVerified, acti
           </>
         )}
       </div>
-    </div>,
+    </BottomSheet>,
     document.body
   );
 }

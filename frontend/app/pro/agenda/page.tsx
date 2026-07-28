@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import BottomSheet from '@/components/ui/BottomSheet';
 import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
 import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl } from '@/lib/types';
@@ -138,15 +139,7 @@ function AppointmentSheet({
     newDur  !== String(apt.duration_minutes??60);
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
-
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-        </div>
-
+    <BottomSheet onClose={onClose} maxHeight="max-h-[90vh]">
         {/* Header */}
         <div className="px-5 pt-2 pb-4 border-b border-neutral-100 flex items-center gap-4">
           <div className="relative flex-shrink-0">
@@ -279,8 +272,7 @@ function AppointmentSheet({
             <p className="text-[13px] text-neutral-400">Ce rendez-vous est terminé.</p>
           </div>
         )}
-      </div>
-    </div>
+    </BottomSheet>
   );
 }
 
