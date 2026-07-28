@@ -65,5 +65,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'chair.plus' => \App\Http\Middleware\EnsureChairPlus::class,
         'admin.token' => \App\Http\Middleware\EnsureAdminToken::class,
+        'not.suspended' => \App\Http\Middleware\EnsureNotSuspended::class,
     ];
 }

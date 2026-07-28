@@ -203,6 +203,12 @@ class AuthController extends Controller
         }
 
         $user = \App\Models\User::where('email', $request->email)->first();
+
+        if ($user->suspended_at) {
+            \Illuminate\Support\Facades\Auth::logout();
+            return response()->json(['message' => 'Ce compte est suspendu.'], 403);
+        }
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

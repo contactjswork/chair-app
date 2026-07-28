@@ -119,7 +119,7 @@ Route::get('/chair-rentals', [ChairRentalController::class, 'publicList']);
 Route::get('/chair-rentals/slug/{slug}', [ChairRentalController::class, 'show']);
 
 // Protected
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::delete('/account', [AuthController::class, 'deleteAccount']);

@@ -164,8 +164,21 @@ class AdminController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
+        // update(['suspended_at' => ...]) ne persistait RIEN : 'suspended_at'
+        // n'est pas dans $fillable sur User, donc Laravel ignorait
+        // silencieusement le champ (pas d'exception). Assignation directe +
+        // save() pour contourner la protection de mass-assignment sur ce
+        // champ volontairement absent de $fillable (un utilisateur ne doit
+        // jamais pouvoir se suspendre/désuspendre lui-même via un update
+        // classique de son profil).
         $user = User::findOrFail($id);
-        $user->update(['suspended_at' => now()]);
+        $user->suspended_at = now();
+        $user->save();
+        // Révoque aussi les tokens déjà émis : sans ça, la suspension n'avait
+        // aucun effet tant que l'utilisateur ne se déconnectait pas lui-même.
+        // Voir aussi EnsureNotSuspended (bloque toute requête future) et
+        // AuthController::login (bloque une nouvelle connexion).
+        $user->tokens()->delete();
         return response()->json(['ok' => true]);
     }
 
@@ -176,7 +189,8 @@ class AdminController extends Controller
         }
 
         $user = User::findOrFail($id);
-        $user->update(['suspended_at' => null]);
+        $user->suspended_at = null;
+        $user->save();
         return response()->json(['ok' => true]);
     }
 
