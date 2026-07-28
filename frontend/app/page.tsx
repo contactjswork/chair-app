@@ -1,10 +1,37 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import LandingNav from '@/components/landing/LandingNav';
 import LandingFooter from '@/components/landing/LandingFooter';
 import FaqAccordion from '@/components/landing/FaqAccordion';
 import PhoneStack from '@/components/landing/PhoneStack';
 import MockupPhone, { FloatingBadge } from '@/components/landing/MockupPhone';
+import AppDownload from '@/components/ui/AppDownload';
+import Reveal from '@/components/ui/Reveal';
+import HeroSearch from '@/components/ui/HeroSearch';
 import { ArrowRight, Check, Star, BadgeCheck, Heart, Calendar, QrCode, BarChart2, Users, Scissors } from 'lucide-react';
+import type { ApiLeaderboardEntry, ApiPost, PaginatedResponse } from '@/lib/types';
+import { resolveMediaUrl, getAfterImage } from '@/lib/types';
+import { SPECIALTY_LABELS } from '@/lib/explore';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+
+async function getTopRanked(): Promise<ApiLeaderboardEntry[]> {
+  try {
+    const res = await fetch(`${API}/leaderboard?limit=3`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data: { results?: ApiLeaderboardEntry[] } = await res.json();
+    return data.results ?? [];
+  } catch { return []; }
+}
+
+async function getRealisations(): Promise<ApiPost[]> {
+  try {
+    const res = await fetch(`${API}/feed?sort=trending&per_page=6`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const data: PaginatedResponse<ApiPost> = await res.json();
+    return data.data.filter((p) => getAfterImage(p));
+  } catch { return []; }
+}
 
 /* ─────────────────────────────────────────────────────────────
    FEATURE SECTION — texte + mockup, alternés, mobile-first
@@ -66,7 +93,8 @@ function FeatureSection({
 /* ─────────────────────────────────────────────────────────────
    PAGE
 ───────────────────────────────────────────────────────────── */
-export default function HomePage() {
+export default async function HomePage() {
+  const [topRanked, realisations] = await Promise.all([getTopRanked(), getRealisations()]);
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans overflow-x-hidden [&_section]:overflow-x-hidden">
       <LandingNav dark />
@@ -91,19 +119,24 @@ export default function HomePage() {
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
                 Premier écosystème dédié à la coiffure
               </div>
-              <h1 className="text-[58px] sm:text-[70px] lg:text-[80px] font-bold text-white leading-[0.88] tracking-[-0.035em] mb-6">
-                Un coiffeur.<br />
-                <span className="text-white/20">Pas un salon.</span>
+              <h1 className="text-[46px] sm:text-[58px] lg:text-[64px] font-bold text-white leading-[0.96] tracking-[-0.03em] mb-6">
+                Ne cherchez plus un salon.<br />
+                <span className="text-white/20">Trouvez le coiffeur fait pour vous.</span>
               </h1>
-              <p className="text-[16px] md:text-[18px] text-white/40 leading-relaxed mb-10 max-w-[400px] font-light">
-                CHAIR réunit les meilleurs professionnels de la coiffure sur une plateforme unique.
-                Découvrez leur univers. Choisissez votre expert. Réservez en direct.
+              <p className="text-[16px] md:text-[18px] text-white/40 leading-relaxed mb-8 max-w-[440px] font-light mx-auto lg:mx-0">
+                Découvrez les talents autour de vous, comparez leurs réalisations et réservez selon votre style — sur le web ou dans l&apos;app.
               </p>
-              <div className="flex flex-col sm:flex-row justify-center lg:justify-start gap-3 mb-12">
-                <Link href="/app" className="inline-flex items-center justify-center gap-2.5 bg-white text-neutral-900 font-bold text-[15px] px-7 py-4 rounded-2xl hover:bg-neutral-100 transition-all active:scale-[0.98] shadow-2xl shadow-white/10">
-                  Télécharger CHAIR <ArrowRight size={16} strokeWidth={2.5} />
+
+              <div className="mb-6">
+                <HeroSearch />
+              </div>
+
+              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-x-6 gap-y-3 mb-12 text-[13px]">
+                <Link href="/download" className="inline-flex items-center gap-1.5 text-white/50 hover:text-white font-medium transition-colors">
+                  Télécharger l&apos;application <ArrowRight size={13} strokeWidth={2.5} />
                 </Link>
-                <Link href="/pro/inscription" className="inline-flex items-center justify-center gap-2 text-white/40 font-medium text-[15px] px-7 py-4 rounded-2xl border border-white/10 hover:border-white/25 hover:text-white/65 transition-all">
+                <span className="hidden sm:inline text-white/15">·</span>
+                <Link href="/pro/inscription" className="inline-flex items-center gap-1.5 text-white/50 hover:text-white font-medium transition-colors">
                   Je suis professionnel →
                 </Link>
               </div>
@@ -137,7 +170,7 @@ export default function HomePage() {
               Vous avez déjà réservé dans un salon sans savoir qui allait vous coiffer.
             </h2>
             <p className="text-[15px] lg:text-[17px] text-neutral-400 leading-relaxed">
-              Le talent est caché derrière une adresse. Le professionnel n'existe pas en tant que personne.
+              Le talent est caché derrière une adresse. Le professionnel n&apos;existe pas en tant que personne.
               Son savoir-faire, ses spécialités, son univers — invisibles. CHAIR change ça, entièrement.
             </p>
           </div>
@@ -179,6 +212,62 @@ export default function HomePage() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
+          COMMENT ÇA MARCHE
+      ══════════════════════════════════════════════════════ */}
+      <section id="comment-ca-marche" className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5">
+          <Reveal>
+            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6 text-center">Comment ça marche</p>
+            <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em] mb-16 text-center max-w-2xl mx-auto">
+              Trois étapes. Aucune adresse à deviner.
+            </h2>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-6">
+            {[
+              { n: '01', t: 'Découvrez', d: "Parcourez les profils par spécialité, ville ou style. Chaque professionnel montre son univers, pas juste une adresse." },
+              { n: '02', t: 'Réservez', d: "Choisissez votre créneau directement sur le profil du coiffeur. Confirmation immédiate, aucun appel nécessaire." },
+              { n: '03', t: 'Faites confiance', d: "Après la prestation, un QR code unique débloque l'avis. Chaque note vient d'une visite réelle, vérifiée." },
+            ].map((step, i) => (
+              <Reveal key={step.n} delay={i * 120}>
+                <div className="text-center sm:text-left">
+                  <p className="text-[13px] font-bold text-neutral-200 mb-4">{step.n}</p>
+                  <h3 className="text-[19px] font-bold text-neutral-900 mb-2.5">{step.t}</h3>
+                  <p className="text-[14px] text-neutral-500 leading-relaxed max-w-xs mx-auto sm:mx-0">{step.d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          QUE CHERCHEZ-VOUS AUJOURD'HUI ?
+      ══════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-24 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5">
+          <Reveal>
+            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-4 text-center">Catégories</p>
+            <h2 className="text-[30px] sm:text-[36px] font-bold text-neutral-900 leading-[1.05] tracking-[-0.02em] mb-10 text-center">
+              Que cherchez-vous aujourd&apos;hui ?
+            </h2>
+          </Reveal>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            {Object.entries(SPECIALTY_LABELS).map(([slug, label], i) => (
+              <Reveal key={slug} delay={(i % 5) * 60}>
+                <Link
+                  href={`/app/recherche?specialty=${slug}`}
+                  className="group flex flex-col items-center justify-center gap-3 aspect-square rounded-2xl bg-white border border-neutral-100 hover:border-neutral-900 hover:bg-neutral-900 transition-all p-4 text-center"
+                >
+                  <Scissors size={18} className="text-neutral-400 group-hover:text-white transition-colors" strokeWidth={1.75} />
+                  <span className="text-[12.5px] font-semibold text-neutral-700 group-hover:text-white leading-tight transition-colors">{label}</span>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
           F1 — Découverte
       ══════════════════════════════════════════════════════ */}
       <section id="clients" className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
@@ -194,8 +283,8 @@ export default function HomePage() {
               'Coiffeurs salariés et indépendants',
             ]}
             cta={
-              <Link href="/app" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
-                Télécharger CHAIR <ArrowRight size={14} strokeWidth={2.5} />
+              <Link href="/app/recherche" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
+                Rechercher un coiffeur <ArrowRight size={14} strokeWidth={2.5} />
               </Link>
             }
             mockup={
@@ -270,6 +359,44 @@ export default function HomePage() {
           />
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════
+          RÉALISATIONS — vraies photos publiées par les coiffeurs
+      ══════════════════════════════════════════════════════ */}
+      {realisations.length > 0 && (
+        <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-5">
+            <Reveal>
+              <div className="max-w-2xl mb-12">
+                <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Réalisations</p>
+                <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em]">
+                  Publiées par de vrais professionnels, cette semaine.
+                </h2>
+              </div>
+            </Reveal>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {realisations.map((post, i) => {
+                const url = resolveMediaUrl(getAfterImage(post));
+                const hdName = (post.hairdresser as { user?: { name?: string } } | undefined)?.user?.name;
+                return (
+                  <Reveal key={post.id} delay={(i % 3) * 90}>
+                    <div className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-200">
+                      {url && (
+                        <Image src={url} alt={post.description ?? 'Réalisation CHAIR'} fill className="object-cover" sizes="33vw" />
+                      )}
+                      {hdName && (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2.5">
+                          <p className="text-white text-[11px] font-semibold truncate">{hdName}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           F3 — Abonnements
@@ -373,8 +500,8 @@ export default function HomePage() {
               'Rappel automatique 24h et 1h avant',
             ]}
             cta={
-              <Link href="/app" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
-                Télécharger CHAIR <ArrowRight size={14} strokeWidth={2.5} />
+              <Link href="/app/recherche" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
+                Trouver un coiffeur <ArrowRight size={14} strokeWidth={2.5} />
               </Link>
             }
             mockup={
@@ -401,6 +528,124 @@ export default function HomePage() {
               />
             }
           />
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          CLASSEMENTS — preuve de confiance, non-interactif
+      ══════════════════════════════════════════════════════ */}
+      {topRanked.length > 0 && (
+        <section id="classements" className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-5">
+            <Reveal>
+              <div className="max-w-2xl mx-auto text-center mb-14">
+                <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Classements</p>
+                <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em] mb-5">
+                  La réputation se mérite,<br />elle ne s&apos;achète pas.
+                </h2>
+                <p className="text-[15px] text-neutral-500 leading-relaxed">
+                  Chaque professionnel progresse selon des avis certifiés, sa régularité et la confiance réelle de ses clients.
+                  Le classement complet, avec filtres par ville et spécialité, se consulte sur le web comme dans l&apos;application.
+                </p>
+              </div>
+            </Reveal>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+              {topRanked.map((entry, i) => (
+                <Reveal key={entry.id} delay={i * 100}>
+                  <div className={`rounded-3xl border p-6 text-center ${i === 0 ? 'bg-neutral-900 border-neutral-900' : 'bg-neutral-50 border-neutral-100'}`}>
+                    <p className={`text-[11px] font-bold uppercase tracking-[0.2em] mb-4 ${i === 0 ? 'text-white/30' : 'text-neutral-300'}`}>#{entry.rank}</p>
+                    <div className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center ${i === 0 ? 'bg-white/10' : 'bg-white border border-neutral-100'}`}>
+                      <span className={`text-[18px] font-black ${i === 0 ? 'text-white' : 'text-neutral-900'}`}>{entry.name.charAt(0)}</span>
+                    </div>
+                    <p className={`text-[15px] font-bold mb-0.5 ${i === 0 ? 'text-white' : 'text-neutral-900'}`}>{entry.name}</p>
+                    <p className={`text-[12px] mb-3 ${i === 0 ? 'text-white/35' : 'text-neutral-400'}`}>{[entry.specialty, entry.city].filter(Boolean).join(' · ')}</p>
+                    {entry.reviews_count > 0 && (
+                      <div className="flex items-center justify-center gap-1">
+                        {[1,2,3,4,5].map((s) => <Star key={s} size={9} className={`fill-amber-400 stroke-none ${s > Math.round(entry.avg_rating) ? 'opacity-20' : ''}`} />)}
+                        <span className={`text-[11px] ml-1 ${i === 0 ? 'text-white/40' : 'text-neutral-400'}`}>{entry.avg_rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+            <div className="flex justify-center mt-10">
+              <Link href="/app/classements" className="inline-flex items-center gap-2 text-neutral-900 font-semibold text-[14px] hover:gap-3 transition-all">
+                Voir le classement complet <ArrowRight size={14} strokeWidth={2.5} />
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          PREUVES & CONFIANCE
+      ══════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5">
+          <Reveal>
+            <div className="max-w-2xl mb-14">
+              <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Preuves &amp; confiance</p>
+              <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em]">
+                CHAIR est encore jeune. Sa méthode ne l&apos;est pas.
+              </h2>
+            </div>
+          </Reveal>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { t: 'Aucun faux avis possible', d: "Chaque avis nécessite un QR code généré après une visite réelle. Pas de formulaire ouvert, pas d'avis acheté." },
+              { t: 'Des profils vérifiés', d: "L'identité de chaque professionnel est contrôlée avant publication. Ce que vous voyez correspond à une vraie personne." },
+              { t: 'Une plateforme qui démarre', d: "CHAIR est en déploiement progressif. Chaque nouveau coiffeur et chaque nouvel avis sont réels — nous préférons la qualité au chiffre." },
+            ].map((item, i) => (
+              <Reveal key={item.t} delay={i * 100}>
+                <div className="p-6 lg:p-7 rounded-3xl bg-white border border-neutral-100 h-full">
+                  <h3 className="text-[16px] font-bold text-neutral-900 mb-2.5">{item.t}</h3>
+                  <p className="text-[13.5px] text-neutral-500 leading-relaxed">{item.d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          TÉMOIGNAGES — état vide honnête, aucun faux témoignage
+      ══════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
+        <div className="max-w-3xl mx-auto px-5 text-center">
+          <Reveal>
+            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Témoignages</p>
+            <h2 className="text-[30px] sm:text-[36px] font-bold text-neutral-900 leading-[1.1] tracking-[-0.02em] mb-5">
+              Les premiers témoignages arrivent bientôt.
+            </h2>
+            <p className="text-[14.5px] text-neutral-500 leading-relaxed max-w-md mx-auto">
+              CHAIR est en phase de lancement. Plutôt que d&apos;inventer des avis, nous préférons attendre que les premiers utilisateurs
+              partagent la leur — et l&apos;afficher ici, sans retouche.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          APPLICATION MOBILE
+      ══════════════════════════════════════════════════════ */}
+      <section className="py-20 lg:py-24 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-5">
+          <div className="rounded-[32px] bg-[#0a0a0a] px-8 py-14 lg:px-16 lg:py-16 text-center">
+            <Reveal>
+              <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/20 mb-6">Application mobile</p>
+              <h2 className="text-[32px] sm:text-[40px] font-bold text-white leading-[1.05] tracking-[-0.02em] mb-4">
+                CHAIR, partout avec vous.
+              </h2>
+              <p className="text-[14.5px] text-white/40 max-w-md mx-auto mb-10 leading-relaxed">
+                Web ou mobile, c&apos;est la même expérience. L&apos;application ajoute simplement les notifications,
+                la caméra et l&apos;accès en un geste depuis votre écran d&apos;accueil.
+              </p>
+              <div className="flex justify-center">
+                <AppDownload variant="full" className="justify-center" qrSize={92} />
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
@@ -677,16 +922,21 @@ export default function HomePage() {
           <p className="text-[15px] lg:text-[16px] text-white/30 max-w-xl mx-auto mb-12 leading-relaxed">
             {"CHAIR n'est pas une application de réservation. C'est le premier endroit où toute la profession se retrouve — autour d'une seule conviction : le talent mérite d'être visible."}
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
-            <Link href="/app" className="inline-flex items-center justify-center gap-2.5 bg-white text-neutral-900 font-bold text-[15px] px-8 py-4 rounded-2xl hover:bg-neutral-100 transition-all shadow-2xl shadow-white/10">
-              Télécharger CHAIR <ArrowRight size={16} strokeWidth={2.5} />
+          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
+            <Link href="/app/recherche" className="inline-flex items-center justify-center gap-2.5 bg-white text-neutral-900 font-bold text-[15px] px-8 py-4 rounded-2xl hover:bg-neutral-100 transition-all shadow-2xl shadow-white/10">
+              Rechercher un coiffeur <ArrowRight size={16} strokeWidth={2.5} />
             </Link>
             <Link href="/pro/inscription" className="inline-flex items-center justify-center gap-2 text-white/35 font-medium text-[15px] px-8 py-4 rounded-2xl border border-white/10 hover:border-white/20 hover:text-white/60 transition-all">
               Créer un compte professionnel →
             </Link>
           </div>
+          <div className="mb-12">
+            <Link href="/download" className="text-white/30 hover:text-white/60 text-[13px] font-medium transition-colors">
+              Ou téléchargez l&apos;application →
+            </Link>
+          </div>
           <div className="flex flex-wrap justify-center gap-5">
-            {['Gratuit pour les clients', 'Salariés et indépendants', 'Gérants de salon', 'Avis 100% certifiés'].map((item, i) => (
+            {['Utilisable sur web et mobile', 'Salariés et indépendants', 'Gérants de salon', 'Avis 100% certifiés'].map((item, i) => (
               <div key={i} className="flex items-center gap-2">
                 <span className="w-1 h-1 rounded-full bg-white/20" />
                 <span className="text-[11px] text-white/25">{item}</span>

@@ -25,16 +25,19 @@ const SOCIALS = [
 ];
 
 const COL1 = [
-  { href: '/#clients',    label: 'Pour les clients' },
-  { href: '/#coiffeurs',  label: 'Pour les coiffeurs' },
-  { href: '/app',         label: 'Télécharger CHAIR' },
-  { href: '/pro/inscription', label: 'CHAIR PRO' },
+  { href: '/app/recherche',    label: 'Rechercher un coiffeur' },
+  { href: '/app/classements',  label: 'Classements' },
+  { href: '/app/favoris',      label: 'Mes favoris' },
+  { href: '/download',         label: 'Télécharger CHAIR' },
 ];
 
 const COL2 = [
-  { href: '/connexion',      label: 'Se connecter' },
-  { href: '/inscription',    label: 'Créer un compte' },
-  { href: '/contact',        label: 'Contact' },
+  { href: '/pro/inscription',          label: 'Découvrir CHAIR PRO' },
+  { href: '/pro/connexion',            label: 'Connexion CHAIR PRO' },
+  { href: '/connexion',                label: 'Connexion' },
+  { href: '/inscription',              label: 'Créer un compte' },
+  { href: '/contact',                  label: 'Contact' },
+  { href: '/app/compte/supprimer',     label: 'Supprimer mon compte' },
 ];
 
 export default function LandingFooter() {
@@ -68,9 +71,9 @@ export default function LandingFooter() {
             </div>
           </div>
 
-          {/* Plateforme */}
+          {/* CHAIR client */}
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600 mb-5">Plateforme</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600 mb-5">CHAIR</p>
             <ul className="space-y-3">
               {COL1.map((l) => (
                 <li key={l.href}>
@@ -82,9 +85,9 @@ export default function LandingFooter() {
             </ul>
           </div>
 
-          {/* Liens */}
+          {/* Pro & compte */}
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600 mb-5">Liens</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-600 mb-5">Pro &amp; compte</p>
             <ul className="space-y-3">
               {COL2.map((l) => (
                 <li key={l.href}>

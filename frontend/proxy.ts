@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 // Activer la protection bêta via variable d'env
 const BETA_ENABLED = process.env.NEXT_PUBLIC_BETA_ENABLED === 'true';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protection admin

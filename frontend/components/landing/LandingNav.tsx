@@ -7,10 +7,10 @@ import { X, Menu } from 'lucide-react';
 import ChairLogo from '@/components/ui/ChairLogo';
 
 const LINKS = [
-  { href: '/#fonctionnalites', label: 'Fonctionnalités' },
-  { href: '/#clients',         label: 'Pour les clients' },
-  { href: '/#coiffeurs',       label: 'Pour les coiffeurs' },
-  { href: '/contact',          label: 'Contact' },
+  { href: '/#comment-ca-marche', label: 'Comment ça marche' },
+  { href: '/app/recherche',      label: 'Rechercher' },
+  { href: '/app/classements',    label: 'Classements' },
+  { href: '/#coiffeurs',         label: 'Pour les professionnels' },
 ];
 
 export default function LandingNav({ dark = false }: { dark?: boolean }) {
@@ -56,13 +56,13 @@ export default function LandingNav({ dark = false }: { dark?: boolean }) {
           {/* Desktop CTAs */}
           <div className="hidden md:flex items-center gap-3">
             <Link
-              href="/pro/inscription"
+              href="/connexion"
               className={`text-[13px] font-medium transition-colors px-4 py-2 ${!scrolled && dark ? 'text-white/50 hover:text-white' : 'text-neutral-600 hover:text-neutral-900'}`}
             >
-              CHAIR PRO
+              Connexion
             </Link>
             <Link
-              href="/app"
+              href="/download"
               className={`text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors ${!scrolled && dark ? 'bg-white text-neutral-900 hover:bg-neutral-100' : 'bg-neutral-900 text-white hover:bg-neutral-700'}`}
             >
               Télécharger CHAIR
@@ -97,19 +97,28 @@ export default function LandingNav({ dark = false }: { dark?: boolean }) {
           </nav>
           <div className="flex flex-col gap-3 px-6 pt-8">
             <Link
-              href="/app"
+              href="/app/recherche"
               onClick={() => setOpen(false)}
               className="w-full text-center text-[15px] font-semibold bg-neutral-900 text-white py-4 rounded-2xl hover:bg-neutral-700 transition-colors"
             >
-              Télécharger CHAIR
+              Rechercher un coiffeur
             </Link>
             <Link
-              href="/pro/inscription"
+              href="/download"
               onClick={() => setOpen(false)}
               className="w-full text-center text-[15px] font-medium text-neutral-700 py-4 rounded-2xl border border-neutral-200 hover:border-neutral-400 transition-colors"
             >
-              Rejoindre CHAIR PRO
+              Télécharger l&apos;application
             </Link>
+            <div className="flex items-center gap-4 justify-center pt-2 text-[13px]">
+              <Link href="/connexion" onClick={() => setOpen(false)} className="text-neutral-500 hover:text-neutral-900 transition-colors">
+                Connexion
+              </Link>
+              <span className="text-neutral-200">·</span>
+              <Link href="/pro/connexion" onClick={() => setOpen(false)} className="text-neutral-500 hover:text-neutral-900 transition-colors">
+                Connexion CHAIR PRO
+              </Link>
+            </div>
           </div>
         </div>
       )}

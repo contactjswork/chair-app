@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
       // Ancienne URL site vitrine
       { source: '/site-vitrine',               destination: '/',                      permanent: true },
       { source: '/site-vitrine/:path*',        destination: '/:path*',                permanent: true },
+      // Anciennes pages vitrine autonomes, jamais liées ailleurs — fusionnées dans la home
+      { source: '/clients',                    destination: '/',                      permanent: true },
+      { source: '/coiffeurs',                  destination: '/pro/inscription',       permanent: true },
     ];
   },
   images: {
