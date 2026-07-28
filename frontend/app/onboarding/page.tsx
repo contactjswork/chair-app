@@ -344,7 +344,6 @@ export default function OnboardingPage() {
             shareUrl={myReferral.link}
             shareText={`Retrouvez-moi sur CHAIR — ${tagline.trim() || `${user?.name}, coiffeur`}`}
             actionType="share_profile"
-            onRewarded={(points) => setBadgeToast({ label: 'Partage effectué', points })}
           />
         )}
       </div>

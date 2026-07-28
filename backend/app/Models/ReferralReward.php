@@ -9,7 +9,7 @@ class ReferralReward extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id', 'reason', 'points', 'chair_plus_days', 'boost_days', 'badge_code', 'created_at',
+        'user_id', 'reason', 'target_type', 'target_id', 'points', 'chair_plus_days', 'boost_days', 'badge_code', 'created_at',
     ];
 
     protected $casts = [

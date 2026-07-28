@@ -18,32 +18,19 @@ interface Props {
   actionType: ShareActionType;
   targetType?: string;
   targetId?: number;
-  /** Callback quand une récompense est accordée — pour afficher "+5 pts" côté appelant. */
-  onRewarded?: (points: number) => void;
 }
-
-// Points réels par action — dupliqué de ReferralService::ACTIONS (backend),
-// juste pour l'indice affiché ici ("+5 pts à chaque partage"). Le vrai crédit
-// vient toujours du backend (res.points via onRewarded), jamais inventé ici.
-const ACTION_POINTS: Record<ShareActionType, number> = {
-  share_profile: 5,
-  share_post: 5,
-  social_post: 30,
-  invite_hairdresser: 80,
-  invite_salon: 150,
-  invite_client: 40,
-  first_review: 10,
-  first_favorite: 5,
-};
 
 const isMobileUA = () => typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
 // Volet de partage réutilisable — profil, réalisation, lien de parrainage.
-// Chaque canal loggé via /share-events pour le programme ambassadeur (voir
-// docs/GROWTH.md). Instagram/Snapchat n'ont pas d'URL web de partage prérempli
+// Chaque canal loggé via /share-events pour la télémétrie (voir docs/GROWTH.md)
+// mais ceci ne crédite JAMAIS de points — un partage/copie/QR n'est qu'une
+// intention, pas une inscription réelle. Le crédit n'arrive que lorsque le
+// filleul termine son inscription (voir ReferralService::attributeSignup côté
+// backend). Instagram/Snapchat n'ont pas d'URL web de partage prérempli
 // fiable : le texte est copié + l'appli est ouverte (deep link), au lieu de
 // prétendre à un partage direct qui n'existe pas.
-export default function ShareSheet({ open, onClose, title, shareUrl, shareText, actionType, targetType, targetId, onRewarded }: Props) {
+export default function ShareSheet({ open, onClose, title, shareUrl, shareText, actionType, targetType, targetId }: Props) {
   const [copiedChannel, setCopiedChannel] = useState<ShareChannel | null>(null);
   const [showQr, setShowQr] = useState(false);
 
@@ -51,11 +38,9 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
 
   const fullMessage = `${shareText ?? title}\n${shareUrl}`;
 
-  async function log(channel: ShareChannel) {
-    try {
-      const res = await referral.share(actionType, { targetType, targetId, channel });
-      if (res.rewarded && onRewarded) onRewarded(res.points);
-    } catch { /* le partage reste utile même si le crédit échoue */ }
+  function log(channel: ShareChannel) {
+    // Télémétrie best-effort ("invitations envoyées") — jamais de crédit ici.
+    referral.share(actionType, { targetType, targetId, channel }).catch(() => {});
   }
 
   async function handleNativeShare() {
@@ -106,8 +91,6 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
     if (!showQr) log('qr');
   }
 
-  const points = ACTION_POINTS[actionType];
-
   const channelBtnCls = 'flex flex-col items-center gap-1.5 group';
   const iconCircleCls = 'w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-700 group-hover:bg-neutral-200 group-active:scale-95 transition-all';
   const labelCls = 'text-[10px] font-semibold text-neutral-500';
@@ -121,11 +104,9 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
             <X size={15} />
           </button>
         </div>
-        {!!points && (
-          <p className="text-[12px] text-neutral-400 mb-4">
-            <span className="font-bold text-neutral-700">+{points} points CHAIR</span> à chaque partage.
-          </p>
-        )}
+        <p className="text-[12px] text-neutral-400 mb-4">
+          Gagnez 5 points lorsqu&apos;un filleul crée son compte grâce à votre lien.
+        </p>
 
         {showQr && (
           <div className="flex justify-center mb-5">

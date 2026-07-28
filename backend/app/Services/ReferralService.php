@@ -16,19 +16,24 @@ use Illuminate\Support\Str;
  */
 class ReferralService
 {
-    // Points/récompenses par action — voir docs/GROWTH.md pour le détail.
-    // once_per_user : ne peut plus jamais être récompensé une fois obtenu.
-    // daily_cap : nombre max de fois récompensé PAR JOUR (anti-spam simple).
+    // Récompenses de parrainage réel — voir docs/GROWTH.md. IMPORTANT : ces
+    // entrées ne sont plus JAMAIS déclenchables depuis une requête cliente.
+    // Le seul appelant autorisé est attributeSignup() ci-dessous, exécuté
+    // côté serveur au moment où un filleul termine réellement son inscription.
+    // (Avant le 2026-07-29, ReferralController::share() acceptait n'importe
+    // quel action_type de cette liste depuis le frontend — un utilisateur
+    // pouvait donc s'auto-créditer des points/du boost à l'infini en rejouant
+    // POST /share-events. Voir git blame pour l'ancien comportement.)
     const ACTIONS = [
-        'share_profile'      => ['points' => 5,   'daily_cap' => 3],
-        'share_post'         => ['points' => 5,   'daily_cap' => 3],
-        'social_post'        => ['points' => 30,  'daily_cap' => 1],
-        'invite_hairdresser' => ['points' => 80,  'daily_cap' => null, 'boost_days' => 3],
-        'invite_salon'       => ['points' => 150, 'daily_cap' => null, 'boost_days' => 7],
-        'invite_client'      => ['points' => 40,  'daily_cap' => null],
-        'first_review'       => ['points' => 10,  'once_per_user' => true],
-        'first_favorite'     => ['points' => 5,   'once_per_user' => true],
+        'invite_hairdresser' => ['points' => 80,  'boost_days' => 3],
+        'invite_salon'       => ['points' => 150, 'boost_days' => 7],
+        'invite_client'      => ['points' => 40],
     ];
+
+    // Actions de partage : pur télémétrie (compteur "invitations envoyées"),
+    // ne rapportent et n'ont jamais rapporté de points par elles-mêmes. Seule
+    // une inscription réelle via le lien crédite des points — voir ACTIONS.
+    const TELEMETRY_ACTIONS = ['share_profile', 'share_post', 'social_post'];
 
     // Actions qui comptent comme un "filleul" pour les paliers milestone —
     // celles où une AUTRE personne s'est réellement inscrite grâce à ce compte.
@@ -58,11 +63,29 @@ class ReferralService
         return $code;
     }
 
-    /** Posé une seule fois, à l'inscription — jamais réécrit ensuite. */
+    /**
+     * Seul point d'entrée qui crédite un parrain — appelé exclusivement par
+     * AuthController::register(), côté serveur, quand un filleul termine
+     * réellement son inscription. Jamais depuis une route déclenchable par
+     * une simple action de partage/copie côté client.
+     *
+     * Garde-fous anti-fraude :
+     * - auto-parrainage impossible (référent == filleul) ;
+     * - un compte ne peut être rattaché qu'à UN SEUL parrain, une seule fois
+     *   (referred_by_user_id n'est jamais réécrit s'il est déjà posé) ;
+     * - un parrain suspendu ne peut plus être crédité ;
+     * - contrainte unique en base (reason, target_type, target_id) sur
+     *   referral_rewards : même si deux requêtes concurrentes arrivaient ici
+     *   pour le même filleul, une seule insertion peut réussir.
+     */
     public static function attributeSignup(User $newUser, string $referralCode): void
     {
+        if ($newUser->referred_by_user_id) return; // déjà rattaché, ne jamais réécrire
+
         $referrer = User::where('referral_code', $referralCode)->first();
-        if (!$referrer || $referrer->id === $newUser->id) return;
+        if (!$referrer) return;
+        if ($referrer->id === $newUser->id) return; // auto-parrainage
+        if ($referrer->suspended_at) return; // compte suspendu : aucun crédit
 
         $newUser->update(['referred_by_user_id' => $referrer->id]);
 
@@ -72,24 +95,18 @@ class ReferralService
             default       => 'invite_client',
         };
 
-        self::recordAndReward($referrer, $actionType, 'user', $newUser->id, null);
+        self::recordAndReward($referrer, $actionType, 'user', $newUser->id);
     }
 
     /**
-     * Enregistre une action de partage/parrainage et accorde la récompense
-     * si les garde-fous anti-spam (plafond quotidien, once_per_user) le
-     * permettent. Retourne la récompense accordée (ou null si aucune —
-     * l'action a été loguée pour les statistiques, sans crédit cette fois).
+     * Enregistre une action de partage — pure télémétrie ("invitations
+     * envoyées"), ne crédite jamais de points. La liste des action_type
+     * acceptés (TELEMETRY_ACTIONS) exclut volontairement les reasons de
+     * ACTIONS : impossible de faire créditer un invite_* via cette voie.
      */
-    public static function recordAndReward(
-        User $user,
-        string $actionType,
-        ?string $targetType = null,
-        ?int $targetId = null,
-        ?string $channel = null
-    ): ?ReferralReward {
-        if (!isset(self::ACTIONS[$actionType])) return null;
-        $config = self::ACTIONS[$actionType];
+    public static function logShare(User $user, string $actionType, ?string $targetType, ?int $targetId, ?string $channel): void
+    {
+        if (!in_array($actionType, self::TELEMETRY_ACTIONS, true)) return;
 
         ShareEvent::create([
             'user_id'     => $user->id,
@@ -99,27 +116,39 @@ class ReferralService
             'channel'     => $channel,
             'created_at'  => now(),
         ]);
+    }
 
-        if (!empty($config['once_per_user'])) {
-            $already = ReferralReward::where('user_id', $user->id)->where('reason', $actionType)->exists();
-            if ($already) return null;
-        } elseif (!empty($config['daily_cap'])) {
-            $todayCount = ReferralReward::where('user_id', $user->id)
-                ->where('reason', $actionType)
-                ->where('created_at', '>=', now()->startOfDay())
-                ->count();
-            if ($todayCount >= $config['daily_cap']) return null;
+    /**
+     * Crée la récompense pour un parrain, de façon idempotente : la
+     * contrainte unique (reason, target_type, target_id) fait échouer toute
+     * seconde tentative pour la même cible (même sous course concurrente),
+     * on l'attrape simplement et on retourne null.
+     */
+    private static function recordAndReward(User $user, string $actionType, ?string $targetType, ?int $targetId): ?ReferralReward
+    {
+        if (!isset(self::ACTIONS[$actionType])) return null;
+        $config = self::ACTIONS[$actionType];
+
+        try {
+            $reward = DB::transaction(function () use ($user, $actionType, $targetType, $targetId, $config) {
+                return ReferralReward::create([
+                    'user_id'         => $user->id,
+                    'reason'          => $actionType,
+                    'target_type'     => $targetType,
+                    'target_id'       => $targetId,
+                    'points'          => $config['points'] ?? 0,
+                    'chair_plus_days' => $config['chair_plus_days'] ?? 0,
+                    'boost_days'      => $config['boost_days'] ?? 0,
+                    'badge_code'      => null,
+                    'created_at'      => now(),
+                ]);
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Violation de la contrainte unique = ce filleul a déjà été
+            // crédité (course concurrente) : comportement attendu, pas une erreur.
+            if (str_contains($e->getMessage(), 'referral_rewards_reason_target_unique')) return null;
+            throw $e;
         }
-
-        $reward = ReferralReward::create([
-            'user_id'         => $user->id,
-            'reason'          => $actionType,
-            'points'          => $config['points'] ?? 0,
-            'chair_plus_days' => $config['chair_plus_days'] ?? 0,
-            'boost_days'      => $config['boost_days'] ?? 0,
-            'badge_code'      => null,
-            'created_at'      => now(),
-        ]);
 
         self::applyReward($user, $reward);
 

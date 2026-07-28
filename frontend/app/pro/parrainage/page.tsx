@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { referral } from '@/lib/api';
 import type { ApiReferral } from '@/lib/types';
-import { ArrowLeft, Share2, Users, Gift, Zap, Check, Copy } from 'lucide-react';
+import { ArrowLeft, Share2, Send, Users, Gift, Zap, Check, Copy } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
 
 const MILESTONE_LABELS: Record<number, string> = {
@@ -21,7 +21,6 @@ export default function ParrainagePage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   function loadReferral() {
@@ -37,11 +36,6 @@ export default function ParrainagePage() {
     if (!user) return;
     loadReferral();
   }, [user]);
-
-  function showRewardToast(points: number) {
-    setToast(`+${points} points CHAIR !`);
-    setTimeout(() => setToast(null), 2500);
-  }
 
   async function copyLink() {
     if (!data) return;
@@ -60,12 +54,6 @@ export default function ParrainagePage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">
-          {toast}
-        </div>
-      )}
 
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
         <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
@@ -109,11 +97,16 @@ export default function ParrainagePage() {
             </div>
 
             {/* ── Stats ── */}
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
+                <Send size={16} className="text-neutral-300 mx-auto mb-1.5" />
+                <p className="text-xl font-bold text-neutral-900 leading-none">{data.shares_count}</p>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Partagés</p>
+              </div>
               <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
                 <Users size={16} className="text-neutral-300 mx-auto mb-1.5" />
                 <p className="text-xl font-bold text-neutral-900 leading-none">{data.referral_count}</p>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Filleuls</p>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Comptes créés</p>
               </div>
               <div className="bg-white rounded-2xl border border-neutral-100 p-4 text-center">
                 <Zap size={16} className="text-neutral-300 mx-auto mb-1.5" />
@@ -166,7 +159,7 @@ export default function ParrainagePage() {
             </div>
 
             <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-              Points : partage de profil/réalisation, invitation d&apos;un collègue ou d&apos;un salon, publication réseaux sociaux avec votre lien.
+              Chaque inscription validée via votre lien vous rapporte des points — partager le lien ne suffit pas, il faut qu&apos;un filleul crée réellement son compte.
             </p>
           </>
         ) : (
@@ -195,7 +188,6 @@ export default function ParrainagePage() {
           shareUrl={data.link}
           shareText={`Rejoignez-moi sur CHAIR, l'app qui met en avant les coiffeurs !`}
           actionType="share_profile"
-          onRewarded={showRewardToast}
         />
       )}
     </div>

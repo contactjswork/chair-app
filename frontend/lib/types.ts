@@ -229,6 +229,7 @@ export interface ApiStory {
 export interface ApiReferral {
   code: string;
   link: string;
+  shares_count: number;
   referral_count: number;
   points_earned: number;
   next_milestone: number | null;
@@ -237,10 +238,9 @@ export interface ApiReferral {
   boost_until: string | null;
 }
 
-export type ShareActionType =
-  | 'share_profile' | 'share_post' | 'social_post'
-  | 'invite_hairdresser' | 'invite_salon' | 'invite_client'
-  | 'first_review' | 'first_favorite';
+// Purement télémétrique — ne crédite jamais de points (voir ReferralService::TELEMETRY_ACTIONS
+// côté backend). Les points de parrainage ne viennent que d'une inscription réelle via le lien.
+export type ShareActionType = 'share_profile' | 'share_post' | 'social_post';
 
 export type ShareChannel = 'copy_link' | 'qr' | 'instagram' | 'whatsapp' | 'snapchat' | 'tiktok' | 'native';
 
