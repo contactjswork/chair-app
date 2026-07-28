@@ -46,8 +46,7 @@ export default function SpecialtyPicker({ specialties, selected, onToggle, size 
           >
             <div className={`relative ${boxSize} rounded-[16px] flex items-center justify-center overflow-hidden flex-shrink-0 ${active ? 'bg-white/10' : 'bg-neutral-100'}`}>
               {s.icon ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={s.icon} alt={s.name} className="w-full h-full object-cover" />
+                <span style={{ fontSize: iconSize }} className="leading-none">{s.icon}</span>
               ) : (
                 <Icon size={iconSize} className={active ? 'text-white' : 'text-neutral-500'} strokeWidth={1.5} />
               )}

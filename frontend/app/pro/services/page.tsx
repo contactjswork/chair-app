@@ -199,8 +199,7 @@ function SpecialtyServiceCard({
       <div className="flex items-center gap-3 px-4 py-3.5 bg-neutral-50">
         <div className="w-11 h-11 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
           {specialty?.icon
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={specialty.icon} alt={specialty.name} className="w-full h-full object-cover" />
+            ? <span className="text-[20px] leading-none">{specialty.icon}</span>
             : specialty
               ? <Scissors size={18} className="text-neutral-400" strokeWidth={1.5} />
               : <Sparkles size={18} className="text-neutral-400" strokeWidth={1.5} />

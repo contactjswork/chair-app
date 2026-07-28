@@ -474,8 +474,7 @@ export default function DashboardProfilPage() {
                       >
                         <div className="w-8 h-8 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
                           {sp.icon
-                            // eslint-disable-next-line @next/next/no-img-element
-                            ? <img src={sp.icon} alt={sp.name} className="w-full h-full object-cover" />
+                            ? <span className="text-[15px] leading-none">{sp.icon}</span>
                             : <Scissors size={14} className="text-neutral-400" strokeWidth={1.5} />
                           }
                         </div>
