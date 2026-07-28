@@ -196,7 +196,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-sm transition-all ${
+      className={`flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-sm transition-all min-w-0 ${
         isFirst ? 'p-5 flex-[1.15]' : 'p-3.5 flex-1'
       }`}
     >
@@ -214,8 +214,8 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
           {entry.rank}
         </span>
       </div>
-      <p className={`font-bold text-neutral-900 truncate w-full flex items-center justify-center gap-1 ${isFirst ? 'text-[14px]' : 'text-[12px]'}`}>
-        {entry.name}
+      <p className={`font-bold text-neutral-900 w-full flex items-center justify-center gap-1 min-w-0 ${isFirst ? 'text-[14px]' : 'text-[12px]'}`}>
+        <span className="truncate">{entry.name}</span>
         {entry.isVerified && <BadgeCheck size={isFirst ? 13 : 11} className="text-blue-500 flex-shrink-0" />}
       </p>
       {entry.city && <p className={`text-neutral-400 truncate w-full ${isFirst ? 'text-[11px]' : 'text-[10px]'} mt-0.5`}>{entry.city}</p>}
@@ -331,7 +331,7 @@ export default function ClassementsPage() {
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto pb-28 md:pb-8">
+      <div className="max-w-2xl mx-auto pb-28 md:pb-8 overflow-x-hidden">
         {/* Header */}
         <div className="px-4 pt-6 pb-4">
           <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-1">CHAIR</p>
