@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { services as servicesApi, api } from '@/lib/api';
 import type { ApiServiceCategory, ApiService, ApiSpecialty, ApiHairdresserProfile } from '@/lib/types';
-import { Plus, Pencil, Trash2, Eye, EyeOff, Scissors, AlertTriangle, Sparkles } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Scissors, AlertTriangle, Sparkles } from 'lucide-react';
+import ServiceActionsSheet from '@/components/ui/ServiceActionsSheet';
 
 // ── Formulaire d'ajout/édition de service (spécialité déjà fixée par le contexte) ──
 
@@ -107,7 +108,7 @@ function ServiceForm({
 // ── Ligne de service (affichage) ────────────────────────────────────────
 
 function ServiceRow({
-  svc, isIndependent, isEditing, onEdit, onCancelEdit, onSave, onToggle,
+  svc, isIndependent, isEditing, onEdit, onCancelEdit, onSave, onToggle, onDuplicate, onMove, onDeletePermanently, specialties,
 }: {
   svc: ApiService;
   isIndependent: boolean;
@@ -115,8 +116,14 @@ function ServiceRow({
   onEdit: () => void;
   onCancelEdit: () => void;
   onSave: (data: { name: string; description: string; price: number | null; duration_minutes: number | null }) => Promise<void>;
-  onToggle: () => void;
+  onToggle: () => Promise<void>;
+  onDuplicate: () => Promise<void>;
+  onMove: (specialtyId: number | null) => Promise<void>;
+  onDeletePermanently: () => Promise<void>;
+  specialties: ApiSpecialty[];
 }) {
+  const [actionsOpen, setActionsOpen] = useState(false);
+
   if (isEditing) {
     return (
       <div className="px-4 py-3">
@@ -143,13 +150,21 @@ function ServiceRow({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={onToggle} className="p-1.5 hover:bg-neutral-100 rounded-lg" title={svc.is_active ? 'Désactiver' : 'Activer'}>
-          {svc.is_active ? <Eye size={14} className="text-neutral-400" /> : <EyeOff size={14} className="text-neutral-400" />}
-        </button>
-        <button onClick={onEdit} className="p-1.5 hover:bg-neutral-100 rounded-lg">
-          <Pencil size={14} className="text-neutral-400" />
+        <button onClick={() => setActionsOpen(true)} className="p-1.5 hover:bg-neutral-100 rounded-lg" title="Actions">
+          <MoreHorizontal size={16} className="text-neutral-400" />
         </button>
       </div>
+      <ServiceActionsSheet
+        open={actionsOpen}
+        onClose={() => setActionsOpen(false)}
+        service={svc}
+        specialties={specialties}
+        onEdit={onEdit}
+        onToggle={onToggle}
+        onDuplicate={onDuplicate}
+        onMove={onMove}
+        onDeletePermanently={onDeletePermanently}
+      />
     </div>
   );
 }
@@ -157,11 +172,12 @@ function ServiceRow({
 // ── Carte "spécialité" — photo + services nichés dessous ────────────────
 
 function SpecialtyServiceCard({
-  specialty, services, isIndependent, showAddForm, onOpenAdd, onCloseAdd, onCreate,
-  editingId, onEdit, onCancelEdit, onSaveEdit, onToggle, footer,
+  specialty, services, allSpecialties, isIndependent, showAddForm, onOpenAdd, onCloseAdd, onCreate,
+  editingId, onEdit, onCancelEdit, onSaveEdit, onToggle, onDuplicate, onMove, onDeletePermanently, footer,
 }: {
   specialty: ApiSpecialty | null;
   services: ApiService[];
+  allSpecialties: ApiSpecialty[];
   isIndependent: boolean;
   showAddForm: boolean;
   onOpenAdd: () => void;
@@ -171,7 +187,10 @@ function SpecialtyServiceCard({
   onEdit: (svc: ApiService) => void;
   onCancelEdit: () => void;
   onSaveEdit: (svc: ApiService, data: { name: string; description: string; price: number | null; duration_minutes: number | null }) => Promise<void>;
-  onToggle: (svc: ApiService) => void;
+  onToggle: (svc: ApiService) => Promise<void>;
+  onDuplicate: (svc: ApiService) => Promise<void>;
+  onMove: (svc: ApiService, specialtyId: number | null) => Promise<void>;
+  onDeletePermanently: (svc: ApiService) => Promise<void>;
   footer?: ReactNode;
 }) {
   const label = specialty?.name ?? 'Autres services';
@@ -218,6 +237,10 @@ function SpecialtyServiceCard({
               onCancelEdit={onCancelEdit}
               onSave={(data) => onSaveEdit(svc, data)}
               onToggle={() => onToggle(svc)}
+              onDuplicate={() => onDuplicate(svc)}
+              onMove={(specialtyId) => onMove(svc, specialtyId)}
+              onDeletePermanently={() => onDeletePermanently(svc)}
+              specialties={allSpecialties}
             />
           ))}
         </div>
@@ -340,11 +363,30 @@ export default function DashboardServicesPage() {
     setServices((prev) => prev.map((s) => (s.id === svc.id ? updated : s)));
   }
 
+  async function handleDuplicate(svc: ApiService) {
+    const copy = await servicesApi.items.duplicate(svc.id) as ApiService;
+    setServices((prev) => [...prev, copy]);
+  }
+
+  async function handleMove(svc: ApiService, specialtyId: number | null) {
+    const updated = await servicesApi.items.update(svc.id, { specialty_id: specialtyId }) as ApiService;
+    setServices((prev) => prev.map((s) => (s.id === svc.id ? updated : s)));
+  }
+
+  async function handleDeletePermanently(svc: ApiService) {
+    await servicesApi.items.deletePermanently(svc.id); // rejette avec un message clair si des RDV sont liés
+    setServices((prev) => prev.filter((s) => s.id !== svc.id));
+  }
+
   async function handleDeleteOrphanCategory(id: number) {
     if (!confirm('Supprimer cette catégorie et tous ses services ?')) return;
-    await servicesApi.categories.delete(id);
-    setServices((prev) => prev.filter((s) => s.category_id !== id));
-    setCategories((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await servicesApi.categories.delete(id);
+      setServices((prev) => prev.filter((s) => s.category_id !== id));
+      setCategories((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Suppression impossible.');
+    }
   }
 
   if (loading) {
@@ -392,6 +434,7 @@ export default function DashboardServicesPage() {
             key={sp.id}
             specialty={sp}
             services={services.filter((s) => s.specialty_id === sp.id)}
+            allSpecialties={mySpecialties}
             isIndependent={isIndependent}
             showAddForm={addingFor === sp.id}
             onOpenAdd={() => setAddingFor(sp.id)}
@@ -402,6 +445,9 @@ export default function DashboardServicesPage() {
             onCancelEdit={() => setEditingId(null)}
             onSaveEdit={handleSaveEdit}
             onToggle={handleToggle}
+            onDuplicate={handleDuplicate}
+            onMove={handleMove}
+            onDeletePermanently={handleDeletePermanently}
           />
         ))}
 
@@ -409,6 +455,7 @@ export default function DashboardServicesPage() {
         <SpecialtyServiceCard
           specialty={null}
           services={orphanServices}
+          allSpecialties={mySpecialties}
           isIndependent={isIndependent}
           showAddForm={addingFor === -1}
           onOpenAdd={() => setAddingFor(-1)}
@@ -419,6 +466,9 @@ export default function DashboardServicesPage() {
           onCancelEdit={() => setEditingId(null)}
           onSaveEdit={handleSaveEdit}
           onToggle={handleToggle}
+          onDuplicate={handleDuplicate}
+          onMove={handleMove}
+          onDeletePermanently={handleDeletePermanently}
           footer={staleCategoryIds.size > 0 && (
             <div className="px-4 py-2.5 border-t border-neutral-100">
               {Array.from(staleCategoryIds).map((catId) => (

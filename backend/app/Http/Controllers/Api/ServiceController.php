@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\ServiceCategory;
+use App\Services\SpecialtyReputationService;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -90,6 +92,20 @@ class ServiceController extends Controller
     {
         $profile  = $this->getProfile($request);
         $category = ServiceCategory::where('id', $id)->where('hairdresser_id', $profile->id)->firstOrFail();
+
+        // La FK services.category_id est ON DELETE CASCADE : supprimer la
+        // catégorie supprime définitivement tous ses services en base, sans
+        // égard aux rendez-vous liés (voir aussi permanentlyDestroyService).
+        // On bloque donc ici au même titre qu'une suppression de service.
+        $serviceIds = Service::where('category_id', $id)->pluck('id');
+        $appointmentsCount = $serviceIds->isEmpty() ? 0 : Appointment::whereIn('service_id', $serviceIds)->count();
+        if ($appointmentsCount > 0) {
+            return response()->json([
+                'message' => "Cette catégorie contient des services liés à {$appointmentsCount} rendez-vous — désactivez-les individuellement plutôt que de supprimer la catégorie.",
+                'appointments_count' => $appointmentsCount,
+            ], 409);
+        }
+
         $category->delete();
         return response()->json(null, 204);
     }
@@ -147,15 +163,80 @@ class ServiceController extends Controller
             'is_active'        => 'sometimes|boolean',
         ]);
 
+        $specialtyChanged = array_key_exists('specialty_id', $validated) && $validated['specialty_id'] !== $service->specialty_id;
+
         $service->update($validated);
+
+        // Un service déplacé vers une autre spécialité change la spécialité
+        // à laquelle ses rendez-vous complétés contribuent (SpecialtyReputationService
+        // rejoint appointments.service_id -> services.specialty_id en direct,
+        // voir docs) — on recalcule tout de suite plutôt que d'attendre le
+        // prochain déclencheur naturel.
+        if ($specialtyChanged) {
+            SpecialtyReputationService::refreshAll($profile);
+        }
+
         return response()->json($service->load(['category', 'specialty']));
     }
 
+    /** Désactive un service (visible dans la gestion, plus proposé à la réservation). Réversible. */
     public function destroyService(Request $request, int $id)
     {
         $profile = $this->getProfile($request);
         $service = Service::where('id', $id)->where('hairdresser_id', $profile->id)->firstOrFail();
         $service->update(['is_active' => false]);
         return response()->json($service);
+    }
+
+    /**
+     * Duplique un service à l'identique (nom, prix, durée, description,
+     * catégorie, spécialité) sous le même nom suffixé " (copie)". Le
+     * duplicata démarre actif et sans aucun rendez-vous/statistique associé.
+     */
+    public function duplicateService(Request $request, int $id)
+    {
+        $profile = $this->getProfile($request);
+        $service = Service::where('id', $id)->where('hairdresser_id', $profile->id)->firstOrFail();
+
+        $copy = Service::create([
+            'hairdresser_id'   => $profile->id,
+            'category_id'      => $service->category_id,
+            'specialty_id'     => $service->specialty_id,
+            'name'             => "{$service->name} (copie)",
+            'description'      => $service->description,
+            'price'            => $service->price,
+            'duration_minutes' => $service->duration_minutes,
+            'is_active'        => true,
+        ]);
+
+        return response()->json($copy->fresh(['category', 'specialty']), 201);
+    }
+
+    /**
+     * Suppression DÉFINITIVE — supprime réellement la ligne, contrairement à
+     * destroyService() qui ne fait que désactiver. Bloquée dès que le moindre
+     * rendez-vous (passé ou futur, quel que soit son statut) référence ce
+     * service : la FK appointments.service_id est ON DELETE SET NULL, donc
+     * techniquement la suppression "réussirait" sans casser la réservation,
+     * mais on perdrait silencieusement l'attribution de ce rendez-vous aux
+     * statistiques de la spécialité (SpecialtyReputationService fait un join
+     * live sur service_id) — jamais de perte de données silencieuse. Un
+     * service avec historique doit être désactivé, pas supprimé.
+     */
+    public function permanentlyDestroyService(Request $request, int $id)
+    {
+        $profile = $this->getProfile($request);
+        $service = Service::where('id', $id)->where('hairdresser_id', $profile->id)->firstOrFail();
+
+        $appointmentsCount = Appointment::where('service_id', $id)->count();
+        if ($appointmentsCount > 0) {
+            return response()->json([
+                'message' => "Ce service est lié à {$appointmentsCount} rendez-vous (passés ou à venir) — désactivez-le plutôt que de le supprimer, pour ne pas perdre l'historique.",
+                'appointments_count' => $appointmentsCount,
+            ], 409);
+        }
+
+        $service->delete();
+        return response()->json(null, 204);
     }
 }

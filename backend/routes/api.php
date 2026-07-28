@@ -202,10 +202,12 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::delete('/service-categories/{id}',  [ServiceController::class, 'destroyCategory']);
 
     // Services
-    Route::get('/services',          [ServiceController::class, 'indexServices']);
-    Route::post('/services',         [ServiceController::class, 'storeService']);
-    Route::put('/services/{id}',     [ServiceController::class, 'updateService']);
-    Route::delete('/services/{id}',  [ServiceController::class, 'destroyService']);
+    Route::get('/services',                    [ServiceController::class, 'indexServices']);
+    Route::post('/services',                   [ServiceController::class, 'storeService']);
+    Route::put('/services/{id}',                [ServiceController::class, 'updateService']);
+    Route::delete('/services/{id}',              [ServiceController::class, 'destroyService']); // désactive (réversible)
+    Route::post('/services/{id}/duplicate',     [ServiceController::class, 'duplicateService']);
+    Route::delete('/services/{id}/permanent',   [ServiceController::class, 'permanentlyDestroyService']); // supprime réellement, bloqué si historique
 
     // Planning (horaires)
     Route::get('/schedule',    [ScheduleController::class, 'index']);

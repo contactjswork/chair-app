@@ -37,7 +37,12 @@ async function request<T>(
     throw new Error(error.message || `Erreur ${res.status}`);
   }
 
-  return res.json();
+  // 204 No Content (et tout body vide) n'a rien à parser — res.json() lève
+  // "Unexpected end of JSON input" sur un body vide, ce qui cassait tout
+  // endpoint DELETE renvoyant 204 (ex: suppression définitive d'un service).
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return text ? JSON.parse(text) : (undefined as T);
 }
 
 export const api = {
@@ -420,6 +425,9 @@ export const services = {
     update: (id: number, data: Partial<{ category_id: number; specialty_id: number | null; name: string; description: string; price: number | null; duration_minutes: number | null; is_active: boolean }>) =>
       api.put(`/services/${id}`, data),
     deactivate: (id: number) => api.delete(`/services/${id}`),
+    duplicate: (id: number) => api.post(`/services/${id}/duplicate`, {}),
+    /** Suppression définitive — rejette avec un message clair si le service a des rendez-vous liés. */
+    deletePermanently: (id: number) => api.delete(`/services/${id}/permanent`),
   },
 };
 
