@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api, salons, invitations as invitationsApi } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonInvitation } from '@/lib/types';
+import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
 import OwnerTeamMember from '@/components/owner/OwnerTeamMember';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
@@ -192,10 +193,12 @@ export default function EquipePage() {
 
       <div className="flex-1">
       <div className="max-w-xl mx-auto px-4 pt-4 pb-6">
-        <div className="mb-5">
+        <DashboardPageHeader title="Équipe" backHref="/pro/salon-owner" />
+        <div className="mb-5 hidden md:block">
           <h1 className="text-xl font-bold text-neutral-900">Équipe</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{team.length} coiffeur{team.length !== 1 ? 's' : ''} dans votre salon</p>
         </div>
+        <p className="text-xs text-neutral-400 mb-5 md:hidden">{team.length} coiffeur{team.length !== 1 ? 's' : ''} dans votre salon</p>
 
         {/* Tabs */}
         <div className="flex bg-neutral-100 rounded-2xl p-1 mb-5 gap-1">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { api } from '@/lib/api';
 import { resolveMediaUrl } from '@/lib/types';
 import {
@@ -242,10 +243,12 @@ export default function OffresEmploiPage() {
       {toast && <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">{toast}</div>}
 
       <div className="max-w-2xl mx-auto px-4 pt-4 pb-6">
-        <div className="mb-4">
+        <DashboardPageHeader title="Offres d'emploi" />
+        <div className="mb-4 hidden md:block">
           <h1 className="text-xl font-bold text-neutral-900">Offres d&apos;emploi</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} offre{filtered.length !== 1 ? 's' : ''}</p>
         </div>
+        <p className="text-xs text-neutral-400 mb-4 md:hidden">{filtered.length} offre{filtered.length !== 1 ? 's' : ''}</p>
 
         {/* Barre recherche + filtre */}
         <div className="flex gap-2 mb-3">
