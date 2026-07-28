@@ -9,24 +9,38 @@ import AppDownload from '@/components/ui/AppDownload';
 import Reveal from '@/components/ui/Reveal';
 import HeroSearch from '@/components/ui/HeroSearch';
 import { ArrowRight, Check, Star, BadgeCheck, Heart, Calendar, QrCode, BarChart2, Users, Scissors } from 'lucide-react';
-import type { ApiLeaderboardEntry, ApiPost, PaginatedResponse } from '@/lib/types';
+import type { ApiLeaderboardEntry, ApiPost, ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 import { SPECIALTY_LABELS } from '@/lib/explore';
+import { MapPin, ShieldCheck } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
+// ISR — page statique régénérée toutes les 5 min (coiffeurs vedettes,
+// classement, réalisations changent lentement, pas besoin de temps réel).
+export const revalidate = 300;
+
 async function getTopRanked(): Promise<ApiLeaderboardEntry[]> {
   try {
-    const res = await fetch(`${API}/leaderboard?limit=3`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/leaderboard?limit=3`);
     if (!res.ok) return [];
     const data: { results?: ApiLeaderboardEntry[] } = await res.json();
     return data.results ?? [];
   } catch { return []; }
 }
 
+async function getFeaturedHairdressers(): Promise<ApiHairdresserProfile[]> {
+  try {
+    const res = await fetch(`${API}/hairdressers?sort=featured&per_page=6`);
+    if (!res.ok) return [];
+    const data: PaginatedResponse<ApiHairdresserProfile> = await res.json();
+    return data.data;
+  } catch { return []; }
+}
+
 async function getRealisations(): Promise<ApiPost[]> {
   try {
-    const res = await fetch(`${API}/feed?sort=trending&per_page=6`, { next: { revalidate: 300 } });
+    const res = await fetch(`${API}/feed?sort=trending&per_page=6`);
     if (!res.ok) return [];
     const data: PaginatedResponse<ApiPost> = await res.json();
     return data.data.filter((p) => getAfterImage(p));
@@ -94,7 +108,11 @@ function FeatureSection({
    PAGE
 ───────────────────────────────────────────────────────────── */
 export default async function HomePage() {
-  const [topRanked, realisations] = await Promise.all([getTopRanked(), getRealisations()]);
+  const [topRanked, realisations, featuredHairdressers] = await Promise.all([
+    getTopRanked(),
+    getRealisations(),
+    getFeaturedHairdressers(),
+  ]);
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans overflow-x-hidden [&_section]:overflow-x-hidden">
       <LandingNav dark />
@@ -158,6 +176,80 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════
+          MEILLEURS COIFFEURS — vraies cartes, vraies données
+      ══════════════════════════════════════════════════════ */}
+      {featuredHairdressers.length > 0 && (
+        <section className="py-16 lg:py-20 bg-white border-t border-neutral-100 overflow-hidden">
+          <div className="max-w-6xl mx-auto px-5">
+            <Reveal>
+              <div className="flex items-end justify-between gap-4 mb-8">
+                <div>
+                  <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-3">La communauté</p>
+                  <h2 className="text-[26px] sm:text-[32px] font-bold text-neutral-900 tracking-tight leading-tight">
+                    Les coiffeurs les mieux notés, près de chez vous.
+                  </h2>
+                </div>
+                <Link href="/app/recherche" className="hidden sm:inline-flex flex-shrink-0 items-center gap-1.5 text-[13px] font-semibold text-neutral-600 hover:text-neutral-900 transition-colors">
+                  Tout voir <ArrowRight size={13} strokeWidth={2.5} />
+                </Link>
+              </div>
+            </Reveal>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {featuredHairdressers.slice(0, 6).map((hd, i) => {
+                const photo = resolveMediaUrl(hd.banner_image ?? hd.user.avatar);
+                const specialty = hd.specialties?.[0]?.name;
+                const rating = parseFloat(hd.avg_rating);
+                return (
+                  <Reveal key={hd.id} delay={(i % 3) * 90}>
+                    <Link
+                      href={`/app/coiffeur/${hd.slug}`}
+                      className="group block rounded-3xl overflow-hidden border border-neutral-100 hover:border-neutral-300 hover:shadow-xl hover:shadow-neutral-100 transition-all duration-300"
+                    >
+                      <div className="relative aspect-[4/3] bg-neutral-100">
+                        {photo && (
+                          <Image
+                            src={photo}
+                            alt={hd.user.name}
+                            fill
+                            className="object-cover group-hover:scale-[1.04] transition-transform duration-500"
+                            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                          />
+                        )}
+                        {hd.is_verified && (
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-full px-2.5 py-1 flex items-center gap-1">
+                            <ShieldCheck size={11} className="text-neutral-900" />
+                            <span className="text-[10px] font-bold text-neutral-900">Vérifié</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-[15px] font-bold text-neutral-900 truncate">{hd.user.name}</p>
+                          {rating > 0 && (
+                            <span className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold text-neutral-700">
+                              <Star size={11} className="fill-amber-400 stroke-none" />
+                              {rating.toFixed(1)}
+                              <span className="text-neutral-400 font-normal">({hd.reviews_count})</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[12.5px] text-neutral-400">
+                          {hd.city && (
+                            <span className="flex items-center gap-1"><MapPin size={11} />{hd.city}</span>
+                          )}
+                          {specialty && <span>· {specialty}</span>}
+                        </div>
+                      </div>
+                    </Link>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           LE PROBLÈME
