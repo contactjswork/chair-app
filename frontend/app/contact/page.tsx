@@ -4,6 +4,7 @@ import { useState } from 'react';
 import LandingNav from '@/components/landing/LandingNav';
 import LandingFooter from '@/components/landing/LandingFooter';
 import { ArrowRight, Send, Mail, ExternalLink } from 'lucide-react';
+import { api } from '@/lib/api';
 
 const CONTACT_OPTIONS = [
   {
@@ -35,8 +36,8 @@ const CONTACT_OPTIONS = [
   {
     icon: <Mail size={20} className="text-white" />,
     label: 'Email',
-    handle: 'contact@chair-app.com',
-    href: 'mailto:contact@chair-app.com',
+    handle: 'contact@getchair.app',
+    href: 'mailto:contact@getchair.app',
     desc: 'Pour toute demande pro',
     bg: 'bg-neutral-700',
   },
@@ -54,6 +55,7 @@ const SUBJECTS = [
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
@@ -63,9 +65,15 @@ export default function ContactPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
-    setSubmitted(true);
+    setError('');
+    try {
+      await api.post('/contact', form);
+      setSubmitted(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue. Réessaie ou écris-nous directement à contact@getchair.app.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -199,6 +207,10 @@ export default function ContactPage() {
                       className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-[14px] text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none"
                     />
                   </div>
+
+                  {error && (
+                    <p className="text-[13px] text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{error}</p>
+                  )}
 
                   <button
                     type="submit"

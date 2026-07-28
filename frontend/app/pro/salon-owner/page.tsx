@@ -64,7 +64,8 @@ export default function SalonOwnerDashboard() {
       api.get<unknown[]>('/my-salon/rentals'),
       api.get<unknown[]>('/my-salon/rental-requests'),
       salonsApi.recentReviews(),
-    ]).then(([salonRes, appsRes, rentalsRes, rentalReqsRes, reviewsRes]) => {
+      api.get<{ status: string }[]>('/my-job-offers'),
+    ]).then(([salonRes, appsRes, rentalsRes, rentalReqsRes, reviewsRes, jobOffersRes]) => {
       if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value);
       const salonData = salonRes.status === 'fulfilled' ? salonRes.value : null;
       const salon     = salonData?.salon ?? null;
@@ -74,7 +75,7 @@ export default function SalonOwnerDashboard() {
         team:                (salon?.hairdressers ?? []) as unknown as TeamMember[],
         hairdressers_count: salon?.hairdressers?.length ?? 0,
         pending_joins:      salonData?.pending_requests?.length ?? 0,
-        job_offers_count:   0,
+        job_offers_count:   jobOffersRes.status === 'fulfilled' && Array.isArray(jobOffersRes.value) ? jobOffersRes.value.filter((o) => o.status === 'open').length : 0,
         pending_apps:       appsRes.status === 'fulfilled' && appsRes.value && typeof appsRes.value === 'object' && 'count' in appsRes.value ? (appsRes.value as { count: number }).count : 0,
         rentals_count:      rentalsRes.status === 'fulfilled'    && Array.isArray(rentalsRes.value)    ? rentalsRes.value.length    : 0,
         pending_rentals:    rentalReqsRes.status === 'fulfilled' && Array.isArray(rentalReqsRes.value) ? rentalReqsRes.value.length : 0,
