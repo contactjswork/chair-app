@@ -38,6 +38,11 @@ export function proxy(request: NextRequest) {
     pathname.startsWith('/connexion') ||
     pathname.startsWith('/inscription') ||
     pathname.startsWith('/mot-de-passe-oublie') ||
+    // Lien de réinitialisation envoyé par email — doit rester accessible même
+    // à quelqu'un qui n'a jamais ouvert l'app/le site (a fortiori pas le
+    // cookie bêta), sinon le lien de récupération de mot de passe est un
+    // cul-de-sac.
+    pathname.startsWith('/reinitialiser-mot-de-passe') ||
     pathname.startsWith('/cgu') ||
     pathname.startsWith('/confidentialite') ||
     pathname.endsWith('.png') ||
