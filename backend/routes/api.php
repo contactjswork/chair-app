@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\HairdresserController;
 use App\Http\Controllers\Api\SpecialtyController;
 use App\Http\Controllers\Api\InteractionController;
@@ -74,6 +75,7 @@ Route::prefix('admin')->middleware('admin.token')->group(function () {
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:4,1');
+Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 
 // Scan QR — info publique (affichage avant connexion)
