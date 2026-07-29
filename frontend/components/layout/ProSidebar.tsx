@@ -16,9 +16,7 @@ export default function ProSidebar() {
   const { primary, secondary, homeHref } = useProNav();
 
   function isActive(href: string) {
-    return href === homeHref
-      ? (pathname === homeHref || pathname === '/pro')
-      : pathname.startsWith(href);
+    return href === homeHref ? pathname === homeHref : pathname.startsWith(href);
   }
 
   return (

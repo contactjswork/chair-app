@@ -4,15 +4,19 @@ import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import ChairLogo from '@/components/ui/ChairLogo';
 import { useNotificationCount } from '@/contexts/NotificationContext';
+import { useProNav } from '@/hooks/useProNav';
 
 export default function ProTopBar() {
   const { unreadCount } = useNotificationCount();
+  // homeHref suit le mode actif (gérant → /pro/salon-owner) — un href figé
+  // sur "/pro" ramenait toujours au cockpit coiffeur même en mode Gérant.
+  const { homeHref } = useProNav();
 
   return (
     <div className="md:hidden fixed top-0 inset-x-0 z-50 bg-white border-b border-neutral-100 pt-safe">
       <div className="h-14 flex items-center justify-between px-4">
         <div className="w-9" />
-        <ChairLogo href="/pro" size="md" pro />
+        <ChairLogo href={homeHref} size="md" pro />
         <Link href="/pro/notifications" className="relative w-9 h-9 flex items-center justify-center">
           <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
           {unreadCount > 0 && (

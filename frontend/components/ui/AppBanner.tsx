@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { detectOS, isAppPublished, storeUrlFor } from '@/lib/appDownload';
@@ -9,7 +9,6 @@ import { isNativeApp } from '@/hooks/useGeolocation';
 const DISMISS_KEY = 'chair_app_banner_dismissed';
 
 function computeVisible(pathname: string): boolean {
-  if (typeof window === 'undefined') return false;
   if (isNativeApp()) return false;
   if (pathname.startsWith('/pro')) return false;
   if (!window.matchMedia('(max-width: 767px)').matches) return false;
@@ -21,7 +20,17 @@ function computeVisible(pathname: string): boolean {
 export default function AppBanner() {
   const pathname = usePathname();
   const router = useRouter();
-  const [visible, setVisible] = useState(() => computeVisible(pathname));
+  // Toujours false au premier rendu (identique au serveur, qui n'a pas accès
+  // à window/localStorage) — la vraie valeur n'est calculée qu'après le
+  // montage. Un useState(() => computeVisible(...)) évaluait window dès le
+  // premier rendu CLIENT, avant que l'hydratation soit terminée, ce qui
+  // produisait un rendu différent de celui du serveur (mismatch d'hydratation
+  // sur le layout racine, donc sur TOUTE page de l'app).
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(computeVisible(pathname));
+  }, [pathname]);
 
   if (!visible) return null;
 

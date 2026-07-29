@@ -20,9 +20,7 @@ export default function ProNav() {
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-neutral-100 pb-safe-nav">
       <div className="flex items-stretch h-[66px]">
         {items.map(({ href, label, icon: Icon }) => {
-          const active = href === homeHref
-            ? (pathname === homeHref || pathname === '/pro')
-            : pathname.startsWith(href);
+          const active = href === homeHref ? pathname === homeHref : pathname.startsWith(href);
 
           return (
             <Link key={href} href={href}

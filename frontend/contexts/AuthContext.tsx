@@ -81,11 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = getStoredUser();
     if (token && storedUser) {
       setUser(storedUser);
-      // Verify token is still valid in background
+      // Vérifie le token en arrière-plan. Un second setUser(freshUser)
+      // inconditionnel changeait la référence de `user` à chaque montage,
+      // ce qui refaisait tourner en double tout effet `useEffect(..., [user])`
+      // en aval (ex: /pro/profil chargeait /profile + /specialties + /services
+      // deux fois de suite) — d'où des 429 atteints anormalement vite. On ne
+      // remplace la référence que si les données ont réellement changé.
       api.get<AuthUser>('/me')
         .then((freshUser) => {
-          setUser(freshUser);
           saveSession(token, freshUser);
+          setUser((prev) => (prev && JSON.stringify(prev) === JSON.stringify(freshUser) ? prev : freshUser));
         })
         .catch(() => {
           clearSession();

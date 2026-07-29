@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, appointments as apptApi, specialtyProgress } from '@/lib/api';
@@ -32,6 +33,15 @@ import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 export default function CockpitPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
   const { logout } = useAuth();
+  const router = useRouter();
+
+  // Filet de sécurité : un compte double-identité en mode Gérant qui atterrit
+  // ici (lien historique, retour navigateur...) doit voir son cockpit Salon,
+  // pas rester coincé sur le cockpit coiffeur — toutes les surfaces de nav
+  // pointent déjà vers /pro/salon-owner en mode Gérant, ceci couvre le reste.
+  useEffect(() => {
+    if (user?.active_pro_mode === 'salon_owner') router.replace('/pro/salon-owner');
+  }, [user, router]);
 
   const [fullProfile,   setFullProfile]   = useState<ApiHairdresserProfile | null>(null);
   const [stats,         setStats]         = useState<ApiStats | null>(null);

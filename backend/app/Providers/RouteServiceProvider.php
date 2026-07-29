@@ -56,8 +56,14 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting()
     {
+        // 60/min touché en usage normal : une seule page pro (ex: /pro/profil)
+        // déclenche déjà 4-5 requêtes (profil, spécialités, services, géo...),
+        // et naviguer entre plusieurs pages /pro/* en une minute (test réel,
+        // usage rapide) suffit à l'atteindre. 120/min garde une vraie limite
+        // anti-abus tout en laissant la marge nécessaire à une app qui
+        // charge plusieurs endpoints par écran.
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
         });
     }
 }
