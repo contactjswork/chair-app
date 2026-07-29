@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
   Building2, Armchair, Briefcase,
   ArrowRight, ChevronRight, MapPin, Edit2, UserPlus,
@@ -34,8 +34,16 @@ interface DashboardData {
 }
 
 export default function SalonOwnerDashboard() {
-  const { user, isLoading, logout, enableHairdresserMode } = useAuth();
-  const router   = useRouter();
+  const { logout, enableHairdresserMode } = useAuth();
+  // Un compte double-identité (hairdresser + can_manage_salon) garde
+  // user.role === 'hairdresser' même en mode Gérant actif — seul
+  // active_pro_mode change. L'ancien garde-fou local comparait directement
+  // user.role === 'salon_owner', ce qui renvoyait TOUJOURS ces comptes vers
+  // /pro, qui les renvoyait à son tour ici (voir /pro/page.tsx) : boucle de
+  // redirection infinie, plantage réel constaté sur iPhone. useRequireAuth
+  // applique la même règle de capacité (can_manage_salon) que partout
+  // ailleurs dans l'app plutôt qu'un rôle strict.
+  const { user, isLoading } = useRequireAuth(['salon_owner']);
 
   const [data,    setData]    = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,11 +60,7 @@ export default function SalonOwnerDashboard() {
   }
 
   useEffect(() => {
-    if (isLoading) return;
-    if (!user || user.role !== 'salon_owner') {
-      router.replace('/pro');
-      return;
-    }
+    if (isLoading || !user) return;
 
     Promise.allSettled([
       salonsApi.mySalon(),
@@ -81,7 +85,7 @@ export default function SalonOwnerDashboard() {
         pending_rentals:    rentalReqsRes.status === 'fulfilled' && Array.isArray(rentalReqsRes.value) ? rentalReqsRes.value.length : 0,
       });
     }).finally(() => setLoading(false));
-  }, [user, isLoading, router]);
+  }, [user, isLoading]);
 
   const firstName = user?.name?.split(' ')[0] ?? '';
 
