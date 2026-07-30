@@ -27,7 +27,7 @@ export default function HairdresserCard({
   const showFlame   = allowFlame && streakDays >= 3;
 
   return (
-    <Link href={`/app/coiffeur/${hairdresser.slug}`} className="block group">
+    <Link href={`/app/coiffeur/${hairdresser.slug}`} className="block group active:scale-[0.98] transition-transform duration-150">
       <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-neutral-900">
 
         {/* ── Fond : bannière floutée (ou couleur neutre si absente) ── */}

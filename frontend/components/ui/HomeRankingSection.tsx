@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronRight, BadgeCheck, MapPin, Trophy } from 'lucide-react';
+import { BadgeCheck, MapPin, Trophy } from 'lucide-react';
 import { getStoredLocation } from '@/hooks/useGeolocation';
 import { resolveMediaUrl } from '@/lib/types';
+import { SectionHeader } from './HomeGeoStrips';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -51,19 +52,12 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
 
   return (
     <section className="pt-10">
-      <div className="px-4 md:px-8 max-w-6xl md:mx-auto mb-5 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5 flex items-center gap-1.5">
-            <Trophy size={11} className="text-amber-500" />Classement
-          </p>
-          <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">
-            {city ? `Le top de ${city}` : 'Les meilleurs coiffeurs CHAIR'}
-          </h2>
-        </div>
-        <Link href="/app/classements" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
-          <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
-        </Link>
-      </div>
+      <SectionHeader
+        tag="Classement"
+        tagIcon={<Trophy size={11} className="text-amber-500" />}
+        title={city ? `Le top de ${city}` : 'Les meilleurs coiffeurs CHAIR'}
+        href="/app/classements"
+      />
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto space-y-2">
         {entries.slice(0, 5).map((h) => {
           const avatar = resolveMediaUrl(h.avatar);
@@ -72,7 +66,7 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
             <Link
               key={h.id}
               href={`/app/coiffeur/${h.slug}`}
-              className="flex items-center gap-3.5 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm transition-all"
+              className="flex items-center gap-3.5 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm active:scale-[0.98] active:bg-neutral-50 transition-all"
             >
               <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankCls}`}>
                 {h.rank}

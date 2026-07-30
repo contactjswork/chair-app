@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star, ChevronRight, BadgeCheck } from 'lucide-react';
@@ -20,7 +20,7 @@ function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: stri
   const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   return (
-    <Link href={`/app/coiffeur/${h.slug}`} className="relative flex-shrink-0 w-[155px] md:w-[170px] block group">
+    <Link href={`/app/coiffeur/${h.slug}`} className="relative flex-shrink-0 w-[155px] md:w-[170px] block group active:scale-[0.98] transition-transform duration-150">
       <div className="relative rounded-2xl overflow-hidden bg-neutral-900 aspect-[3/4]">
         {bg && (
           <Image
@@ -75,16 +75,26 @@ function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: stri
   );
 }
 
-function SectionHeader({ tag, title, subtitle, href }: { tag?: string; title: string; subtitle?: string; href?: string }) {
+// En-tête de section partagé — repris tel quel (même markup) dans page.tsx,
+// HomePersonalized.tsx et HomeRankingSection.tsx, qui recréaient chacun la
+// même structure tag/titre/sous-titre/chevron à la main. `tagIcon` couvre le
+// seul cas qui différait réellement (le trophée devant "Classement").
+export function SectionHeader({
+  tag, tagIcon, title, subtitle, href,
+}: { tag?: string; tagIcon?: ReactNode; title: string; subtitle?: string; href?: string }) {
   return (
     <div className="px-4 md:px-8 max-w-6xl md:mx-auto mb-5 flex items-end justify-between gap-3">
       <div>
-        {tag && <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5">{tag}</p>}
+        {tag && (
+          <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5 flex items-center gap-1.5">
+            {tagIcon}{tag}
+          </p>
+        )}
         <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">{title}</h2>
         {subtitle && <p className="text-[12px] text-neutral-400 mt-1 leading-relaxed max-w-sm">{subtitle}</p>}
       </div>
       {href && (
-        <Link href={href} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+        <Link href={href} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 transition-all">
           <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
         </Link>
       )}
@@ -110,7 +120,7 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
         const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
         const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
         return (
-          <Link key={h.id} href={`/app/coiffeur/${h.slug}`} className="flex-shrink-0 flex flex-col items-center gap-2 group" style={{ width: 76 }}>
+          <Link key={h.id} href={`/app/coiffeur/${h.slug}`} className="flex-shrink-0 flex flex-col items-center gap-2 group active:scale-[0.94] transition-transform duration-150" style={{ width: 76 }}>
             <div
               className="relative w-[66px] h-[66px] rounded-full p-[2px] shadow-sm"
               style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}

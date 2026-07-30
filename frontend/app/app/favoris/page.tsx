@@ -9,12 +9,19 @@ import { interactions, savedPosts, type SavedHairdresser } from '@/lib/api';
 import type { ApiPost } from '@/lib/types';
 import { Heart, MapPin, Star, BadgeCheck, LogIn, ChevronRight, Bookmark } from 'lucide-react';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
+import SharedEmptyState from '@/components/ui/EmptyState';
+import { Skeleton, SkeletonText } from '@/components/ui/Skeleton';
+import { PrimaryButton } from '@/components/ui/Button';
 
 type Tab = 'coiffeurs' | 'publications';
 
 // ── Card coiffeur ─────────────────────────────────────────────────────────────
+// Nommée à part de components/ui/HairdresserCard.tsx (carte portrait pour les
+// grilles de découverte) : ici il s'agit d'une ligne horizontale avec action
+// de retrait, un besoin différent qui ne justifie pas de forcer le composant
+// partagé — d'où le nom distinct pour éviter toute confusion.
 
-function HairdresserCard({ h, onUnsave }: { h: SavedHairdresser; onUnsave: (id: number) => void }) {
+function SavedHairdresserRow({ h, onUnsave }: { h: SavedHairdresser; onUnsave: (id: number) => void }) {
   const banner = resolveMediaUrl(h.banner_image);
   const avatar = resolveMediaUrl(h.user.avatar);
   const rating = parseFloat(h.avg_rating);
@@ -68,12 +75,12 @@ function HairdresserCard({ h, onUnsave }: { h: SavedHairdresser; onUnsave: (id: 
       <div className="flex flex-col items-center justify-between py-3 pr-3 gap-2">
         <button
           onClick={() => onUnsave(h.id)}
-          className="w-8 h-8 rounded-full bg-neutral-50 hover:bg-red-50 flex items-center justify-center transition-colors group"
+          className="w-8 h-8 rounded-full bg-neutral-50 hover:bg-red-50 active:scale-90 flex items-center justify-center transition-all group"
           aria-label="Retirer des favoris"
         >
           <Heart size={13} className="fill-neutral-300 stroke-none group-hover:fill-red-400 transition-colors" />
         </button>
-        <Link href={`/app/coiffeur/${h.slug}`} className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 flex items-center justify-center transition-colors">
+        <Link href={`/app/coiffeur/${h.slug}`} className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 flex items-center justify-center transition-all">
           <ChevronRight size={14} strokeWidth={2.5} className="text-neutral-900" />
         </Link>
       </div>
@@ -98,7 +105,7 @@ function PostCard({ post, onUnsave }: { post: ApiPost; onUnsave: (id: number) =>
       {/* Retirer favori */}
       <button
         onClick={() => onUnsave(post.id)}
-        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group/btn"
+        className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm active:scale-90 flex items-center justify-center group/btn transition-transform"
         aria-label="Retirer"
       >
         <Bookmark size={12} className="fill-white stroke-none group-hover/btn:fill-neutral-300 transition-colors" />
@@ -127,45 +134,40 @@ function PostCard({ post, onUnsave }: { post: ApiPost; onUnsave: (id: number) =>
 function HDSkeleton() {
   return (
     <div className="flex rounded-2xl overflow-hidden border border-neutral-100 bg-white h-[84px]">
-      <div className="w-[100px] bg-neutral-100 animate-pulse" />
-      <div className="flex-1 px-3.5 py-3 space-y-2">
-        <div className="h-4 w-28 bg-neutral-100 rounded-full animate-pulse" />
-        <div className="h-3 w-20 bg-neutral-100 rounded-full animate-pulse" />
-        <div className="h-3 w-24 bg-neutral-100 rounded-full animate-pulse" />
+      <Skeleton className="w-[100px] rounded-none" />
+      <div className="flex-1 px-3.5 py-3 space-y-2.5">
+        <SkeletonText width="w-28" />
+        <SkeletonText width="w-20" />
+        <SkeletonText width="w-24" />
       </div>
     </div>
   );
 }
 
 function PostSkeleton() {
-  return <div className="aspect-square rounded-2xl bg-neutral-100 animate-pulse" />;
+  return <Skeleton className="aspect-square" />;
 }
 
 // ── Empty state ───────────────────────────────────────────────────────────────
+// Délègue au composant partagé components/ui/EmptyState.tsx — la page
+// recréait sa propre structure icône/titre/sous-texte/CTA en local.
 
-function EmptyState({ tab }: { tab: Tab }) {
+function FavorisEmptyState({ tab }: { tab: Tab }) {
   return (
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
-        {tab === 'coiffeurs'
-          ? <Heart size={22} className="text-neutral-300" />
-          : <Bookmark size={22} className="text-neutral-300" />}
-      </div>
-      <h3 className="text-[15px] font-bold text-neutral-900 mb-1.5">
-        {tab === 'coiffeurs' ? 'Aucun coiffeur sauvegardé' : 'Aucune publication sauvegardée'}
-      </h3>
-      <p className="text-[12px] text-neutral-400 mb-6 max-w-[220px] leading-relaxed">
-        {tab === 'coiffeurs'
+    <SharedEmptyState
+      icon={tab === 'coiffeurs' ? Heart : Bookmark}
+      title={tab === 'coiffeurs' ? 'Aucun coiffeur sauvegardé' : 'Aucune publication sauvegardée'}
+      subtitle={
+        tab === 'coiffeurs'
           ? 'Sauvegardez des coiffeurs depuis leur profil pour les retrouver ici.'
-          : 'Sauvegardez des réalisations depuis le feed pour les retrouver ici.'}
-      </p>
-      <Link
-        href={tab === 'coiffeurs' ? '/app/recherche' : '/app/feed'}
-        className="bg-neutral-900 text-white text-[13px] font-semibold px-5 py-3 rounded-full hover:bg-neutral-700 transition-colors"
-      >
-        {tab === 'coiffeurs' ? 'Découvrir des coiffeurs' : 'Explorer le feed'}
-      </Link>
-    </div>
+          : 'Sauvegardez des réalisations depuis le feed pour les retrouver ici.'
+      }
+      action={
+        <PrimaryButton href={tab === 'coiffeurs' ? '/app/recherche' : '/app/feed'}>
+          {tab === 'coiffeurs' ? 'Découvrir des coiffeurs' : 'Explorer le feed'}
+        </PrimaryButton>
+      }
+    />
   );
 }
 
@@ -212,20 +214,20 @@ export default function FavorisPage() {
   if (!user) {
     return (
       <AppShell>
-        <div className="min-h-[75vh] flex flex-col items-center justify-center px-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
-            <Heart size={22} className="text-neutral-300" />
-          </div>
-          <h2 className="text-[18px] font-bold text-neutral-900 mb-2">Vos favoris vous attendent</h2>
-          <p className="text-[13px] text-neutral-400 mb-6 max-w-xs leading-relaxed">
-            Connectez-vous pour sauvegarder vos coiffeurs et réalisations préférés.
-          </p>
-          <Link href="/connexion" className="flex items-center gap-2 bg-neutral-900 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-neutral-700 transition-colors">
-            <LogIn size={15} /> Se connecter
-          </Link>
-          <Link href="/inscription" className="mt-3 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
-            Créer un compte
-          </Link>
+        <div className="min-h-[75vh] flex items-center justify-center px-6">
+          <SharedEmptyState
+            icon={Heart}
+            title="Vos favoris vous attendent"
+            subtitle="Connectez-vous pour sauvegarder vos coiffeurs et réalisations préférés."
+            action={
+              <div className="flex flex-col items-center gap-3">
+                <PrimaryButton href="/connexion" icon={<LogIn size={15} />}>Se connecter</PrimaryButton>
+                <Link href="/inscription" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
+                  Créer un compte
+                </Link>
+              </div>
+            }
+          />
         </div>
       </AppShell>
     );
@@ -253,7 +255,7 @@ export default function FavorisPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all duration-150 ${
+              className={`flex-1 py-2 rounded-lg text-[13px] font-semibold active:scale-[0.97] transition-all duration-150 ${
                 tab === t ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400 hover:text-neutral-700'
               }`}
             >
@@ -269,11 +271,11 @@ export default function FavorisPage() {
           ) : coiffeurs.length > 0 ? (
             <div className="space-y-3">
               {coiffeurs.map((h) => (
-                <HairdresserCard key={h.id} h={h} onUnsave={handleUnsaveHD} />
+                <SavedHairdresserRow key={h.id} h={h} onUnsave={handleUnsaveHD} />
               ))}
             </div>
           ) : (
-            <EmptyState tab="coiffeurs" />
+            <FavorisEmptyState tab="coiffeurs" />
           )
         )}
 
@@ -288,7 +290,7 @@ export default function FavorisPage() {
               ))}
             </div>
           ) : (
-            <EmptyState tab="publications" />
+            <FavorisEmptyState tab="publications" />
           )
         )}
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+import { SectionHeader } from './HomeGeoStrips';
 
 // Photo map — aligné sur les 10 spécialités CHAIR
 const STYLE_ICONS: Record<string, string> = {
@@ -104,17 +104,11 @@ export default function HomePersonalized() {
     <>
       {/* Inspirations section */}
       <section className="pt-9 md:pt-10">
-        <div className="px-4 md:px-8 max-w-6xl md:mx-auto mb-5 flex items-end justify-between gap-3">
-          <div>
-            {isPersonalized && (
-              <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5">Pour vous</p>
-            )}
-            <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">{sectionTitle}</h2>
-          </div>
-          <Link href="/app/recherche" className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
-            <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
-          </Link>
-        </div>
+        <SectionHeader
+          tag={isPersonalized ? 'Pour vous' : undefined}
+          title={sectionTitle}
+          href="/app/recherche"
+        />
         <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 no-scrollbar">
           {inspirations.map((insp) => (
             <Link
