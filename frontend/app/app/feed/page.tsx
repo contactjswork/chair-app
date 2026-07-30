@@ -443,14 +443,17 @@ function FeedContent() {
             <>
               <p className="text-white/70 text-[15px] font-semibold">Aucun abonnement</p>
               <p className="text-white/40 text-[13px] leading-relaxed">Suis des coiffeurs pour voir leurs réalisations ici.</p>
-              <Link href="/app/recherche" className="mt-2 text-[13px] font-semibold text-white bg-white/10 border border-white/20 px-5 py-2.5 rounded-full">
+              <Link
+                href="/app/recherche"
+                className="mt-2 text-[13px] font-semibold text-white bg-white/10 border border-white/20 px-5 py-2.5 rounded-full active:scale-95 active:bg-white/15 transition-all"
+              >
                 Découvrir des coiffeurs
               </Link>
             </>
           ) : (
             <>
               <p className="text-white/50 text-sm">Aucune publication disponible</p>
-              <button onClick={handleClose} className="text-white text-sm underline">Retour</button>
+              <button onClick={handleClose} className="text-white text-sm underline active:opacity-60 transition-opacity">Retour</button>
             </>
           )}
         </div>
@@ -466,11 +469,12 @@ function FeedContent() {
         {/* ── Header avec tabs ── */}
         <div className="absolute top-0 left-0 right-0 z-20 flex flex-col pointer-events-none">
           {/* Fermer */}
-          <div className="flex items-center justify-end px-4 pt-safe-header pb-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+          <div className="flex items-center justify-end px-3 pt-safe-header pb-2 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
             {fromId && (
               <button
                 onClick={handleClose}
-                className="text-white/60 hover:text-white transition-colors pointer-events-auto"
+                className="w-9 h-9 flex items-center justify-center text-white/70 active:text-white active:bg-white/10 rounded-full transition-colors pointer-events-auto"
+                aria-label="Fermer"
               >
                 <X size={18} />
               </button>
@@ -488,7 +492,7 @@ function FeedContent() {
                     containerRef.current?.scrollTo({ top: 0 });
                   }
                 }}
-                className={`text-[13px] font-bold transition-all pb-1 ${
+                className={`text-[13px] font-bold transition-all pb-1 px-1 active:scale-95 ${
                   activeTab === tab.id
                     ? 'text-white border-b-2 border-white'
                     : 'text-white/45 border-b-2 border-transparent'
@@ -530,7 +534,7 @@ function FeedContent() {
               <p className="text-white/30 text-sm">Tu as tout vu</p>
               <button
                 onClick={() => loadFeed(activeTab)}
-                className="text-xs font-semibold text-white/50 border border-white/20 px-4 py-2 rounded-full hover:border-white/40 transition-colors"
+                className="text-xs font-semibold text-white/50 border border-white/20 px-4 py-2 rounded-full active:border-white/40 active:bg-white/5 transition-colors"
               >
                 Recharger
               </button>
