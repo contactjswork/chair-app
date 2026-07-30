@@ -1,38 +1,65 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { AlertCircle, Lock, Mail, Phone, User } from 'lucide-react';
+import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
+import QuestionScreen from '@/components/onboarding/QuestionScreen';
+import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 
+type Step = 'name' | 'email' | 'phone' | 'password';
+const STEPS: Step[] = ['name', 'email', 'phone', 'password'];
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function Screen(props: Omit<React.ComponentProps<typeof QuestionScreen>, 'theme'>) {
+  return <QuestionScreen {...props} theme="light" />;
+}
+
+const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-[16px] text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
 
 export default function InscriptionPage() {
   const { register } = useAuth();
-  const router = useRouter();
+  const { animClass, transition } = useStepTransition();
 
-  function handleBack() {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const step = STEPS[stepIndex];
+  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+
+  const emailValid = useMemo(() => EMAIL_RE.test(email), [email]);
+
+  function goNext() {
+    tapFeedback();
+    setError('');
+    if (stepIndex < STEPS.length - 1) {
+      transition(() => setStepIndex((i) => i + 1));
     } else {
-      router.push('/app');
+      submitForm();
     }
   }
 
-  const [name,      setName]      = useState('');
-  const [email,     setEmail]     = useState('');
-  const [phone,     setPhone]     = useState('');
-  const [password,  setPassword]  = useState('');
-  const [showPwd,   setShowPwd]   = useState(false);
-  const [error,     setError]     = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function goBack() {
+    if (stepIndex === 0) return;
+    tapFeedback();
     setError('');
+    transition(() => setStepIndex((i) => i - 1));
+  }
+
+  async function submitForm() {
     if (password.length < 8) {
       setError('Le mot de passe doit contenir au moins 8 caractères.');
       return;
     }
+    setError('');
     setIsLoading(true);
     try {
       await register({
@@ -45,108 +72,138 @@ export default function InscriptionPage() {
       } as Parameters<typeof register>[0]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
-    } finally {
       setIsLoading(false);
     }
   }
 
-  const inputCls = 'w-full px-4 py-3.5 bg-neutral-50 rounded-xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all';
-
   return (
-    <div className="min-h-[100svh] bg-white flex flex-col items-center justify-center px-5 py-10">
-      <button
-        onClick={handleBack}
-        aria-label="Retour"
-        className="fixed left-4 top-safe mt-2 w-9 h-9 flex items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors z-10"
-      >
-        <ArrowLeft size={19} strokeWidth={1.75} />
-      </button>
+    <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
+      <OnboardingHeader progress={progress} onBack={stepIndex > 0 ? goBack : undefined} />
 
-      <div className="w-full max-w-[360px] flex flex-col gap-8">
-
-        {/* Logo */}
-        <div className="text-center">
-          <Link href="/" className="text-[28px] font-bold tracking-tight text-neutral-900">CHAIR</Link>
-          <p className="text-[14px] text-neutral-400 mt-1.5">Crée ton compte gratuit.</p>
+      {error && (
+        <div className="flex-shrink-0 mx-6 mb-3 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 flex items-start gap-2">
+          <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+          {error}
         </div>
+      )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {error && (
-            <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">
-              {error}
-            </div>
-          )}
+      <div className={`flex-1 flex flex-col min-h-0 transition-all duration-180 ease-out ${animClass}`}>
 
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Nom complet"
-            required
-            autoComplete="name"
-            className={inputCls}
-          />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Adresse e-mail"
-            required
-            autoComplete="email"
-            className={inputCls}
-          />
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Numéro de téléphone (optionnel)"
-            autoComplete="tel"
-            className={inputCls}
-          />
-          <div className="relative">
-            <input
-              type={showPwd ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mot de passe (8 caractères min.)"
-              required
-              autoComplete="new-password"
-              className={`${inputCls} pr-12`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
-            >
-              {showPwd ? <EyeOff size={17} /> : <Eye size={17} />}
-            </button>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-[14px] hover:bg-neutral-700 active:bg-black transition-colors disabled:opacity-50 mt-1"
+        {/* ── Nom ── */}
+        {step === 'name' && (
+          <Screen
+            eyebrow="Bienvenue"
+            title="Comment tu t'appelles ?"
+            ctaLabel="Continuer"
+            ctaDisabled={name.trim().length < 2}
+            onNext={goNext}
           >
-            {isLoading ? 'Création…' : 'Créer mon compte'}
-          </button>
+            <div className="relative">
+              <User size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                autoFocus
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && name.trim().length >= 2) goNext(); }}
+                placeholder="Sophie Martin"
+                autoComplete="name"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+          </Screen>
+        )}
 
-          <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-            En continuant, tu acceptes nos{' '}
-            <a href="/cgu" className="underline hover:text-neutral-600">CGU</a>
-            {' '}et notre{' '}
-            <a href="/confidentialite" className="underline hover:text-neutral-600">Politique de confidentialité</a>.
-          </p>
-        </form>
+        {/* ── Email ── */}
+        {step === 'email' && (
+          <Screen
+            eyebrow="Identité"
+            title="Ton adresse e-mail ?"
+            hint="Elle servira à te connecter et à recevoir tes confirmations de réservation."
+            ctaLabel="Continuer"
+            ctaDisabled={!emailValid}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <Mail size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                autoFocus
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && emailValid) goNext(); }}
+                placeholder="vous@email.fr"
+                autoComplete="email"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+          </Screen>
+        )}
 
-        {/* Footer */}
-        <p className="text-center text-[13px] text-neutral-400">
+        {/* ── Téléphone (optionnel) ── */}
+        {step === 'phone' && (
+          <Screen
+            eyebrow="Contact"
+            title="Ton numéro de téléphone ?"
+            hint="Optionnel — utile si un coiffeur doit te joindre au sujet d'une réservation."
+            ctaLabel="Continuer"
+            onNext={goNext}
+          >
+            <div className="relative">
+              <Phone size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                autoFocus
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') goNext(); }}
+                placeholder="06 12 34 56 78"
+                autoComplete="tel"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+          </Screen>
+        )}
+
+        {/* ── Mot de passe ── */}
+        {step === 'password' && (
+          <Screen
+            eyebrow="Sécurité"
+            title="Choisis un mot de passe."
+            hint="8 caractères minimum."
+            ctaLabel={isLoading ? 'Création...' : 'Créer mon compte'}
+            ctaLoading={isLoading}
+            ctaDisabled={password.length < 8}
+            onNext={goNext}
+          >
+            <div className="relative">
+              <Lock size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <input
+                autoFocus
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && password.length >= 8) goNext(); }}
+                placeholder="8 caractères minimum"
+                autoComplete="new-password"
+                className={`${inputCls} pl-11`}
+              />
+            </div>
+            <p className="text-[11px] text-neutral-400 leading-relaxed mt-4">
+              En continuant, tu acceptes nos{' '}
+              <a href="/cgu" className="underline hover:text-neutral-600">CGU</a>
+              {' '}et notre{' '}
+              <a href="/confidentialite" className="underline hover:text-neutral-600">Politique de confidentialité</a>.
+            </p>
+          </Screen>
+        )}
+      </div>
+
+      <div className="flex-shrink-0 text-center pb-safe pb-4">
+        <p className="text-[13px] text-neutral-400">
           Déjà un compte ?{' '}
-          <Link href="/connexion" className="font-semibold text-neutral-900 hover:underline">
-            Se connecter
-          </Link>
+          <Link href="/connexion" className="font-semibold text-neutral-900 hover:underline">Se connecter</Link>
         </p>
-
       </div>
     </div>
   );
