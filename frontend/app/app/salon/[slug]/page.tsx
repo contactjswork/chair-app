@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, Users, Star, CheckCircle, Sparkles } from 'lucide-react';
+import { MapPin, Phone, Globe, Users, Star, BadgeCheck, Sparkles } from 'lucide-react';
 import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
 import AppShell from '@/components/layout/AppShell';
 import BackButton from '@/components/ui/BackButton';
@@ -43,7 +43,7 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
       </div>
 
       {/* Header identité */}
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-4">
         <div className="relative -mt-10 mb-4 flex items-end gap-4">
           {/* Logo */}
           <div className="w-20 h-20 rounded-2xl border-4 border-white bg-neutral-100 overflow-hidden flex-shrink-0 shadow-sm">
@@ -59,7 +59,7 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-neutral-900">{salon.name}</h1>
               {salon.is_verified && (
-                <CheckCircle size={16} className="text-neutral-900 fill-neutral-900" />
+                <BadgeCheck size={16} className="text-neutral-900 flex-shrink-0" />
               )}
               {salon.is_chair_business && (
                 <span className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wide bg-neutral-900 text-white rounded-full">
@@ -160,7 +160,7 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
                   <Link
                     key={h.id}
                     href={`/coiffeur/${h.slug}`}
-                    className="group block rounded-2xl overflow-hidden border border-neutral-100 hover:border-neutral-300 transition-all hover:shadow-sm"
+                    className="group block rounded-2xl overflow-hidden border border-neutral-100 hover:border-neutral-300 active:scale-[0.98] transition-all hover:shadow-sm"
                   >
                     {/* Photo */}
                     <div className="relative aspect-square bg-neutral-100 overflow-hidden">
