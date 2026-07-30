@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart } from 'lucide-react';
+import { Heart, ImageOff } from 'lucide-react';
 import type { ApiPost } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
+import EmptyState from './EmptyState';
 
 const INITIAL_COUNT = 6;
 
@@ -96,10 +97,14 @@ export default function PortfolioGrid({ posts }: Props) {
   const remaining = posts.length - INITIAL_COUNT;
   const showBtn   = !expanded && posts.length >= INITIAL_COUNT;
 
+  // Non atteint depuis PublicProfilePortfolio (qui filtre déjà ce cas en
+  // amont avec le même EmptyState), mais gardé en garde-fou défensif pour
+  // tout futur appelant direct — plutôt qu'un bloc gris local dupliquant
+  // le même message avec une mise en page différente.
   if (posts.length === 0) {
     return (
-      <div className="mx-4 md:mx-0 bg-neutral-50 border border-neutral-100 rounded-2xl py-14 text-center">
-        <p className="text-[13px] text-neutral-400">Aucune réalisation pour l&apos;instant.</p>
+      <div className="mx-4 md:mx-0">
+        <EmptyState compact icon={ImageOff} title="Aucune réalisation pour l'instant" />
       </div>
     );
   }

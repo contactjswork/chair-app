@@ -33,7 +33,7 @@ function SimpleReviewCard({ review }: { review: ApiReview }) {
           <div className="flex items-center gap-1.5">
             <p className="text-[13px] font-semibold text-neutral-900">{firstName}</p>
             {review.is_verified && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-green-700 font-medium">
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
                 <BadgeCheck size={11} />
                 Certifié
               </span>
@@ -88,7 +88,7 @@ export default function ReviewsCompact({
         </p>
         {hasRating && (
           <div className="flex items-center gap-1">
-            <Star size={12} className="fill-amber-400 stroke-amber-400" />
+            <Star size={12} className="fill-neutral-900 stroke-none" />
             <span className="text-[13px] font-bold text-neutral-900">{avg.toFixed(1)}</span>
             <span className="text-[11px] text-neutral-400 ml-0.5">({reviewsCount})</span>
           </div>
@@ -161,7 +161,7 @@ export default function ReviewsCompact({
                 <p className="text-[16px] font-bold text-neutral-900">Avis clients</p>
                 {hasRating && (
                   <div className="flex items-center gap-1 bg-neutral-50 rounded-full px-2.5 py-1">
-                    <Star size={11} className="fill-amber-400 stroke-amber-400" />
+                    <Star size={11} className="fill-neutral-900 stroke-none" />
                     <span className="text-[12px] font-bold text-neutral-900">{avg.toFixed(1)}</span>
                   </div>
                 )}
