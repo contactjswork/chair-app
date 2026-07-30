@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/layout/AppShell';
+import PageHeader from '@/components/layout/PageHeader';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { appointments as appointmentsApi, interactions } from '@/lib/api';
 import type { SavedHairdresser } from '@/lib/api';
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
-import { ArrowLeft, Lock, Check, ChevronRight } from 'lucide-react';
+import { Lock, Check, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
 const LEVEL_ORDER = ['Nouveau', 'Découvreur', 'Régulier', 'Expert CHAIR'];
@@ -42,7 +44,7 @@ export default function ObjectifsPage() {
       <AppShell>
         <div className="max-w-lg mx-auto px-4 pt-6 space-y-3">
           {[1,2,3,4,5].map((i) => (
-            <div key={i} className="h-20 bg-neutral-100 rounded-2xl animate-pulse" />
+            <Skeleton key={i} className="h-20" />
           ))}
         </div>
       </AppShell>
@@ -64,7 +66,6 @@ export default function ObjectifsPage() {
   const levelKey = LEVEL_KEYS[level] ?? 'neutral';
   const levelStyle = LEVEL_STYLES[levelKey];
   const doneCount = achievements.filter((a) => a.done).length;
-  const progressPct = Math.round((points / 360) * 100); // 360 = max pts total
   const currentIdx = LEVEL_ORDER.indexOf(level);
   const nextLevel = LEVEL_ORDER[currentIdx + 1];
   const nextMin = nextLevel ? LEVEL_MIN_PTS[nextLevel] : null;
@@ -77,11 +78,8 @@ export default function ObjectifsPage() {
       <div className="max-w-lg mx-auto pb-28">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 pt-5 pb-4">
-          <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-colors">
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-[18px] font-bold text-neutral-900">Mes objectifs</h1>
+        <div className="px-4 pt-4">
+          <PageHeader title="Mes objectifs" backHref="/app/compte" />
         </div>
 
         {/* Niveau card */}

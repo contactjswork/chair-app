@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
-import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, LogIn } from 'lucide-react';
+import { Bell, Check, Calendar, Star, UserPlus, LogIn } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
+import { PrimaryButton, GhostButton } from '@/components/ui/Button';
+import { SkeletonCircle, SkeletonText } from '@/components/ui/Skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 import { notifications as notifApi } from '@/lib/api';
@@ -41,8 +43,8 @@ function NotifCard({
 
   return (
     <div
-      className={`relative flex gap-3 px-4 py-3.5 rounded-2xl transition-colors ${
-        isUnread ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_10px_rgba(0,0,0,0.03)]' : 'bg-white/60'
+      className={`relative flex gap-3 px-4 py-3.5 rounded-2xl border transition-colors ${
+        isUnread ? 'bg-white border-neutral-100' : 'bg-neutral-50/70 border-transparent'
       }`}
     >
       {isUnread && <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-neutral-900" />}
@@ -59,7 +61,7 @@ function NotifCard({
           {isUnread && (
             <button
               onClick={() => onMarkRead(notif.id)}
-              className="shrink-0 w-6 h-6 -mt-1 -mr-1 flex items-center justify-center text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors"
+              className="shrink-0 w-6 h-6 -mt-1 -mr-1 flex items-center justify-center text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 active:scale-90 rounded-full transition-all"
               aria-label="Marquer comme lu"
             >
               <Check size={14} />
@@ -71,6 +73,22 @@ function NotifCard({
         )}
         <p className="text-[11px] text-neutral-400 mt-1.5">{formatDate(notif.created_at)}</p>
       </div>
+    </div>
+  );
+}
+
+function NotifSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="flex gap-3 px-4 py-3.5 rounded-2xl border border-neutral-100 bg-white">
+          <SkeletonCircle size="w-9 h-9" />
+          <div className="flex-1 space-y-2 pt-0.5">
+            <SkeletonText width="w-2/3" />
+            <SkeletonText width="w-full" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -129,22 +147,24 @@ export default function NotificationsPage() {
     return (
       <AppShell>
         <div className="px-4 pt-4">
-          <PageHeader title="Notifications" />
+          <PageHeader title="Notifications" backHref="/app" />
         </div>
-        <div className="min-h-[65vh] flex flex-col items-center justify-center px-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
-            <Bell size={22} className="text-neutral-300" />
-          </div>
-          <h2 className="text-[18px] font-bold text-neutral-900 mb-2">Reste informé</h2>
-          <p className="text-[13px] text-neutral-400 mb-6 max-w-xs leading-relaxed">
-            Connecte-toi pour voir tes notifications : réservations, avis et nouveaux abonnés.
-          </p>
-          <Link href="/connexion" className="flex items-center gap-2 bg-neutral-900 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-neutral-700 transition-colors">
-            <LogIn size={15} /> Se connecter
-          </Link>
-          <Link href="/inscription" className="mt-3 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
-            Créer un compte
-          </Link>
+        <div className="min-h-[60vh] flex items-center justify-center">
+          <EmptyState
+            icon={Bell}
+            title="Reste informé"
+            subtitle="Connecte-toi pour voir tes notifications : réservations, avis et nouveaux abonnés."
+            action={
+              <div className="flex flex-col items-center gap-3">
+                <PrimaryButton href="/connexion" icon={<LogIn size={15} />}>
+                  Se connecter
+                </PrimaryButton>
+                <GhostButton href="/inscription" size="sm">
+                  Créer un compte
+                </GhostButton>
+              </div>
+            }
+          />
         </div>
       </AppShell>
     );
@@ -158,12 +178,13 @@ export default function NotificationsPage() {
           <div className="pt-4">
             <PageHeader
               title="Notifications"
+              backHref="/app"
               right={
                 unreadCount > 0 ? (
                   <button
                     onClick={handleMarkAllRead}
                     disabled={markingAll}
-                    className="text-[12px] font-semibold text-neutral-900 bg-neutral-100 hover:bg-neutral-200 transition-colors disabled:opacity-50 rounded-full px-3 py-1.5"
+                    className="text-[12px] font-semibold text-neutral-900 bg-neutral-100 hover:bg-neutral-200 active:scale-95 transition-all disabled:opacity-50 rounded-full px-3 py-1.5"
                   >
                     Tout marquer lu
                   </button>
@@ -177,30 +198,14 @@ export default function NotificationsPage() {
             )}
           </div>
 
-          {loading && (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex gap-3 px-4 py-3.5 rounded-2xl bg-white">
-                  <div className="w-9 h-9 rounded-full bg-neutral-100 animate-pulse shrink-0" />
-                  <div className="flex-1 space-y-2 pt-0.5">
-                    <div className="h-3 bg-neutral-100 rounded animate-pulse w-2/3" />
-                    <div className="h-2.5 bg-neutral-100 rounded animate-pulse w-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {loading && <NotifSkeleton />}
 
           {!loading && notifications.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 px-6 text-center">
-              <div className="w-16 h-16 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_10px_rgba(0,0,0,0.03)] flex items-center justify-center mb-4">
-                <Bell size={22} className="text-neutral-300" />
-              </div>
-              <p className="text-[15px] font-semibold text-neutral-900">Rien à signaler</p>
-              <p className="text-[13px] text-neutral-400 mt-1 max-w-[220px] leading-relaxed">
-                Réservations, avis et nouveaux abonnés apparaîtront ici.
-              </p>
-            </div>
+            <EmptyState
+              icon={Bell}
+              title="Rien à signaler"
+              subtitle="Réservations, avis et nouveaux abonnés apparaîtront ici."
+            />
           )}
 
           {!loading && unread.length > 0 && (

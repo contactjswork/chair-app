@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
-import { ArrowLeft, Check } from 'lucide-react';
+import PageHeader from '@/components/layout/PageHeader';
+import { Check } from 'lucide-react';
 
 const PREF_KEY = 'chair_notif_prefs';
 
@@ -75,7 +75,6 @@ function Row({
 }
 
 export default function NotifPrefsPage() {
-  const router = useRouter();
   const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT);
   const [saved, setSaved] = useState(false);
 
@@ -101,17 +100,17 @@ export default function NotifPrefsPage() {
       <div className="max-w-lg mx-auto pb-28">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-5 pb-5">
-          <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-colors">
-              <ArrowLeft size={20} />
-            </button>
-            <h1 className="text-[18px] font-bold text-neutral-900">Notifications</h1>
-          </div>
-          <div className={`flex items-center gap-1.5 text-[12px] font-medium transition-all duration-300 ${saved ? 'text-neutral-900 opacity-100' : 'opacity-0'}`}>
-            <Check size={13} strokeWidth={3} />
-            Sauvegardé
-          </div>
+        <div className="px-4 pt-4">
+          <PageHeader
+            title="Notifications"
+            backHref="/app/compte"
+            right={
+              <div className={`flex items-center gap-1.5 text-[12px] font-medium transition-all duration-300 ${saved ? 'text-neutral-900 opacity-100' : 'opacity-0'}`}>
+                <Check size={13} strokeWidth={3} />
+                Sauvegardé
+              </div>
+            }
+          />
         </div>
 
         <div className="px-4">
