@@ -10,12 +10,13 @@ import type { SavedHairdresser } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
-  Clock, CalendarDays, Bell, Lock, HelpCircle, Scissors, Trash2,
+  Clock, CalendarDays, Bell, HelpCircle, Scissors, Trash2,
   MapPin, Edit3, FileText, Shield, Heart,
 } from 'lucide-react';
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
 import { useNotificationCount } from '@/contexts/NotificationContext';
+import { Skeleton, SkeletonCircle } from '@/components/ui/Skeleton';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'En attente',
@@ -68,9 +69,9 @@ export default function ComptePage() {
     return (
       <AppShell>
         <div className="max-w-lg mx-auto px-4 pt-6 space-y-3">
-          <div className="h-40 bg-neutral-100 rounded-2xl animate-pulse" />
-          <div className="h-14 bg-neutral-100 rounded-xl animate-pulse" />
-          <div className="h-14 bg-neutral-100 rounded-xl animate-pulse" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-14" />
+          <Skeleton className="h-14" />
         </div>
       </AppShell>
     );
@@ -92,7 +93,7 @@ export default function ComptePage() {
             </div>
             <Link
               href="/connexion"
-              className="flex items-center justify-between w-full bg-neutral-900 text-white px-5 py-4 rounded-xl hover:bg-neutral-700 transition-colors"
+              className="flex items-center justify-between w-full bg-neutral-900 text-white px-5 py-4 rounded-xl hover:bg-neutral-700 active:scale-[0.98] transition-all"
             >
               <div className="flex items-center gap-3">
                 <LogIn size={18} />
@@ -102,7 +103,7 @@ export default function ComptePage() {
             </Link>
             <Link
               href="/inscription"
-              className="flex items-center justify-between w-full bg-white border border-neutral-200 text-neutral-900 px-5 py-4 rounded-xl hover:border-neutral-400 transition-colors"
+              className="flex items-center justify-between w-full bg-white border border-neutral-200 text-neutral-900 px-5 py-4 rounded-xl hover:border-neutral-400 active:scale-[0.98] active:bg-neutral-50 transition-all"
             >
               <div className="flex items-center gap-3">
                 <UserPlus size={18} />
@@ -114,7 +115,7 @@ export default function ComptePage() {
               <p className="text-xs text-neutral-400 text-center mb-4">Vous êtes coiffeur ?</p>
               <Link
                 href="/pro/inscription"
-                className="flex items-center justify-between w-full border border-neutral-200 text-neutral-700 px-5 py-4 rounded-xl hover:border-neutral-400 transition-colors"
+                className="flex items-center justify-between w-full border border-neutral-200 text-neutral-700 px-5 py-4 rounded-xl hover:border-neutral-400 active:scale-[0.98] active:bg-neutral-50 transition-all"
               >
                 <div className="flex items-center gap-3">
                   <LayoutDashboard size={18} />
@@ -175,7 +176,7 @@ export default function ComptePage() {
               <div className="flex justify-center gap-3">
                 <Link
                   href="/app/compte/modifier"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-700 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-700 active:scale-[0.97] transition-all"
                 >
                   <Edit3 size={14} />
                   Modifier mon profil
@@ -183,7 +184,7 @@ export default function ComptePage() {
                 {user.role === 'hairdresser' && (
                   <Link
                     href="/pro"
-                    className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 active:scale-[0.97] active:bg-neutral-50 transition-all"
                   >
                     <LayoutDashboard size={14} />
                     Dashboard
@@ -192,7 +193,7 @@ export default function ComptePage() {
                 {user.role === 'salon_owner' && (
                   <Link
                     href="/pro/salon"
-                    className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 transition-colors"
+                    className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 active:scale-[0.97] active:bg-neutral-50 transition-all"
                   >
                     <LayoutDashboard size={14} />
                     Mon salon
@@ -218,7 +219,7 @@ export default function ComptePage() {
                 {dataLoading ? (
                   <div className="flex gap-3 overflow-x-hidden">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="flex-shrink-0 w-[72px] h-[72px] rounded-full bg-neutral-100 animate-pulse" />
+                      <SkeletonCircle key={i} size="w-[72px] h-[72px]" className="flex-shrink-0" />
                     ))}
                   </div>
                 ) : followedHairdressers.length === 0 ? (
@@ -271,7 +272,7 @@ export default function ComptePage() {
               <section className="mt-6 px-4">
                 <Link
                   href="/app/inspirations"
-                  className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-neutral-100 hover:bg-neutral-50 transition-colors"
+                  className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-neutral-100 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <Heart size={17} className="text-neutral-400" />
@@ -294,7 +295,7 @@ export default function ComptePage() {
                 {dataLoading ? (
                   <div className="space-y-3">
                     {[1, 2].map((i) => (
-                      <div key={i} className="h-24 bg-neutral-100 rounded-2xl animate-pulse" />
+                      <Skeleton key={i} className="h-24" />
                     ))}
                   </div>
                 ) : myAppointments.length === 0 ? (
@@ -365,7 +366,7 @@ export default function ComptePage() {
             <section className="mt-6 px-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Paramètres</p>
               <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
-                <Link href="/app/notifications/preferences" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                <Link href="/app/notifications/preferences" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <Bell size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Notifications</span>
@@ -379,14 +380,14 @@ export default function ComptePage() {
                     <ChevronRight size={15} className="text-neutral-300" />
                   </div>
                 </Link>
-                <Link href="/confidentialite" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                <Link href="/confidentialite" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <Shield size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Confidentialité</span>
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
                 </Link>
-                <Link href="/cgu" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                <Link href="/cgu" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <FileText size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Conditions d&apos;utilisation</span>
@@ -402,7 +403,7 @@ export default function ComptePage() {
             <section className="mt-4 px-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Aide</p>
               <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
-                <Link href="/app/aide" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors">
+                <Link href="/app/aide" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <HelpCircle size={17} className="text-neutral-400" />
                     <div>
@@ -415,7 +416,7 @@ export default function ComptePage() {
                 {user.role === 'client' && (
                   <Link
                     href="/pro/inscription"
-                    className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 transition-colors"
+                    className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <Scissors size={17} className="text-neutral-400" />
@@ -436,7 +437,7 @@ export default function ComptePage() {
             <div className="mt-4 px-4 space-y-2">
               <button
                 onClick={logout}
-                className="flex items-center gap-3 w-full px-5 py-4 rounded-2xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 transition-colors bg-white"
+                className="flex items-center gap-3 w-full px-5 py-4 rounded-2xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 hover:text-neutral-900 active:bg-neutral-50 transition-colors bg-white"
               >
                 <LogOut size={17} />
                 <span className="font-medium text-[14px]">Se déconnecter</span>
@@ -444,7 +445,7 @@ export default function ComptePage() {
 
               <Link
                 href="/app/compte/supprimer"
-                className="flex items-center gap-3 w-full px-5 py-4 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 transition-colors bg-white"
+                className="flex items-center gap-3 w-full px-5 py-4 rounded-2xl border border-red-100 text-red-500 hover:bg-red-50 active:bg-red-100 transition-colors bg-white"
               >
                 <Trash2 size={17} />
                 <span className="font-medium text-[14px]">Supprimer mon compte</span>

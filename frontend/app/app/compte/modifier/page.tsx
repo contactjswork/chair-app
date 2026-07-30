@@ -185,7 +185,7 @@ export default function ModifierProfilPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-100 transition-colors">
+          <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-100 active:bg-neutral-200 transition-colors">
             <ChevronLeft size={20} />
           </button>
           <h1 className="text-xl font-bold text-neutral-900">Modifier mon profil</h1>
@@ -204,12 +204,12 @@ export default function ModifierProfilPage() {
                 )}
               </div>
               <button type="button" onClick={() => fileRef.current?.click()}
-                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center border-2 border-white hover:bg-neutral-700 transition-colors">
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-neutral-900 flex items-center justify-center border-2 border-white hover:bg-neutral-700 active:scale-90 transition-all">
                 <Camera size={13} className="text-white" />
               </button>
             </div>
             <button type="button" onClick={() => fileRef.current?.click()}
-              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
+              className="text-xs font-medium text-neutral-500 hover:text-neutral-900 active:text-neutral-900 transition-colors">
               Changer la photo
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
@@ -250,10 +250,10 @@ export default function ModifierProfilPage() {
             <div className="grid grid-cols-2 gap-2 mb-5">
               {GENDER_OPTIONS.map(({ value, label, emoji }) => (
                 <button key={label} type="button" onClick={() => setGender(value)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[12px] font-medium transition-all duration-150 ${
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-[12px] font-medium transition-all duration-150 active:scale-[0.96] ${
                     gender === value
                       ? 'border-neutral-900 bg-neutral-900 text-white'
-                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
+                      : 'border-neutral-200 text-neutral-600 hover:border-neutral-400 active:bg-neutral-50'
                   }`}>
                   <span>{emoji}</span>{label}
                 </button>
@@ -297,7 +297,7 @@ export default function ModifierProfilPage() {
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
 
           <button type="submit" disabled={saving || success}
-            className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-4 rounded-2xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-60">
+            className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-4 rounded-2xl text-sm hover:bg-neutral-700 active:scale-[0.98] transition-all disabled:opacity-60">
             {success ? <><Check size={16} /> Sauvegardé ✓</> : saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
           </button>
 
