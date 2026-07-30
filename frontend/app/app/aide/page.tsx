@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
-import { ArrowLeft, Mail, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import PageHeader from '@/components/layout/PageHeader';
+import { Mail, Clock, ChevronDown, ShieldCheck, FileText } from 'lucide-react';
 
 const FAQS = [
   {
@@ -24,65 +24,61 @@ const FAQS = [
   },
   {
     q: 'Comment modifier mon profil ?',
-    a: "Va dans Compte → Modifier mon profil. Tu peux y changer ton nom, ta photo, ta ville et ton numéro de téléphone.",
+    a: 'Va dans Compte → Modifier mon profil. Tu peux y changer ton nom, ta photo, ta ville et ton numéro de téléphone.',
   },
   {
-    q: "Comment signaler un contenu inapproprié ?",
-    a: "Appuie longuement sur le contenu concerné ou utilise le menu ⋯ pour le signaler. Notre équipe le traitera sous 72h.",
+    q: 'Comment signaler un contenu inapproprié ?',
+    a: 'Appuie longuement sur le contenu concerné ou utilise le menu ⋯ pour le signaler. Notre équipe le traitera sous 72h.',
   },
   {
-    q: "Comment supprimer mon compte ?",
-    a: "Va dans Compte → Supprimer mon compte. Cette action est irréversible. Tu peux aussi envoyer une demande à contact@getchair.app.",
+    q: 'Comment supprimer mon compte ?',
+    a: 'Va dans Compte → Supprimer mon compte. Cette action est irréversible. Tu peux aussi envoyer une demande à contact@getchair.app.',
   },
   {
     q: "L'app est-elle gratuite ?",
-    a: "CHAIR est 100% gratuit pour les clients. Les coiffeurs peuvent créer un profil gratuitement et accéder à des fonctionnalités avancées via un abonnement pro.",
+    a: 'CHAIR est 100% gratuit pour les clients. Les coiffeurs peuvent créer un profil gratuitement et accéder à des fonctionnalités avancées via un abonnement pro.',
   },
 ];
 
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
+function FaqItem({ q, a, open, onToggle }: { q: string; a: string; open: boolean; onToggle: () => void }) {
   return (
     <button
-      onClick={() => setOpen(!open)}
-      className="w-full text-left px-5 py-4 border-b border-neutral-50 last:border-0 hover:bg-neutral-50 transition-colors"
+      onClick={onToggle}
+      className="w-full text-left px-5 py-4 border-b border-neutral-50 last:border-0 active:bg-neutral-50 transition-colors"
+      aria-expanded={open}
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-[14px] font-semibold text-neutral-900 leading-snug">{q}</p>
-        {open
-          ? <ChevronUp size={16} className="text-neutral-400 flex-shrink-0 mt-0.5" />
-          : <ChevronDown size={16} className="text-neutral-400 flex-shrink-0 mt-0.5" />
-        }
+        <ChevronDown
+          size={16}
+          className={`text-neutral-400 flex-shrink-0 mt-0.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
       </div>
-      {open && (
-        <p className="text-[13px] text-neutral-500 leading-relaxed mt-2.5 pr-4">{a}</p>
-      )}
+      <div className={`grid transition-all duration-200 ease-out ${open ? 'grid-rows-[1fr] opacity-100 mt-2.5' : 'grid-rows-[0fr] opacity-0'}`}>
+        <div className="overflow-hidden">
+          <p className="text-[13px] text-neutral-500 leading-relaxed pr-4">{a}</p>
+        </div>
+      </div>
     </button>
   );
 }
 
 export default function AidePage() {
-  const router = useRouter();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
     <AppShell>
-      <div className="max-w-lg mx-auto pb-28">
+      <div className="max-w-lg mx-auto px-4 pb-28">
 
-        {/* Header */}
-        <div className="flex items-center gap-3 px-4 pt-5 pb-6">
-          <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-colors">
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-[18px] font-bold text-neutral-900">Aide & Support</h1>
-        </div>
+        <PageHeader title="Aide & Support" backHref="/app/compte" />
 
         {/* Contact */}
-        <div className="mx-4 mb-6">
+        <div className="mt-4 mb-6">
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Nous contacter</p>
           <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
             <a
               href="mailto:contact@getchair.app"
-              className="flex items-center gap-4 px-5 py-4 hover:bg-neutral-50 transition-colors"
+              className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors"
             >
               <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
                 <Mail size={17} className="text-white" />
@@ -105,17 +101,42 @@ export default function AidePage() {
         </div>
 
         {/* FAQ */}
-        <div className="mx-4">
+        <div>
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Questions fréquentes</p>
           <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
-            {FAQS.map((item) => (
-              <FaqItem key={item.q} q={item.q} a={item.a} />
+            {FAQS.map((item, i) => (
+              <FaqItem
+                key={item.q}
+                q={item.q}
+                a={item.a}
+                open={openIndex === i}
+                onToggle={() => setOpenIndex((cur) => (cur === i ? null : i))}
+              />
             ))}
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-neutral-300 mt-8 px-4">
-          CHAIR · Version 1.0 · <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/cgu" className="underline">CGU</a>
+        {/* Légal */}
+        <div className="mt-6">
+          <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Légal</p>
+          <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
+            <a href="/confidentialite" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck size={17} className="text-neutral-400" />
+              </div>
+              <p className="text-[14px] font-semibold text-neutral-900">Confidentialité</p>
+            </a>
+            <a href="/cgu" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <FileText size={17} className="text-neutral-400" />
+              </div>
+              <p className="text-[14px] font-semibold text-neutral-900">Conditions générales</p>
+            </a>
+          </div>
+        </div>
+
+        <p className="text-center text-[11px] text-neutral-300 mt-8">
+          CHAIR · Version 1.0
         </p>
 
       </div>
