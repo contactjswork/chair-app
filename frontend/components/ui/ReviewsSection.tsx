@@ -208,7 +208,7 @@ function ReviewCard({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-sm font-semibold text-neutral-900 truncate">{firstName}</p>
             {review.is_verified && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-green-700 font-medium">
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
                 <BadgeCheck size={11} />
                 Certifié
               </span>
