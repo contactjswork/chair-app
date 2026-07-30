@@ -15,7 +15,10 @@ interface Props {
 /** Barre de recherche flottante posée sur la carte. */
 export default function SearchFloatingBar({ title, subtitle, onOpenSearch, onOpenFilters, activeFiltersCount }: Props) {
   return (
-    <div className="flex items-center gap-2 bg-white rounded-full pl-4 pr-2 py-2 shadow-lg shadow-black/10 border border-neutral-100">
+    <div
+      className="flex items-center gap-2 bg-white rounded-full pl-4 pr-2 py-2 border border-neutral-100"
+      style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.07)' }}
+    >
       <button
         onClick={onOpenSearch}
         className="flex items-center gap-3 flex-1 min-w-0 text-left py-1"

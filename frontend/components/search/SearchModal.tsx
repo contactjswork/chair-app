@@ -13,6 +13,8 @@ import {
 } from '@/lib/explore';
 import type { RecentSearch } from '@/lib/explore';
 import { getSpecialtyIcon } from './specialtyIcons';
+import { FilterChip } from '@/components/ui/Badge';
+import { PrimaryButton, IconButton } from '@/components/ui/Button';
 
 export interface SearchDraft {
   q: string;
@@ -179,17 +181,17 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
 
   return (
     <div className="fixed inset-0 z-[85] flex md:items-center md:justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm hidden md:block" onClick={onClose} />
+      <div className="absolute inset-0 bg-neutral-900/40 hidden md:block" onClick={onClose} />
 
       <div className="relative flex flex-col w-full h-full bg-white md:h-auto md:max-h-[85vh] md:max-w-lg md:rounded-3xl md:shadow-2xl md:overflow-hidden">
 
         {/* Header */}
         <div className="flex-shrink-0 pt-safe-header md:pt-0">
           <div className="flex items-center justify-between px-5 h-14">
-            <h2 className="text-[20px] font-bold text-neutral-900">Rechercher</h2>
-            <button onClick={onClose} aria-label="Fermer" className="w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center">
-              <X size={17} className="text-neutral-700" />
-            </button>
+            <h2 className="text-[20px] font-bold text-neutral-900 tracking-[-0.02em]">Rechercher</h2>
+            <IconButton onClick={onClose} aria-label="Fermer">
+              <X size={17} />
+            </IconButton>
           </div>
         </div>
 
@@ -293,17 +295,13 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
             {(useMyPosition || cityInput.trim()) && (
               <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2.5">
                 {RADIUS_OPTIONS.map((opt) => (
-                  <button
+                  <FilterChip
                     key={String(opt.value)}
+                    active={radius === opt.value}
                     onClick={() => setRadius(opt.value)}
-                    className={`flex-shrink-0 text-[12px] font-semibold px-3.5 py-2 rounded-full border transition-all ${
-                      radius === opt.value
-                        ? 'bg-neutral-900 text-white border-neutral-900'
-                        : 'bg-white text-neutral-600 border-neutral-200'
-                    }`}
                   >
                     {opt.label}
-                  </button>
+                  </FilterChip>
                 ))}
               </div>
             )}
@@ -379,15 +377,9 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
         {/* CTA sticky */}
         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-white via-white/95 to-transparent pt-6 pb-safe">
           <div className="px-5 pb-4">
-            <button
-              onClick={handleApply}
-              disabled={applying}
-              className="w-full py-4 bg-neutral-900 text-white text-[15px] font-semibold rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {applying && <Loader2 size={15} className="animate-spin" />}
-              Rechercher
-              {locationLabel ? ` · ${locationLabel}` : ''}
-            </button>
+            <PrimaryButton onClick={handleApply} loading={applying} fullWidth>
+              Rechercher{locationLabel ? ` · ${locationLabel}` : ''}
+            </PrimaryButton>
           </div>
         </div>
       </div>

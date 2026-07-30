@@ -2,11 +2,13 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, ChevronDown, LayoutGrid, Loader2, MapPinOff, RefreshCw, User } from 'lucide-react';
+import { Building2, LayoutGrid, Loader2, MapPinOff, RefreshCw, SlidersHorizontal, User, X } from 'lucide-react';
 import TopNav from '@/components/layout/TopNav';
 import BottomNav from '@/components/layout/BottomNav';
 import ReviewPromptTrigger from '@/components/ui/ReviewPromptTrigger';
 import GeoPermissionModal from '@/components/ui/GeoPermissionModal';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/Badge';
 import SearchMap, { type SearchMapHandle } from '@/components/search/SearchMap';
 import SearchFloatingBar from '@/components/search/SearchFloatingBar';
 import SearchModal, { type SearchDraft } from '@/components/search/SearchModal';
@@ -15,6 +17,7 @@ import SearchResultsSheet, { type SheetPosition } from '@/components/search/Sear
 import SearchResultCard from '@/components/search/SearchResultCard';
 import SearchMiniCard from '@/components/search/SearchMiniCard';
 import SearchEmptyState from '@/components/search/SearchEmptyState';
+import SearchResultSkeleton from '@/components/search/SearchResultSkeleton';
 import { useExploreSearch } from '@/hooks/useExploreSearch';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
@@ -24,6 +27,14 @@ import type { MapViewport } from '@/components/search/mapProvider';
 import { getStoredLocation, requestBrowserGeolocation, storeLocation } from '@/hooks/useGeolocation';
 
 const FRANCE_CENTER = { lat: 46.6, lng: 2.45 };
+
+/** Libellés courts des tris, pour les chips de filtres actifs de la liste. */
+const SORT_LABELS: Record<string, string> = {
+  relevance: 'Pertinence',
+  distance:  'Les plus proches',
+  rating:    'Les mieux notés',
+  popular:   'Les plus demandés',
+};
 
 /** Un seul exemplaire de la carte doit vivre à la fois — le layout mobile et
  *  le layout desktop sont rendus conditionnellement, pas masqués en CSS. */
@@ -257,64 +268,95 @@ function RechercheContent() {
   // ── Sous-composants de contenu ────────────────────────────────────────────
 
   const typeChips: { label: string; value: ExploreType; count?: number; icon: React.ReactNode }[] = [
-    { label: 'Tous',      value: 'all',         count: explore.counts?.all,          icon: <LayoutGrid size={12} /> },
-    { label: 'Coiffeurs', value: 'hairdresser', count: explore.counts?.hairdressers, icon: <User size={12} /> },
-    { label: 'Salons',    value: 'salon',       count: explore.counts?.salons,       icon: <Building2 size={12} /> },
+    { label: 'Tous',      value: 'all',         count: explore.counts?.all,          icon: <LayoutGrid size={13} /> },
+    { label: 'Coiffeurs', value: 'hairdresser', count: explore.counts?.hairdressers, icon: <User size={13} /> },
+    { label: 'Salons',    value: 'salon',       count: explore.counts?.salons,       icon: <Building2 size={13} /> },
   ];
 
+  /** Filtres actifs retirables directement depuis la liste — jusqu'ici il
+   *  fallait rouvrir la sheet pour enlever ne serait-ce qu'une spécialité. */
+  const activeChips: { key: string; label: string; clear: () => void }[] = [
+    ...filters.specialties.map((slug) => ({
+      key: `spec-${slug}`,
+      label: SPECIALTY_LABELS[slug] ?? slug,
+      clear: () => setFilters({ specialties: filters.specialties.filter((s) => s !== slug) }),
+    })),
+    ...(filters.minRating > 0
+      ? [{ key: 'rating', label: `${String(filters.minRating).replace('.', ',')}+`, clear: () => setFilters({ minRating: 0 }) }]
+      : []),
+    ...(filters.sort !== 'relevance'
+      ? [{ key: 'sort', label: SORT_LABELS[filters.sort], clear: () => setFilters({ sort: 'relevance' }) }]
+      : []),
+  ];
+
+  const FiltersButton = activeFiltersCount > 0 ? PrimaryButton : SecondaryButton;
+
   const listHeader = (
-    <div className="px-4 pb-2.5">
-      <p className="text-[12px] text-neutral-400 mb-2.5">
-        {explore.isLoading
-          ? 'Recherche en cours...'
-          : `${explore.total} résultat${explore.total > 1 ? 's' : ''}${explore.bbox ? ' dans cette zone' : ` · ${locationLabel}`}`}
-      </p>
-      <div className="flex gap-2 overflow-x-auto no-scrollbar">
-        {typeChips.map((c) => (
-          <button
-            key={c.value}
-            onClick={() => setFilters({ type: c.value })}
-            className={`flex-shrink-0 flex items-center gap-1.5 text-[12px] font-semibold px-3.5 py-2 rounded-full border transition-all ${
-              filters.type === c.value
-                ? 'bg-neutral-900 text-white border-neutral-900'
-                : 'bg-white text-neutral-600 border-neutral-200'
-            }`}
-          >
-            {c.icon}
-            {c.label}
-            {c.count != null && (
-              <span className={`text-[10px] font-normal ${filters.type === c.value ? 'text-neutral-300' : 'text-neutral-400'}`}>{c.count}</span>
-            )}
-          </button>
-        ))}
-        <button
+    <div className="px-4 pb-3">
+      {/* L'information principale de l'écran redevient la plus lisible :
+          avant, le nombre de résultats était en 12px neutral-400, soit le
+          texte le plus effacé de la page. */}
+      <div className="flex items-baseline justify-between gap-3 mb-3">
+        <p className="text-[15px] font-bold text-neutral-900 tracking-[-0.01em] leading-none">
+          {explore.isLoading
+            ? 'Recherche…'
+            : `${explore.total} résultat${explore.total > 1 ? 's' : ''}`}
+        </p>
+        <p className="text-[11.5px] text-neutral-400 truncate min-w-0">
+          {explore.bbox ? 'dans cette zone' : locationLabel}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <FiltersButton
+          size="sm"
           onClick={() => setFiltersOpen(true)}
-          className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold px-3.5 py-2 rounded-full border bg-white text-neutral-600 border-neutral-200"
+          icon={<SlidersHorizontal size={13} />}
+          className="flex-shrink-0"
         >
-          Trier
-          <ChevronDown size={12} />
-        </button>
+          Filtres{activeFiltersCount > 0 ? ` · ${activeFiltersCount}` : ''}
+        </FiltersButton>
+
+        <span className="w-px h-5 bg-neutral-200 flex-shrink-0" />
+
+        {/* Rail horizontal : la zone de drag de la sheet doit ignorer ce
+            conteneur, sinon `touch-action: none` empêche tout scroll latéral
+            au doigt — les chips au-delà de "Salons" étaient inatteignables. */}
+        <div
+          data-sheet-nodrag
+          style={{ touchAction: 'pan-x' }}
+          className="flex gap-2 overflow-x-auto no-scrollbar -mr-4 pr-4"
+        >
+          {typeChips.map((c) => (
+            <FilterChip
+              key={c.value}
+              active={filters.type === c.value}
+              onClick={() => setFilters({ type: c.value })}
+            >
+              {c.icon}
+              {c.label}
+              {c.count != null && (
+                <span className={`text-[11px] font-normal tabular-nums ${filters.type === c.value ? 'text-neutral-400' : 'text-neutral-400'}`}>
+                  {c.count}
+                </span>
+              )}
+            </FilterChip>
+          ))}
+
+          {activeChips.map((c) => (
+            <FilterChip key={c.key} active onClick={c.clear} aria-label={`Retirer le filtre ${c.label}`}>
+              {c.label}
+              <X size={12} className="text-neutral-400" />
+            </FilterChip>
+          ))}
+        </div>
       </div>
     </div>
   );
 
   const listContent = (
     <>
-      {explore.isLoading && (
-        <div className="space-y-3 pt-1">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="flex gap-3.5 p-3 rounded-2xl border border-neutral-100">
-              <div className="w-[92px] h-[92px] rounded-xl bg-neutral-100 animate-pulse flex-shrink-0" />
-              <div className="flex-1 space-y-2 py-1">
-                <div className="h-2.5 bg-neutral-100 rounded-full animate-pulse w-1/4" />
-                <div className="h-3.5 bg-neutral-100 rounded-full animate-pulse w-2/3" />
-                <div className="h-3 bg-neutral-100 rounded-full animate-pulse w-1/2" />
-                <div className="h-3 bg-neutral-100 rounded-full animate-pulse w-1/3" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {explore.isLoading && <SearchResultSkeleton rows={5} />}
 
       {!explore.isLoading && explore.error && (
         <SearchEmptyState
@@ -342,7 +384,7 @@ function RechercheContent() {
       )}
 
       {!explore.isLoading && !explore.error && displayResults.length > 0 && (
-        <div className="space-y-2.5 pt-1">
+        <div className="space-y-2">
           {displayResults.map((r) => {
             const key = resultKey(r);
             return (
@@ -358,8 +400,8 @@ function RechercheContent() {
           })}
 
           {unlocatedCount > 0 && (
-            <p className="flex items-center gap-1.5 text-[11px] text-neutral-400 px-1 pt-1">
-              <MapPinOff size={11} className="flex-shrink-0" />
+            <p className="flex items-start gap-1.5 text-[11px] text-neutral-400 px-1 pt-2 leading-relaxed">
+              <MapPinOff size={11} className="flex-shrink-0 mt-0.5" />
               {unlocatedCount === 1
                 ? '1 professionnel sans adresse localisée n\'apparaît pas sur la carte.'
                 : `${unlocatedCount} professionnels sans adresse localisée n'apparaissent pas sur la carte.`}
@@ -367,12 +409,11 @@ function RechercheContent() {
           )}
 
           {explore.hasMore && (
-            <button
-              onClick={() => explore.loadMore()}
-              className="w-full py-3 text-[13px] font-semibold text-neutral-700 border border-neutral-200 rounded-2xl hover:border-neutral-400 transition-colors"
-            >
-              Voir plus de résultats
-            </button>
+            <div className="pt-2">
+              <SecondaryButton onClick={() => explore.loadMore()} fullWidth>
+                Voir plus de résultats
+              </SecondaryButton>
+            </div>
           )}
         </div>
       )}
@@ -411,7 +452,8 @@ function RechercheContent() {
         <div className="absolute top-[72px] inset-x-0 z-20 flex justify-center pointer-events-none">
           <button
             onClick={handleSearchInArea}
-            className="pointer-events-auto flex items-center gap-1.5 bg-neutral-900 text-white text-[12px] font-semibold px-4 py-2.5 rounded-full shadow-lg"
+            className="pointer-events-auto flex items-center gap-1.5 bg-neutral-900 text-white text-[12px] font-semibold px-4 h-9 rounded-full transition-transform active:scale-95"
+            style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.18)' }}
           >
             <RefreshCw size={12} />
             Rechercher dans cette zone
@@ -421,9 +463,12 @@ function RechercheContent() {
 
       {explore.isLoading && (
         <div className="absolute top-[72px] inset-x-0 z-20 flex justify-center pointer-events-none">
-          <div className="flex items-center gap-1.5 bg-white text-neutral-500 text-[12px] font-medium px-3.5 py-2 rounded-full shadow-md border border-neutral-100">
+          <div
+            className="flex items-center gap-1.5 bg-white text-neutral-500 text-[12px] font-medium px-3.5 h-9 rounded-full border border-neutral-100"
+            style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.07)' }}
+          >
             <Loader2 size={12} className="animate-spin" />
-            Recherche...
+            Recherche…
           </div>
         </div>
       )}
@@ -529,23 +574,18 @@ export default function RecherchePage() {
         <main className="pt-content-mobile md:pt-[60px]">
           <div className="search-stage relative overflow-hidden bg-neutral-50">
             <div className="absolute top-3 inset-x-3">
-              <div className="h-[58px] bg-white rounded-full shadow-lg animate-pulse" />
+              <div className="h-[58px] bg-white rounded-full border border-neutral-100" />
             </div>
-            <div className="absolute inset-x-0 bottom-0 h-[45%] bg-white rounded-t-3xl p-4">
-              <div className="flex justify-center pb-3">
-                <div className="w-10 h-1.5 bg-neutral-200 rounded-full" />
+            {/* Même géométrie que la vraie sheet (rayon, ombre, poignée) pour
+                qu'il n'y ait aucun saut visuel à l'hydratation. */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-[48%] bg-white rounded-t-3xl px-4 pb-4"
+              style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.06)' }}
+            >
+              <div className="flex justify-center pt-3 pb-3">
+                <div className="w-9 h-1 bg-neutral-200 rounded-full" />
               </div>
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex gap-3.5 p-3 rounded-2xl border border-neutral-100">
-                    <div className="w-[92px] h-[92px] rounded-xl bg-neutral-100 animate-pulse flex-shrink-0" />
-                    <div className="flex-1 space-y-2 py-1">
-                      <div className="h-3 bg-neutral-100 rounded-full animate-pulse w-2/3" />
-                      <div className="h-3 bg-neutral-100 rounded-full animate-pulse w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <SearchResultSkeleton rows={3} />
             </div>
           </div>
         </main>

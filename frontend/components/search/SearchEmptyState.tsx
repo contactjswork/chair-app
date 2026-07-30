@@ -1,6 +1,9 @@
 'use client';
 
 import { RotateCcw, SearchX, WifiOff } from 'lucide-react';
+import EmptyState from '@/components/ui/EmptyState';
+import { PrimaryButton, GhostButton } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/Badge';
 
 interface Props {
   variant: 'empty' | 'error';
@@ -13,63 +16,62 @@ interface Props {
   onRetry?: () => void;
 }
 
-/** État "aucun résultat" / "erreur réseau" — propose toujours une sortie. */
+/**
+ * État "aucun résultat" / "erreur réseau" — propose toujours une sortie.
+ * Structure icône/titre/sous-texte reprise de EmptyState partagé, et les
+ * élargissements de rayon sont regroupés sur une seule rangée de chips :
+ * trois boutons pleine largeur empilés donnaient un mur d'actions de même
+ * poids alors qu'il s'agit d'un seul réglage à trois valeurs.
+ */
 export default function SearchEmptyState({
   variant, message, radius, hasActiveFilters, onWidenRadius, onClearSpecialties, onReset, onRetry,
 }: Props) {
+  const widenSteps: { label: string; value: number | null }[] = [];
+  if (variant === 'empty' && radius != null) {
+    if (radius < 20) widenSteps.push({ label: '20 km', value: 20 });
+    if (radius < 50) widenSteps.push({ label: '50 km', value: 50 });
+    widenSteps.push({ label: 'Toute la France', value: null });
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center py-12 text-center px-4">
-      <div className="w-14 h-14 rounded-2xl bg-neutral-50 border border-neutral-100 flex items-center justify-center mb-4">
-        {variant === 'error'
-          ? <WifiOff size={22} className="text-neutral-300" />
-          : <SearchX size={22} className="text-neutral-300" />}
-      </div>
-      <h3 className="text-[15px] font-bold text-neutral-900 mb-1.5">
-        {variant === 'error' ? 'Connexion impossible' : 'Aucun résultat'}
-      </h3>
-      <p className="text-[13px] text-neutral-400 max-w-xs leading-relaxed mb-5">{message}</p>
+    <EmptyState
+      icon={variant === 'error' ? WifiOff : SearchX}
+      title={variant === 'error' ? 'Connexion impossible' : 'Aucun résultat'}
+      subtitle={message}
+      compact
+      action={
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+          {variant === 'error' && onRetry && (
+            <PrimaryButton onClick={onRetry} fullWidth>Réessayer</PrimaryButton>
+          )}
 
-      <div className="flex flex-col items-center gap-2.5 w-full max-w-xs">
-        {variant === 'error' && onRetry && (
-          <button
-            onClick={onRetry}
-            className="w-full text-[13px] font-semibold text-white bg-neutral-900 px-5 py-3 rounded-2xl hover:bg-neutral-700 transition-colors"
-          >
-            Réessayer
-          </button>
-        )}
+          {widenSteps.length > 0 && (
+            <div className="w-full">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-neutral-400 mb-2.5">
+                Élargir la zone
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {widenSteps.map((s) => (
+                  <FilterChip key={s.label} onClick={() => onWidenRadius(s.value)}>
+                    {s.label}
+                  </FilterChip>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {variant === 'empty' && radius != null && (
-          <>
-            {radius < 20 && (
-              <button onClick={() => onWidenRadius(20)} className="w-full text-[13px] font-semibold text-neutral-700 border border-neutral-200 px-5 py-3 rounded-2xl hover:border-neutral-400 transition-colors">
-                Élargir à 20 km
-              </button>
+          <div className="flex flex-col items-center">
+            {variant === 'empty' && onClearSpecialties && (
+              <GhostButton size="sm" onClick={onClearSpecialties}>Retirer les spécialités</GhostButton>
             )}
-            {radius < 50 && (
-              <button onClick={() => onWidenRadius(50)} className="w-full text-[13px] font-semibold text-neutral-700 border border-neutral-200 px-5 py-3 rounded-2xl hover:border-neutral-400 transition-colors">
-                Élargir à 50 km
-              </button>
+            {hasActiveFilters && (
+              <GhostButton size="sm" onClick={onReset} icon={<RotateCcw size={12} />}>
+                Réinitialiser les filtres
+              </GhostButton>
             )}
-            <button onClick={() => onWidenRadius(null)} className="w-full text-[13px] font-semibold text-neutral-700 border border-neutral-200 px-5 py-3 rounded-2xl hover:border-neutral-400 transition-colors">
-              Chercher dans toute la France
-            </button>
-          </>
-        )}
-
-        {variant === 'empty' && onClearSpecialties && (
-          <button onClick={onClearSpecialties} className="text-[12px] text-neutral-400 hover:text-neutral-700 transition-colors">
-            Retirer les spécialités
-          </button>
-        )}
-
-        {hasActiveFilters && (
-          <button onClick={onReset} className="flex items-center gap-1.5 text-[12px] text-neutral-400 hover:text-neutral-700 transition-colors">
-            <RotateCcw size={12} />
-            Réinitialiser tous les filtres
-          </button>
-        )}
-      </div>
-    </div>
+          </div>
+        </div>
+      }
+    />
   );
 }

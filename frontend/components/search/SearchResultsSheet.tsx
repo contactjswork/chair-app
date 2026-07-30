@@ -12,7 +12,7 @@ interface Props {
   children: React.ReactNode;
 }
 
-const PEEK_VISIBLE = 112;
+const PEEK_VISIBLE = 124;
 
 /**
  * Bottom sheet à trois positions (poignée seule / intermédiaire / quasi plein
@@ -60,6 +60,10 @@ export default function SearchResultsSheet({ position, onPositionChange, header,
 
   function onPointerDown(e: React.PointerEvent) {
     if (height === 0) return;
+    // Un rail de chips horizontal vit dans le header : sans cette exception, le
+    // `touch-action: none` de la zone de drag confisque le geste et le scroll
+    // latéral est totalement impossible au doigt.
+    if ((e.target as HTMLElement).closest?.('[data-sheet-nodrag]')) return;
     try { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); } catch {}
     dragRef.current = {
       startY: e.clientY,
@@ -119,7 +123,7 @@ export default function SearchResultsSheet({ position, onPositionChange, header,
       <div
         ref={sheetRef}
         className="absolute inset-x-0 bottom-0 h-full flex flex-col bg-white rounded-t-3xl pointer-events-auto"
-        style={{ boxShadow: '0 -6px 24px rgba(0,0,0,0.10)', transform: `translateY(${offsetFor(position)}px)` }}
+        style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.06)', transform: `translateY(${offsetFor(position)}px)` }}
       >
         {/* Zone de drag : poignée + header */}
         <div
@@ -130,12 +134,16 @@ export default function SearchResultsSheet({ position, onPositionChange, header,
           className="flex-shrink-0 cursor-grab active:cursor-grabbing select-none"
           style={{ touchAction: 'none' }}
         >
-          <div className="flex justify-center pt-2.5 pb-1">
+          {/* Cible tactile de 36px de haut autour d'une poignée fine : le
+              bouton faisait 6px de haut, quasi impossible à viser au pouce. */}
+          <div className="flex justify-center">
             <button
               aria-label="Déplier les résultats"
               onClick={() => onPositionChange(position === 'peek' ? 'half' : position === 'half' ? 'full' : 'half')}
-              className="w-10 h-1.5 bg-neutral-200 rounded-full"
-            />
+              className="flex items-center justify-center w-16 h-9"
+            >
+              <span className="block w-9 h-1 bg-neutral-200 rounded-full" />
+            </button>
           </div>
           {header}
         </div>

@@ -25,7 +25,10 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
 
   return (
-    <div className="relative bg-white rounded-2xl shadow-xl border border-neutral-100 overflow-hidden">
+    <div
+      className="relative bg-white rounded-2xl border border-neutral-100 overflow-hidden"
+      style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.10)' }}
+    >
       <Link href={resultHref(r)} className="flex items-center gap-3 p-3 pr-10 active:bg-neutral-50">
         <div className="relative flex-shrink-0 w-[52px] h-[52px]">
           {!isSalon && ring.show && (
@@ -60,7 +63,7 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
             )}
             {hasRating && (
               <span className="flex items-center gap-0.5 text-[11px] font-semibold text-neutral-900 flex-shrink-0">
-                <Star size={9} className="fill-amber-400 stroke-none" />
+                <Star size={9} className="fill-neutral-900 stroke-none" />
                 {r.avg_rating.toFixed(1).replace('.', ',')}
                 <span className="font-normal text-neutral-400">({r.reviews_count})</span>
               </span>
