@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AlertCircle, Lock, Mail, Phone, User } from 'lucide-react';
+import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
+import CityAutocomplete from '@/components/ui/CityAutocomplete';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 
-type Step = 'name' | 'email' | 'phone' | 'password';
-const STEPS: Step[] = ['name', 'email', 'phone', 'password'];
+type Step = 'name' | 'city' | 'email' | 'phone' | 'password';
+const STEPS: Step[] = ['name', 'city', 'email', 'phone', 'password'];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,6 +25,8 @@ export default function InscriptionPage() {
   const { animClass, transition } = useStepTransition();
 
   const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [cityGeo, setCityGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +68,9 @@ export default function InscriptionPage() {
       await register({
         name,
         email,
+        city,
+        latitude: cityGeo?.lat,
+        longitude: cityGeo?.lng,
         phone: phone || undefined,
         password,
         password_confirmation: password,
@@ -111,6 +117,28 @@ export default function InscriptionPage() {
                 className={`${inputCls} pl-11`}
               />
             </div>
+          </Screen>
+        )}
+
+        {/* ── Ville ── */}
+        {step === 'city' && (
+          <Screen
+            eyebrow="Localisation"
+            title="Dans quelle ville es-tu ?"
+            hint="Pour ne te montrer que des coiffeurs vraiment près de chez toi."
+            ctaLabel="Continuer"
+            ctaDisabled={city.trim().length < 2}
+            onNext={goNext}
+          >
+            <CityAutocomplete
+              autoFocus
+              value={city}
+              onChange={(text) => { setCity(text); setCityGeo(null); }}
+              onSelect={(s) => { setCity(s.city); setCityGeo({ lat: s.lat, lng: s.lng }); }}
+              placeholder="Paris, Lyon, Strasbourg…"
+              className={`${inputCls} pl-11`}
+              icon={<MapPin size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400 z-10" />}
+            />
           </Screen>
         )}
 

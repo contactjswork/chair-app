@@ -4,12 +4,12 @@ import { useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Star, ChevronRight, BadgeCheck } from 'lucide-react';
-import { getStoredLocation } from '@/hooks/useGeolocation';
+import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
-import type { ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
+import type { ApiHairdresserProfile } from '@/lib/types';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
+import { fetchHairdressersProgressive } from '@/lib/homeFetch';
 
 function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: string; badgeCls?: string }) {
   const avatar = resolveMediaUrl(h.user.avatar);
@@ -161,26 +161,22 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
 // ── Coup de cœur CHAIR ────────────────────────────────────────────────────────
 
 export function CoupDeCoeurStrip({ fallback }: { fallback: ApiHairdresserProfile[] }) {
+  const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
   const [isGeo, setIsGeo] = useState(false);
 
   useEffect(() => {
-    const loc = getStoredLocation();
-    if (!loc) return;
-    setIsGeo(true);
-    const params = new URLSearchParams({ lat: String(loc.latitude), lng: String(loc.longitude), radius: '100', per_page: '10' });
-    fetch(`${API}/hairdressers?${params}`)
-      .then((r) => r.json())
-      .then((d: PaginatedResponse<ApiHairdresserProfile>) => { if (d.data?.length) setHairdressers(d.data); })
-      .catch(() => {});
-  }, []);
+    if (isLoading || !user) return;
+    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), 10)
+      .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
+  }, [user, isLoading]);
 
   if (!hairdressers.length) return null;
   return (
     <section className="pt-10">
       <SectionHeader
         tag="Sélection CHAIR"
-        title={isGeo ? 'Coups de cœur dans votre région' : 'Coup de cœur CHAIR'}
+        title={isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR'}
         href="/app/recherche"
       />
       <FeaturedAvatarStrip hairdressers={hairdressers} />
@@ -188,52 +184,18 @@ export function CoupDeCoeurStrip({ fallback }: { fallback: ApiHairdresserProfile
   );
 }
 
-// ── Les plus demandés ─────────────────────────────────────────────────────────
-
-export function PopularStrip({ fallback }: { fallback: ApiHairdresserProfile[] }) {
-  const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
-  const [isGeo, setIsGeo] = useState(false);
-
-  useEffect(() => {
-    const loc = getStoredLocation();
-    if (!loc) return;
-    setIsGeo(true);
-    const params = new URLSearchParams({ lat: String(loc.latitude), lng: String(loc.longitude), radius: '80', per_page: '8' });
-    fetch(`${API}/hairdressers?${params}`)
-      .then((r) => r.json())
-      .then((d: PaginatedResponse<ApiHairdresserProfile>) => { if (d.data?.length) setHairdressers(d.data); })
-      .catch(() => {});
-  }, []);
-
-  if (!hairdressers.length) return null;
-  return (
-    <section className="pt-10">
-      <SectionHeader
-        tag="Tendance"
-        title={isGeo ? 'Les plus demandés dans votre secteur' : 'Les plus demandés'}
-        href="/app/recherche"
-      />
-      <HDStrip hairdressers={hairdressers} badge="Tendance" badgeCls="bg-white/90 !text-neutral-900" />
-    </section>
-  );
-}
-
 // ── Nouveaux talents ──────────────────────────────────────────────────────────
 
 export function NewTalentsStrip({ fallback }: { fallback: ApiHairdresserProfile[] }) {
+  const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
   const [isGeo, setIsGeo] = useState(false);
 
   useEffect(() => {
-    const loc = getStoredLocation();
-    if (!loc) return;
-    setIsGeo(true);
-    const params = new URLSearchParams({ lat: String(loc.latitude), lng: String(loc.longitude), radius: '50', per_page: '8', days: '60' });
-    fetch(`${API}/hairdressers?${params}`)
-      .then((r) => r.json())
-      .then((d: PaginatedResponse<ApiHairdresserProfile>) => { if (d.data?.length) setHairdressers(d.data); })
-      .catch(() => {});
-  }, []);
+    if (isLoading || !user) return;
+    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), 8, { days: '60' })
+      .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
+  }, [user, isLoading]);
 
   if (!hairdressers.length) return null;
   return (
@@ -245,23 +207,5 @@ export function NewTalentsStrip({ fallback }: { fallback: ApiHairdresserProfile[
       />
       <HDStrip hairdressers={hairdressers} badge="Nouveau" badgeCls="bg-neutral-900" />
     </section>
-  );
-}
-
-// ── Default export (legacy) ───────────────────────────────────────────────────
-
-interface Props {
-  fallbackNew:      ApiHairdresserProfile[];
-  fallbackPopular:  ApiHairdresserProfile[];
-  fallbackFeatured: ApiHairdresserProfile[];
-}
-
-export default function HomeGeoStrips({ fallbackNew, fallbackPopular, fallbackFeatured }: Props) {
-  return (
-    <>
-      <CoupDeCoeurStrip fallback={fallbackFeatured} />
-      <PopularStrip fallback={fallbackPopular} />
-      <NewTalentsStrip fallback={fallbackNew} />
-    </>
   );
 }

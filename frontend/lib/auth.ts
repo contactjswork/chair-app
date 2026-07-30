@@ -37,6 +37,8 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   city: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   avatar: string | null;
   bio: string | null;
   hairdresser_profile?: HairdresserProfile | null;

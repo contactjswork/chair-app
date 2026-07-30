@@ -1,15 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 
-export default function ConnexionPage() {
+function ConnexionContent() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    // Le flag survit même si une garde de page a remplacé l'URL avant
+    // d'arriver ici (voir AuthContext) — la query ?expired= seule n'est pas fiable.
+    if (searchParams.get('expired') === '1' || sessionStorage.getItem('chair_session_expired') === '1') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSessionExpired(true);
+      sessionStorage.removeItem('chair_session_expired');
+    }
+  }, [searchParams]);
 
   function handleBack() {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -58,6 +70,11 @@ export default function ConnexionPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {sessionExpired && !error && (
+            <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">
+              Ta session a expiré, reconnecte-toi pour continuer.
+            </div>
+          )}
           {error && (
             <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">
               {error}
@@ -118,5 +135,13 @@ export default function ConnexionPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ConnexionPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConnexionContent />
+    </Suspense>
   );
 }

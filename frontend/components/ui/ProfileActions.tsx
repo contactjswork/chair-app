@@ -21,7 +21,6 @@ interface Props {
   hairdresserId: number;
   hairdresserName?: string;
   instagramUrl?: string | null;
-  initialFollowersCount: number;
 }
 
 // Rangée d'actions du profil public.
@@ -40,14 +39,12 @@ export default function ProfileActions({
   hairdresserId,
   hairdresserName = 'Ce coiffeur',
   instagramUrl,
-  initialFollowersCount,
 }: Props) {
   const { user }  = useAuth();
   const router    = useRouter();
 
   const [following,      setFollowing]      = useState(false);
   const [saved,          setSaved]          = useState(false);
-  const [followersCount, setFollowersCount] = useState(initialFollowersCount);
   const [loadingFollow,  setLoadingFollow]  = useState(false);
   const [loadingSave,    setLoadingSave]    = useState(false);
   const [statusLoaded,   setStatusLoaded]   = useState(false);
@@ -66,13 +63,11 @@ export default function ProfileActions({
     setLoadingFollow(true);
     try {
       if (following) {
-        const res = await interactions.unfollow(hairdresserId);
+        await interactions.unfollow(hairdresserId);
         setFollowing(false);
-        setFollowersCount(res.followers_count);
       } else {
-        const res = await interactions.follow(hairdresserId);
+        await interactions.follow(hairdresserId);
         setFollowing(true);
-        setFollowersCount(res.followers_count);
       }
     } catch { /* silently ignore */ }
     setLoadingFollow(false);
@@ -106,6 +101,10 @@ export default function ProfileActions({
     } catch { /* user cancelled share */ }
   }
 
+  // `outline` par défaut (fond blanc + bordure) — annulé ici car ces icônes
+  // vivent maintenant dans un bloc groupé qui porte déjà son propre fond.
+  const groupedIconCls = '!bg-transparent !border-0 hover:!bg-white';
+
   const shareButton = (
     <IconButton
       size="lg"
@@ -113,6 +112,7 @@ export default function ProfileActions({
       onClick={handleShare}
       aria-label="Partager ce profil"
       title="Partager ce profil"
+      className={groupedIconCls}
     >
       {shared ? <Check size={16} className="text-neutral-900" /> : <Share2 size={16} />}
     </IconButton>
@@ -125,7 +125,7 @@ export default function ProfileActions({
       rel="noopener noreferrer"
       title="Instagram"
       aria-label="Instagram"
-      className="w-11 h-11 inline-flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-all active:scale-90"
+      className="w-11 h-11 inline-flex items-center justify-center rounded-full text-neutral-600 hover:bg-white transition-all active:scale-90"
     >
       <InstagramIcon size={16} />
     </a>
@@ -139,8 +139,12 @@ export default function ProfileActions({
         <SecondaryButton href="/pro/profil" fullWidth icon={<Edit2 size={15} strokeWidth={2} />}>
           Modifier mon profil
         </SecondaryButton>
-        {shareButton}
-        {instagramButton}
+        {/* Actions secondaires groupées dans un même bloc — plutôt que deux
+            cercles isolés flottant à côté du bouton principal. */}
+        <div className="flex items-center gap-1 shrink-0 bg-neutral-50 rounded-full p-1">
+          {shareButton}
+          {instagramButton}
+        </div>
       </div>
     );
   }
@@ -148,7 +152,8 @@ export default function ProfileActions({
   return (
     <div className="flex items-center gap-2">
 
-      {/* S'abonner */}
+      {/* S'abonner — le compte d'abonnés vit déjà dans la rangée de stats
+          juste au-dessus ; le répéter ici double l'info pour rien. */}
       <SecondaryButton
         fullWidth
         onClick={handleFollow}
@@ -157,25 +162,25 @@ export default function ProfileActions({
         className={following ? 'bg-neutral-100 border-neutral-100' : ''}
       >
         {following ? 'Abonné' : "S'abonner"}
-        {followersCount > 0 && (
-          <span className="text-[12px] font-normal text-neutral-400">{followersCount}</span>
-        )}
       </SecondaryButton>
 
-      {/* Sauvegarder */}
-      <IconButton
-        size="lg"
-        variant={saved ? 'filled' : 'outline'}
-        onClick={handleSave}
-        disabled={loadingSave || !statusLoaded}
-        aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder'}
-        title={saved ? 'Retirer des favoris' : 'Sauvegarder'}
-      >
-        <Heart size={16} strokeWidth={2} fill={saved ? 'currentColor' : 'none'} />
-      </IconButton>
-
-      {shareButton}
-      {instagramButton}
+      {/* Sauvegarder / Partager / Instagram — un seul bloc groupé plutôt que
+          trois cercles isolés au même poids visuel que le CTA principal. */}
+      <div className="flex items-center gap-1 shrink-0 bg-neutral-50 rounded-full p-1">
+        <IconButton
+          size="lg"
+          variant={saved ? 'filled' : 'outline'}
+          onClick={handleSave}
+          disabled={loadingSave || !statusLoaded}
+          aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder'}
+          title={saved ? 'Retirer des favoris' : 'Sauvegarder'}
+          className={saved ? '' : groupedIconCls}
+        >
+          <Heart size={16} strokeWidth={2} fill={saved ? 'currentColor' : 'none'} />
+        </IconButton>
+        {shareButton}
+        {instagramButton}
+      </div>
     </div>
   );
 }

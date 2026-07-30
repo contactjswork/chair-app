@@ -10,25 +10,27 @@ type Highlight = {
   key: string;
   Icon: LucideIcon;
   label: string;
+  visits: number;
   priority: number;
 };
 
 function bestSignalFor(h: ApiSpecialtyHighlight): Highlight | null {
   const name = h.specialty_name ?? 'cette spécialité';
+  const visits = h.visits_count ?? 0;
 
   if (h.is_reference) {
-    return { key: `${h.specialty_id}-ref`, Icon: Trophy, label: `Référence ${name}`, priority: 100 };
+    return { key: `${h.specialty_id}-ref`, Icon: Trophy, label: `Référence ${name}`, visits, priority: 100 };
   }
   // Échantillon minimum avant qu'un "Top X local" ait un sens — sinon "Top 1"
   // parmi 1 seul coiffeur de la ville paraîtrait impressionnant à tort.
   if (h.local_rank != null && h.local_rank <= 3 && (h.local_total ?? 0) >= 5) {
-    return { key: `${h.specialty_id}-rank`, Icon: Medal, label: `Top ${h.local_rank} local en ${name}`, priority: 80 };
+    return { key: `${h.specialty_id}-rank`, Icon: Medal, label: `Top ${h.local_rank} local en ${name}`, visits, priority: 80 };
   }
   if (h.level >= 3) {
-    return { key: `${h.specialty_id}-expert`, Icon: Star, label: `Expert ${name}`, priority: 60 };
+    return { key: `${h.specialty_id}-expert`, Icon: Star, label: `Expert ${name}`, visits, priority: 60 };
   }
   if (h.fast_progress) {
-    return { key: `${h.specialty_id}-progress`, Icon: TrendingUp, label: `Progression rapide en ${name}`, priority: 40 };
+    return { key: `${h.specialty_id}-progress`, Icon: TrendingUp, label: `Progression rapide en ${name}`, visits, priority: 40 };
   }
   return null;
 }
@@ -51,7 +53,7 @@ export default function SpecialtyHighlights({ highlights }: { highlights: ApiSpe
   // hiérarchisaient rien — le client ne savait pas où regarder.
   return (
     <div className="flex flex-wrap gap-2 mb-5">
-      {signals.map(({ key, Icon, label }, i) => (
+      {signals.map(({ key, Icon, label, visits }, i) => (
         <span
           key={key}
           className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full ${
@@ -62,6 +64,13 @@ export default function SpecialtyHighlights({ highlights }: { highlights: ApiSpe
         >
           <Icon size={12} className={i === 0 ? 'text-white' : 'text-neutral-400'} strokeWidth={2} />
           {label}
+          {/* Preuve chiffrée à côté du signal — une distinction qualitative
+              seule ("Expert") se discute, un nombre de visites vérifiées non. */}
+          {visits > 0 && (
+            <span className={`font-normal tabular-nums ${i === 0 ? 'text-white/60' : 'text-neutral-400'}`}>
+              · {visits}
+            </span>
+          )}
         </span>
       ))}
     </div>

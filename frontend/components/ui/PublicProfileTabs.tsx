@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, type ReactNode } from 'react';
-import HideOnScrollBar from '@/components/layout/HideOnScrollBar';
 
 export interface PublicProfileTab {
   key: string;
@@ -20,7 +19,9 @@ interface Props {
 
 // Navigation par onglets — une seule route, changement instantané (tout le
 // contenu est déjà en props, pas de nouvel appel réseau). Barre sticky sous
-// le bloc identité, se masque au scroll vers le bas comme le reste de l'app.
+// le bloc identité, toujours visible une fois collée (contrairement à la
+// barre de recherche de l'accueil) : la masquer au scroll créait un flash
+// où elle glissait par-dessus les boutons S'abonner/Sauvegarder juste au-dessus.
 export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideStickyCtaOnTab }: Props) {
   const [active, setActive] = useState(defaultTab ?? tabs[0]?.key);
   const activeTab = tabs.find((t) => t.key === active) ?? tabs[0];
@@ -42,7 +43,7 @@ export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideSti
   return (
     <div className="mt-1">
       <div ref={anchorRef} className="scroll-mt-[calc(3.5rem+env(safe-area-inset-top,0px)+4px)]" />
-      <HideOnScrollBar>
+      <div className="sticky top-content-mobile md:top-[60px] z-40 bg-white border-b border-neutral-100">
         <div role="tablist" className="flex px-2 md:px-0 max-w-2xl mx-auto">
           {tabs.map((tab) => {
             const isActive = tab.key === active;
@@ -74,7 +75,7 @@ export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideSti
             );
           })}
         </div>
-      </HideOnScrollBar>
+      </div>
 
       <div className="pt-7">
         {activeTab?.content}

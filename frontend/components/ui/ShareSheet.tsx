@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, QrCode, MessageCircle, MessageSquare, MoreHorizontal } from 'lucide-react';
+import { X, Copy, Check, QrCode, MessageCircle, MessageSquare } from 'lucide-react';
 import { referral } from '@/lib/api';
 import type { ShareActionType, ShareChannel } from '@/lib/types';
 import { InstagramGlyph, SnapchatGlyph } from './BrandIcons';
@@ -21,22 +21,22 @@ interface Props {
 }
 
 const isMobileUA = () => typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const hasNativeShare = () => typeof navigator !== 'undefined' && !!navigator.share;
 
 // Volet de partage réutilisable — profil, réalisation, lien de parrainage.
-// Chaque canal loggé via /share-events pour la télémétrie (voir docs/GROWTH.md)
-// mais ceci ne crédite JAMAIS de points — un partage/copie/QR n'est qu'une
-// intention, pas une inscription réelle. Le crédit n'arrive que lorsque le
-// filleul termine son inscription (voir ReferralService::attributeSignup côté
-// backend). Instagram/Snapchat n'ont pas d'URL web de partage prérempli
-// fiable : le texte est copié + l'appli est ouverte (deep link), au lieu de
-// prétendre à un partage direct qui n'existe pas.
+// Dès que le téléphone sait le faire, "Partager" ouvre DIRECTEMENT la fenêtre
+// de partage native (WhatsApp/Messages/Mail/AirDrop/copier... déjà tous là,
+// gérés par l'OS) — ce volet à grille de canaux ne s'affiche qu'en repli, sur
+// les navigateurs desktop sans Web Share API. Chaque canal loggé via
+// /share-events pour la télémétrie (voir docs/GROWTH.md) mais ceci ne crédite
+// JAMAIS de points — un partage/copie/QR n'est qu'une intention, pas une
+// inscription réelle. Le crédit n'arrive que lorsque le filleul termine son
+// inscription (voir ReferralService::attributeSignup côté backend).
+// Instagram/Snapchat (repli desktop) n'ont pas d'URL web de partage
+// préremplie fiable : le texte est copié + l'appli est ouverte (deep link).
 export default function ShareSheet({ open, onClose, title, shareUrl, shareText, actionType, targetType, targetId }: Props) {
   const [copiedChannel, setCopiedChannel] = useState<ShareChannel | null>(null);
   const [showQr, setShowQr] = useState(false);
-
-  if (!open) return null;
-
-  const fullMessage = `${shareText ?? title}\n${shareUrl}`;
 
   function log(channel: ShareChannel) {
     // Télémétrie best-effort ("invitations envoyées") — jamais de crédit ici.
@@ -51,6 +51,18 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
       } catch { /* annulé par l'utilisateur */ }
     }
   }
+
+  useEffect(() => {
+    if (!open || !hasNativeShare()) return;
+    handleNativeShare().finally(onClose);
+    // Le partage natif est fire-and-forget à l'ouverture — pas de dépendance
+    // sur onClose/handleNativeShare (recréées à chaque rendu du parent).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  if (!open || hasNativeShare()) return null;
+
+  const fullMessage = `${shareText ?? title}\n${shareUrl}`;
 
   async function handleCopy() {
     try {
@@ -143,12 +155,6 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
             <div className={iconCircleCls}><QrCode size={18} /></div>
             <span className={labelCls}>QR code</span>
           </button>
-          {typeof navigator !== 'undefined' && !!navigator.share && (
-            <button onClick={handleNativeShare} className={channelBtnCls}>
-              <div className={iconCircleCls}><MoreHorizontal size={18} /></div>
-              <span className={labelCls}>Plus</span>
-            </button>
-          )}
         </div>
 
         {(copiedChannel === 'instagram' || copiedChannel === 'snapchat') && (

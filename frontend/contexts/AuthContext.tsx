@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api } from '@/lib/api';
+import { api, SESSION_EXPIRED_EVENT } from '@/lib/api';
 import {
   AuthUser,
   AuthResponse,
@@ -37,6 +37,8 @@ interface RegisterData {
   password_confirmation: string;
   role: string;
   city?: string;
+  latitude?: number;
+  longitude?: number;
   region?: string;
   department?: string;
   address?: string;
@@ -101,6 +103,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, []);
+
+  // Session invalidée en cours d'usage (token révoqué / DB dev réinitialisée
+  // sous le tapis) — lib/api.ts a déjà nettoyé le localStorage, ici on
+  // nettoie l'état React et on redirige avec un message clair plutôt que de
+  // laisser un "Unauthenticated." brut affiché sur la page en cours.
+  // Le flag part en sessionStorage, pas juste en ?expired= : plusieurs pages
+  // authentifiées ont leur propre garde `if (!user) router.replace('/connexion')`
+  // qui se déclenche au même rendu que setUser(null) ci-dessous et gagne
+  // parfois la course, écrasant l'URL — sessionStorage survit à ce remplacement.
+  useEffect(() => {
+    function onSessionExpired() {
+      sessionStorage.setItem('chair_session_expired', '1');
+      setUser(null);
+      if (pathname.startsWith('/connexion') || pathname.startsWith('/inscription')) return;
+      sessionStorage.setItem('chair_redirect', pathname);
+      router.push('/connexion?expired=1');
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  }, [pathname, router]);
 
   // ── Bypass login : reconnecte avec le bon compte démo selon la section
   // visitée (pro vs client), y compris quand on bascule de l'une à l'autre

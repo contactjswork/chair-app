@@ -2,10 +2,17 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 /**
- * Géocodage local de villes françaises.
+ * Géocodage de villes françaises.
  *
- * Priorité :  dictionnaire local  →  (Nominatim en V2)
+ * Priorité : API Adresse (data.gouv.fr — TOUTES les communes françaises,
+ * gratuite, sans clé) → dictionnaire local en secours si l'API est
+ * injoignable. Le dictionnaire seul ne couvrait qu'~150 grandes villes : un
+ * utilisateur d'une petite commune (Kaltenhouse, etc.) tombait sur `null`,
+ * sans lat/lng, donc invisible de tout filtrage "près de chez moi".
  *
  * Usage :
  *   GeocodingService::geocode('Haguenau')
@@ -16,6 +23,85 @@ namespace App\Services;
  */
 class GeocodingService
 {
+    private const API_BASE = 'https://api-adresse.data.gouv.fr';
+
+    /**
+     * Autocomplétion ville — utilisée par le champ "Ville" (inscription,
+     * modifier mon profil) pour proposer les communes qui commencent par ce
+     * que l'utilisateur tape, avec des coordonnées précises dès la sélection.
+     * Retourne [] (jamais d'exception) si l'API est injoignable.
+     *
+     * @return array<int, array{label: string, city: string, postcode: ?string, lat: float, lng: float}>
+     */
+    public static function search(string $query, int $limit = 8): array
+    {
+        $query = trim($query);
+        if (mb_strlen($query) < 2) return [];
+
+        try {
+            $res = Http::timeout(3)->get(self::API_BASE . '/search/', [
+                'q'     => $query,
+                'type'  => 'municipality',
+                'limit' => min(10, max(1, $limit)),
+            ]);
+
+            if (!$res->successful()) return [];
+
+            return collect($res->json('features', []))
+                ->map(function ($feature) {
+                    $props = $feature['properties'] ?? [];
+                    $coords = $feature['geometry']['coordinates'] ?? null; // [lng, lat]
+                    if (!$coords) return null;
+                    return [
+                        'label'    => $props['label'] ?? $props['city'] ?? '',
+                        'city'     => $props['city'] ?? $props['label'] ?? '',
+                        'postcode' => $props['postcode'] ?? null,
+                        'lat'      => (float) $coords[1],
+                        'lng'      => (float) $coords[0],
+                    ];
+                })
+                ->filter()
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('GeocodingService::search API Adresse injoignable', ['message' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Ville la plus proche d'une position GPS — utilisée par le bouton
+     * "Ma position" pour retrouver un nom de ville affichable à partir des
+     * coordonnées brutes de navigator.geolocation.
+     */
+    public static function reverse(float $lat, float $lng): ?array
+    {
+        try {
+            $res = Http::timeout(3)->get(self::API_BASE . '/reverse/', [
+                'lat'  => $lat,
+                'lon'  => $lng,
+                'type' => 'municipality',
+            ]);
+
+            if (!$res->successful()) return null;
+
+            $feature = $res->json('features.0');
+            if (!$feature) return null;
+
+            $props = $feature['properties'] ?? [];
+            return [
+                'city'     => $props['city'] ?? $props['label'] ?? null,
+                'postcode' => $props['postcode'] ?? null,
+                'lat'      => $lat,
+                'lng'      => $lng,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('GeocodingService::reverse API Adresse injoignable', ['message' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+
     /**
      * Dictionnaire ville normalisée → [lat, lng, affichage].
      * Les clés sont déjà normalisées (minuscules, sans accent, sans tiret superflu).
@@ -252,9 +338,17 @@ class GeocodingService
      */
     public static function geocode(string $city): ?array
     {
+        // API Adresse d'abord — couvre les ~35 000 communes françaises, pas
+        // seulement les grandes villes du dictionnaire local.
+        $matches = self::search($city, 1);
+        if (!empty($matches)) {
+            $m = $matches[0];
+            return ['lat' => $m['lat'], 'lng' => $m['lng'], 'display' => $m['city'], 'source' => 'api'];
+        }
+
         $key = static::normalize($city);
 
-        // 1. Correspondance exacte
+        // 1. Correspondance exacte (secours hors-ligne)
         if (isset(static::$dict[$key])) {
             [$lat, $lng, $display] = static::$dict[$key];
             return compact('lat', 'lng', 'display') + ['source' => 'local'];

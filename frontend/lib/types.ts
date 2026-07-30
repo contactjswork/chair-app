@@ -75,6 +75,7 @@ export interface ApiSpecialtyHighlight {
   local_rank: number | null;
   local_total: number | null;
   fast_progress: boolean;
+  visits_count: number;
 }
 
 export interface ApiAnalyticsTrend {

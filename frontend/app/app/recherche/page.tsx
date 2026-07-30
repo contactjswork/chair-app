@@ -107,6 +107,27 @@ function RechercheContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Repli ville réelle du profil — si ni le GPS appareil ni un ?city= d'URL
+  // n'ont déjà positionné la carte, on utilise la ville stockée de
+  // l'utilisateur plutôt que de rester zoomé sur toute la France. `user` se
+  // charge de façon asynchrone (AuthContext) donc distinct de l'effet d'init.
+  const profileGeoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (profileGeoAppliedRef.current) return;
+    if (userLocation || searchParams.get('city')) { profileGeoAppliedRef.current = true; return; }
+    if (user?.latitude == null || user?.longitude == null) return;
+
+    profileGeoAppliedRef.current = true;
+    const geo = { lat: user.latitude, lng: user.longitude };
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setUserLocation(geo);
+    setFilters({ useMyPosition: true });
+    // La carte est déjà montée (sur FRANCE_CENTER) le temps que le profil se
+    // charge — initialCenter ne joue qu'au premier montage, il faut donc
+    // recentrer explicitement une fois la position connue.
+    mapRef.current?.setCenter(geo, 11);
+  }, [user, userLocation, searchParams, setFilters]);
+
   // ── Favoris (profils indépendants uniquement) ─────────────────────────────
   useEffect(() => {
     if (!user) return;

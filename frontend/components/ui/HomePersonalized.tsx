@@ -1,136 +1,123 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
+import { MapPin, Sparkles, UserPlus } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import HairdresserCard from './HairdresserCard';
 import { SectionHeader } from './HomeGeoStrips';
+import { getUserGeo, getUserSpecialtySlugs, hasExplicitInterests } from '@/lib/homeFilters';
+import { fetchHairdressersProgressive } from '@/lib/homeFetch';
+import type { ApiHairdresserProfile } from '@/lib/types';
 
-// Photo map — aligné sur les 10 spécialités CHAIR
-const STYLE_ICONS: Record<string, string> = {
-  'couleur-balayage':     '/onboarding/balayage.png',
-  'coupe-femme':          '/onboarding/coupe.png',
-  'boucles-curly':        '/onboarding/boucles.png',
-  'texture-lissage':      '/onboarding/lissage.png',
-  'soins-transformation': '/onboarding/couleur.png',
-  'evenementiel':         '/onboarding/chignon.png',
-  'coupe-homme':          '/onboarding/classique.png',
-  'extensions':           '/onboarding/cheveux-longs.png',
-  'barbe':                '/onboarding/barbe.png',
-  'afro-locks':           '/onboarding/dreads.png',
-};
-
-const STYLE_LABELS: Record<string, string> = {
-  'couleur-balayage':     'Couleur & Balayage',
-  'coupe-femme':          'Coupe Femme',
-  'boucles-curly':        'Boucles & Curly',
-  'texture-lissage':      'Texture & Lissage',
-  'soins-transformation': 'Soins & Transformation',
-  'evenementiel':         'Événementiel',
-  'coupe-homme':          'Coupe Homme',
-  'extensions':           'Extensions',
-  'barbe':                'Barbe',
-  'afro-locks':           'Afro & Locks',
-};
-
-// Default inspirations for users without preferences
-const DEFAULT_SLUGS = ['couleur-balayage', 'coupe-homme', 'boucles-curly', 'afro-locks', 'evenementiel', 'texture-lissage', 'coupe-femme', 'extensions'];
-
-// Gender-based fallback slugs
-const FEMME_SLUGS  = ['couleur-balayage', 'coupe-femme', 'boucles-curly', 'texture-lissage', 'evenementiel', 'extensions'];
-const HOMME_SLUGS  = ['coupe-homme', 'barbe', 'afro-locks', 'texture-lissage', 'couleur-balayage', 'extensions'];
-
-interface InspirationCard { slug: string; label: string; icon: string; }
-
-function toCards(slugs: string[]): InspirationCard[] {
-  return slugs
-    .map((slug) => ({ slug, label: STYLE_LABELS[slug] ?? slug, icon: STYLE_ICONS[slug] ?? '' }))
-    .filter((c) => c.icon);
-}
-
+/**
+ * "Pour vous" — UNE seule section qui mélange TOUTES les spécialités choisies
+ * par l'utilisateur (plus de tirage d'une seule au hasard). Essaie d'abord
+ * près de sa ville réelle, élargit si besoin — jamais de section vide juste
+ * parce que la couverture locale est encore faible ou que la ville manque.
+ */
 export default function HomePersonalized() {
-  const [inspirations, setInspirations]   = useState<InspirationCard[]>([]);
-  const [sectionTitle, setSectionTitle]   = useState('Inspirations du moment');
-  const [isPersonalized, setIsPersonalized] = useState(false);
-  const [mounted, setMounted]             = useState(false);
+  const { user, isLoading } = useAuth();
+  const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>([]);
+  const [ready, setReady] = useState(false);
+  const [isGeo, setIsGeo] = useState(false);
+  const [hasLocation, setHasLocation] = useState(true);
 
   useEffect(() => {
-    setMounted(true);
-
-    try {
-      const raw = localStorage.getItem('chair_preferences');
-      const prefs = raw ? (JSON.parse(raw) as { gender?: string; interests?: string[] }) : {};
-      const interests = prefs.interests ?? [];
-      const gender    = prefs.gender;
-
-      // Toujours afficher toutes les catégories du genre sélectionné
-      const genderSlugs = gender === 'femme' ? FEMME_SLUGS
-                        : gender === 'homme' ? HOMME_SLUGS
-                        : null;
-      const slugsToShow = genderSlugs ?? (interests.length > 0 ? interests : DEFAULT_SLUGS);
-
-      if (slugsToShow.length > 0) {
-        const cards = toCards(slugsToShow);
-        if (cards.length > 0) {
-          setInspirations(cards);
-          setSectionTitle('Vos inspirations');
-          setIsPersonalized(true);
-          return;
-        }
-      }
-
-      setInspirations(toCards(DEFAULT_SLUGS));
-    } catch {
-      setInspirations(toCards(DEFAULT_SLUGS));
+    if (isLoading) return;
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReady(true);
+      return;
     }
-  }, []);
 
-  if (!mounted) {
+    const geo = getUserGeo(user);
+    setHasLocation(!!geo);
+    const slugs = getUserSpecialtySlugs();
+
+    fetchHairdressersProgressive(slugs, geo, 10)
+      .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); })
+      .finally(() => setReady(true));
+  }, [user, isLoading]);
+
+  if (!ready) {
     return (
       <section className="pt-9">
         <div className="px-4 mb-5 flex items-end justify-between">
           <div className="h-6 w-48 bg-neutral-100 rounded-full animate-pulse" />
-          <div className="h-4 w-14 bg-neutral-100 rounded-full animate-pulse" />
         </div>
-        <div className="flex gap-3 overflow-x-hidden px-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="flex-shrink-0 w-[100px] h-[130px] rounded-3xl bg-neutral-100 animate-pulse" />
+        <div className="flex gap-3 overflow-x-auto px-4 no-scrollbar">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex-shrink-0 w-[160px] aspect-[3/4] rounded-2xl bg-neutral-100 animate-pulse" />
           ))}
         </div>
       </section>
     );
   }
 
-  return (
-    <>
-      {/* Inspirations section */}
-      <section className="pt-9 md:pt-10">
-        <SectionHeader
-          tag={isPersonalized ? 'Pour vous' : undefined}
-          title={sectionTitle}
-          href="/app/recherche"
-        />
-        <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 no-scrollbar">
-          {inspirations.map((insp) => (
-            <Link
-              key={insp.slug}
-              href={`/app/recherche?specialty=${insp.slug}`}
-              className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.88] transition-transform duration-150"
-            >
-              <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white">
-                <Image
-                  src={insp.icon}
-                  alt={insp.label}
-                  width={54}
-                  height={54}
-                  className="object-contain mix-blend-multiply"
-                />
-              </div>
-              <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{insp.label}</p>
-            </Link>
-          ))}
+  // ── Visiteur non connecté ──────────────────────────────────────────────
+  if (!user) {
+    return (
+      <section className="mt-10 px-4 md:px-8 max-w-6xl md:mx-auto">
+        <div className="relative overflow-hidden rounded-2xl bg-neutral-900 px-6 py-7">
+          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center gap-1.5 mb-3">
+              <Sparkles size={12} className="text-white/50" />
+              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour vous</p>
+            </div>
+            <h2 className="text-[20px] font-bold text-white leading-tight mb-2">
+              Le bon coiffeur,<br />selon votre style.
+            </h2>
+            <p className="text-[13px] text-white/55 leading-relaxed mb-5">
+              Créez un compte gratuit, CHAIR sélectionne les profils faits pour vous.
+            </p>
+            <div className="flex gap-2">
+              <Link href="/inscription" className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 active:scale-[0.97] transition-all">
+                <UserPlus size={14} />Créer un compte
+              </Link>
+              <Link href="/connexion" className="flex items-center gap-2 border border-white/20 text-white font-semibold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/10 active:scale-[0.97] transition-all">
+                Se connecter
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
+    );
+  }
 
-    </>
+  // Vraiment rien nulle part (même en national) — arrive seulement sur une
+  // spécialité ultra-niche sans aucun coiffeur inscrit. Jamais de blocage
+  // par simple absence de ville : on montre juste un rappel discret en plus.
+  if (hairdressers.length === 0) return null;
+
+  return (
+    <section className="mt-10 md:mt-14">
+      <SectionHeader
+        tag="Pour vous"
+        title={hasExplicitInterests() ? 'Selon votre style' : 'Près de chez vous'}
+        href="/app/recherche"
+      />
+      <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
+        {hairdressers.map((h) => (
+          <div key={h.id} className="flex-shrink-0 w-[160px] md:w-[190px]">
+            <HairdresserCard hairdresser={h} showFlame={false} />
+          </div>
+        ))}
+      </div>
+      {!hasLocation && (
+        <Link
+          href="/app/compte/modifier"
+          className="mx-4 md:mx-8 mt-3 flex items-center gap-2 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors w-fit"
+        >
+          <MapPin size={12} />Ajoutez votre ville pour affiner ces résultats
+        </Link>
+      )}
+      {hasLocation && !isGeo && (
+        <p className="mx-4 md:mx-8 mt-3 text-[12px] text-neutral-400">
+          Aucun résultat tout près — élargi au national.
+        </p>
+      )}
+    </section>
   );
 }

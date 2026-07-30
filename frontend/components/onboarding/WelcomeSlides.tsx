@@ -41,7 +41,7 @@ const SLIDES: Slide[] = [
 
 /** Composition décorative abstraite — pas d'illustration commandée, un jeu de
  *  cercles + icône reprenant le style déjà utilisé sur les cards CTA sombres
- *  de la home (PersonalizedSection). */
+ *  de la home (HomePersonalized). */
 function SlideVisual({ icon: Icon }: { icon: React.ElementType }) {
   return (
     <div className="relative w-full aspect-square max-w-[240px] mx-auto flex items-center justify-center">

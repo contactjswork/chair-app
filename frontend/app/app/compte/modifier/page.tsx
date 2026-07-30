@@ -9,6 +9,7 @@ import { resolveMediaUrl } from '@/lib/types';
 import { api } from '@/lib/api';
 import { ChevronLeft, User, Camera, Check, Sparkles } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
+import CityAutocomplete from '@/components/ui/CityAutocomplete';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -71,6 +72,7 @@ export default function ModifierProfilPage() {
   // Profil
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
+  const [cityGeo, setCityGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [bio,  setBio]  = useState('');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarBlob,    setAvatarBlob]    = useState<Blob | null>(null);
@@ -151,8 +153,8 @@ export default function ModifierProfilPage() {
       }
 
       // 2. Profil
-      await api.put('/user/profile', { name, city, bio });
-      updateUser({ name, city, bio });
+      await api.put('/user/profile', { name, city, bio, latitude: cityGeo?.lat, longitude: cityGeo?.lng });
+      updateUser({ name, city, bio, ...(cityGeo ? { latitude: cityGeo.lat, longitude: cityGeo.lng } : {}) });
 
       // 3. Préférences — localStorage + API (sync immédiate)
       const slugs = [...selected];
@@ -224,9 +226,13 @@ export default function ModifierProfilPage() {
             </div>
             <div>
               <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Ville</label>
-              <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
+              <CityAutocomplete
+                value={city}
+                onChange={(text) => { setCity(text); setCityGeo(null); }}
+                onSelect={(s) => { setCity(s.city); setCityGeo({ lat: s.lat, lng: s.lng }); }}
                 placeholder="Paris, Lyon, Strasbourg…"
-                className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+                className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+              />
             </div>
             <div>
               <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Bio</label>

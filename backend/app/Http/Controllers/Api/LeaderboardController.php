@@ -27,11 +27,20 @@ class LeaderboardController extends Controller
             return $this->specialtyIndex($request);
         }
 
-        $type   = $request->input('type', 'engagement');
-        $city   = $request->input('city');
-        $dept   = $request->input('department');
-        $region = $request->input('region');
-        $limit  = min((int) $request->input('limit', 20), 50);
+        $request->validate([
+            'lat'       => 'nullable|numeric|between:-90,90',
+            'lng'       => 'nullable|numeric|between:-180,180',
+            'radius_km' => 'nullable|numeric|min:1|max:2000',
+        ]);
+
+        $type     = $request->input('type', 'engagement');
+        $city     = $request->input('city');
+        $dept     = $request->input('department');
+        $region   = $request->input('region');
+        $limit    = min((int) $request->input('limit', 20), 50);
+        $lat      = $request->filled('lat') ? (float) $request->input('lat') : null;
+        $lng      = $request->filled('lng') ? (float) $request->input('lng') : null;
+        $radiusKm = $request->filled('radius_km') ? (float) $request->input('radius_km') : null;
 
         // Pas de leftJoin sur les spécialités ici : c'est une relation many-to-many
         // (table hairdresser_specialties), pas une colonne hp.specialty_id — un
@@ -58,6 +67,20 @@ class LeaderboardController extends Controller
 
         if ($city) {
             $query->where('hp.city', 'LIKE', '%' . $city . '%');
+        }
+
+        // Classement LOCALISÉ sur la position réelle du compte (lat/lng du
+        // profil, jamais le GPS appareil) — le frontend élargit lui-même le
+        // rayon (50km → région → France) si un premier essai ne renvoie rien,
+        // voir HomeRankingSection/classements.
+        if ($lat !== null && $lng !== null && $radiusKm !== null) {
+            $query->whereNotNull('hp.latitude')->whereNotNull('hp.longitude')->whereRaw(
+                '(6371 * ACOS(LEAST(1, GREATEST(-1,
+                    COS(RADIANS(?)) * COS(RADIANS(hp.latitude)) * COS(RADIANS(hp.longitude) - RADIANS(?))
+                    + SIN(RADIANS(?)) * SIN(RADIANS(hp.latitude))
+                )))) <= ?',
+                [$lat, $lng, $lat, $radiusKm]
+            );
         }
 
         // Calcul du score selon le type
@@ -140,8 +163,11 @@ class LeaderboardController extends Controller
     {
         $request->validate([
             'specialty_id' => 'required|integer|exists:specialties,id',
-            'geo'          => 'nullable|string|in:city,department,region,country,auto',
+            'geo'          => 'nullable|string|in:city,department,region,country,auto,radius',
             'geo_value'    => 'nullable|string|max:100',
+            'lat'          => 'nullable|numeric|between:-90,90',
+            'lng'          => 'nullable|numeric|between:-180,180',
+            'radius_km'    => 'nullable|numeric|min:1|max:2000',
         ]);
 
         $specialtyId = (int) $request->specialty_id;
@@ -150,10 +176,13 @@ class LeaderboardController extends Controller
         $geo         = $request->input('geo', $request->filled('geo_value') ? 'auto' : 'country');
         $geoValue    = $request->input('geo_value');
         $limit       = min((int) $request->input('limit', 20), 50);
+        $lat         = $request->filled('lat') ? (float) $request->input('lat') : null;
+        $lng         = $request->filled('lng') ? (float) $request->input('lng') : null;
+        $radiusKm    = $request->filled('radius_km') ? (float) $request->input('radius_km') : null;
 
         $specialty = DB::table('specialties')->where('id', $specialtyId)->first();
 
-        $results = SpecialtyReputationService::leaderboard($specialtyId, $geo, $geoValue, $limit);
+        $results = SpecialtyReputationService::leaderboard($specialtyId, $geo, $geoValue, $limit, $lat, $lng, $radiusKm);
 
         return response()->json([
             'type'           => 'specialty',

@@ -80,9 +80,29 @@ class HairdresserController extends Controller
         $lng    = $request->has('lng') && $request->lng !== '' ? (float) $request->lng : null;
         $radius = min(200, max(1, (float) ($request->radius ?? 20)));
 
-        $query = HairdresserProfile::with(['user', 'specialties', 'salon'])
-            ->when($request->specialty, fn($q) => $q->whereHas('specialties', fn($sq) =>
-                $sq->where('slug', $request->specialty)
+        // 'specialty' accepte soit un slug unique (ancien usage), soit un tableau
+        // de slugs (specialty[]=a&specialty[]=b) — nécessaire pour "Pour vous",
+        // qui mélange toutes les spécialités choisies par l'utilisateur au lieu
+        // d'en tirer une seule au hasard.
+        $specialtySlugs = $request->specialty
+            ? (is_array($request->specialty) ? array_filter($request->specialty) : [$request->specialty])
+            : [];
+
+        $query = HairdresserProfile::with([
+                'user',
+                // La spécialité qui a fait matcher le filtre passe en premier —
+                // sinon la carte peut afficher "Coupe Femme" comme badge principal
+                // pour un résultat qui matche en réalité sur "Coupe Homme".
+                'specialties' => function ($sq) use ($specialtySlugs) {
+                    if (!empty($specialtySlugs)) {
+                        $placeholders = implode(',', array_fill(0, count($specialtySlugs), '?'));
+                        $sq->orderByRaw("slug IN ($placeholders) DESC", $specialtySlugs);
+                    }
+                },
+                'salon',
+            ])
+            ->when(!empty($specialtySlugs), fn($q) => $q->whereHas('specialties', fn($sq) =>
+                $sq->whereIn('slug', $specialtySlugs)
             ))
             ->when($request->city, fn($q) => $q->where('city', 'like', '%' . $request->city . '%'))
             ->when($request->looking, fn($q) => $q->whereIn('work_availability', ['looking_salon', 'looking_gig']))
@@ -300,6 +320,7 @@ class HairdresserController extends Controller
         $perPage  = min(50, max(1, intval($request->per_page ?? 20)));
         $lat      = $request->has('lat') && $request->lat !== '' ? (float) $request->lat : null;
         $lng      = $request->has('lng') && $request->lng !== '' ? (float) $request->lng : null;
+        $radius   = min(200, max(1, (float) ($request->radius ?? 20)));
         $authUser = Auth::guard('sanctum')->user();
 
         $query = Post::with(['hairdresser.user', 'hairdresser.specialties', 'images', 'specialty', 'tags'])
@@ -364,12 +385,30 @@ class HairdresserController extends Controller
         // Matching : post.tags[] + post.gender  ↔  user.interests[] + user.profile_type
         // Chaque réalisation est scorée sur SES PROPRES tags, pas sur les spécialités du coiffeur.
         if ($request->sort === 'personalized' && $authUser) {
-            $posts = $query->with(['tags'])->orderByDesc('created_at')->limit(300)->get();
+            $posts = $query->with(['tags', 'hairdresser'])->orderByDesc('created_at')->limit(300)->get();
+
+            // Rayon géographique — la home ne doit jamais montrer un coiffeur de
+            // Paris à un utilisateur de Haguenau. On filtre sur les coordonnées
+            // RÉELLES du coiffeur (latitude/longitude), pas sur un texte ville.
+            if ($lat !== null && $lng !== null) {
+                $posts = $posts->filter(function ($post) use ($lat, $lng, $radius) {
+                    $h = $post->hairdresser;
+                    if (!$h || $h->latitude === null || $h->longitude === null) return false;
+                    return $this->haversine($lat, $lng, (float) $h->latitude, (float) $h->longitude) <= $radius;
+                })->values();
+            }
 
             $prefs       = UserPreference::where('user_id', $authUser->id)->first();
             $interests   = $prefs ? ($prefs->interests ?? []) : [];
             $profileType = $prefs ? ($prefs->profile_type ?? null) : null; // 'homme' | 'femme'
             $followedIds = $authUser->follows()->pluck('hairdresser_id')->toArray();
+
+            // Exclusion stricte de genre — un post 'femme' ne doit JAMAIS
+            // apparaître pour un utilisateur ayant choisi 'homme' (et inversement).
+            // Le contenu unisexe (gender = null) reste visible pour tout le monde.
+            if ($profileType) {
+                $posts = $posts->filter(fn($p) => $p->gender === null || $p->gender === $profileType)->values();
+            }
 
             $postIds     = $posts->pluck('id')->toArray();
             $savedCounts = SavedPost::whereIn('post_id', $postIds)
@@ -417,15 +456,12 @@ class HairdresserController extends Controller
                 // Bonus contenu très ciblé (≥2 intérêts couverts)
                 if ($matchCount >= 2) $score += 30;
 
-                // ── MATCHING GENRE ──
+                // ── MATCHING GENRE ── (le genre opposé est déjà exclu en amont)
                 // post.gender = 'homme'|'femme'|null  ↔  user.profile_type = 'homme'|'femme'
                 if ($profileType && $post->gender === $profileType) {
                     $score += 45;
-                } elseif ($profileType && $post->gender !== null && $post->gender !== $profileType) {
-                    // Genre opposé : forte pénalité
-                    $score -= 60;
                 }
-                // gender = null : contenu unisexe, pas de bonus ni pénalité
+                // gender = null : contenu unisexe, pas de bonus
 
                 // ── BOOST COIFFEUR SUIVI ──
                 if ($h && in_array($h->id, $followedIds)) {

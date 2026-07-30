@@ -31,8 +31,8 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
                 Vous êtes coiffeur ?
               </h3>
               <p className="text-[13px] text-neutral-400 leading-relaxed max-w-sm">
-                Créez votre profil, publiez votre portfolio et développez votre audience.
-                Passez à Pro pour la réservation en ligne et l&apos;agenda professionnel.
+                Créez votre profil, publiez votre portfolio et développez votre clientèle.
+                Réservation en ligne, agenda et classement local inclus.
               </p>
               <div className="flex items-center gap-5 mt-4 text-white">
                 <div>
@@ -41,13 +41,13 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
                 </div>
                 <div className="w-px h-6 bg-neutral-700" />
                 <div>
-                  <p className="text-[15px] font-bold leading-none">Portfolio</p>
-                  <p className="text-[10px] text-neutral-500 mt-0.5">Illimité</p>
+                  <p className="text-[15px] font-bold leading-none">Agenda</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">Réservations en ligne</p>
                 </div>
                 <div className="w-px h-6 bg-neutral-700" />
                 <div>
-                  <p className="text-[15px] font-bold leading-none">Pro</p>
-                  <p className="text-[10px] text-neutral-500 mt-0.5">dès 29€/mois</p>
+                  <p className="text-[15px] font-bold leading-none">Visibilité</p>
+                  <p className="text-[10px] text-neutral-500 mt-0.5">Classement local</p>
                 </div>
               </div>
             </div>

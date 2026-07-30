@@ -63,17 +63,27 @@ class AuthController extends Controller
         // échoue (ex : contrainte NOT NULL), aucun compte orphelin ne doit rester
         // en base (vécu en pratique : un salon_owner sans salon, invisible dans
         // /pro/salon-owner, ne pouvant plus se reconnecter proprement).
-        [$user, $token] = DB::transaction(function () use ($validated) {
+        // Le client envoie juste un nom de ville (texte libre) — pas de lat/lng
+        // précis comme le cascade région/département/ville des pros. On géocode
+        // ici pour que la home puisse filtrer "près de chez lui" dès l'inscription,
+        // sans attendre qu'il passe par modifier-profil.
+        $clientCity = $validated['city'] ?? $validated['salon_city'] ?? null;
+        $geoCoords  = null;
+        if ($clientCity && !isset($validated['latitude'])) {
+            $geoCoords = GeocodingService::geocode($clientCity);
+        }
+
+        [$user, $token] = DB::transaction(function () use ($validated, $clientCity, $geoCoords) {
             $user = \App\Models\User::create([
                 'name'        => $validated['name'],
                 'email'       => $validated['email'],
                 'password'    => bcrypt($validated['password']),
                 'role'        => $validated['role'],
                 'phone'       => $validated['phone'] ?? null,
-                'city'        => $validated['city'] ?? $validated['salon_city'] ?? null,
+                'city'        => $clientCity,
                 'postal_code' => $validated['postal_code'] ?? null,
-                'latitude'    => $validated['latitude'] ?? null,
-                'longitude'   => $validated['longitude'] ?? null,
+                'latitude'    => $validated['latitude'] ?? $geoCoords['lat'] ?? null,
+                'longitude'   => $validated['longitude'] ?? $geoCoords['lng'] ?? null,
             ]);
 
             if (!empty($validated['ref'])) {

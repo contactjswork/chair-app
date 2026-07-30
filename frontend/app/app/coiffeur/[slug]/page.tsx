@@ -83,7 +83,6 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             hairdresserId={hairdresser.id}
             hairdresserName={hairdresser.user.name}
             instagramUrl={hairdresser.instagram_url}
-            initialFollowersCount={hairdresser.followers_count}
           />
         </div>
 

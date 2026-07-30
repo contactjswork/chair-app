@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { BadgeCheck, MapPin, Trophy } from 'lucide-react';
-import { getStoredLocation } from '@/hooks/useGeolocation';
+import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
 import { SectionHeader } from './HomeGeoStrips';
+import { getUserGeo, getUserSpecialtySlugs, RADIUS_TIERS } from '@/lib/homeFilters';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -17,10 +18,14 @@ export interface RankedEntry {
   name: string;
   avatar: string | null;
   city: string | null;
-  specialty: string | null;
-  avg_rating: number;
-  reviews_count: number;
+  specialty?: string | null;
+  avg_rating?: number;
+  reviews_count?: number;
   is_verified: boolean;
+  // Présents uniquement sur un classement scopé "spécialité" (/leaderboard?specialty_id=)
+  score?: number;
+  level_name?: string;
+  level_color?: string;
 }
 
 const RANK_TONE: Record<number, string> = {
@@ -29,24 +34,83 @@ const RANK_TONE: Record<number, string> = {
   3: 'bg-orange-400 text-white',
 };
 
-// Teaser du vrai classement CHAIR (même score "engagement" que /app/classements,
-// pas un simple tri par note) — remplace l'ancien TopRatedGeoSection qui
-// utilisait sort=rating, un critère différent du classement réel, ce qui
-// aurait pu montrer un ordre incohérent entre la home et la page classement.
+/**
+ * Classement LOCALISÉ sur la position réelle du compte — scopé sur la
+ * spécialité choisie par l'utilisateur quand elle existe (pas un classement
+ * national "engagement" générique), sinon sur le classement général, mais
+ * jamais un classement France entière tant qu'un cercle plus proche a des
+ * résultats.
+ */
 export default function HomeRankingSection({ fallback }: { fallback: RankedEntry[] }) {
+  const { user, isLoading } = useAuth();
   const [entries, setEntries] = useState<RankedEntry[]>(fallback);
-  const [city, setCity] = useState<string | null>(null);
+  const [title, setTitle] = useState<string | null>(null);
 
   useEffect(() => {
-    const loc = getStoredLocation();
-    if (!loc?.city) return;
-    setCity(loc.city);
-    const params = new URLSearchParams({ type: 'engagement', city: loc.city, limit: '5' });
-    fetch(`${API}/leaderboard?${params}`)
-      .then((r) => r.json())
-      .then((d: { results: RankedEntry[] }) => { if (d.results?.length) setEntries(d.results); })
-      .catch(() => {});
-  }, []);
+    if (isLoading || !user) return;
+
+    let cancelled = false;
+    const geo = getUserGeo(user);
+
+    (async () => {
+      // 1) Spécialité choisie : localisée en priorité (rayon 50km → 200km),
+      // France seulement si vraiment personne dans ce rayon.
+      try {
+        const specRes = await fetch(`${API}/specialties`);
+        const specialties: { id: number; slug: string; name: string }[] = await specRes.json();
+        const slugs = getUserSpecialtySlugs();
+        const chosen = slugs.map((s) => specialties.find((sp) => sp.slug === s)).find(Boolean);
+
+        if (chosen && !cancelled) {
+          if (geo) {
+            for (const { km, label } of RADIUS_TIERS) {
+              const params = new URLSearchParams({
+                specialty_id: String(chosen.id), geo: 'radius', limit: '5',
+                lat: String(geo.lat), lng: String(geo.lng), radius_km: String(km),
+              });
+              const res = await fetch(`${API}/leaderboard?${params}`);
+              const data: { results: RankedEntry[] } = await res.json();
+              if (!cancelled && data.results?.length) {
+                setEntries(data.results.map((r) => ({ ...r, specialty: chosen.name })));
+                setTitle(`Top ${chosen.name} ${label}`);
+                return;
+              }
+            }
+          }
+          const params = new URLSearchParams({ specialty_id: String(chosen.id), geo: 'country', limit: '5' });
+          const res = await fetch(`${API}/leaderboard?${params}`);
+          const data: { results: RankedEntry[] } = await res.json();
+          if (!cancelled && data.results?.length) {
+            setEntries(data.results.map((r) => ({ ...r, specialty: chosen.name })));
+            setTitle(`Top ${chosen.name} en France`);
+            return;
+          }
+        }
+      } catch { /* tente le classement général ci-dessous */ }
+
+      // 2) Pas de spécialité pertinente (ou rien trouvé dedans) → classement
+      // général, mais toujours localisé d'abord — le fallback SSR (déjà
+      // France entière) reste en place si même le rayon élargi ne donne rien.
+      if (cancelled || !geo) return;
+      try {
+        for (const { km, label } of RADIUS_TIERS) {
+          const params = new URLSearchParams({
+            type: 'engagement', limit: '5',
+            lat: String(geo.lat), lng: String(geo.lng), radius_km: String(km),
+          });
+          const res = await fetch(`${API}/leaderboard?${params}`);
+          const data: { results: RankedEntry[] } = await res.json();
+          if (!cancelled && data.results?.length) {
+            setEntries(data.results);
+            setTitle(`Les meilleurs coiffeurs ${label}`);
+            return;
+          }
+        }
+      } catch { /* garde le fallback */ }
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, isLoading]);
 
   if (!entries.length) return null;
 
@@ -55,7 +119,7 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
       <SectionHeader
         tag="Classement"
         tagIcon={<Trophy size={11} className="text-amber-500" />}
-        title={city ? `Le top de ${city}` : 'Les meilleurs coiffeurs CHAIR'}
+        title={title ?? 'Les meilleurs coiffeurs CHAIR'}
         href="/app/classements"
       />
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto space-y-2">
@@ -94,12 +158,16 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
                   {h.specialty && <span className="text-[11px] text-neutral-400 truncate">{h.specialty}</span>}
                 </div>
               </div>
-              {h.reviews_count > 0 && (
+              {h.reviews_count != null && h.reviews_count > 0 ? (
                 <div className="flex-shrink-0 text-right">
-                  <p className="text-[15px] font-bold text-neutral-900">{h.avg_rating.toFixed(1)}</p>
+                  <p className="text-[15px] font-bold text-neutral-900">{(h.avg_rating ?? 0).toFixed(1)}</p>
                   <p className="text-[10px] text-neutral-400">{h.reviews_count} avis</p>
                 </div>
-              )}
+              ) : h.level_name ? (
+                <span className="flex-shrink-0 text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">
+                  {h.level_name}
+                </span>
+              ) : null}
             </Link>
           );
         })}

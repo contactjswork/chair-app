@@ -6,6 +6,7 @@ import BottomSheet from '@/components/ui/BottomSheet';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { getUserGeo, RADIUS_TIERS } from '@/lib/homeFilters';
 import { leaderboard, api } from '@/lib/api';
 import type { ApiLeaderboard, ApiLeaderboardEntry, ApiSpecialty, ApiSpecialtyLeaderboard, ApiSpecialtyLeaderboardEntry } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
@@ -51,10 +52,13 @@ function fromSpecialty(e: ApiSpecialtyLeaderboardEntry): DisplayEntry {
   };
 }
 
-function buildTitle(specialtyName: string | null, geoValue: string): { title: string; subtitle: string } {
-  if (specialtyName && geoValue) return { title: `Meilleurs coiffeurs en ${specialtyName}`, subtitle: `à ${geoValue}` };
+function buildTitle(specialtyName: string | null, geoValue: string, autoGeoLabel: string | null): { title: string; subtitle: string } {
+  // Recherche manuelle (geoValue tapé) toujours prioritaire sur la
+  // localisation automatique du compte (autoGeoLabel) pour l'affichage.
+  const localizedSubtitle = geoValue ? `à ${geoValue}` : autoGeoLabel ? `Coiffeurs ${autoGeoLabel}` : null;
+  if (specialtyName && localizedSubtitle) return { title: `Meilleurs coiffeurs en ${specialtyName}`, subtitle: localizedSubtitle };
   if (specialtyName) return { title: `Meilleurs coiffeurs en ${specialtyName}`, subtitle: 'Toute la communauté CHAIR' };
-  if (geoValue) return { title: 'Les mieux classés', subtitle: `à ${geoValue}` };
+  if (localizedSubtitle) return { title: 'Les mieux classés', subtitle: localizedSubtitle };
   return { title: 'Les meilleurs coiffeurs', subtitle: 'Découvrez les professionnels les mieux notés de la communauté CHAIR.' };
 }
 
@@ -280,34 +284,69 @@ export default function ClassementsPage() {
   const [specialtyData, setSpecialtyData] = useState<ApiSpecialtyLeaderboard | null>(null);
   const [loading, setLoading]             = useState(true);
   const [loadError, setLoadError]         = useState(false);
+  // Distinct de geoValue (recherche manuelle tapée) — reflète juste QUEL rayon
+  // de la localisation automatique du compte a fini par renvoyer un résultat,
+  // pour le sous-titre ("près de chez vous" / "dans votre région").
+  const [autoGeoLabel, setAutoGeoLabel]   = useState<string | null>(null);
 
   useEffect(() => {
     api.get<ApiSpecialty[]>('/specialties').then(setSpecialties).catch(() => {});
   }, []);
 
-  function load() {
+  // Par défaut (aucune recherche manuelle), le classement est localisé sur la
+  // position réelle du compte — jamais un classement France entière tant
+  // qu'un rayon plus proche a des résultats (50km, puis élargi ~régional).
+  async function load() {
     setLoading(true);
     setLoadError(false);
-    if (specialtyId) {
-      leaderboard.bySpecialty({ specialtyId, geo: geoValue ? 'auto' : 'country', geoValue: geoValue || undefined, limit: 30 })
-        .then((res) => { setSpecialtyData(res); setGlobalData(null); })
-        .catch(() => setLoadError(true))
-        .finally(() => setLoading(false));
-    } else {
-      leaderboard.get({ type: sortType, city: geoValue || undefined, limit: 30 })
-        .then((res) => { setGlobalData(res as ApiLeaderboard); setSpecialtyData(null); })
-        .catch(() => setLoadError(true))
-        .finally(() => setLoading(false));
+    setAutoGeoLabel(null);
+
+    const geo = geoValue ? null : getUserGeo(user);
+
+    try {
+      if (specialtyId) {
+        if (geo) {
+          for (const { km, label } of RADIUS_TIERS) {
+            const res = await leaderboard.bySpecialty({
+              specialtyId, geo: 'radius', lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30,
+            });
+            if (res.results.length) {
+              setSpecialtyData(res); setGlobalData(null); setAutoGeoLabel(label);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        const res = await leaderboard.bySpecialty({ specialtyId, geo: geoValue ? 'auto' : 'country', geoValue: geoValue || undefined, limit: 30 });
+        setSpecialtyData(res); setGlobalData(null);
+      } else {
+        if (geo) {
+          for (const { km, label } of RADIUS_TIERS) {
+            const res = await leaderboard.get({ type: sortType, lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30 }) as ApiLeaderboard;
+            if (res.results.length) {
+              setGlobalData(res); setSpecialtyData(null); setAutoGeoLabel(label);
+              setLoading(false);
+              return;
+            }
+          }
+        }
+        const res = await leaderboard.get({ type: sortType, city: geoValue || undefined, limit: 30 }) as ApiLeaderboard;
+        setGlobalData(res); setSpecialtyData(null);
+      }
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [specialtyId, geoValue, sortType]);
+  }, [specialtyId, geoValue, sortType, user]);
 
   const specialtyName = specialtyId ? (specialties.find((s) => s.id === specialtyId)?.name ?? null) : null;
-  const { title, subtitle } = buildTitle(specialtyName, geoValue);
+  const { title, subtitle } = buildTitle(specialtyName, geoValue, autoGeoLabel);
 
   const entries: DisplayEntry[] = useMemo(() => {
     if (specialtyData) return specialtyData.results.map(fromSpecialty);

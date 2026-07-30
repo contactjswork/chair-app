@@ -1,8 +1,24 @@
 ﻿const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+export const SESSION_EXPIRED_EVENT = 'chair:session-expired';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('chair_token');
+}
+
+/**
+ * Un 401 sur une requête authentifiée veut dire que le token n'est plus
+ * valide (dev : DB réinitialisée sous le tapis / prod : token révoqué) — sans
+ * ça, l'utilisateur restait sur la page avec un "Unauthenticated." affiché
+ * tel quel, sans comprendre qu'il fallait juste se reconnecter. On nettoie la
+ * session ici et on prévient AuthContext, qui gère la redirection (un module
+ * hors-React ne peut pas appeler useRouter directement).
+ */
+function handleUnauthenticated(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('chair_token');
+  localStorage.removeItem('chair_user');
+  window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
 }
 
 async function request<T>(
@@ -27,6 +43,7 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401 && token) handleUnauthenticated();
     const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
     // Expose first field error for 422 validation failures
     if (res.status === 422 && error.errors) {
@@ -63,6 +80,7 @@ async function requestMultipart<T>(path: string, formData: FormData): Promise<T>
     body: formData,
   });
   if (!res.ok) {
+    if (res.status === 401 && token) handleUnauthenticated();
     const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
     throw new Error(error.message || `Erreur ${res.status}`);
   }
@@ -93,7 +111,23 @@ export const geo = {
   /** Départements d'une région donnée, triés par nom. */
   departments: (region: string) =>
     api.get<{ departments: Array<{ code: string; name: string }> }>(`/geo/departments?region=${encodeURIComponent(region)}`),
+
+  /** Autocomplétion ville (API Adresse data.gouv.fr) — "Stras" → Strasbourg, coordonnées incluses. */
+  searchCity: (q: string) =>
+    api.get<{ results: CitySuggestion[] }>(`/geo/search-city?q=${encodeURIComponent(q)}`),
+
+  /** Ville la plus proche d'une position GPS — bouton "Ma position". */
+  reverseCity: (lat: number, lng: number) =>
+    api.get<CitySuggestion>(`/geo/reverse-city?lat=${lat}&lng=${lng}`),
 };
+
+export interface CitySuggestion {
+  label: string;
+  city: string;
+  postcode: string | null;
+  lat: number;
+  lng: number;
+}
 
 // ── Search ───────────────────────────────────────────────────────────
 
@@ -266,22 +300,36 @@ export const specialtyProgress = {
 // ── Leaderboard ──────────────────────────────────────────────────────
 
 export const leaderboard = {
-  get: (params: { city?: string; type?: string; limit?: number } = {}) => {
+  /** `radius`/`lat`/`lng` : classement localisé sur la position réelle du
+   *  compte (jamais le GPS appareil) — voir HomeRankingSection/classements
+   *  pour la cascade "50km → région (rayon élargi) → France". */
+  get: (params: { city?: string; type?: string; limit?: number; lat?: number; lng?: number; radiusKm?: number } = {}) => {
     const qs = new URLSearchParams();
-    if (params.city)  qs.set('city', params.city);
-    if (params.type)  qs.set('type', params.type);
-    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.city)     qs.set('city', params.city);
+    if (params.type)     qs.set('type', params.type);
+    if (params.limit)    qs.set('limit', String(params.limit));
+    if (params.lat != null && params.lng != null && params.radiusKm != null) {
+      qs.set('lat', String(params.lat));
+      qs.set('lng', String(params.lng));
+      qs.set('radius_km', String(params.radiusKm));
+    }
     return api.get(`/leaderboard?${qs.toString()}`);
   },
-  /** Classement par spécialité, filtré ville/département/région/France.
+  /** Classement par spécialité, filtré ville/département/région/France/rayon.
    *  geo='auto' (défaut si geoValue fourni) : un champ libre unique, le niveau
-   *  est deviné côté backend (département/région en priorité, sinon ville). */
-  bySpecialty: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country' | 'auto'; geoValue?: string; limit?: number }) => {
+   *  est deviné côté backend (département/région en priorité, sinon ville).
+   *  geo='radius' : localisé sur lat/lng/radiusKm (voir leaderboard.get). */
+  bySpecialty: (params: { specialtyId: number; geo?: 'city' | 'department' | 'region' | 'country' | 'auto' | 'radius'; geoValue?: string; limit?: number; lat?: number; lng?: number; radiusKm?: number }) => {
     const qs = new URLSearchParams();
     qs.set('specialty_id', String(params.specialtyId));
     if (params.geo)      qs.set('geo', params.geo);
     if (params.geoValue) qs.set('geo_value', params.geoValue);
     if (params.limit)    qs.set('limit', String(params.limit));
+    if (params.geo === 'radius' && params.lat != null && params.lng != null && params.radiusKm != null) {
+      qs.set('lat', String(params.lat));
+      qs.set('lng', String(params.lng));
+      qs.set('radius_km', String(params.radiusKm));
+    }
     return api.get<import('./types').ApiSpecialtyLeaderboard>(`/leaderboard?${qs.toString()}`);
   },
   /** Rang du coiffeur connecté dans EXACTEMENT la même vue (spécialité + zone)

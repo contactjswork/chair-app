@@ -512,7 +512,7 @@ class SpecialtyReputationService
      * filtré géographiquement. Retourne les lignes BRUTES triées — la
      * décoration pour l'API publique se fait dans leaderboard()/rankFor().
      */
-    private static function rankedRows(int $specialtyId, string $geo, ?string $geoValue)
+    private static function rankedRows(int $specialtyId, string $geo, ?string $geoValue, ?float $lat = null, ?float $lng = null, ?float $radiusKm = null)
     {
         // Pas de filtre sur hp.posts_count : un salarié sans aucune réalisation
         // publiée mais avec de vrais avis/visites certifiés dans la spécialité
@@ -527,11 +527,14 @@ class SpecialtyReputationService
             ->select([
                 'hsp.hairdresser_id', 'hsp.score', 'hsp.level', 'hsp.is_reference',
                 'hp.slug', 'hp.city', 'hp.postal_code', 'hp.department', 'hp.region', 'hp.is_verified',
+                'hp.latitude', 'hp.longitude',
                 'u.name', 'u.avatar',
             ])
             ->get();
 
-        if ($geo !== 'country' && $geoValue) {
+        if ($geo === 'radius' && $lat !== null && $lng !== null && $radiusKm !== null) {
+            $rows = self::filterByRadius($rows, $lat, $lng, $radiusKm);
+        } elseif ($geo !== 'country' && $geoValue) {
             $rows = self::filterByGeo($rows, $geo, $geoValue);
         }
 
@@ -553,6 +556,29 @@ class SpecialtyReputationService
         ->filter()
         ->sortByDesc('adjusted_score')
         ->values();
+    }
+
+    /**
+     * Classement LOCALISÉ sur la position réelle du compte (lat/lng du
+     * profil client, jamais le GPS appareil) — rayon en km, plus permissif
+     * que le filtre ville/département exact (matching textuel) qui ratait
+     * les coiffeurs juste de l'autre côté d'une frontière administrative.
+     */
+    private static function filterByRadius($rows, float $lat, float $lng, float $radiusKm)
+    {
+        return $rows->filter(function ($r) use ($lat, $lng, $radiusKm) {
+            if ($r->latitude === null || $r->longitude === null) return false;
+            return self::haversineKm($lat, $lng, (float) $r->latitude, (float) $r->longitude) <= $radiusKm;
+        })->values();
+    }
+
+    private static function haversineKm(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $earthRadiusKm = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $earthRadiusKm * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
     private static function filterByGeo($rows, string $geo, string $value)
@@ -655,9 +681,9 @@ class SpecialtyReputationService
     /**
      * Classement décoré pour l'API publique — GET /leaderboard?specialty_id=...
      */
-    public static function leaderboard(int $specialtyId, string $geo = 'country', ?string $geoValue = null, int $limit = 30): array
+    public static function leaderboard(int $specialtyId, string $geo = 'country', ?string $geoValue = null, int $limit = 30, ?float $lat = null, ?float $lng = null, ?float $radiusKm = null): array
     {
-        $rows = self::rankedRows($specialtyId, $geo, $geoValue)->take($limit);
+        $rows = self::rankedRows($specialtyId, $geo, $geoValue, $lat, $lng, $radiusKm)->take($limit);
 
         // Niveau 5 (régional, critère relatif coûteux) volontairement pas
         // recalculé ici pour chaque ligne d'une liste — bornée à un seul
@@ -732,6 +758,7 @@ class SpecialtyReputationService
                 'local_rank'      => $rank['rank'] ?? null,
                 'local_total'     => $rank['total'] ?? null,
                 'fast_progress'   => $fastProgress,
+                'visits_count'    => $row->visits_count,
             ];
         })->values()->all();
     }
