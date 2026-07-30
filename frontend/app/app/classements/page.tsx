@@ -11,8 +11,12 @@ import type { ApiLeaderboard, ApiLeaderboardEntry, ApiSpecialty, ApiSpecialtyLea
 import { resolveMediaUrl } from '@/lib/types';
 import {
   Trophy, Star, BadgeCheck, Search, X, ChevronRight,
-  HelpCircle, RotateCcw, WifiOff,
+  HelpCircle, RotateCcw, WifiOff, Crown,
 } from 'lucide-react';
+import { FilterChip as SharedFilterChip } from '@/components/ui/Badge';
+import EmptyState from '@/components/ui/EmptyState';
+import { PrimaryButton } from '@/components/ui/Button';
+import { Skeleton, SkeletonCircle, SkeletonText } from '@/components/ui/Skeleton';
 
 // ── Type d'entrée normalisé pour l'affichage — les deux endpoints backend
 // (global / par spécialité) renvoient des formes différentes, unifiées ici
@@ -82,19 +86,6 @@ function GeoSearchBar({ value, onChange }: { value: string; onChange: (v: string
         </button>
       )}
     </form>
-  );
-}
-
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-shrink-0 text-[12px] font-semibold px-3.5 py-2 rounded-xl border transition-all ${
-        active ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 
@@ -186,7 +177,24 @@ function ExplainSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ── Podium (top 3) ──────────────────────────────────────────────────────
+// ── Podium (top 3) — hiérarchie réelle (hauteur + ton or/argent/bronze),
+// pas juste trois cartes identiques avec un chiffre différent. ────────────
+const RANK_RING: Record<number, string> = {
+  1: 'ring-2 ring-amber-300',
+  2: 'ring-2 ring-neutral-300',
+  3: 'ring-2 ring-orange-300',
+};
+const RANK_BADGE: Record<number, string> = {
+  1: 'bg-amber-400 text-white',
+  2: 'bg-neutral-300 text-white',
+  3: 'bg-orange-400 text-white',
+};
+const PODIUM_STEP_HEIGHT: Record<number, string> = {
+  1: 'pt-7',
+  2: 'pt-3',
+  3: 'pt-1',
+};
+
 function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' }) {
   const avatar = resolveMediaUrl(entry.avatar);
   const initial = (entry.name ?? '?').charAt(0).toUpperCase();
@@ -195,21 +203,22 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-sm transition-all min-w-0 ${
-        isFirst ? 'p-5 flex-[1.15]' : 'p-3.5 flex-1'
+      className={`relative flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-md transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
+        isFirst ? 'px-4 pb-5 flex-[1.15]' : 'px-3 pb-3.5 flex-1'
       }`}
     >
+      {isFirst && (
+        <Crown size={18} className="text-amber-400 fill-amber-400 mb-1" strokeWidth={1.5} />
+      )}
       <div className="relative mb-2">
-        <div className={`relative rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center ${isFirst ? 'w-20 h-20' : 'w-14 h-14'}`}>
+        <div className={`relative rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center ${RANK_RING[entry.rank] ?? ''} ${isFirst ? 'w-20 h-20' : 'w-14 h-14'}`}>
           {avatar ? (
             <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="80px" />
           ) : (
             <span className={`font-bold text-neutral-500 ${isFirst ? 'text-2xl' : 'text-lg'}`}>{initial}</span>
           )}
         </div>
-        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full font-bold border-2 border-white ${
-          entry.rank === 1 ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600'
-        } ${isFirst ? 'w-7 h-7 text-[12px]' : 'w-6 h-6 text-[11px]'}`}>
+        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full font-bold border-2 border-white ${RANK_BADGE[entry.rank] ?? 'bg-neutral-100 text-neutral-600'} ${isFirst ? 'w-7 h-7 text-[12px]' : 'w-6 h-6 text-[11px]'}`}>
           {entry.rank}
         </span>
       </div>
@@ -333,7 +342,9 @@ export default function ClassementsPage() {
       <div className="max-w-2xl mx-auto pb-28 md:pb-8 overflow-x-hidden">
         {/* Header */}
         <div className="px-4 pt-6 pb-4">
-          <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-1">CHAIR</p>
+          <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-1 flex items-center gap-1.5">
+            <Trophy size={11} className="text-amber-500" />CHAIR
+          </p>
           <h1 className="text-[24px] font-bold text-neutral-900 tracking-tight">{title}</h1>
           <p className="text-[13px] text-neutral-400 mt-1">{subtitle}</p>
         </div>
@@ -345,11 +356,17 @@ export default function ClassementsPage() {
 
         {/* Chips filtres */}
         <div className="px-4 mb-3 flex gap-2 overflow-x-auto no-scrollbar">
-          <FilterChip label={specialtyName ? specialtyName : 'Spécialité'} active={!!specialtyId} onClick={() => setSheetOpen('specialty')} />
+          <SharedFilterChip active={!!specialtyId} onClick={() => setSheetOpen('specialty')}>
+            {specialtyName ? specialtyName : 'Spécialité'}
+          </SharedFilterChip>
           {!specialtyId && (
             <>
-              <FilterChip label="Mieux notés" active={sortType === 'reviews'} onClick={() => setSortType((t) => t === 'reviews' ? 'engagement' : 'reviews')} />
-              <FilterChip label="Nouveaux talents" active={sortType === 'progression'} onClick={() => setSortType((t) => t === 'progression' ? 'engagement' : 'progression')} />
+              <SharedFilterChip active={sortType === 'reviews'} onClick={() => setSortType((t) => t === 'reviews' ? 'engagement' : 'reviews')}>
+                Mieux notés
+              </SharedFilterChip>
+              <SharedFilterChip active={sortType === 'progression'} onClick={() => setSortType((t) => t === 'progression' ? 'engagement' : 'progression')}>
+                Nouveaux talents
+              </SharedFilterChip>
             </>
           )}
         </div>
@@ -378,44 +395,45 @@ export default function ClassementsPage() {
         {/* Contenu */}
         {loading ? (
           <div className="px-4 space-y-3">
-            <div className="flex gap-2">
-              {[1, 2, 3].map((i) => <div key={i} className="flex-1 h-40 bg-neutral-100 rounded-2xl animate-pulse" />)}
+            <div className="flex items-end gap-2">
+              <Skeleton className="flex-1 h-32" />
+              <Skeleton className="flex-[1.15] h-40" />
+              <Skeleton className="flex-1 h-28" />
             </div>
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 py-2">
-                <div className="w-10 h-10 rounded-full bg-neutral-100 animate-pulse flex-shrink-0" />
-                <div className="flex-1 space-y-1.5"><div className="h-3 bg-neutral-100 rounded animate-pulse w-32" /></div>
+                <SkeletonCircle />
+                <div className="flex-1"><SkeletonText width="w-32" /></div>
               </div>
             ))}
           </div>
         ) : loadError ? (
           <div className="px-4">
-            <div className="bg-white rounded-2xl border border-neutral-100 py-14 text-center">
-              <WifiOff size={32} className="text-neutral-300 mx-auto mb-3" strokeWidth={1.5} />
-              <p className="text-sm font-semibold text-neutral-900 mb-1">Impossible de charger le classement</p>
-              <p className="text-xs text-neutral-400 mb-4">Vérifiez votre connexion et réessayez.</p>
-              <button onClick={load} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
-                Réessayer
-              </button>
+            <div className="bg-white rounded-2xl border border-neutral-100">
+              <EmptyState
+                icon={WifiOff}
+                title="Impossible de charger le classement"
+                subtitle="Vérifiez votre connexion et réessayez."
+                action={<PrimaryButton size="sm" onClick={load}>Réessayer</PrimaryButton>}
+              />
             </div>
           </div>
         ) : entries.length === 0 ? (
           <div className="px-4">
-            <div className="bg-white rounded-2xl border border-neutral-100 py-14 text-center px-6">
-              <Trophy size={32} className="text-neutral-200 mx-auto mb-3" strokeWidth={1.5} />
+            <div className="bg-white rounded-2xl border border-neutral-100">
               {hasActiveFilters ? (
-                <>
-                  <p className="text-sm font-semibold text-neutral-900 mb-1">Aucun coiffeur ne correspond à ces filtres</p>
-                  <p className="text-xs text-neutral-400 mb-4">Élargissez la zone ou retirez la spécialité.</p>
-                  <button onClick={resetFilters} className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors">
-                    Réinitialiser les filtres
-                  </button>
-                </>
+                <EmptyState
+                  icon={Trophy}
+                  title="Aucun coiffeur ne correspond à ces filtres"
+                  subtitle="Élargissez la zone ou retirez la spécialité."
+                  action={<PrimaryButton size="sm" onClick={resetFilters}>Réinitialiser les filtres</PrimaryButton>}
+                />
               ) : (
-                <>
-                  <p className="text-sm font-semibold text-neutral-900 mb-1">Pas encore assez de données</p>
-                  <p className="text-xs text-neutral-400">Le classement sera disponible dès que suffisamment d&apos;avis certifiés auront été publiés.</p>
-                </>
+                <EmptyState
+                  icon={Trophy}
+                  title="Pas encore assez de données"
+                  subtitle="Le classement sera disponible dès que suffisamment d'avis certifiés auront été publiés."
+                />
               )}
             </div>
           </div>
