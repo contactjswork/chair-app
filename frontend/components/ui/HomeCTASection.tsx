@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/Button';
 
 interface Props {
   hairdressersCount: number;
@@ -54,7 +55,7 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
             <div className="flex flex-col gap-3 md:min-w-[200px]">
               <Link
                 href="/pro/inscription"
-                className="inline-flex items-center justify-center bg-white text-neutral-900 text-sm font-semibold px-6 py-3.5 rounded-full hover:bg-neutral-100 transition-colors text-center"
+                className="inline-flex items-center justify-center bg-white text-neutral-900 text-sm font-semibold px-6 py-3.5 rounded-2xl hover:bg-neutral-100 active:scale-[0.97] transition-all text-center"
               >
                 Créer mon profil gratuit
               </Link>
@@ -81,18 +82,8 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
             </p>
           </div>
           <div className="flex gap-3">
-            <Link
-              href="/inscription"
-              className="inline-flex items-center justify-center bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-full hover:bg-neutral-700 transition-colors"
-            >
-              Créer un compte
-            </Link>
-            <Link
-              href="/app/recherche"
-              className="inline-flex items-center justify-center text-neutral-600 text-sm font-medium px-5 py-3 rounded-full border border-neutral-200 hover:border-neutral-400 transition-colors"
-            >
-              Explorer
-            </Link>
+            <PrimaryButton href="/inscription">Créer un compte</PrimaryButton>
+            <SecondaryButton href="/app/recherche">Explorer</SecondaryButton>
           </div>
         </div>
       )}

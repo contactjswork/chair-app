@@ -82,14 +82,14 @@ export default function PersonalizedSection() {
             <div className="flex gap-2">
               <Link
                 href="/inscription"
-                className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 transition-colors"
+                className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 active:scale-[0.97] transition-all"
               >
                 <UserPlus size={14} />
                 Créer un compte
               </Link>
               <Link
                 href="/connexion"
-                className="flex items-center gap-2 border border-white/20 text-white font-semibold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/10 transition-colors"
+                className="flex items-center gap-2 border border-white/20 text-white font-semibold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/10 active:scale-[0.97] transition-all"
               >
                 Se connecter
               </Link>
@@ -120,7 +120,7 @@ export default function PersonalizedSection() {
         </div>
         <Link
           href={`/app/recherche?specialty=${primarySlug}`}
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 transition-all"
         >
           <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
         </Link>

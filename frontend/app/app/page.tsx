@@ -4,14 +4,13 @@ import HeroSearch from '@/components/ui/HeroSearch';
 import StoriesBar from '@/components/ui/StoriesBar';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import HomePersonalized from '@/components/ui/HomePersonalized';
-import { CoupDeCoeurStrip, PopularStrip, NewTalentsStrip } from '@/components/ui/HomeGeoStrips';
+import { CoupDeCoeurStrip, PopularStrip, NewTalentsStrip, SectionHeader } from '@/components/ui/HomeGeoStrips';
 import PersonalizedSection from '@/components/ui/PersonalizedSection';
 import HomeRankingSection, { type RankedEntry } from '@/components/ui/HomeRankingSection';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ApiHairdresserProfile, ApiPost, ApiUser, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
-import { ChevronRight } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -49,31 +48,6 @@ async function getRanking(limit = 5): Promise<RankedEntry[]> {
   } catch { return []; }
 }
 
-// ── Shared: Section header ────────────────────────────────────────────────────
-
-function SectionHeader({
-  title, subtitle, href, tag,
-}: {
-  title: string; subtitle?: string; href?: string; tag?: string;
-}) {
-  return (
-    <div className="px-4 md:px-8 max-w-6xl md:mx-auto mb-5 flex items-end justify-between gap-3">
-      <div>
-        {tag && (
-          <p className="text-[10px] font-bold tracking-[0.3em] uppercase text-neutral-400 mb-1.5">{tag}</p>
-        )}
-        <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">{title}</h2>
-        {subtitle && <p className="text-[12px] text-neutral-400 mt-1 leading-relaxed max-w-sm">{subtitle}</p>}
-      </div>
-      {href && (
-        <Link href={href} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
-          <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
-        </Link>
-      )}
-    </div>
-  );
-}
-
 // ── Réalisations (Instagram grid) ─────────────────────────────────────────────
 
 function RealisationGrid({ posts }: { posts: ApiPost[] }) {
@@ -88,7 +62,7 @@ function RealisationGrid({ posts }: { posts: ApiPost[] }) {
           <Link
             key={post.id}
             href={`/app/realisation/${post.id}`}
-            className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100 group"
+            className="relative aspect-square overflow-hidden rounded-xl bg-neutral-100 group active:scale-[0.97] transition-transform duration-150"
           >
             {url ? (
               <Image
