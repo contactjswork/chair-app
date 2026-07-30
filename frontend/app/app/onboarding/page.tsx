@@ -6,8 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { referral } from '@/lib/api';
 import type { ApiReferral } from '@/lib/types';
 import Image from 'next/image';
-import { Check, ArrowRight, ArrowLeft, Share2 } from 'lucide-react';
+import { Check, ArrowRight, Share2 } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
+import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
+import { useStepTransition } from '@/hooks/useStepTransition';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -55,17 +57,10 @@ function getOptions(g: Gender): StyleOption[] {
   return ALL;
 }
 
-// Barre de progression fine
-function ProgressBar({ step }: { step: Step }) {
-  const pct = step === 'genre' ? 33 : step === 'styles' ? 66 : 100;
-  return (
-    <div className="flex-1 h-[3px] bg-neutral-100 rounded-full overflow-hidden">
-      <div
-        className="h-full bg-neutral-900 rounded-full transition-all duration-400 ease-out"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
+// Progression de l'onboarding client, mappée sur la même échelle 0-100 que
+// OnboardingHeader (partagé avec CHAIR PRO) pour ne pas garder deux calculs.
+function progressForStep(step: Step): number {
+  return step === 'genre' ? 33 : step === 'styles' ? 66 : 100;
 }
 
 export default function ClientOnboardingPage() {
@@ -75,7 +70,7 @@ export default function ClientOnboardingPage() {
   const [step,     setStep]     = useState<Step>('genre');
   const [gender,   setGender]   = useState<Gender>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [anim,     setAnim]     = useState<'in' | 'out'>('in');
+  const { animClass, transition } = useStepTransition();
   const [saving,   setSaving]   = useState(false);
   const [myReferral, setMyReferral] = useState<ApiReferral | null>(null);
   const [shareOpen,  setShareOpen]  = useState(false);
@@ -90,11 +85,6 @@ export default function ClientOnboardingPage() {
     if (step !== 'done') return;
     referral.mine().then(setMyReferral).catch(() => {});
   }, [step]);
-
-  function transition(fn: () => void) {
-    setAnim('out');
-    setTimeout(() => { fn(); setAnim('in'); }, 180);
-  }
 
   function pickGender(g: Gender) {
     setGender(g);
@@ -138,41 +128,14 @@ export default function ClientOnboardingPage() {
   const firstName = user.name.split(' ')[0];
   const options   = getOptions(gender);
 
-  const animClass = anim === 'out'
-    ? 'opacity-0 translate-y-3'
-    : 'opacity-100 translate-y-0';
-
   return (
     <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
 
-      {/* ── Header ── */}
-      <div className="flex-shrink-0 flex items-center gap-3 px-5 pb-4 pt-safe-5">
-        {/* Retour / placeholder */}
-        <div className="w-8 flex justify-start">
-          {step === 'styles' ? (
-            <button
-              onClick={() => transition(() => setStep('genre'))}
-              className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </button>
-          ) : (
-            <div className="w-8" />
-          )}
-        </div>
-
-        {/* Barre de progression */}
-        <ProgressBar step={step} />
-
-        {/* Passer */}
-        <div className="w-12 flex justify-end">
-          {step !== 'done' && (
-            <button onClick={skip} className="text-[13px] font-medium text-neutral-400 hover:text-neutral-700 transition-colors">
-              Passer
-            </button>
-          )}
-        </div>
-      </div>
+      <OnboardingHeader
+        progress={progressForStep(step)}
+        onBack={step === 'styles' ? () => transition(() => setStep('genre')) : undefined}
+        onSkip={step !== 'done' ? skip : undefined}
+      />
 
       {/* ── Contenu animé ── */}
       <div className={`flex-1 flex flex-col min-h-0 transition-all duration-180 ease-out ${animClass}`}>
@@ -334,7 +297,7 @@ export default function ClientOnboardingPage() {
             {myReferral && (
               <button
                 onClick={() => setShareOpen(true)}
-                className="w-full flex items-center justify-center gap-2 text-neutral-500 font-semibold py-3 text-[13px] hover:text-neutral-800 transition-colors"
+                className="w-full flex items-center justify-center gap-2 text-neutral-500 font-semibold py-3 text-[13px] hover:text-neutral-800 active:text-neutral-800 transition-colors"
               >
                 <Share2 size={13} />Inviter un ami sur CHAIR
               </button>
