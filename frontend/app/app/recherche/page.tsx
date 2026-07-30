@@ -336,7 +336,7 @@ function RechercheContent() {
               {c.icon}
               {c.label}
               {c.count != null && (
-                <span className={`text-[11px] font-normal tabular-nums ${filters.type === c.value ? 'text-neutral-400' : 'text-neutral-400'}`}>
+                <span className={`text-[11px] font-normal tabular-nums ${filters.type === c.value ? 'text-white/60' : 'text-neutral-400'}`}>
                   {c.count}
                 </span>
               )}

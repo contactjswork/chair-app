@@ -186,7 +186,7 @@ export default function SearchFiltersSheet({
               <button
                 key={t.value}
                 onClick={() => onChange({ type: t.value })}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] ${
                   filters.type === t.value ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
                 }`}
               >

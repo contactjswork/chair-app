@@ -83,7 +83,7 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
       <button
         onClick={onClose}
         aria-label="Fermer"
-        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center"
+        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-neutral-100 flex items-center justify-center transition-transform active:scale-90"
       >
         <X size={12} className="text-neutral-600" />
       </button>

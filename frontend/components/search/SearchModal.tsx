@@ -214,7 +214,11 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                 className="flex-1 min-w-0 text-[14px] text-neutral-900 placeholder-neutral-400 focus:outline-none bg-transparent"
               />
               {q && (
-                <button onClick={() => { setQ(''); setSuggestions([]); }} aria-label="Effacer">
+                <button
+                  onClick={() => { setQ(''); setSuggestions([]); }}
+                  aria-label="Effacer"
+                  className="p-1 -m-1 transition-transform active:scale-90"
+                >
                   <X size={15} className="text-neutral-400" />
                 </button>
               )}
@@ -226,7 +230,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                   <button
                     key={`${s.type}-${s.value}-${i}`}
                     onClick={() => applySuggestion(s)}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 transition-colors border-b border-neutral-50 last:border-0"
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 active:bg-neutral-100 transition-colors border-b border-neutral-50 last:border-0"
                   >
                     <span className="flex-shrink-0 text-neutral-400">
                       {s.type === 'specialty' || s.type === 'service' ? <Scissors size={13} /> : s.type === 'hairdresser' ? <User size={13} /> : <MapPin size={13} />}
@@ -241,18 +245,22 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
             )}
           </div>
 
-          {/* Spécialité sélectionnée */}
+          {/* Spécialité sélectionnée — même gabarit de chip amovible que la
+              liste de résultats (FilterChip actif + croix), au lieu d'un
+              bouton recréé à la main avec un padding et une taille de police
+              légèrement différents. */}
           {specialties.length > 0 && (
             <div className="flex gap-1.5 flex-wrap mt-2.5">
               {specialties.map((slug) => (
-                <button
+                <FilterChip
                   key={slug}
+                  active
                   onClick={() => setSpecialties(specialties.filter((s) => s !== slug))}
-                  className="flex items-center gap-1.5 text-[12px] font-semibold bg-neutral-900 text-white px-3 py-1.5 rounded-full"
+                  aria-label={`Retirer la spécialité ${SPECIALTY_LABELS[slug] ?? slug}`}
                 >
                   {SPECIALTY_LABELS[slug] ?? slug}
-                  <X size={11} />
-                </button>
+                  <X size={12} className="text-neutral-400" />
+                </FilterChip>
               ))}
             </div>
           )}
@@ -264,7 +272,11 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
               {useMyPosition ? (
                 <div className="flex-1 flex items-center justify-between min-w-0">
                   <span className="text-[14px] font-medium text-neutral-900">Position actuelle</span>
-                  <button onClick={() => setUseMyPos(false)} aria-label="Retirer la position">
+                  <button
+                    onClick={() => setUseMyPos(false)}
+                    aria-label="Retirer la position"
+                    className="p-1 -m-1 transition-transform active:scale-90"
+                  >
                     <X size={15} className="text-neutral-400" />
                   </button>
                 </div>
@@ -281,7 +293,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                   <button
                     onClick={handleUseMyPosition}
                     disabled={geoLoading}
-                    className="flex items-center gap-1 text-[12px] font-semibold text-neutral-600 flex-shrink-0"
+                    className="flex items-center gap-1 text-[12px] font-semibold text-neutral-600 flex-shrink-0 transition-colors active:text-neutral-900"
                   >
                     {geoLoading ? <Loader2 size={13} className="animate-spin" /> : <Navigation size={13} />}
                     Ma position
@@ -320,10 +332,10 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                 </button>
               </div>
               {recents.map((r) => (
-                <div key={`${r.type}-${r.value}`} className="flex items-center group">
+                <div key={`${r.type}-${r.value}`} className="flex items-center">
                   <button
                     onClick={() => applyRecent(r)}
-                    className="flex-1 flex items-center gap-3 py-2.5 text-left min-w-0"
+                    className="flex-1 flex items-center gap-3 py-2.5 text-left min-w-0 rounded-xl transition-colors active:bg-neutral-50"
                   >
                     <span className="w-9 h-9 rounded-full bg-neutral-50 flex items-center justify-center flex-shrink-0">
                       {r.type === 'city' ? <MapPin size={14} className="text-neutral-500" /> : r.type === 'specialty' ? <Scissors size={14} className="text-neutral-500" /> : <Clock size={14} className="text-neutral-500" />}
@@ -333,7 +345,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                   <button
                     onClick={() => { removeRecentSearch(r); setRecents(getRecentSearches()); }}
                     aria-label={`Supprimer ${r.label}`}
-                    className="p-2 text-neutral-300 hover:text-neutral-600"
+                    className="p-2 text-neutral-300 hover:text-neutral-600 transition-transform active:scale-90"
                   >
                     <X size={14} />
                   </button>
@@ -348,7 +360,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
             <div className="grid grid-cols-2 gap-2.5">
               <button
                 onClick={() => setSpecialties([])}
-                className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all ${
+                className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all active:scale-[0.97] ${
                   specialties.length === 0 ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400'
                 }`}
               >
@@ -361,7 +373,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                   <button
                     key={slug}
                     onClick={() => setSpecialties(active ? specialties.filter((s) => s !== slug) : [...specialties, slug])}
-                    className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all ${
+                    className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all active:scale-[0.97] ${
                       active ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400'
                     }`}
                   >
