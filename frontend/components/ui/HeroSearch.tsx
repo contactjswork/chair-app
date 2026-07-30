@@ -126,7 +126,7 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
             onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className={`flex-1 pl-3 pr-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none bg-transparent ${
+            className={`flex-1 min-w-0 pl-3 pr-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none bg-transparent ${
               compact ? 'py-2.5' : 'py-4'
             }`}
             autoComplete="off"

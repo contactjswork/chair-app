@@ -130,7 +130,7 @@ export default async function HomePage() {
           backgroundSize: '80px 80px',
         }} />
 
-        <div className="relative max-w-6xl mx-auto px-5 w-full pt-24 pb-12 lg:pt-0 lg:py-0">
+        <div className="relative max-w-6xl mx-auto px-5 w-full min-w-0 pt-24 pb-12 lg:pt-0 lg:py-0">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-center w-full">
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 border border-white/10 text-white/40 text-[10px] font-semibold tracking-[0.14em] uppercase px-3.5 py-2 rounded-full mb-10 bg-white/[0.04]">
