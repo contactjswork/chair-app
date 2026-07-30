@@ -89,18 +89,6 @@ function GeoSearchBar({ value, onChange }: { value: string; onChange: (v: string
   );
 }
 
-function RemovableChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button
-      onClick={onRemove}
-      className="flex-shrink-0 inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full bg-neutral-900 text-white"
-    >
-      {label}
-      <X size={11} className="text-white/60" />
-    </button>
-  );
-}
-
 // ── Bottom sheet spécialité ─────────────────────────────────────────────
 function SpecialtySheet({
   specialties, selectedId, onSelect, onClose,
@@ -203,7 +191,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`relative flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-md transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
+      className={`relative flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-md active:scale-[0.97] transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
         isFirst ? 'px-4 pb-5 flex-[1.15]' : 'px-3 pb-3.5 flex-1'
       }`}
     >
@@ -224,7 +212,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
       </div>
       <p className={`font-bold text-neutral-900 w-full flex items-center justify-center gap-1 min-w-0 ${isFirst ? 'text-[14px]' : 'text-[12px]'}`}>
         <span className="truncate">{entry.name}</span>
-        {entry.isVerified && <BadgeCheck size={isFirst ? 13 : 11} className="text-blue-500 flex-shrink-0" />}
+        {entry.isVerified && <BadgeCheck size={isFirst ? 13 : 11} className="text-neutral-900 flex-shrink-0" />}
       </p>
       {entry.city && <p className={`text-neutral-400 truncate w-full ${isFirst ? 'text-[11px]' : 'text-[10px]'} mt-0.5`}>{entry.city}</p>}
       {entry.metaLabel && (
@@ -249,7 +237,7 @@ function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 transition-colors ${isMe ? 'bg-neutral-900/[0.03] ring-1 ring-inset ring-neutral-300' : ''}`}
+      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 active:bg-neutral-100 transition-colors ${isMe ? 'bg-neutral-900/[0.03] ring-1 ring-inset ring-neutral-300' : ''}`}
     >
       <span className="w-7 text-center text-[13px] font-bold text-neutral-400 flex-shrink-0">{entry.rank}</span>
       <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center flex-shrink-0">
@@ -259,7 +247,7 @@ function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
         <div className="flex items-center gap-1.5">
           <p className="text-[13px] font-semibold text-neutral-900 truncate">{entry.name}</p>
           {isMe && <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Vous</span>}
-          {entry.isVerified && <BadgeCheck size={11} className="text-blue-500 flex-shrink-0" />}
+          {entry.isVerified && <BadgeCheck size={11} className="text-neutral-900 flex-shrink-0" />}
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 truncate">
           {entry.metaLabel && <span className="truncate">{entry.metaLabel}</span>}
@@ -374,10 +362,27 @@ export default function ClassementsPage() {
         {/* Filtres actifs + reset */}
         {hasActiveFilters && (
           <div className="px-4 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {geoValue && <RemovableChip label={geoValue} onRemove={() => setGeoValue('')} />}
-            {specialtyName && <RemovableChip label={specialtyName} onRemove={() => setSpecialtyId(null)} />}
+            {geoValue && (
+              <SharedFilterChip active onClick={() => setGeoValue('')} aria-label={`Retirer le filtre ${geoValue}`}>
+                {geoValue}
+                <X size={12} className="text-neutral-400" />
+              </SharedFilterChip>
+            )}
+            {specialtyName && (
+              <SharedFilterChip active onClick={() => setSpecialtyId(null)} aria-label={`Retirer le filtre ${specialtyName}`}>
+                {specialtyName}
+                <X size={12} className="text-neutral-400" />
+              </SharedFilterChip>
+            )}
             {sortType !== 'engagement' && (
-              <RemovableChip label={sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'} onRemove={() => setSortType('engagement')} />
+              <SharedFilterChip
+                active
+                onClick={() => setSortType('engagement')}
+                aria-label={`Retirer le filtre ${sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'}`}
+              >
+                {sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'}
+                <X size={12} className="text-neutral-400" />
+              </SharedFilterChip>
             )}
             <button onClick={resetFilters} className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors px-1">
               <RotateCcw size={11} />Réinitialiser
