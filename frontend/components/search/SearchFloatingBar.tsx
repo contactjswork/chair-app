@@ -21,7 +21,7 @@ export default function SearchFloatingBar({ title, subtitle, onOpenSearch, onOpe
     >
       <button
         onClick={onOpenSearch}
-        className="flex items-center gap-3 flex-1 min-w-0 text-left py-1"
+        className="flex items-center gap-3 flex-1 min-w-0 text-left py-1 transition-transform active:scale-[0.98]"
         aria-label="Ouvrir la recherche"
       >
         <Search size={18} strokeWidth={2.2} className="text-neutral-900 flex-shrink-0" />
@@ -34,7 +34,7 @@ export default function SearchFloatingBar({ title, subtitle, onOpenSearch, onOpe
       <button
         onClick={onOpenFilters}
         aria-label="Filtres"
-        className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+        className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border transition-all active:scale-90 ${
           activeFiltersCount > 0
             ? 'bg-neutral-900 border-neutral-900 text-white'
             : 'bg-white border-neutral-200 text-neutral-700 hover:border-neutral-400'
