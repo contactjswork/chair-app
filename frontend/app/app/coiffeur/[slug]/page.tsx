@@ -73,14 +73,12 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
         <PublicProfileHero
           hairdresserId={hairdresser.id}
-          name={hairdresser.user.name}
           bannerUrl={bannerUrl}
-          isVerified={hairdresser.is_verified}
         />
 
         <PublicProfileIdentity hairdresser={hairdresser} avatarUrl={avatarUrl} />
 
-        <div className="px-4">
+        <div className="px-4 mb-6">
           <ProfileActions
             hairdresserId={hairdresser.id}
             hairdresserName={hairdresser.user.name}
@@ -89,6 +87,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
           />
         </div>
 
+        {/* Ordre des onglets calé sur la décision produit : ce qui fait
+            réserver d'abord (réalisations, puis prestations), la biographie et
+            le salon ensuite, les avis en dernier. "À propos" arrivait en
+            deuxième position et repoussait les prestations — c'est-à-dire le
+            seul onglet depuis lequel on peut effectivement réserver. */}
         <PublicProfileTabs
           defaultTab="portfolio"
           tabs={[
@@ -97,11 +100,6 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               label: 'Portfolio',
               count: portfolioPosts.length,
               content: <PublicProfilePortfolio posts={portfolioPosts} />,
-            },
-            {
-              key: 'about',
-              label: 'À propos',
-              content: <PublicProfileAbout hairdresser={hairdresser} />,
             },
             {
               key: 'services',
@@ -114,6 +112,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                   bookingUrl={hairdresser.booking_url}
                 />
               ),
+            },
+            {
+              key: 'about',
+              label: 'À propos',
+              content: <PublicProfileAbout hairdresser={hairdresser} />,
             },
             {
               key: 'reviews',

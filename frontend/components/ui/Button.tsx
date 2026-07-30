@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react';
 import Link from 'next/link';
 
 // Système de boutons partagé — remplace les dizaines de variantes
@@ -45,8 +45,13 @@ function renderVariant(variantCls: string, spinnerLight: boolean) {
     const cls = `${BASE} ${SIZE_CLS[size]} ${fullWidth ? 'w-full' : ''} ${variantCls} ${className}`;
     const content = <>{loading ? <Spinner light={spinnerLight} /> : icon}{children}</>;
     if (href) {
+      // `onClick` était déclaré dans Props mais silencieusement ignoré dès
+      // qu'on passait `href` — un bouton-lien ne pouvait donc pas faire d'effet
+      // de bord avant de naviguer (mémoriser une URL de retour, tracer un clic).
+      // Aucun appelant existant ne passait les deux : ajout sans impact.
       const anchorProps: AnchorHTMLAttributes<HTMLAnchorElement> = target ? { target } : {};
-      return <Link href={href} className={cls} {...anchorProps}>{content}</Link>;
+      const anchorClick = onClick as unknown as MouseEventHandler<HTMLAnchorElement> | undefined;
+      return <Link href={href} className={cls} onClick={anchorClick} {...anchorProps}>{content}</Link>;
     }
     return (
       <button type={type ?? 'button'} className={cls} disabled={loading || disabled} onClick={onClick}>
@@ -61,16 +66,20 @@ export const SecondaryButton = renderVariant('bg-white border border-neutral-200
 export const GhostButton = renderVariant('bg-transparent text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900', false);
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  size?: 'sm' | 'md';
-  variant?: 'default' | 'filled' | 'danger';
+  /** `lg` = 44px, la cible tactile minimale recommandée quand l'icône est une action de premier plan (favori, partage sur une fiche publique). */
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'filled' | 'danger' | 'outline';
   'aria-label': string;
 }
 
-const ICON_SIZE_CLS: Record<'sm' | 'md', string> = { sm: 'w-8 h-8', md: 'w-10 h-10' };
+const ICON_SIZE_CLS: Record<'sm' | 'md' | 'lg', string> = { sm: 'w-8 h-8', md: 'w-10 h-10', lg: 'w-11 h-11' };
 const ICON_VARIANT_CLS: Record<NonNullable<IconButtonProps['variant']>, string> = {
   default: 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200',
   filled: 'bg-neutral-900 text-white hover:bg-neutral-800',
   danger: 'bg-red-50 text-red-500 hover:bg-red-100',
+  // Contour discret — pour une rangée d'actions secondaires posée sur fond
+  // blanc, où un aplat gris ferait autant de bruit visuel que l'action primaire.
+  outline: 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50',
 };
 
 export function IconButton({ size = 'md', variant = 'default', className = '', children, ...rest }: IconButtonProps & { children: ReactNode }) {

@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
 import { Heart, UserPlus, UserCheck, Edit2, Share2, Check } from 'lucide-react';
-import Link from 'next/link';
+import { SecondaryButton, IconButton } from './Button';
 
 function InstagramIcon({ size = 16 }: { size?: number }) {
   return (
@@ -24,6 +24,18 @@ interface Props {
   initialFollowersCount: number;
 }
 
+// Rangée d'actions du profil public.
+//
+// Deux corrections de fond ici :
+//  1. Plus aucun style ad hoc — tout passe par SecondaryButton / IconButton.
+//     Avant, cette rangée inventait ses propres cotes (py-3 → ~42px, icônes
+//     44px, rounded-xl) alors que le CTA de réservation juste en dessous est
+//     en rounded-2xl 46px : deux barres d'actions du même écran qui ne
+//     partageaient ni hauteur ni rayon.
+//  2. "S'abonner" n'est plus un aplat noir. Le noir plein est réservé à la
+//     réservation, qui est l'action qui compte sur une fiche coiffeur. Deux
+//     boutons noirs de poids identique sur le même écran, c'est une absence
+//     de hiérarchie, pas un choix.
 export default function ProfileActions({
   hairdresserId,
   hairdresserName = 'Ce coiffeur',
@@ -94,106 +106,76 @@ export default function ProfileActions({
     } catch { /* user cancelled share */ }
   }
 
+  const shareButton = (
+    <IconButton
+      size="lg"
+      variant="outline"
+      onClick={handleShare}
+      aria-label="Partager ce profil"
+      title="Partager ce profil"
+    >
+      {shared ? <Check size={16} className="text-neutral-900" /> : <Share2 size={16} />}
+    </IconButton>
+  );
+
+  const instagramButton = instagramUrl ? (
+    <a
+      href={instagramUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Instagram"
+      aria-label="Instagram"
+      className="w-11 h-11 inline-flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50 transition-all active:scale-90"
+    >
+      <InstagramIcon size={16} />
+    </a>
+  ) : null;
+
   // Profil propre → bouton édition
   const isOwnProfile = user?.hairdresser_profile?.id === hairdresserId;
   if (isOwnProfile) {
     return (
-      <div className="flex gap-2">
-        <Link
-          href="/pro/profil"
-          className="flex-1 flex items-center justify-center gap-2 bg-neutral-100 text-neutral-700 font-semibold py-3 rounded-xl text-[13px] hover:bg-neutral-200 transition-colors"
-        >
-          <Edit2 size={15} strokeWidth={2} />
+      <div className="flex items-center gap-2">
+        <SecondaryButton href="/pro/profil" fullWidth icon={<Edit2 size={15} strokeWidth={2} />}>
           Modifier mon profil
-        </Link>
-        <button
-          onClick={handleShare}
-          title="Partager mon profil"
-          className="w-11 h-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 transition-colors"
-        >
-          {shared
-            ? <Check size={15} className="text-neutral-900" />
-            : <Share2 size={15} />
-          }
-        </button>
-        {instagramUrl && (
-          <a
-            href={instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Instagram"
-            className="w-11 h-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 transition-colors"
-          >
-            <InstagramIcon size={16} />
-          </a>
-        )}
+        </SecondaryButton>
+        {shareButton}
+        {instagramButton}
       </div>
     );
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex items-center gap-2">
 
-      {/* S'abonner — bouton principal */}
-      <button
+      {/* S'abonner */}
+      <SecondaryButton
+        fullWidth
         onClick={handleFollow}
-        disabled={loadingFollow || !statusLoaded}
-        className={`flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-xl text-[13px] transition-all disabled:opacity-50 ${
-          following
-            ? 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-            : 'bg-neutral-900 text-white hover:bg-neutral-700'
-        }`}
+        loading={loadingFollow || !statusLoaded}
+        icon={following ? <UserCheck size={15} strokeWidth={2} /> : <UserPlus size={15} strokeWidth={2} />}
+        className={following ? 'bg-neutral-100 border-neutral-100' : ''}
       >
-        {following
-          ? <UserCheck size={15} strokeWidth={2} />
-          : <UserPlus size={15} strokeWidth={2} />
-        }
         {following ? 'Abonné' : "S'abonner"}
         {followersCount > 0 && (
-          <span className={`text-[11px] font-normal ${following ? 'text-neutral-400' : 'text-white/55'}`}>
-            {followersCount}
-          </span>
+          <span className="text-[12px] font-normal text-neutral-400">{followersCount}</span>
         )}
-      </button>
+      </SecondaryButton>
 
-      {/* Sauvegarder — icône */}
-      <button
+      {/* Sauvegarder */}
+      <IconButton
+        size="lg"
+        variant={saved ? 'filled' : 'outline'}
         onClick={handleSave}
         disabled={loadingSave || !statusLoaded}
+        aria-label={saved ? 'Retirer des favoris' : 'Sauvegarder'}
         title={saved ? 'Retirer des favoris' : 'Sauvegarder'}
-        className={`w-11 h-11 flex items-center justify-center rounded-xl border transition-all disabled:opacity-50 ${
-          saved
-            ? 'border-neutral-900 bg-neutral-900 text-white'
-            : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
-        }`}
       >
         <Heart size={16} strokeWidth={2} fill={saved ? 'currentColor' : 'none'} />
-      </button>
+      </IconButton>
 
-      {/* Partager — icône */}
-      <button
-        onClick={handleShare}
-        title="Partager ce profil"
-        className="w-11 h-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 transition-colors"
-      >
-        {shared
-          ? <Check size={15} className="text-neutral-900" />
-          : <Share2 size={15} />
-        }
-      </button>
-
-      {/* Instagram — icône */}
-      {instagramUrl && (
-        <a
-          href={instagramUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Instagram"
-          className="w-11 h-11 flex items-center justify-center rounded-xl border border-neutral-200 text-neutral-600 hover:border-neutral-400 transition-colors"
-        >
-          <InstagramIcon size={16} />
-        </a>
-      )}
+      {shareButton}
+      {instagramButton}
     </div>
   );
 }

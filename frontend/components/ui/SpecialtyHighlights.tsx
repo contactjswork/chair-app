@@ -45,14 +45,22 @@ export default function SpecialtyHighlights({ highlights }: { highlights: ApiSpe
 
   if (signals.length === 0) return null;
 
+  // Le signal le plus fort (référence, ou Top X local) passe en plein noir :
+  // c'est le classement, il doit se lire comme une distinction et non comme
+  // un attribut parmi d'autres. Trois pastilles grises identiques ne
+  // hiérarchisaient rien — le client ne savait pas où regarder.
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
-      {signals.map(({ key, Icon, label }) => (
+    <div className="flex flex-wrap gap-2 mb-5">
+      {signals.map(({ key, Icon, label }, i) => (
         <span
           key={key}
-          className="inline-flex items-center gap-1.5 text-[12px] font-semibold bg-neutral-50 border border-neutral-100 text-neutral-800 px-3 py-1.5 rounded-full"
+          className={`inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-full ${
+            i === 0
+              ? 'bg-neutral-900 text-white'
+              : 'bg-white border border-neutral-200 text-neutral-700'
+          }`}
         >
-          <Icon size={12} className="text-neutral-500" strokeWidth={2} />
+          <Icon size={12} className={i === 0 ? 'text-white' : 'text-neutral-400'} strokeWidth={2} />
           {label}
         </span>
       ))}

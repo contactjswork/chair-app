@@ -22,13 +22,23 @@ interface Props {
   avatarUrl: string | null;
 }
 
-// Bloc identité — composition compacte et hiérarchisée : avatar, nom,
-// signaux de réputation (max 3), localisation/statut, puis note/abonnés.
-// Objectif : compréhensible en moins de 3 secondes (cf. brief masterclass).
+// Bloc identité — ordre de lecture imposé : photo + nom + ville, puis
+// spécialité, puis note/avis, puis classement.
+//
+// Avant, l'avatar occupait une ligne entière pour lui seul avec la note en
+// pastille flottante à l'opposé (ombre + bordure, aucun ancrage), le nom
+// arrivait en dessous, et le nombre d'abonnés terminait en ligne grise
+// orpheline tout en bas. Trois informations chiffrées de même nature
+// éparpillées sur trois hauteurs différentes, plus ~90px de vertical perdu.
+//
+// Maintenant : nom et ville remontent à côté de l'avatar (le nom devient
+// lisible sans scroller), et note / avis / abonnés sont regroupés dans un
+// seul bandeau chiffré à filets — sobre, éditorial, et enfin comparable
+// d'un profil à l'autre.
 export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props) {
   const { user } = useAuth();
   const isOwnProfile = user?.hairdresser_profile?.id === hairdresser.id;
-  const hasRating   = hairdresser.reviews_count > 0;
+  const hasRating    = hairdresser.reviews_count > 0;
   const levelColor   = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
   const ring         = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   const streakDays   = hairdresser.chair_streak?.current_streak ?? 0;
@@ -39,21 +49,38 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
     hairdresser.city,
     salonStatus || null,
     hairdresser.years_experience ? `${hairdresser.years_experience} ans d'exp.` : null,
-  ].filter(Boolean).join('  ·  ');
+  ].filter(Boolean).join(' · ');
+
+  // Accroche : les mots du coiffeur en priorité, sinon ses spécialités —
+  // plutôt qu'un blanc, qui est exactement ce qui donne l'impression de
+  // "gros blocs vides".
+  const accroche = hairdresser.tagline?.trim()
+    || hairdresser.specialties.slice(0, 2).map((s) => s.name).join(' · ')
+    || null;
+
+  const stats: { value: string; label: string; star?: boolean }[] = [
+    ...(hasRating
+      ? [
+          { value: parseFloat(hairdresser.avg_rating).toFixed(1), label: 'Note', star: true },
+          { value: String(hairdresser.reviews_count), label: 'Avis' },
+        ]
+      : []),
+    { value: String(hairdresser.followers_count), label: hairdresser.followers_count > 1 ? 'Abonnés' : 'Abonné' },
+  ];
 
   return (
     <div className="px-4">
 
-      {/* Avatar + rating */}
-      <div className="flex items-end justify-between -mt-12 mb-5 relative z-10">
+      {/* ── 1. Photo + nom + ville ── */}
+      <div className="flex items-end gap-4 -mt-11 mb-4 relative z-10">
         <div
-          className="relative w-[82px] h-[82px] rounded-full p-[3px] flex-shrink-0"
+          className="relative w-[78px] h-[78px] rounded-full p-[3px] flex-shrink-0"
           style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
         >
           {ring.show && (
             <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />
           )}
-          <div className={`relative rounded-full overflow-hidden bg-neutral-200 shadow-md ${ring.show ? 'w-[calc(100%-6px)] h-[calc(100%-6px)] m-[3px]' : 'w-full h-full border-4 border-white'}`}>
+          <div className={`relative rounded-full overflow-hidden bg-neutral-200 ${ring.show ? 'w-[calc(100%-6px)] h-[calc(100%-6px)] m-[3px]' : 'w-full h-full border-4 border-white'}`}>
             {avatarUrl ? (
               <Image src={avatarUrl} alt={hairdresser.user.name} fill className="object-cover" />
             ) : (
@@ -73,46 +100,41 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
           {isOwnProfile && <PublicProfileOwnerActions variant="avatar" />}
         </div>
 
-        {hasRating && (
-          <div className="flex items-center gap-1.5 bg-white rounded-full px-3 py-1.5 shadow-sm border border-neutral-100 mb-1">
-            <Star size={13} className="fill-amber-400 stroke-none" />
-            <span className="text-[15px] font-bold text-neutral-900">
-              {parseFloat(hairdresser.avg_rating).toFixed(1)}
-            </span>
-            <span className="text-[12px] text-neutral-400">({hairdresser.reviews_count})</span>
+        <div className="flex-1 min-w-0 pb-1.5">
+          <div className="flex items-center gap-1.5">
+            <h1 className="text-[21px] font-bold text-neutral-900 leading-tight truncate">{hairdresser.user.name}</h1>
+            {hairdresser.is_verified && <BadgeCheck size={18} className="text-neutral-900 flex-shrink-0" />}
+            {hasChairPlus(hairdresser) && <PremiumBadge size="md" />}
           </div>
-        )}
+          {metaLine && (
+            <p className="text-[13px] text-neutral-500 mt-1 leading-snug flex items-center gap-1 truncate">
+              {hairdresser.city && <MapPin size={11} className="flex-shrink-0" />}
+              <span className="truncate">{metaLine}</span>
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Nom */}
-      <div className="flex items-center gap-2 mb-1">
-        <h1 className="text-[22px] font-bold text-neutral-900 leading-tight">{hairdresser.user.name}</h1>
-        {hairdresser.is_verified && <BadgeCheck size={19} className="text-neutral-900 flex-shrink-0" />}
-        {hasChairPlus(hairdresser) && <PremiumBadge size="md" />}
+      {/* ── 2. Spécialité / accroche ── */}
+      {accroche && (
+        <p className="text-[14px] text-neutral-700 leading-relaxed line-clamp-2">{accroche}</p>
+      )}
+
+      {/* ── 3. Note + avis (+ abonnés) ── */}
+      <div className="flex items-stretch border-y border-neutral-100 mt-4 mb-4">
+        {stats.map((s, i) => (
+          <div key={s.label} className={`flex-1 py-3 text-center ${i > 0 ? 'border-l border-neutral-100' : ''}`}>
+            <p className="flex items-center justify-center gap-1 text-[17px] font-bold text-neutral-900 leading-none">
+              {s.star && <Star size={13} className="fill-neutral-900 stroke-none" />}
+              {s.value}
+            </p>
+            <p className="text-[11px] text-neutral-400 mt-1.5">{s.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* "Pourquoi ce coiffeur est reconnu" — 1 à 3 signaux maximum */}
+      {/* ── 4. Classement / signaux de réputation ── */}
       <SpecialtyHighlights highlights={hairdresser.specialty_highlights ?? []} />
-
-      {/* Localisation · statut · expérience */}
-      {metaLine && (
-        <p className="text-[13px] text-neutral-400 mb-2 leading-snug flex items-center gap-1 flex-wrap">
-          {hairdresser.city && <MapPin size={11} className="flex-shrink-0" />}
-          {metaLine}
-        </p>
-      )}
-
-      {/* Tagline — accroche courte, 1 ligne */}
-      {hairdresser.tagline && (
-        <p className="text-[13px] text-neutral-500 italic mb-1 leading-snug line-clamp-1">
-          {hairdresser.tagline}
-        </p>
-      )}
-
-      {/* Abonnés */}
-      <p className="text-[12px] text-neutral-400 mb-4">
-        <span className="font-semibold text-neutral-700">{hairdresser.followers_count}</span> abonné{hairdresser.followers_count > 1 ? 's' : ''}
-      </p>
     </div>
   );
 }

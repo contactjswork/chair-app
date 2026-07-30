@@ -1,29 +1,33 @@
+import { ImageOff } from 'lucide-react';
 import type { ApiPost } from '@/lib/types';
 import PortfolioGrid from './PortfolioGrid';
+import EmptyState from './EmptyState';
 
 interface Props {
   posts: ApiPost[];
 }
 
 export default function PublicProfilePortfolio({ posts }: Props) {
+  // Avant : un rectangle gris de 14 unités de haut avec une phrase grise
+  // centrée dedans — le "gros bloc vide" typique. EmptyState existait déjà et
+  // n'était utilisé nulle part ici.
   if (posts.length === 0) {
     return (
-      <div className="px-4 md:px-0">
-        <div className="bg-neutral-50 border border-neutral-100 rounded-2xl py-14 text-center">
-          <p className="text-[13px] text-neutral-400">Aucune réalisation pour l&apos;instant.</p>
-        </div>
-      </div>
+      <EmptyState
+        icon={ImageOff}
+        title="Pas encore de réalisation"
+        subtitle="Ce coiffeur n'a pas encore publié de photos de son travail."
+      />
     );
   }
 
   return (
     <section>
-      <div className="px-4 md:px-0 flex items-baseline justify-between mb-3">
-        <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400">Portfolio</p>
-        <span className="text-[11px] text-neutral-400">
-          {posts.length} réalisation{posts.length > 1 ? 's' : ''}
-        </span>
-      </div>
+      {/* Le titre "PORTFOLIO" doublait l'onglet déjà sélectionné juste
+          au-dessus. Seul le décompte apporte une information. */}
+      <p className="px-4 md:px-0 text-[11px] text-neutral-400 mb-3">
+        {posts.length} réalisation{posts.length > 1 ? 's' : ''}
+      </p>
       <PortfolioGrid posts={posts} />
     </section>
   );
