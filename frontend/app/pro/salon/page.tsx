@@ -94,7 +94,7 @@ function JoinSalonPanel() {
   return (
     <div className="max-w-lg mx-auto py-6">
       {toast && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl transition-all ${
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 text-sm font-semibold px-5 py-3 rounded-[20px] shadow-xl transition-all ${
           toast.includes('Erreur') ? 'bg-red-600 text-white' : 'bg-neutral-900 text-white'
         }`}>
           {toast}
@@ -102,7 +102,7 @@ function JoinSalonPanel() {
       )}
 
       <div className="text-center mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 rounded-[22px] bg-neutral-100 flex items-center justify-center mx-auto mb-4">
           <Building2 size={28} className="text-neutral-400" />
         </div>
         <h2 className="text-lg font-bold text-neutral-900">Rejoindre un salon</h2>
@@ -130,7 +130,7 @@ function JoinSalonPanel() {
       {tab === 'search' && (
         <>
           {myRequests.filter((r) => r.status === 'pending').length > 0 && (
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4">
+            <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-4">
               <h3 className="text-xs font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Demandes envoyées</h3>
               <div className="space-y-2">
                 {myRequests.filter((r) => r.status === 'pending').map((req) => (
@@ -144,7 +144,7 @@ function JoinSalonPanel() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
             <div className="relative mb-4">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
               <input
@@ -165,7 +165,7 @@ function JoinSalonPanel() {
                 {results.map((salon) => {
                   const existingRequest = requestStatusForSalon(salon.id);
                   return (
-                    <div key={salon.id} className="border border-neutral-100 rounded-2xl p-4">
+                    <div key={salon.id} className="rounded-[20px] shadow-[0_2px_10px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-bold text-neutral-900 truncate">{salon.name}</h3>
@@ -226,7 +226,7 @@ function JoinSalonPanel() {
 
       {tab === 'invitations' && (
         invitations.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-10 text-center">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-10 text-center">
             <Mail size={32} className="text-neutral-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-neutral-700">Aucune invitation reçue</p>
             <p className="text-xs text-neutral-400 mt-1">Les salons pourront vous inviter à rejoindre leur équipe.</p>
@@ -234,7 +234,7 @@ function JoinSalonPanel() {
         ) : (
           <div className="space-y-3">
             {[...pendingInvitations, ...invitations.filter((i) => i.status !== 'pending')].map((inv) => (
-              <div key={inv.id} className={`bg-white rounded-2xl border p-4 ${inv.status === 'pending' ? 'border-neutral-200' : 'border-neutral-100 opacity-70'}`}>
+              <div key={inv.id} className={`bg-white rounded-[20px] shadow-[0_2px_10px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 ${inv.status !== 'pending' ? 'opacity-70' : ''}`}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 rounded-xl bg-neutral-100 flex-shrink-0 relative flex items-center justify-center overflow-hidden">
                     {inv.salon?.logo
@@ -318,14 +318,14 @@ function CreateSalonForm({ onCreated }: { onCreated: (salon: ApiSalonFull) => vo
   return (
     <div className="max-w-lg mx-auto py-8">
       <div className="text-center mb-6">
-        <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 rounded-[22px] bg-neutral-100 flex items-center justify-center mx-auto mb-4">
           <Building2 size={28} className="text-neutral-400" />
         </div>
         <h2 className="text-lg font-bold text-neutral-900">Créez la page de votre salon</h2>
         <p className="text-sm text-neutral-500 mt-1">Visible publiquement sur CHAIR</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-neutral-100 p-5 space-y-3">
+      <form onSubmit={handleSubmit} className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-5 space-y-3">
         {error && (
           <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">{error}</div>
         )}
@@ -596,13 +596,13 @@ export default function DashboardSalonPage() {
 
         {/* Toast */}
         {actionMsg && (
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl">
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 text-white text-sm font-semibold px-5 py-3 rounded-[20px] shadow-xl">
             {actionMsg}
           </div>
         )}
 
-        {/* Header salon */}
-        <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-4">
+        {/* Header salon — même relief que la fiche publique du salon */}
+        <div className="bg-white rounded-[28px] shadow-[0_10px_30px_-12px_rgba(10,10,10,0.18)] ring-1 ring-neutral-50 overflow-hidden mb-5">
           <div className="relative h-28 bg-neutral-200 group">
             {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
             {isSalonOwner && (
@@ -622,7 +622,7 @@ export default function DashboardSalonPage() {
           <div className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="relative w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center group">
+                <div className="relative w-12 h-12 rounded-[16px] bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center group">
                   {logoUrl
                     ? <Image src={logoUrl} alt={salon.name} fill className="object-cover" sizes="48px" />
                     : <Building2 size={18} className="text-neutral-400" />
@@ -659,7 +659,7 @@ export default function DashboardSalonPage() {
                   href={`/salon/${salon.slug}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 border border-neutral-200 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 ring-1 ring-neutral-200 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
                 >
                   <ExternalLink size={12} />
                   Voir
@@ -680,7 +680,7 @@ export default function DashboardSalonPage() {
 
         {/* Formulaire édition */}
         {editing && isSalonOwner && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4 space-y-3">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5 space-y-3">
             <h2 className="text-sm font-bold text-neutral-900 mb-3">Modifier les informations</h2>
             {[
               { key: 'name',        label: 'Nom du salon', type: 'text' },
@@ -744,7 +744,7 @@ export default function DashboardSalonPage() {
 
         {/* Demandes en attente */}
         {isSalonOwner && pending_requests.length > 0 && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
             <h2 className="text-sm font-bold text-neutral-900 mb-3 flex items-center gap-2">
               Demandes en attente
               <span className="bg-neutral-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -795,15 +795,13 @@ export default function DashboardSalonPage() {
         )}
 
         {/* Équipe actuelle */}
-        <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4">
+        <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
           <h2 className="text-sm font-bold text-neutral-900 mb-3 flex items-center gap-2">
             <Users size={15} className="text-neutral-400" />
             L&apos;équipe ({salon.hairdressers?.length ?? 0} coiffeur{(salon.hairdressers?.length ?? 0) > 1 ? 's' : ''})
           </h2>
           {(salon.hairdressers?.length ?? 0) === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-6">
-              Aucun coiffeur dans l&apos;équipe. Les coiffeurs peuvent demander à rejoindre votre salon.
-            </p>
+            <p className="text-sm text-neutral-400 text-center py-6">Aucun coiffeur dans l&apos;équipe.</p>
           ) : (
             <div className="space-y-2">
               {salon.hairdressers?.map((h) => {
@@ -843,9 +841,10 @@ export default function DashboardSalonPage() {
           )}
         </div>
 
-        {/* Déconnexion (salon_owner) */}
-        {isSalonOwner && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+        {/* Déconnexion (gérant) / Quitter le salon (coiffeur membre) — un seul
+            bloc, le contenu dépend du rôle plutôt que deux blocs dupliqués. */}
+        <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
+          {isSalonOwner ? (
             <button
               onClick={logout}
               className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
@@ -853,12 +852,7 @@ export default function DashboardSalonPage() {
               <LogOut size={15} />
               Se déconnecter
             </button>
-          </div>
-        )}
-
-        {/* Quitter le salon (coiffeur membre, pas le gérant) */}
-        {!isSalonOwner && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+          ) : (
             <button
               onClick={handleLeaveSalon}
               className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors"
@@ -866,8 +860,8 @@ export default function DashboardSalonPage() {
               <LogOut size={15} />
               Quitter ce salon
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </main>
 
       {logoCropSrc && (

@@ -223,7 +223,7 @@ export default function FauteuilsPage() {
             ) : (
               <div className="space-y-2">
                 {activeListings.map((r) => (
-                  <div key={r.id} className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+                  <div key={r.id} className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
                     <OwnerChairCard
                       bare
                       title={r.title}
@@ -299,7 +299,7 @@ export default function FauteuilsPage() {
                         <button
                           key={req.id}
                           onClick={() => openRequestDetail(req)}
-                          className="w-full flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-3 text-left hover:border-neutral-300 transition-colors"
+                          className="w-full flex items-center gap-3 bg-white rounded-[22px] shadow-[0_2px_12px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-3 text-left hover:shadow-[0_8px_24px_-8px_rgba(10,10,10,0.18)] transition-all"
                         >
                           <div className="w-9 h-9 rounded-full bg-neutral-200 flex-shrink-0 flex items-center justify-center overflow-hidden">
                             <span className="text-sm font-bold text-neutral-500">{req.hairdresser?.user?.name?.charAt(0).toUpperCase() ?? '?'}</span>

@@ -11,6 +11,8 @@ import {
   ArrowLeft, RefreshCw, Clock, Shield, CheckCircle2,
   Smartphone, Copy, Check, Scissors,
 } from 'lucide-react';
+import { SecondaryButton } from '@/components/ui/Button';
+import { FilterChip } from '@/components/ui/Badge';
 
 export default function MonQrPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
@@ -139,27 +141,23 @@ export default function MonQrPage() {
         {/* Sélection de la spécialité — la visite/l'avis qui en découle sont
             rattachés à cette spécialité, pas juste au score global. */}
         {mySpecialties.length > 0 && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Scissors size={13} className="text-neutral-400" />
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+              <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-neutral-400">
                 Quelle prestation ?
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {mySpecialties.map((s) => (
-                <button
+                <FilterChip
                   key={s.specialty_id}
+                  active={specialtyId === s.specialty_id}
                   onClick={() => handlePickSpecialty(s.specialty_id)}
                   disabled={refreshing}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all disabled:opacity-50 ${
-                    specialtyId === s.specialty_id
-                      ? 'bg-neutral-900 text-white border-neutral-900'
-                      : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
-                  }`}
                 >
                   {s.specialty_name}
-                </button>
+                </FilterChip>
               ))}
             </div>
             {!specialtyId && (
@@ -172,11 +170,11 @@ export default function MonQrPage() {
 
         {/* QR Code card */}
         {loading ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-10 flex items-center justify-center">
+          <div className="bg-white rounded-[28px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-10 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
           </div>
         ) : fetchError ? (
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-6 text-center space-y-3">
+          <div className="bg-red-50 rounded-[24px] ring-1 ring-red-100 p-6 text-center space-y-3">
             <p className="text-sm font-bold text-red-700">Impossible de charger le QR Code</p>
             <p className="text-xs text-red-500 leading-relaxed">{fetchError}</p>
             <button
@@ -187,7 +185,7 @@ export default function MonQrPage() {
             </button>
           </div>
         ) : qr ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+          <div className="bg-white rounded-[28px] shadow-[0_6px_24px_-8px_rgba(10,10,10,0.14)] ring-1 ring-neutral-50 overflow-hidden">
             {/* Timer bar */}
             <div className="h-1.5 bg-neutral-100 relative">
               <div
@@ -200,7 +198,7 @@ export default function MonQrPage() {
 
             <div className="p-6 flex flex-col items-center gap-5">
               {/* QR */}
-              <div className="p-4 bg-white rounded-2xl border-2 border-neutral-100 shadow-sm">
+              <div className="p-4 bg-white rounded-[24px] ring-1 ring-neutral-100 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)]">
                 <QRCodeSVG
                   value={qr.scan_url}
                   size={220}
@@ -234,30 +232,30 @@ export default function MonQrPage() {
 
               {/* Actions */}
               <div className="flex gap-2 w-full">
-                <button
+                <SecondaryButton
                   onClick={() => fetchToken(true, true, specialtyId)}
                   disabled={refreshing}
-                  className="flex-1 flex items-center justify-center gap-2 border border-neutral-200 rounded-xl py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                  icon={<RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />}
+                  className="flex-1"
                 >
-                  <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
                   Nouveau QR
-                </button>
-                <button
+                </SecondaryButton>
+                <SecondaryButton
                   onClick={copyLink}
-                  className="flex-1 flex items-center justify-center gap-2 border border-neutral-200 rounded-xl py-2.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 transition-colors"
+                  icon={copied ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}
+                  className="flex-1"
                 >
-                  {copied ? <Check size={13} className="text-green-600" /> : <Copy size={13} />}
                   {copied ? 'Copié !' : 'Copier le lien'}
-                </button>
+                </SecondaryButton>
               </div>
             </div>
           </div>
         ) : null}
 
         {/* Instructions */}
-        <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+        <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 overflow-hidden">
           <div className="px-5 py-4 border-b border-neutral-50">
-            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">
+            <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-neutral-400">
               Mode d&apos;emploi
             </p>
           </div>
@@ -265,7 +263,7 @@ export default function MonQrPage() {
             {
               icon: Smartphone,
               title: 'Après la prestation',
-              desc: 'Montrez ce QR à votre client. Il peut scanner avec n\'importe quel appareil photo.',
+              desc: 'Montrez ce QR à votre client — scannable avec n\'importe quel appareil photo.',
             },
             {
               icon: CheckCircle2,
@@ -275,7 +273,7 @@ export default function MonQrPage() {
             {
               icon: Shield,
               title: 'Avis certifié débloqué',
-              desc: 'Il peut laisser un avis marqué "Visite vérifiée" qui booste votre réputation.',
+              desc: 'Il peut laisser un avis « Visite vérifiée », qui booste votre réputation.',
             },
           ].map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex items-start gap-4 px-5 py-4 border-b border-neutral-50 last:border-0">
@@ -291,11 +289,10 @@ export default function MonQrPage() {
         </div>
 
         {/* Anti-fraude info */}
-        <div className="flex items-start gap-3 px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-100">
+        <div className="flex items-start gap-3 px-4 py-3.5 bg-neutral-50 rounded-2xl">
           <Shield size={14} className="text-neutral-400 flex-shrink-0 mt-0.5" />
           <p className="text-[11px] text-neutral-400 leading-relaxed">
-            Ce QR est unique et change automatiquement toutes les {qr?.ttl_minutes ?? 30} minutes.
-            Un QR photographié et partagé sera inutilisable une fois expiré.
+            QR unique, renouvelé toutes les {qr?.ttl_minutes ?? 30} minutes — une capture photographiée devient inutilisable après expiration.
           </p>
         </div>
 

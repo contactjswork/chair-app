@@ -78,7 +78,7 @@ function nextStage(current: ApplicantStatus): ApplicantStatus | null {
   return STAGE_ORDER[idx + 1];
 }
 
-const inputCls  = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors';
+const inputCls  = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-neutral-400 transition-colors';
 
 export default function RecrutementPage() {
   const { user, isLoading } = useRequireAuth(['salon_owner']);
@@ -344,7 +344,7 @@ export default function RecrutementPage() {
           )}
 
           {wizardStep === 3 && (
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <h3 className="text-base font-bold text-neutral-900">{form.title || 'Sans titre'}</h3>
               </div>

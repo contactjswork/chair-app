@@ -40,17 +40,17 @@ const BLOCK: Record<string, { bg:string; bar:string; text:string; sub:string; la
 const STATUS_ACTIONS: Partial<Record<AppointmentStatus, {label:string; status:AppointmentStatus; cls:string; Icon: React.FC<{size?:number}>}[]>> = {
   pending: [
     { label:'Confirmer', status:'confirmed', cls:'bg-emerald-500 text-white', Icon:Check },
-    { label:'Refuser',   status:'declined',  cls:'bg-red-50 text-red-600 border border-red-200', Icon:X },
+    { label:'Refuser',   status:'declined',  cls:'bg-red-50 text-red-600', Icon:X },
   ],
   confirmed: [
     { label:'Terminé',   status:'completed', cls:'bg-neutral-900 text-white', Icon:CheckCircle2 },
     { label:'Absent',    status:'no_show',   cls:'bg-neutral-100 text-neutral-700', Icon:UserX },
-    { label:'Annuler',   status:'cancelled', cls:'bg-red-50 text-red-600 border border-red-200', Icon:Ban },
+    { label:'Annuler',   status:'cancelled', cls:'bg-red-50 text-red-600', Icon:Ban },
   ],
   completed: [],
-  no_show:   [{ label:'Réactiver', status:'confirmed', cls:'bg-emerald-50 text-emerald-700 border border-emerald-200', Icon:Check }],
-  cancelled: [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700 border border-amber-200', Icon:AlertTriangle }],
-  declined:  [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700 border border-amber-200', Icon:AlertTriangle }],
+  no_show:   [{ label:'Réactiver', status:'confirmed', cls:'bg-emerald-50 text-emerald-700', Icon:Check }],
+  cancelled: [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700', Icon:AlertTriangle }],
+  declined:  [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700', Icon:AlertTriangle }],
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -197,7 +197,7 @@ function AppointmentSheet({
                 type="date"
                 value={newDate}
                 onChange={e=>setNewDate(e.target.value)}
-                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300 transition-colors"
+                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
             <div>
@@ -206,7 +206,7 @@ function AppointmentSheet({
                 type="time"
                 value={newTime}
                 onChange={e=>setNewTime(e.target.value)}
-                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300 transition-colors"
+                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
             <div>
@@ -217,7 +217,7 @@ function AppointmentSheet({
                 onChange={e=>setNewDur(e.target.value)}
                 min={15}
                 step={15}
-                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300 transition-colors"
+                className="w-full text-[12px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
           </div>
@@ -241,7 +241,7 @@ function AppointmentSheet({
           {/* Notification note */}
           <p className="mt-2.5 text-[11px] text-neutral-400 flex items-center gap-1.5">
             <Bell size={11} className="text-neutral-400 flex-shrink-0" />
-            Le client sera notifié automatiquement de tout changement.
+            Le client est notifié automatiquement.
           </p>
         </div>
 
@@ -477,18 +477,18 @@ function BlockCreateSheet({
           <div>
             <label className="text-[10px] text-neutral-400 font-medium block mb-1">Début</label>
             <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
-              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300" />
+              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
           </div>
           <div>
             <label className="text-[10px] text-neutral-400 font-medium block mb-1">Fin</label>
             <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
-              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300" />
+              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
           </div>
         </div>
         <input
           type="text" value={reason} onChange={e=>setReason(e.target.value)}
           placeholder="Motif (optionnel)"
-          className="w-full text-[13px] text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 border border-neutral-100 focus:outline-none focus:border-neutral-300 placeholder:text-neutral-300 mb-3"
+          className="w-full text-[13px] text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 placeholder:text-neutral-300 mb-3"
         />
         {error && <p className="text-[12px] text-red-600 mb-2">{error}</p>}
         <div className="flex gap-2">
@@ -807,7 +807,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
     <>
       {/* Résumé du jour */}
       <div className="flex items-stretch gap-2 px-3 pt-2 pb-1 overflow-x-auto">
-        <div className="flex-shrink-0 min-w-[104px] bg-neutral-50 rounded-2xl px-3 py-2">
+        <div className="flex-shrink-0 min-w-[104px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400">{next ? (isToday?'Prochain':'Premier') : 'RDV'}</p>
           {next ? (
             <p className="text-[12px] font-bold text-neutral-900 truncate">{fmtTime(next.appointment_time)} · {next.client_name}</p>
@@ -815,20 +815,20 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
             <p className="text-[12px] font-semibold text-neutral-300">Aucun</p>
           )}
         </div>
-        <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2">
+        <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Users size={9}/>RDV</p>
           <p className="text-[14px] font-bold text-neutral-900">{dayApts.length}</p>
         </div>
-        <div className="flex-shrink-0 min-w-[74px] bg-neutral-50 rounded-2xl px-3 py-2">
+        <div className="flex-shrink-0 min-w-[74px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Euro size={9}/>CA</p>
           <p className="text-[14px] font-bold text-neutral-900">{revenue}€</p>
         </div>
-        <div className="flex-shrink-0 min-w-[90px] bg-neutral-50 rounded-2xl px-3 py-2">
+        <div className="flex-shrink-0 min-w-[90px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Clock size={9}/>Libre</p>
           <p className="text-[12px] font-bold text-neutral-900">{freeSlot!==null ? fromMin(freeSlot) : '—'}</p>
         </div>
         {late>0 && (
-          <div className="flex-shrink-0 min-w-[80px] bg-red-50 rounded-2xl px-3 py-2">
+          <div className="flex-shrink-0 min-w-[80px] bg-red-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(220,38,38,0.15)]">
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-red-400 flex items-center gap-1"><AlertTriangle size={9}/>Retard</p>
             <p className="text-[14px] font-bold text-red-600">{late}</p>
           </div>
@@ -1117,27 +1117,29 @@ function ListView({ appointments, onSelectApt }: { appointments:ApiAppointment[]
         const label = ds===todayStr ? "Aujourd'hui" : d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
         const rev = dayRevenue(apts, ds);
         return (
-          <div key={ds}>
-            <div className="sticky top-0 z-10 bg-neutral-50/95 backdrop-blur-sm px-4 py-2 border-b border-neutral-100 flex items-center justify-between">
+          <div key={ds} className="pb-2">
+            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm px-4 py-2 flex items-center justify-between">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 capitalize">{label}</p>
               <p className="text-[11px] text-neutral-400">{apts.length} RDV{rev>0?` · ${rev}€`:''}</p>
             </div>
-            {apts.map(apt => {
-              const b = BLOCK[apt.status] ?? BLOCK.confirmed;
-              return (
-                <button key={apt.id} onClick={()=>onSelectApt(apt)}
-                  className="w-full flex items-center gap-3 px-4 py-3 border-b border-neutral-50 hover:bg-neutral-50 transition-colors text-left">
-                  <div className="w-11 flex-shrink-0 text-[12px] font-bold text-neutral-900">{fmtTime(apt.appointment_time)}</div>
-                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${b.bar}`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-semibold text-neutral-900 truncate">{apt.client_name}</p>
-                    <p className="text-[11px] text-neutral-400 truncate">{apt.service}</p>
-                  </div>
-                  {apt.price && <span className="text-[12px] font-semibold text-neutral-500 flex-shrink-0">{parseFloat(apt.price)}€</span>}
-                  <ChevronRight size={14} className="text-neutral-200 flex-shrink-0" />
-                </button>
-              );
-            })}
+            <div className="px-3 space-y-2">
+              {apts.map(apt => {
+                const b = BLOCK[apt.status] ?? BLOCK.confirmed;
+                return (
+                  <button key={apt.id} onClick={()=>onSelectApt(apt)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white shadow-[0_2px_10px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 hover:shadow-[0_6px_16px_-6px_rgba(10,10,10,0.16)] active:scale-[0.99] transition-all text-left">
+                    <div className="w-11 flex-shrink-0 text-[12px] font-bold text-neutral-900">{fmtTime(apt.appointment_time)}</div>
+                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${b.bar}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-semibold text-neutral-900 truncate">{apt.client_name}</p>
+                      <p className="text-[11px] text-neutral-400 truncate">{apt.service}</p>
+                    </div>
+                    {apt.price && <span className="text-[12px] font-semibold text-neutral-500 flex-shrink-0">{parseFloat(apt.price)}€</span>}
+                    <ChevronRight size={14} className="text-neutral-200 flex-shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         );
       })}
@@ -1153,7 +1155,7 @@ function PendingBanner({pending,updating,collapsed,onToggle,onConfirm,onDecline,
   onOpen:(apt:ApiAppointment)=>void;
 }) {
   return (
-    <div className="mx-3 mt-2 bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+    <div className="mx-3 mt-2 bg-amber-50 rounded-[22px] shadow-[0_4px_16px_-8px_rgba(245,158,11,0.22)] ring-1 ring-amber-100 overflow-hidden">
       <button onClick={onToggle} className="w-full px-4 py-3 flex items-center gap-3 text-left">
         <div className="w-7 h-7 bg-amber-400 rounded-xl flex items-center justify-center flex-shrink-0">
           <Bell size={13} className="text-white"/>
@@ -1176,7 +1178,7 @@ function PendingBanner({pending,updating,collapsed,onToggle,onConfirm,onDecline,
                 </button>
                 <div className="flex gap-2">
                   <button onClick={()=>onConfirm(apt.id)} disabled={updating===apt.id} className="flex-1 flex items-center justify-center gap-1.5 bg-neutral-900 text-white text-[11px] font-bold py-2.5 rounded-xl disabled:opacity-50"><Check size={11}/>Confirmer</button>
-                  <button onClick={()=>onDecline(apt.id)} disabled={updating===apt.id} className="flex-1 flex items-center justify-center gap-1.5 border border-amber-200 bg-white text-neutral-600 text-[11px] font-semibold py-2.5 rounded-xl hover:border-red-300 hover:text-red-500 disabled:opacity-50"><X size={11}/>Refuser</button>
+                  <button onClick={()=>onDecline(apt.id)} disabled={updating===apt.id} className="flex-1 flex items-center justify-center gap-1.5 bg-white shadow-sm text-neutral-600 text-[11px] font-semibold py-2.5 rounded-xl hover:text-red-500 disabled:opacity-50"><X size={11}/>Refuser</button>
                 </div>
               </div>
             );
@@ -1409,7 +1411,7 @@ export default function AgendaPage() {
 
       {/* AI hint */}
       {aiHint&&(
-        <div className="mx-3 mt-2 bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2.5 flex items-center gap-2">
+        <div className="mx-3 mt-2 bg-neutral-50 rounded-2xl shadow-[0_2px_10px_-6px_rgba(10,10,10,0.15)] ring-1 ring-neutral-100 px-4 py-2.5 flex items-center gap-2">
           <span className="w-1.5 h-1.5 bg-neutral-900 rounded-full flex-shrink-0"/>
           <p className="text-[12px] text-neutral-800 font-medium flex-1">{aiHint}</p>
           <button onClick={()=>setAiHint(null)} className="text-neutral-400"><X size={13}/></button>

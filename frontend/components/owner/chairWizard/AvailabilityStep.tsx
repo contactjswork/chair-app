@@ -66,7 +66,7 @@ export default function AvailabilityStep({ availableDays, onToggleDay, blockedDa
         <div className="flex items-center justify-between mb-2">
           <p className="text-xs font-semibold text-neutral-700">Bloquer des dates précises (vacances, indisponibilité...)</p>
         </div>
-        <div className="bg-white border border-neutral-200 rounded-2xl p-3">
+        <div className="bg-white shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 rounded-2xl p-3">
           <div className="flex items-center justify-between mb-2 px-1">
             <button type="button" onClick={() => setMonthOffset((m) => m - 1)} className="w-7 h-7 rounded-full hover:bg-neutral-100 flex items-center justify-center">
               <ChevronLeft size={15} />

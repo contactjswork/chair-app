@@ -48,7 +48,7 @@ function ServiceForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-neutral-50 border border-neutral-200 rounded-xl p-4 space-y-3">
+    <form onSubmit={handleSubmit} className="bg-neutral-50 ring-1 ring-neutral-100 rounded-2xl p-4 space-y-3">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -195,9 +195,9 @@ function SpecialtyServiceCard({
 }) {
   const label = specialty?.name ?? 'Autres services';
   return (
-    <div className="border border-neutral-200 rounded-2xl overflow-hidden">
+    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3.5 bg-neutral-50">
-        <div className="w-11 h-11 rounded-xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
+        <div className="w-11 h-11 rounded-2xl overflow-hidden bg-neutral-100 flex-shrink-0 flex items-center justify-center">
           {specialty?.icon
             ? <span className="text-[20px] leading-none">{specialty.icon}</span>
             : specialty
@@ -218,8 +218,8 @@ function SpecialtyServiceCard({
           {specialty && <AlertTriangle size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />}
           <p className={`text-[11px] leading-relaxed ${specialty ? 'text-amber-700' : 'text-neutral-500'}`}>
             {specialty
-              ? "Cette spécialité reste invisible dans les recherches précises tant qu'aucun service n'y est rattaché."
-              : "Pas de spécialité qui correspond à une prestation ? Créez un service personnalisé — il reste référencé par son nom dans la recherche CHAIR."}
+              ? 'Invisible dans les recherches tant qu\'aucun service n\'est ajouté.'
+              : 'Aucune spécialité ne correspond ? Créez un service personnalisé, référencé par son nom dans la recherche.'}
           </p>
         </div>
       )}
@@ -420,10 +420,9 @@ export default function DashboardServicesPage() {
 
       <div className="px-4 space-y-4">
         {mySpecialties.length === 0 && (
-          <div className="text-center py-8 border border-dashed border-neutral-200 rounded-xl">
-            <p className="text-neutral-500 text-sm mb-1">Aucune spécialité sélectionnée</p>
-            <p className="text-neutral-400 text-xs mb-1 px-6 leading-relaxed">
-              Choisissez vos spécialités depuis votre profil, ou ajoutez directement un service personnalisé ci-dessous.
+          <div className="text-center py-8 px-6 bg-neutral-50 rounded-[20px]">
+            <p className="text-neutral-500 text-sm leading-relaxed">
+              Aucune spécialité sélectionnée — choisissez-les depuis votre profil, ou ajoutez un service personnalisé ci-dessous.
             </p>
           </div>
         )}

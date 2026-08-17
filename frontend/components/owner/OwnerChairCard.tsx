@@ -36,7 +36,7 @@ export default function OwnerChairCard({ title, thumbnailUrl, photoCount, priceP
     <button
       onClick={onClick}
       className={`w-full text-left bg-white overflow-hidden hover:bg-neutral-50 transition-colors flex ${
-        bare ? '' : `rounded-2xl border ${status === 'disabled' ? 'border-neutral-100' : 'border-neutral-100'}`
+        bare ? '' : 'rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100'
       } ${status === 'disabled' ? 'opacity-60' : ''}`}
     >
       <div className="w-24 h-24 bg-neutral-100 flex-shrink-0 relative">
@@ -58,7 +58,7 @@ export default function OwnerChairCard({ title, thumbnailUrl, photoCount, priceP
           <p className="text-sm font-bold text-neutral-900 line-clamp-1">{title}</p>
           <ChevronRight size={14} className="text-neutral-300 flex-shrink-0" />
         </div>
-        <div className="flex gap-2 text-xs text-neutral-500 mb-1.5">
+        <div className="flex gap-2 text-xs font-semibold text-neutral-700 mb-1.5">
           {pricePerDay != null && <span className="flex items-center gap-0.5"><Euro size={9} />{pricePerDay}€/j</span>}
         </div>
         <div className="flex items-center gap-2">

@@ -95,59 +95,59 @@ export default function ProComptePage() {
           <p className="text-sm text-neutral-400 mt-0.5">Vos informations personnelles</p>
         </div>
 
-        <form onSubmit={handleSaveProfile} className="bg-white rounded-2xl border border-neutral-100 p-5 space-y-4">
+        <form onSubmit={handleSaveProfile} className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 space-y-4">
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Nom complet</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Email</label>
             <input type="email" value={user.email} disabled
-              className="w-full px-4 py-3 rounded-xl border border-neutral-100 bg-neutral-50 text-sm text-neutral-400" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm text-neutral-400" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Téléphone</label>
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
               placeholder="06 12 34 56 78"
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Ville</label>
             <input type="text" value={city ?? ''} onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button type="submit" disabled={saving}
-            className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-semibold py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors disabled:opacity-60">
+            className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-700 active:scale-[0.98] transition-all disabled:opacity-60">
             {saved ? <><Check size={15} />Enregistré</> : saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </form>
 
-        <form onSubmit={handleChangePassword} className="bg-white rounded-2xl border border-neutral-100 p-5 space-y-4 mt-4">
-          <h2 className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Mot de passe</h2>
+        <form onSubmit={handleChangePassword} className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 space-y-4 mt-4">
+          <h2 className="text-[11px] font-bold text-neutral-400 uppercase tracking-[0.18em]">Mot de passe</h2>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Mot de passe actuel</label>
             <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Nouveau mot de passe</label>
             <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={8}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
           <div>
             <label className="block text-[11px] font-semibold tracking-[0.18em] uppercase text-neutral-400 mb-1.5">Confirmer</label>
             <input type="password" value={newPasswordConfirm} onChange={(e) => setNewPasswordConfirm(e.target.value)} required minLength={8}
-              className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-neutral-400 transition-colors" />
+              className="w-full px-4 py-3 rounded-xl bg-neutral-50 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all" />
           </div>
 
           {pwError && <p className="text-sm text-red-600">{pwError}</p>}
 
           <button type="submit" disabled={pwSaving}
-            className="w-full flex items-center justify-center gap-2 border border-neutral-200 text-neutral-700 font-semibold py-3 rounded-xl text-sm hover:bg-neutral-50 transition-colors disabled:opacity-60">
+            className="w-full flex items-center justify-center gap-2 bg-neutral-50 text-neutral-700 font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-100 active:scale-[0.98] transition-all disabled:opacity-60">
             {pwSaved ? <><Check size={15} />Mis à jour</> : pwSaving ? 'Mise à jour...' : 'Changer le mot de passe'}
           </button>
         </form>

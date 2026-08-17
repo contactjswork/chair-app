@@ -131,7 +131,7 @@ export default function SalonOwnerDashboard() {
         {/* Double identité : proposer d'activer le mode coiffeur si le gérant
             coupe lui-même dans son salon */}
         {salon && !user?.has_hairdresser_profile && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4 flex items-center gap-3.5">
+          <div className="bg-white rounded-[22px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 flex items-center gap-3.5">
             <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
               <Scissors size={16} className="text-neutral-500" />
             </div>
@@ -159,7 +159,7 @@ export default function SalonOwnerDashboard() {
 
         {/* Salon card */}
         {salon ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+          <div className="bg-white rounded-[26px] shadow-[0_8px_26px_-10px_rgba(10,10,10,0.16)] ring-1 ring-neutral-50 overflow-hidden">
             <Link href="/pro/salon" className="block hover:opacity-90 transition-opacity">
               <div className="relative h-24 bg-neutral-200">
                 {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
@@ -212,7 +212,7 @@ export default function SalonOwnerDashboard() {
             </Link>
           </div>
         ) : (
-          <Link href="/pro/salon" className="flex items-center gap-3 p-4 bg-neutral-900 text-white rounded-2xl">
+          <Link href="/pro/salon" className="flex items-center gap-3 p-4 bg-neutral-900 text-white rounded-[22px]">
             <Building2 size={20} className="flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-semibold">Créez la page de votre salon</p>
@@ -244,7 +244,7 @@ export default function SalonOwnerDashboard() {
 
         {/* Avis récents — ce qui s'est passé depuis la dernière visite */}
         {recentReviews.length > 0 && (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+          <div className="bg-white rounded-[22px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
             <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-[0.15em] mb-3">Avis récents</p>
             <div className="space-y-3">
               {recentReviews.slice(0, 3).map((r) => (

@@ -74,14 +74,14 @@ export default function NouveauRendezVousPage() {
 
         <div className="mt-2 space-y-4">
           {/* Client */}
-          <section className="bg-neutral-50 rounded-2xl p-4 space-y-3">
+          <section className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-400">Client</p>
             <div>
               <label className="text-xs font-medium text-neutral-600 block mb-1">Nom complet</label>
               <input
                 type="text" value={clientName} onChange={(e) => setClientName(e.target.value)}
                 placeholder="Ex : Camille Dupont"
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
             <div>
@@ -89,7 +89,7 @@ export default function NouveauRendezVousPage() {
               <input
                 type="email" value={clientEmail} onChange={(e) => setClientEmail(e.target.value)}
                 placeholder="client@email.fr"
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
             <div>
@@ -97,27 +97,26 @@ export default function NouveauRendezVousPage() {
               <input
                 type="tel" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)}
                 placeholder="06 12 34 56 78"
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
               />
             </div>
           </section>
 
           {/* Prestation */}
-          <section className="bg-neutral-50 rounded-2xl p-4 space-y-3">
+          <section className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-400">Prestation</p>
             {loadingServices ? (
               <div className="h-12 bg-neutral-100 rounded-xl animate-pulse" />
             ) : services.length === 0 ? (
               <p className="text-xs text-neutral-400 leading-relaxed">
                 Aucun service configuré.{' '}
-                <a href="/pro/services" className="underline font-semibold text-neutral-600">Ajoutez-en un</a>{' '}
-                avant de créer un rendez-vous.
+                <a href="/pro/services" className="underline font-semibold text-neutral-600">Ajoutez-en un</a>
               </p>
             ) : (
               <select
                 value={serviceId}
                 onChange={(e) => setServiceId(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
               >
                 <option value="">Choisir une prestation</option>
                 {services.map((s) => (
@@ -130,33 +129,33 @@ export default function NouveauRendezVousPage() {
           </section>
 
           {/* Date / heure */}
-          <section className="bg-neutral-50 rounded-2xl p-4 space-y-3">
+          <section className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-400">Créneau</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-neutral-600 block mb-1">Date</label>
                 <input
                   type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                  className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                 />
               </div>
               <div>
                 <label className="text-xs font-medium text-neutral-600 block mb-1">Heure</label>
                 <input
                   type="time" value={time} onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                  className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                 />
               </div>
             </div>
           </section>
 
           {/* Note */}
-          <section className="bg-neutral-50 rounded-2xl p-4 space-y-2">
+          <section className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-2">
             <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-400">Note (optionnel)</p>
             <textarea
               value={message} onChange={(e) => setMessage(e.target.value)} rows={2}
               placeholder="Allergie, préférence, contexte..."
-              className="w-full px-4 py-3 bg-white border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 transition-colors resize-none"
+              className="w-full px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl text-sm focus:outline-none focus:ring-neutral-300 transition-all resize-none"
             />
           </section>
 
@@ -165,7 +164,7 @@ export default function NouveauRendezVousPage() {
           <button
             onClick={handleSubmit}
             disabled={!canSubmit || saving}
-            className="w-full py-3.5 bg-neutral-900 text-white text-sm font-semibold rounded-2xl disabled:opacity-40 hover:bg-neutral-700 transition-colors"
+            className="w-full py-3.5 bg-neutral-900 text-white text-sm font-semibold rounded-[22px] disabled:opacity-40 hover:bg-neutral-700 transition-colors"
           >
             {saving ? 'Création...' : 'Créer le rendez-vous'}
           </button>

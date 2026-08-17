@@ -49,7 +49,7 @@ function StatCard({
   trend?: { direction: 'up' | 'down' | 'stable'; pct: number };
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
       <div className="flex items-center justify-between mb-3">
         <Icon size={15} className="text-neutral-400" strokeWidth={1.5} />
         {trend && <Trend direction={trend.direction} pct={trend.pct} />}
@@ -294,7 +294,7 @@ export default function PerformancePage() {
                   ))}
                 </div>
               </div>
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+              <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
                 <div className="flex items-center gap-1.5 mb-3">
                   {CHART_METRICS.map((m) => (
                     <button key={m.key} onClick={() => setChartMetric(m.key)}
@@ -318,7 +318,7 @@ export default function PerformancePage() {
               <section>
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Revenus</p>
                 {caYear === 0 ? (
-                  <div className="bg-white rounded-2xl border border-neutral-100 px-5 py-6 text-center">
+                  <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 px-5 py-6 text-center">
                     <Euro size={22} className="text-neutral-200 mx-auto mb-2" />
                     <p className="text-sm font-semibold text-neutral-700">Aucun revenu enregistré</p>
                     <p className="text-xs text-neutral-400 mt-1">Vos revenus apparaissent dès qu&apos;une réservation est terminée.</p>
@@ -333,7 +333,7 @@ export default function PerformancePage() {
                       <StatCard icon={TrendingUp} label="Cette année" value={`${caYear.toFixed(0)}€`} context={`${doneYear.length} RDV terminés`} />
                     </div>
                     {fillRate !== null && (
-                      <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+                      <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Percent size={14} className="text-neutral-400" />
@@ -373,7 +373,7 @@ export default function PerformancePage() {
             {stats && (
               <section>
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Avis</p>
-                <div className="bg-white border border-neutral-100 rounded-2xl p-5">
+                <div className="bg-white shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 rounded-[24px] p-5">
                   <div className="flex items-start gap-5">
                     <div className="text-center flex-shrink-0">
                       <p className="text-4xl font-bold text-neutral-900 leading-none">
@@ -418,7 +418,7 @@ export default function PerformancePage() {
             {analyticsData && (
               <section>
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Objectifs de la semaine</p>
-                <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50">
+                <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 divide-y divide-neutral-50">
                   {[
                     { icon: ImageIcon, label: 'Publier 1 réalisation', done: analyticsData.posts.this_week >= 1, progress: `${Math.min(analyticsData.posts.this_week, 1)}/1` },
                     { icon: MessageSquare, label: 'Obtenir 1 nouvel avis ce mois', done: analyticsData.reviews.this_month >= 1, progress: `${Math.min(analyticsData.reviews.this_month, 1)}/1` },
@@ -441,7 +441,7 @@ export default function PerformancePage() {
             <section>
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Classements</p>
               <Link href="/app/classements"
-                className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 hover:shadow-sm transition-all group">
+                className="flex items-center gap-4 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
                 <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                   <Medal size={17} className="text-neutral-600" strokeWidth={1.5} />
                 </div>
@@ -462,7 +462,7 @@ export default function PerformancePage() {
                     <Link
                       key={b.type === 'badge' ? b.code : `sp-${b.specialty_id}`}
                       href="/pro/badges"
-                      className="flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 hover:border-neutral-200 transition-colors"
+                      className="flex items-center gap-3 bg-white shadow-[0_3px_14px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 rounded-[20px] p-3.5 hover:shadow-[0_6px_18px_-8px_rgba(10,10,10,0.16)] transition-colors"
                     >
                       {b.type === 'badge' ? (
                         <BadgeMedallion code={b.code} tier={b.tier} size={36} locked />
@@ -492,7 +492,7 @@ export default function PerformancePage() {
             <section>
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Progression</p>
               <Link href="/pro/badges"
-                className="flex items-center gap-4 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 hover:shadow-sm transition-all group">
+                className="flex items-center gap-4 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
                   <Crown size={17} className="text-amber-600" strokeWidth={1.5} />
                 </div>

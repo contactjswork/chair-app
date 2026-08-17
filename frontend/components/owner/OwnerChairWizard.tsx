@@ -301,7 +301,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
               <label className={labelCls}>Description</label>
               <textarea value={data.description} onChange={(e) => patch({ description: e.target.value })} rows={6} className={inputCls} placeholder="Décrivez l’ambiance, la clientèle habituelle, ce qui rend cet espace agréable à travailler..." maxLength={2000} />
             </div>
-            <div className="bg-neutral-50 rounded-xl p-3 text-xs text-neutral-500 space-y-1">
+            <div className="bg-neutral-50 rounded-2xl p-3 text-xs text-neutral-500 space-y-1">
               <p className="font-semibold text-neutral-700">Conseils de rédaction</p>
               <p>• Mentionnez la luminosité, l’ambiance et le type de clientèle du salon.</p>
               <p>• Précisez ce qui est inclus (produits, ménage...) pour éviter les questions.</p>
@@ -357,7 +357,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Conditions de location</h2>
           <p className="text-sm text-neutral-500 mb-5">Ce que le locataire doit savoir avant de faire une demande.</p>
           <div className="space-y-4">
-            <div className="flex items-start gap-3 bg-neutral-50 rounded-xl p-3">
+            <div className="flex items-start gap-3 bg-neutral-50 rounded-2xl p-3">
               <ShieldCheck size={16} className="text-neutral-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-neutral-600">Le SIRET du locataire est vérifié automatiquement par CHAIR avant toute demande — vous n’avez rien à faire de ce côté.</p>
             </div>
@@ -384,7 +384,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Aperçu de votre annonce</h2>
           <p className="text-sm text-neutral-500 mb-5">Voici ce que verra un coiffeur indépendant.</p>
-          <div className="rounded-2xl border border-neutral-200 overflow-hidden">
+          <div className="rounded-[24px] shadow-[0_6px_24px_-10px_rgba(10,10,10,0.16)] ring-1 ring-neutral-100 overflow-hidden">
             <div className="relative aspect-[4/3] bg-neutral-100">
               {data.photos[0] ? (
                 <Image src={resolveMediaUrl(data.photos[0]) ?? data.photos[0]} alt="" fill className="object-cover" sizes="400px" />

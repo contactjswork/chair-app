@@ -57,7 +57,7 @@ export default function ParrainagePage() {
   return (
     <div className="min-h-screen bg-neutral-50">
 
-      <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
+      <div className="sticky top-0 z-20 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
         <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
@@ -79,7 +79,7 @@ export default function ParrainagePage() {
         ) : data ? (
           <>
             {/* ── Hero code + lien ── */}
-            <div className="bg-neutral-900 rounded-2xl p-6">
+            <div className="bg-neutral-900 rounded-[24px] p-6 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">Votre code de parrainage</p>
               <h2 className="text-3xl font-black text-white tracking-tight mb-4">{data.code}</h2>
 
@@ -103,7 +103,7 @@ export default function ParrainagePage() {
             </div>
 
             {(data.chair_plus_until || data.boost_until) && (
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-2">
+              <div className="bg-white rounded-[22px] p-4 space-y-2 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100">
                 {data.chair_plus_until && (
                   <p className="text-xs text-neutral-600 flex items-center gap-2">
                     <Gift size={13} className="text-neutral-400 flex-shrink-0" />
@@ -120,7 +120,7 @@ export default function ParrainagePage() {
             )}
 
             {/* ── Paliers ── */}
-            <div className="bg-white rounded-2xl border border-neutral-100 p-5">
+            <div className="bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100">
               <p className="text-sm font-bold text-neutral-900 mb-4">Paliers</p>
               <div className="space-y-4">
                 {data.milestones.map((threshold) => {
@@ -146,11 +146,11 @@ export default function ParrainagePage() {
             </div>
 
             <p className="text-[11px] text-neutral-400 text-center leading-relaxed">
-              Chaque inscription validée via votre lien vous rapporte des points — partager le lien ne suffit pas, il faut qu&apos;un filleul crée réellement son compte.
+              Chaque inscription validée via votre lien rapporte des points — le partage seul ne suffit pas.
             </p>
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-neutral-100 px-5 py-10 text-center">
+          <div className="bg-white rounded-[22px] px-5 py-10 text-center shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100">
             <p className="text-sm font-semibold text-neutral-700 mb-1">
               {loadError ? 'Connexion impossible' : 'Impossible de charger votre parrainage'}
             </p>

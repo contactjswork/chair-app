@@ -51,16 +51,16 @@ export default function OwnerWizardShell({
         {children}
       </div>
 
-      <div className="pb-safe border-t border-neutral-100 flex-shrink-0">
+      <div className="pb-safe shadow-[0_-8px_20px_-12px_rgba(10,10,10,0.15)] flex-shrink-0">
         <div className="flex items-center gap-2 px-4 py-4">
           {onBack && (
-            <button onClick={onBack} className="flex-1 py-3 text-sm font-semibold text-neutral-600 border border-neutral-200 rounded-2xl hover:bg-neutral-50 transition-colors">
+            <button onClick={onBack} className="flex-1 py-3.5 text-sm font-semibold text-neutral-600 bg-neutral-100 rounded-2xl hover:bg-neutral-200 transition-colors">
               Retour
             </button>
           )}
           {onNext && (
             <button onClick={onNext} disabled={nextDisabled || saving}
-              className="flex-1 py-3 text-sm font-semibold bg-neutral-900 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50">
+              className="flex-1 py-3.5 text-sm font-bold bg-neutral-900 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50">
               {saving ? 'Enregistrement...' : isLastStep ? publishLabel : nextLabel}
             </button>
           )}

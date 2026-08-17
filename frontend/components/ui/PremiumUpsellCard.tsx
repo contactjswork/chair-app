@@ -16,7 +16,7 @@ export default function PremiumUpsellCard({ profile }: { profile: ApiHairdresser
   return (
     <Link
       href="/pro/chair-plus"
-      className="group relative flex items-center gap-3.5 bg-neutral-900 rounded-2xl p-4 overflow-hidden hover:bg-neutral-800 transition-colors"
+      className="group relative flex items-center gap-3.5 bg-neutral-900 rounded-[22px] p-4 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)] overflow-hidden hover:bg-neutral-800 transition-colors"
     >
       <div className="pointer-events-none absolute inset-0 opacity-30" style={{
         background: 'radial-gradient(240px circle at 0% 0%, rgba(255,255,255,0.15), transparent 70%)',

@@ -145,7 +145,7 @@ export default function CockpitPage() {
         <p className="text-xs text-neutral-400 capitalize">{todayDateStr}</p>
         {profile && (
           <Link href={`/app/coiffeur/${profile.slug}`} target="_blank" rel="noopener noreferrer"
-            className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-neutral-500 border border-neutral-200 bg-white px-3 py-2 rounded-xl hover:border-neutral-400 hover:text-neutral-900 transition-colors flex-shrink-0"
+            className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-neutral-500 bg-white px-3 py-2 rounded-xl shadow-[0_2px_8px_-3px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 hover:ring-neutral-300 hover:text-neutral-900 transition-all flex-shrink-0"
           >
             <Eye size={13} />Mon profil
           </Link>
@@ -155,7 +155,7 @@ export default function CockpitPage() {
       {/* ── Alerte demandes en attente ── */}
       {isIndependent && !dataLoading && pending.length > 0 && (
         <Link href="/pro/agenda"
-          className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 hover:bg-amber-100 transition-colors"
+          className="flex items-center gap-3 bg-amber-50 rounded-2xl px-4 py-3.5 shadow-[0_2px_10px_-4px_rgba(217,119,6,0.12)] ring-1 ring-amber-100 hover:bg-amber-100 transition-colors"
         >
           <div className="w-8 h-8 bg-amber-400 rounded-xl flex items-center justify-center flex-shrink-0">
             <CalendarDays size={15} className="text-white" />
@@ -194,7 +194,7 @@ export default function CockpitPage() {
       )}
 
       {/* ══════════ ZONE 4 — Ma journée ══════════ */}
-      <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+      <div className="bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 overflow-hidden">
         <div className="px-5 py-4 flex items-center justify-between">
           <p className="text-sm font-bold text-neutral-900">{isIndependent ? "Aujourd'hui" : 'Votre journée'}</p>
           <Link href="/pro/agenda" className="text-neutral-300 hover:text-neutral-600 transition-colors">
@@ -269,20 +269,20 @@ export default function CockpitPage() {
       {!dataLoading && isIndependent && <BusinessSnapshotCard stats={stats} />}
       {!dataLoading && <PremiumUpsellCard profile={fullProfile} />}
 
-      <Link href="/pro/parrainage" className="flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 transition-colors">
+      <Link href="/pro/parrainage" className="flex items-center gap-3 bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
         <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
           <Gift size={16} className="text-neutral-500" strokeWidth={1.5} />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-neutral-900">Parrainez, gagnez des récompenses</p>
-          <p className="text-xs text-neutral-400 mt-0.5">Points, badge ambassadeur, CHAIR+ offert, mise en avant</p>
+          <p className="text-xs text-neutral-400 mt-0.5">Points, badges et CHAIR+ offert</p>
         </div>
         <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
       </Link>
 
       {/* ── Action rapide (l'ajout de réalisation vit déjà dans le bloc Portfolio ci-dessus) ── */}
       <Link href="/pro/profil"
-        className="flex items-center justify-center gap-2 bg-white rounded-2xl border border-neutral-100 py-3.5 hover:border-neutral-200 hover:shadow-sm transition-all"
+        className="flex items-center justify-center gap-2 bg-white rounded-[22px] py-3.5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all"
       >
         <Pencil size={15} className="text-neutral-600" />
         <p className="text-sm font-semibold text-neutral-700">Modifier mon profil</p>

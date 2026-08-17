@@ -50,10 +50,10 @@ function BookingWindowSection() {
   }
 
   return (
-    <div className="border border-neutral-200 rounded-xl p-4">
+    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
       <p className="text-sm font-semibold text-neutral-900 mb-1">Fenêtre de réservation</p>
       <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
-        Jusqu&apos;à combien de temps à l&apos;avance les clients peuvent réserver un rendez-vous.
+        Jusqu&apos;à combien de temps à l&apos;avance les clients peuvent réserver.
       </p>
       <div className="flex flex-wrap gap-1.5">
         {WINDOW_OPTIONS.map((opt) => (
@@ -61,10 +61,10 @@ function BookingWindowSection() {
             key={String(opt.value)}
             onClick={() => select(opt.value)}
             disabled={saving}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors disabled:opacity-50 ${
+            className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors disabled:opacity-50 ${
               days === opt.value
-                ? 'bg-neutral-900 text-white border-neutral-900'
-                : 'border-neutral-200 text-neutral-600 hover:border-neutral-400'
+                ? 'bg-neutral-900 text-white'
+                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
             }`}
           >
             {opt.label}
@@ -122,27 +122,27 @@ function BlockCreateForm({ onCreated, onCancel }: { onCreated: () => void; onCan
   }
 
   return (
-    <div className="border border-neutral-200 rounded-xl p-4 space-y-3">
+    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-neutral-500 mb-1 block">Du</label>
           <input type="date" value={startDate} min={today} onChange={(e) => setStartDate(e.target.value)}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400" />
+            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
         </div>
         <div>
           <label className="text-xs text-neutral-500 mb-1 block">Heure de début</label>
           <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400" />
+            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
         </div>
         <div>
           <label className="text-xs text-neutral-500 mb-1 block">Au</label>
           <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400" />
+            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
         </div>
         <div>
           <label className="text-xs text-neutral-500 mb-1 block">Heure de fin</label>
           <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-            className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400" />
+            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
         </div>
       </div>
       <div>
@@ -152,15 +152,15 @@ function BlockCreateForm({ onCreated, onCancel }: { onCreated: () => void; onCan
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Ex : congés, formation, rendez-vous perso…"
-          className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400 placeholder:text-neutral-300"
+          className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all placeholder:text-neutral-300"
         />
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-neutral-500 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-neutral-500 bg-neutral-100 hover:bg-neutral-200 transition-colors">
           Annuler
         </button>
-        <button onClick={handleCreate} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
+        <button onClick={handleCreate} disabled={saving} className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
           {saving ? 'Création…' : 'Bloquer ce créneau'}
         </button>
       </div>
@@ -207,17 +207,17 @@ function UnavailabilitiesSection() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <p className="text-sm font-semibold text-neutral-900">Blocages ponctuels</p>
-          <p className="text-xs text-neutral-400 mt-0.5">Congés, pauses, indisponibilités — les clients ne pourront pas réserver sur ces créneaux.</p>
+          <p className="text-xs text-neutral-400 mt-0.5">Congés, pauses — les clients ne peuvent pas réserver sur ces créneaux.</p>
         </div>
       </div>
 
       {items === null ? (
-        <div className="h-16 bg-neutral-50 rounded-xl animate-pulse" />
+        <div className="h-16 bg-neutral-50 rounded-2xl animate-pulse" />
       ) : (
         <div className="space-y-2 mb-3">
           {items.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 border border-neutral-200 rounded-xl px-3.5 py-3">
-              <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center flex-shrink-0">
+            <div key={u.id} className="flex items-center gap-3 bg-white rounded-2xl shadow-[0_3px_14px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 px-3.5 py-3">
+              <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <Ban size={14} className="text-neutral-400" />
               </div>
               <div className="flex-1 min-w-0">
@@ -247,7 +247,7 @@ function UnavailabilitiesSection() {
       ) : (
         <button
           onClick={() => setShowForm(true)}
-          className="w-full flex items-center justify-center gap-1.5 py-3 rounded-xl border border-dashed border-neutral-300 text-neutral-500 text-sm font-semibold hover:border-neutral-400 hover:text-neutral-700 transition-colors"
+          className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-dashed border-neutral-300 text-neutral-500 text-sm font-semibold hover:border-neutral-400 hover:text-neutral-700 transition-colors"
         >
           <Plus size={15} /> Bloquer un créneau
         </button>
@@ -360,12 +360,12 @@ export default function PlanningPage() {
         <div>
           <p className="text-sm font-semibold text-neutral-900 mb-1">Horaires de travail</p>
           <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
-            Configurez vos horaires. Les créneaux disponibles seront calculés automatiquement.
+            Les créneaux disponibles sont calculés automatiquement.
           </p>
 
           <div className="space-y-3">
             {schedule.map((day) => (
-              <div key={day.day_of_week} className="border border-neutral-200 rounded-xl overflow-hidden">
+              <div key={day.day_of_week} className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 bg-neutral-50">
                   <span className="text-sm font-semibold text-neutral-900 w-28">{DAY_NAMES[day.day_of_week]}</span>
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -387,7 +387,7 @@ export default function PlanningPage() {
                         type="time"
                         value={day.start_time ?? '09:00'}
                         onChange={(e) => updateField(day.day_of_week, 'start_time', e.target.value)}
-                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                       />
                     </div>
                     <div>
@@ -396,7 +396,7 @@ export default function PlanningPage() {
                         type="time"
                         value={day.end_time ?? '19:00'}
                         onChange={(e) => updateField(day.day_of_week, 'end_time', e.target.value)}
-                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                       />
                     </div>
                     <div>
@@ -405,7 +405,7 @@ export default function PlanningPage() {
                         type="time"
                         value={day.break_start ?? ''}
                         onChange={(e) => updateField(day.day_of_week, 'break_start', e.target.value || null)}
-                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                       />
                     </div>
                     <div>
@@ -414,7 +414,7 @@ export default function PlanningPage() {
                         type="time"
                         value={day.break_end ?? ''}
                         onChange={(e) => updateField(day.day_of_week, 'break_end', e.target.value || null)}
-                        className="w-full border border-neutral-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-neutral-400 transition-colors"
+                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
                       />
                     </div>
                   </div>
@@ -426,7 +426,7 @@ export default function PlanningPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full mt-4 bg-neutral-900 text-white py-3.5 rounded-xl font-semibold text-sm disabled:opacity-50 hover:bg-neutral-700 transition-colors"
+            className="w-full mt-4 bg-neutral-900 text-white py-3.5 rounded-[22px] font-semibold text-sm disabled:opacity-50 hover:bg-neutral-700 transition-colors"
           >
             {saving ? 'Enregistrement...' : 'Enregistrer les horaires'}
           </button>

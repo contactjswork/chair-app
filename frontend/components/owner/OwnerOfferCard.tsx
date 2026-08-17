@@ -21,7 +21,7 @@ export default function OwnerOfferCard({
   onToggleStatus, onEdit, onDelete,
 }: OwnerOfferCardProps) {
   return (
-    <div className={`bg-white rounded-2xl border border-neutral-100 p-4 ${status !== 'open' ? 'opacity-60' : ''}`}>
+    <div className={`bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4 ${status !== 'open' ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">

@@ -15,7 +15,7 @@ interface OwnerTeamMemberProps {
 export default function OwnerTeamMember({ avatarUrl, name, subtitle, actions, variant = 'card' }: OwnerTeamMemberProps) {
   const isCard = variant === 'card';
   const outer = isCard
-    ? 'bg-white rounded-2xl border border-neutral-100 p-3.5 flex items-center gap-3'
+    ? 'bg-white rounded-[20px] shadow-[0_3px_14px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-3.5 flex items-center gap-3'
     : 'bg-neutral-50 rounded-xl p-3 flex items-center gap-3';
   const avatarSize = isCard ? 40 : 36;
   const avatarClass = isCard ? 'w-10 h-10' : 'w-9 h-9';

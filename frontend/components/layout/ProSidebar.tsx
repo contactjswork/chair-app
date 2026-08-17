@@ -20,8 +20,8 @@ export default function ProSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex flex-col w-60 bg-white border-r border-neutral-100 fixed top-0 bottom-0 left-0 z-10">
-      <div className="px-5 py-5 border-b border-neutral-100 flex items-center justify-between">
+    <aside className="hidden md:flex flex-col w-60 bg-white shadow-[4px_0_20px_-8px_rgba(10,10,10,0.08)] fixed top-0 bottom-0 left-0 z-10">
+      <div className="px-5 py-5 border-b border-neutral-50 flex items-center justify-between">
         <ChairLogo href={homeHref} size="sm" pro />
         <Link href="/app" className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
           <ArrowLeft size={12} /><span>App</span>

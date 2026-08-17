@@ -153,7 +153,7 @@ export default function FauteuilsALouerPage() {
               />
             </div>
             {filtered.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-neutral-100 p-8 text-center">
+              <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-8 text-center">
                 <Armchair size={32} className="text-neutral-200 mx-auto mb-2.5" />
                 <p className="text-sm font-semibold text-neutral-700">Aucune annonce disponible</p>
                 <p className="text-xs text-neutral-400 mt-1">Revenez plus tard ou modifiez vos filtres.</p>
@@ -169,7 +169,7 @@ export default function FauteuilsALouerPage() {
                     tabIndex={0}
                     onClick={() => setSelectedId(r.id)}
                     onKeyDown={(e) => { if (e.key === 'Enter') setSelectedId(r.id); }}
-                    className={`flex-shrink-0 w-56 text-left bg-white rounded-2xl border overflow-hidden snap-start transition-colors cursor-pointer ${isSelected ? 'border-neutral-900' : 'border-neutral-100'}`}
+                    className={`flex-shrink-0 w-56 text-left bg-white rounded-[20px] overflow-hidden snap-start transition-all cursor-pointer shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ${isSelected ? 'ring-2 ring-neutral-900' : 'ring-1 ring-neutral-100'}`}
                   >
                     <div className="relative aspect-video bg-neutral-100">
                       {firstPhoto
@@ -193,7 +193,7 @@ export default function FauteuilsALouerPage() {
             )}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
+          <div className="bg-white rounded-[28px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-12 text-center">
             <Armchair size={36} className="text-neutral-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-neutral-700">Aucune annonce disponible</p>
             <p className="text-xs text-neutral-400 mt-1">Revenez plus tard ou modifiez vos filtres.</p>
@@ -206,7 +206,7 @@ export default function FauteuilsALouerPage() {
               const badge = myReq ? REQUEST_BADGE[myReq.status] : null;
               return (
                 <Link key={r.id} href={`/fauteuil/${r.slug}`} target="_blank"
-                  className="text-left bg-white rounded-2xl border border-neutral-100 overflow-hidden hover:border-neutral-300 hover:shadow-sm transition-all">
+                  className="text-left bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden hover:shadow-[0_10px_28px_-10px_rgba(10,10,10,0.2)] transition-shadow">
                   <div className="relative aspect-video bg-neutral-100">
                     {firstPhoto
                       ? <Image src={resolveMediaUrl(firstPhoto) ?? firstPhoto} alt={r.title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 320px" />

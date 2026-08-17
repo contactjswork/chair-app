@@ -43,7 +43,7 @@ export default function OwnerApplicantCard({
   expanded = false, onToggleExpand, onAdvance, advanceLabel, onDecline,
 }: OwnerApplicantCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
       <div className="w-full flex items-start gap-3 p-4">
         <button onClick={onToggleExpand} className="flex items-start gap-3 flex-1 min-w-0 text-left">
           <div className="relative w-9 h-9 rounded-full bg-neutral-200 flex-shrink-0 overflow-hidden flex items-center justify-center">

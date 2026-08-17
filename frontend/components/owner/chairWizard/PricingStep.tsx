@@ -47,7 +47,7 @@ export default function PricingStep({ pricePerDay, pricePerWeek, pricePerMonth, 
       <Field label="Dépôt de garantie (optionnel)" value={depositAmount} onChange={(v) => onChange({ deposit_amount: v })} placeholder="200" />
 
       {net !== null && (
-        <div className="bg-neutral-900 rounded-2xl p-4 text-white">
+        <div className="bg-neutral-900 rounded-[22px] p-5 text-white">
           <p className="text-[11px] uppercase tracking-wide text-neutral-400 font-bold mb-1">Estimation revenu net / mois</p>
           <p className="text-2xl font-bold">{net.toFixed(0)} €</p>
           <p className="text-[11px] text-neutral-400 mt-1">

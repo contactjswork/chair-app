@@ -193,7 +193,7 @@ export default function ProInscriptionPage() {
       />
 
       {error && (
-        <div className="flex-shrink-0 mx-6 mb-3 px-4 py-3 bg-red-900/40 border border-red-800 rounded-xl text-sm text-red-400 flex items-start gap-2">
+        <div className="flex-shrink-0 mx-6 mb-3 px-4 py-3 bg-red-900/40 rounded-2xl text-sm text-red-400 flex items-start gap-2">
           <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
           {error}
         </div>
@@ -358,9 +358,9 @@ export default function ProInscriptionPage() {
             onNext={goNext}
           >
             {selectedSalon ? (
-              <div className="flex items-center justify-between bg-neutral-900 border border-neutral-700 rounded-2xl px-4 py-3.5">
+              <div className="flex items-center justify-between bg-neutral-900 ring-1 ring-white/10 rounded-2xl px-4 py-3.5">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{selectedSalon.name}</p>
+                  <p className="text-sm font-bold text-white truncate">{selectedSalon.name}</p>
                   {selectedSalon.city && <p className="text-xs text-neutral-500">{selectedSalon.city}</p>}
                 </div>
                 <button type="button" onClick={() => { setSelectedSalon(null); setSalonQuery(''); }} className="text-neutral-400 hover:text-white flex-shrink-0 ml-2">
@@ -387,7 +387,7 @@ export default function ProInscriptionPage() {
                   <div className="mt-3 space-y-1.5">
                     {salonResults.map((s) => (
                       <button key={s.id} type="button" onClick={() => { setSelectedSalon(s); setSalonResults([]); }}
-                        className="w-full text-left px-4 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700 transition-colors">
+                        className="w-full text-left px-4 py-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 ring-1 ring-white/10 transition-colors">
                         <p className="text-sm font-medium text-white">{s.name}</p>
                         {s.city && <p className="text-[11px] text-neutral-500">{s.city}</p>}
                       </button>
@@ -396,7 +396,7 @@ export default function ProInscriptionPage() {
                 )}
                 {!salonSearching && salonQuery.trim().length >= 2 && salonResults.length === 0 && (
                   <p className="text-[12px] text-neutral-500 mt-3 leading-relaxed">
-                    Aucun salon trouvé — continue, tu pourras te rattacher dès que ton gérant aura créé sa page CHAIR.
+                    Aucun salon trouvé — tu pourras te rattacher dès que ton gérant aura créé sa page CHAIR.
                   </p>
                 )}
               </div>
@@ -467,7 +467,7 @@ export default function ProInscriptionPage() {
             </div>
             {siretResult.status === 'loading' && <p className="text-xs text-neutral-500 mt-2 flex items-center gap-1.5"><Loader size={12} className="animate-spin" /> Vérification...</p>}
             {siretResult.status === 'ok' && (
-              <div className={`flex items-start gap-2 mt-3 px-4 py-3 rounded-xl text-xs ${siretResult.is_hairdresser ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>
+              <div className={`flex items-start gap-2 mt-3 px-4 py-3 rounded-2xl text-xs ${siretResult.is_hairdresser ? 'bg-green-900/40 text-green-400' : 'bg-amber-900/40 text-amber-400'}`}>
                 {siretResult.is_hairdresser ? <CheckCircle size={13} className="flex-shrink-0 mt-0.5" /> : <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />}
                 <span>{siretResult.is_hairdresser ? 'Salon vérifié' : 'Entreprise trouvée'} — {siretResult.business_name}</span>
               </div>

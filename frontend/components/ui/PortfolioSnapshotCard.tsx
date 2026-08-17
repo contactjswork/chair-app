@@ -22,7 +22,7 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
   if (posts.length === 0) {
     return (
       <Link href="/pro/portfolio"
-        className="flex items-center gap-4 bg-white rounded-2xl border border-dashed border-neutral-200 p-5 hover:border-neutral-400 transition-colors"
+        className="flex items-center gap-4 bg-white rounded-[22px] p-5 ring-1 ring-dashed ring-neutral-200 hover:ring-neutral-400 transition-colors"
       >
         <div className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center flex-shrink-0">
           <Camera size={20} className="text-neutral-300" />
@@ -47,8 +47,14 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
   }
   const dominantSpecialty = [...specialtyCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
+  // Spécialité dominante + meilleure réalisation fusionnées en une seule
+  // ligne de repère (au lieu d'un texte + un bandeau ambre séparés) — même
+  // donnée réelle, une seule surface à lire.
+  const bestLikes = bestPost && (bestPost.likes_count ?? 0) > 0 ? bestPost.likes_count : null;
+  const hasHighlight = dominantSpecialty || bestLikes;
+
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden">
+    <div className="bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 overflow-hidden">
       <div className="px-5 py-4 flex items-center justify-between border-b border-neutral-50">
         <p className="text-sm font-bold text-neutral-900">Portfolio</p>
         <Link href="/pro/portfolio" className="text-neutral-300 hover:text-neutral-600 transition-colors">
@@ -69,19 +75,13 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
         </div>
       </div>
 
-      {dominantSpecialty && (
-        <p className="mx-4 mt-3 text-xs text-neutral-400">
-          Spécialité dominante : <span className="font-semibold text-neutral-600">{dominantSpecialty}</span>
+      {hasHighlight && (
+        <p className="mx-4 mt-3 text-xs text-neutral-400 flex items-center gap-1.5">
+          {bestLikes && <Star size={12} className="text-amber-500 flex-shrink-0" />}
+          {dominantSpecialty && <span className="font-semibold text-neutral-600">{dominantSpecialty}</span>}
+          {dominantSpecialty && bestLikes && <span className="text-neutral-300">·</span>}
+          {bestLikes && <span>meilleure pub <span className="font-semibold text-neutral-600">{bestLikes} j&apos;aime</span></span>}
         </p>
-      )}
-
-      {bestPost && (bestPost.likes_count ?? 0) > 0 && (
-        <div className="mx-4 mt-2.5 flex items-center gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-3.5 py-2.5">
-          <Star size={13} className="text-amber-500 flex-shrink-0" />
-          <p className="text-xs text-amber-700">
-            Meilleure réalisation : <span className="font-semibold">{bestPost.likes_count} j&apos;aime</span>
-          </p>
-        </div>
       )}
 
       <div className="p-3 grid grid-cols-3 gap-2 mt-1">

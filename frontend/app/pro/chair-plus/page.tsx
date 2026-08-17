@@ -170,7 +170,7 @@ export default function ChairPlusPage() {
   return (
     <div className="min-h-screen bg-white">
 
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
         <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
@@ -189,7 +189,7 @@ export default function ChairPlusPage() {
 
       {checkoutResult === 'success' && (
         <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4">
-          <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-semibold flex items-center gap-2">
+          <div className="bg-green-50 shadow-[0_2px_10px_-4px_rgba(16,185,129,0.15)] ring-1 ring-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-semibold flex items-center gap-2">
             <Check size={15} />Abonnement en cours d&apos;activation — quelques secondes le temps que Stripe confirme.
           </div>
         </div>
@@ -276,7 +276,7 @@ export default function ChairPlusPage() {
           <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
             {VALUE_PROPS.map((v, i) => (
               <Reveal key={v.title} delay={i * 80}>
-                <div className="h-full bg-neutral-50 rounded-2xl p-6 border border-neutral-100">
+                <div className="h-full bg-neutral-50 rounded-[22px] p-6 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.06)] ring-1 ring-neutral-100">
                   <div className="flex items-center gap-0.5 mb-4 text-neutral-900">
                     {Array.from({ length: 5 }).map((_, j) => <Star key={j} size={13} fill="currentColor" />)}
                   </div>
@@ -296,7 +296,7 @@ export default function ChairPlusPage() {
           <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Comparer</p></Reveal>
           <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Gratuit vs CHAIR+</h2></Reveal>
           <Reveal>
-            <div className="rounded-2xl border border-neutral-100 overflow-hidden">
+            <div className="rounded-[22px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
               <div className="grid grid-cols-[1fr_auto_auto] bg-neutral-50 border-b border-neutral-100">
                 <div className="px-4 py-3" />
                 <div className="px-4 py-3 w-20 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-400">Gratuit</div>
@@ -328,7 +328,7 @@ export default function ChairPlusPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {FEATURES.map((f, i) => (
               <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-300 hover:shadow-sm transition-all">
+                <div className="h-full bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.18)] hover:ring-neutral-200 transition-all">
                   <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center mb-3">
                     <f.icon size={15} className="text-white" strokeWidth={1.5} />
                   </div>
@@ -347,7 +347,7 @@ export default function ChairPlusPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {COMING_SOON.map((f, i) => (
               <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-neutral-50 rounded-2xl border border-dashed border-neutral-200 p-4 opacity-70">
+                <div className="h-full bg-neutral-50 rounded-[22px] p-4 opacity-70 ring-1 ring-dashed ring-neutral-200">
                   <div className="w-9 h-9 rounded-xl bg-neutral-200 flex items-center justify-center mb-3">
                     <f.icon size={15} className="text-neutral-500" strokeWidth={1.5} />
                   </div>
@@ -368,7 +368,7 @@ export default function ChairPlusPage() {
               const open = openFaq === i;
               return (
                 <Reveal key={item.q} delay={i * 50}>
-                  <div className="border border-neutral-100 rounded-2xl overflow-hidden">
+                  <div className="rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.06)] ring-1 ring-neutral-100 overflow-hidden">
                     <button
                       onClick={() => setOpenFaq(open ? null : i)}
                       className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-neutral-50 transition-colors"

@@ -8,7 +8,7 @@ export default function ProfileCompletionCard({ score, missingItems, isIndepende
   const preview = missingItems.slice(0, 3).map((i) => i.short);
 
   return (
-    <Link href="/pro/profil" className="block bg-white rounded-2xl border border-neutral-100 p-5 hover:border-neutral-200 transition-colors">
+    <Link href="/pro/profil" className="block bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-bold text-neutral-900">Profil complété</p>
         <div className="flex items-center gap-1.5">

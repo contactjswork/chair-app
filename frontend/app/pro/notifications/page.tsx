@@ -42,11 +42,13 @@ function NotifCard({
 
   return (
     <div
-      className={`flex gap-3 px-4 py-3.5 border-b border-neutral-100 last:border-0 transition-colors ${
-        isUnread ? 'bg-neutral-50' : 'bg-white'
+      className={`flex gap-3 px-4 py-3.5 rounded-2xl transition-shadow ${
+        isUnread
+          ? 'bg-white shadow-[0_4px_16px_-8px_rgba(10,10,10,0.14)] ring-1 ring-neutral-100'
+          : 'bg-white ring-1 ring-neutral-50'
       }`}
     >
-      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-full bg-white border border-neutral-200 flex items-center justify-center">
+      <div className="mt-0.5 shrink-0 w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center">
         {notifIcon(notif.type)}
       </div>
 
@@ -187,7 +189,7 @@ export default function ProNotificationsPage() {
           <p className="px-4 py-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400">
             Non lues
           </p>
-          <div className="border-t border-neutral-100">
+          <div className="px-4 pt-1 space-y-2">
             {unread.map((n) => (
               <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
             ))}
@@ -205,7 +207,7 @@ export default function ProNotificationsPage() {
             <ChevronDown size={12} className={`transition-transform ${showRead ? 'rotate-180' : ''}`} />
           </button>
           {showRead && (
-            <div className="border-t border-neutral-100 mt-1">
+            <div className="px-4 pt-1 space-y-2">
               {read.map((n) => (
                 <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
               ))}

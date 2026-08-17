@@ -27,7 +27,7 @@ export default function NextStepCard({ profileScore, topProfileItem, bestSpecial
 
   if (useProfileItem && topProfileItem) {
     return (
-      <Link href={topProfileItem.href} className="flex items-center gap-4 bg-neutral-900 rounded-2xl p-5 hover:bg-neutral-800 transition-colors">
+      <Link href={topProfileItem.href} className="flex items-center gap-4 bg-neutral-900 rounded-[22px] p-5 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)] hover:bg-neutral-800 transition-colors">
         <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
           <Sparkles size={18} className="text-white" strokeWidth={1.5} />
         </div>
@@ -46,7 +46,7 @@ export default function NextStepCard({ profileScore, topProfileItem, bestSpecial
     const Icon = METIER_LEVEL_ICONS[levelIndex] ?? Sparkles;
 
     return (
-      <Link href={href} className="block bg-neutral-900 rounded-2xl p-5 hover:bg-neutral-800 transition-colors">
+      <Link href={href} className="block bg-neutral-900 rounded-[22px] p-5 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)] hover:bg-neutral-800 transition-colors">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
             <Icon size={18} className="text-white" strokeWidth={1.75} />
@@ -70,7 +70,7 @@ export default function NextStepCard({ profileScore, topProfileItem, bestSpecial
   }
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-5 flex items-center gap-4">
+    <div className="bg-neutral-900 rounded-[22px] p-5 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)] flex items-center gap-4">
       <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
         <Sparkles size={18} className="text-white" strokeWidth={1.5} />
       </div>

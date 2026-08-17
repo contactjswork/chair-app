@@ -10,7 +10,7 @@ export default function CareerProgressCard({ chairLevel }: { chairLevel: ApiChai
   const ls = LEVEL_STYLES[chairLevel.color] ?? LEVEL_STYLES.neutral;
 
   return (
-    <Link href="/pro/badges" className="flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-5 hover:border-neutral-200 transition-colors">
+    <Link href="/pro/badges" className="flex items-center gap-3 bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${ls.bg}`}>
         <Crown size={18} className={ls.text} strokeWidth={1.5} />
       </div>

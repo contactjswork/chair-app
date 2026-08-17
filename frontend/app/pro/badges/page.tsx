@@ -84,7 +84,7 @@ function SpecialtyCard({ progress }: { progress: ApiSpecialtyProgress }) {
   const pct = Math.min(100, Math.round((progress.score / 500) * 100));
 
   return (
-    <div className="w-full text-left bg-white border border-neutral-100 rounded-2xl p-4">
+    <div className="w-full text-left bg-white rounded-[22px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4">
       <div className="flex items-center gap-3 mb-2.5">
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${pill}`}>
           <Icon size={16} strokeWidth={2} />
@@ -120,8 +120,8 @@ function SpecialtyCard({ progress }: { progress: ApiSpecialtyProgress }) {
 function ChallengeRow({ challenge, onExplain }: { challenge: ApiNextBadge; onExplain: () => void }) {
   if (challenge.type === 'specialty') {
     return (
-      <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 text-left hover:border-neutral-200 transition-colors">
-        <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+      <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white rounded-[20px] shadow-[0_3px_14px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.16)] p-3.5 text-left transition-all">
+        <div className="w-9 h-9 rounded-2xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
           <Scissors size={15} className="text-neutral-500" />
         </div>
         <div className="flex-1 min-w-0">
@@ -134,7 +134,7 @@ function ChallengeRow({ challenge, onExplain }: { challenge: ApiNextBadge; onExp
   }
 
   return (
-    <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white border border-neutral-100 rounded-2xl p-3.5 text-left hover:border-neutral-200 transition-colors">
+    <button onClick={onExplain} className="w-full flex items-center gap-3 bg-white rounded-[20px] shadow-[0_3px_14px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.16)] p-3.5 text-left transition-all">
       <BadgeMedallion code={challenge.code} tier={challenge.tier} size={36} locked />
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-bold text-neutral-900 truncate">{challenge.name}</p>
@@ -155,10 +155,10 @@ function BadgeCard({ badge, onExplain }: { badge: ApiChairBadge; onExplain: () =
   return (
     <button
       onClick={onExplain}
-      className={`text-left rounded-2xl p-3.5 flex flex-col gap-2.5 transition-all ${
+      className={`text-left rounded-[20px] p-3.5 flex flex-col gap-2.5 transition-all shadow-[0_3px_14px_-6px_rgba(10,10,10,0.1)] ${
         unlocked
-          ? isDark ? 'bg-neutral-900' : 'bg-white border border-neutral-100 hover:border-neutral-200'
-          : 'bg-white border border-neutral-100 opacity-60 hover:opacity-90'
+          ? isDark ? 'bg-neutral-900' : 'bg-white ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.16)]'
+          : 'bg-white ring-1 ring-neutral-100 opacity-60 hover:opacity-90'
       }`}
     >
       <div className="flex items-start justify-between">
@@ -271,9 +271,9 @@ export default function BadgesPage() {
 
         {/* ── HERO PROGRESSION ── */}
         {dataLoading ? (
-          <div className="h-40 bg-neutral-200 rounded-2xl animate-pulse" />
+          <div className="h-40 bg-neutral-200 rounded-[28px] animate-pulse" />
         ) : chairLevel ? (
-          <div className={`rounded-2xl p-6 ${heroBg}`}>
+          <div className={`rounded-[28px] shadow-[0_10px_28px_-10px_rgba(10,10,10,0.28)] p-6 ${heroBg}`}>
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">Niveau CHAIR</p>
             <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{chairLevel.name}</h2>
             <p className="text-sm font-semibold text-white/70 mb-4">{chairLevel.points} pts</p>
@@ -311,7 +311,7 @@ export default function BadgesPage() {
         {/* ── PROCHAIN BADGE — carte dominante ── */}
         {!dataLoading && dominant && (
           dominant.type === 'badge' ? (
-            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3.5">
+            <div className="bg-neutral-900 rounded-[22px] shadow-[0_6px_18px_-8px_rgba(10,10,10,0.3)] p-4 flex items-center gap-3.5">
               <BadgeMedallion code={dominant.code} tier={dominant.tier} size={44} locked />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 mb-0.5">Prochain badge</p>
@@ -323,7 +323,7 @@ export default function BadgesPage() {
               <span className="text-[11px] font-bold text-white/60 flex-shrink-0">{dominant.current}/{dominant.target}</span>
             </div>
           ) : (
-            <div className="bg-neutral-900 rounded-2xl p-4 flex items-center gap-3.5">
+            <div className="bg-neutral-900 rounded-[22px] shadow-[0_6px_18px_-8px_rgba(10,10,10,0.3)] p-4 flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                 <Scissors size={18} className="text-white/70" />
               </div>
@@ -364,7 +364,7 @@ export default function BadgesPage() {
               ))}
             </div>
             <p className="text-[11px] text-neutral-400 mt-3 leading-relaxed">
-              Spécialiste → Expert → Référence locale → Référence régionale → Référence nationale, le palier ultime — combine score élevé, position relative, activité récente et plusieurs avis distincts. Les avis, visites et réalisations liés à chaque spécialité ne font progresser que cette spécialité-là.
+              Spécialiste → Expert → Référence locale → régionale → nationale. Chaque spécialité progresse selon ses propres avis, visites et réalisations.
             </p>
           </Section>
         )}
@@ -391,7 +391,7 @@ export default function BadgesPage() {
         })}
 
         {chairBadgesAll.length === 0 && !dataLoading && specialties.length === 0 && (
-          <div className="bg-white rounded-2xl border border-neutral-100 px-5 py-10 text-center">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 px-5 py-10 text-center">
             <Award size={28} className="text-neutral-200 mx-auto mb-2" />
             <p className="text-sm font-semibold text-neutral-400">Aucun badge encore</p>
             <p className="text-[12px] text-neutral-300 mt-1">Complétez votre profil et publiez vos premières réalisations pour progresser.</p>

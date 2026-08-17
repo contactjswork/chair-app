@@ -288,13 +288,13 @@ export default function DashboardProfilPage() {
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-6 pb-36 md:pb-16">
 
         {errorMsg && (
-          <div className="flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
+          <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-2xl mb-4">
             <AlertCircle size={16} />{errorMsg}
           </div>
         )}
 
         {/* ── Héro profil : bannière + avatar chevauché ────────────── */}
-        <section className="relative bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-4">
+        <section className="relative bg-white rounded-[28px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 overflow-hidden mb-5">
           <div className="relative w-full aspect-[3/1] bg-neutral-100">
             <ImageUpload
               currentUrl={bannerUrl}
@@ -321,14 +321,14 @@ export default function DashboardProfilPage() {
                 <Link
                   href={`/app/coiffeur/${user.hairdresser_profile.slug}`}
                   target="_blank"
-                  className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 border border-neutral-200 px-3 py-2 rounded-xl hover:border-neutral-400 hover:text-neutral-900 transition-colors flex-shrink-0"
+                  className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 bg-neutral-50 px-3 py-2 rounded-xl hover:bg-neutral-100 hover:text-neutral-900 transition-colors flex-shrink-0"
                 >
                   <Eye size={13} />
                   Profil public
                 </Link>
               )}
             </div>
-            <p className="font-bold text-[17px] text-neutral-900 mt-3 leading-tight">{user.name}</p>
+            <p className="font-bold text-[18px] text-neutral-900 mt-3 leading-tight">{user.name}</p>
             <input
               type="text"
               value={tagline}
@@ -342,7 +342,7 @@ export default function DashboardProfilPage() {
 
         {/* ── Complétion du profil ─────────────────────────────────── */}
         {completionPct < 100 && (
-          <section className="bg-white rounded-2xl border border-neutral-100 p-4 mb-4">
+          <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: `conic-gradient(#0a0a0a ${completionPct * 3.6}deg, #f5f5f5 0deg)` }}>
@@ -351,10 +351,10 @@ export default function DashboardProfilPage() {
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-neutral-900">Profil complété à {completionPct}%</p>
+                <p className="text-xs font-bold text-neutral-900">Profil complété à {completionPct}%</p>
                 <div className="flex flex-wrap gap-1 mt-1.5">
                   {missing.map((item) => (
-                    <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-neutral-500 bg-neutral-50 border border-neutral-100 px-2 py-0.5 rounded-full">
+                    <span key={item.label} className="inline-flex items-center gap-1 text-[10px] text-neutral-500 bg-neutral-50 px-2 py-0.5 rounded-full">
                       <Plus size={8} className="text-neutral-400" />
                       {item.label}
                     </span>
@@ -366,9 +366,9 @@ export default function DashboardProfilPage() {
         )}
 
         {/* ── Localisation ──────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Localisation</h2>
-          <p className="text-xs text-neutral-400 mb-4">Vous fait apparaître dans les recherches locales, ex. « coiffeur à {city || '...'} ».</p>
+        <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 mb-4">
+          <h2 className="text-[15px] font-bold text-neutral-900 mb-1">Localisation</h2>
+          <p className="text-xs text-neutral-400 mb-4">Pour apparaître dans les recherches locales.</p>
           <div className="space-y-3">
             {/* Ville */}
             <div>
@@ -378,7 +378,7 @@ export default function DashboardProfilPage() {
                 value={city}
                 onChange={(e) => { setCity(e.target.value); markDirty(); }}
                 placeholder="Ex : Strasbourg, Haguenau, Paris..."
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
               />
             </div>
             {/* Code postal */}
@@ -391,7 +391,7 @@ export default function DashboardProfilPage() {
                 onChange={(e) => { setPostalCode(e.target.value); markDirty(); }}
                 placeholder="Ex : 67500"
                 maxLength={10}
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
               />
             </div>
             {/* Région / Département */}
@@ -401,7 +401,7 @@ export default function DashboardProfilPage() {
                 <select
                   value={region}
                   onChange={(e) => { setRegion(e.target.value); setDepartment(''); markDirty(); }}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
                 >
                   <option value="">—</option>
                   {regionsList.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -413,7 +413,7 @@ export default function DashboardProfilPage() {
                   value={department}
                   onChange={(e) => { setDepartment(e.target.value); markDirty(); }}
                   disabled={!region}
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all disabled:opacity-50"
                 >
                   <option value="">—</option>
                   {departmentsList.map((d) => <option key={d.code} value={d.name}>{d.name}</option>)}
@@ -428,37 +428,37 @@ export default function DashboardProfilPage() {
                 value={address}
                 onChange={(e) => { setAddress(e.target.value); markDirty(); }}
                 placeholder="Ex : 12 rue des Tanneurs"
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
               />
             </div>
           </div>
         </section>
 
         {/* ── Bio ───────────────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Bio</h2>
-          <p className="text-xs text-neutral-400 mb-4">Parcours, techniques, approche du métier — ce qui donne envie de réserver.</p>
+        <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 mb-4">
+          <h2 className="text-[15px] font-bold text-neutral-900 mb-1">Bio</h2>
+          <p className="text-xs text-neutral-400 mb-4">Ce qui donne envie de réserver.</p>
           <textarea
             value={bio}
             onChange={(e) => { setBio(e.target.value); markDirty(); }}
             maxLength={1000}
             rows={5}
             placeholder="Parlez de votre parcours, vos techniques de prédilection, votre approche du métier..."
-            className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none"
+            className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all resize-none"
           />
           <p className="text-[11px] text-neutral-400 mt-1 text-right">{bio.length}/1000</p>
         </section>
 
         {/* ── Spécialités + services ───────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Spécialités</h2>
-          <p className="text-xs text-neutral-400 mb-4">Vos domaines d&apos;expertise — visibles sur votre profil et dans la recherche CHAIR.</p>
+        <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 mb-4">
+          <h2 className="text-[15px] font-bold text-neutral-900 mb-1">Spécialités</h2>
+          <p className="text-xs text-neutral-400 mb-4">Visibles sur votre profil et dans la recherche CHAIR.</p>
 
           <SpecialtyPicker specialties={allSpecialties} selected={selectedSpecialties} onToggle={toggleSpecialty} />
 
           {selectedSpecialties.length > 0 && (
             <div className="mt-5 pt-4 border-t border-neutral-100">
-              <p className="text-xs font-semibold text-neutral-700 mb-2.5">Vos services par spécialité</p>
+              <p className="text-xs font-bold text-neutral-700 mb-2.5">Vos services par spécialité</p>
               <div className="space-y-2">
                 {selectedSpecialties.map((id) => {
                   const sp = allSpecialties.find((s) => s.id === id);
@@ -466,7 +466,7 @@ export default function DashboardProfilPage() {
                   const spServices = services.filter((s) => s.specialty_id === id);
                   const isOpen = expandedSpecialty === id;
                   return (
-                    <div key={id} className="border border-neutral-100 rounded-xl overflow-hidden">
+                    <div key={id} className="rounded-2xl overflow-hidden ring-1 ring-neutral-100">
                       <button
                         type="button"
                         onClick={() => setExpandedSpecialty(isOpen ? null : id)}
@@ -491,7 +491,7 @@ export default function DashboardProfilPage() {
                         <div className="border-t border-neutral-100">
                           {spServices.length === 0 ? (
                             <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-                              <p className="text-[11px] text-amber-600 leading-relaxed">Invisible dans les recherches précises sans service.</p>
+                              <p className="text-[11px] text-amber-600 leading-relaxed">Invisible sans service.</p>
                               <Link
                                 href={`/pro/services?specialty=${id}`}
                                 className="text-[11px] font-semibold text-neutral-900 underline flex-shrink-0"
@@ -528,18 +528,18 @@ export default function DashboardProfilPage() {
 
               <Link
                 href="/pro/services"
-                className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 border border-dashed border-neutral-200 hover:border-neutral-300 rounded-xl px-3.5 py-2.5 transition-colors"
+                className="mt-3 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 bg-neutral-50 hover:bg-neutral-100 rounded-xl px-3.5 py-2.5 transition-colors"
               >
                 <Sparkles size={12} />
-                Pas de spécialité qui correspond ? Créer un service personnalisé
+                Créer un service personnalisé
               </Link>
             </div>
           )}
         </section>
 
         {/* ── Informations professionnelles ────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Informations professionnelles</h2>
+        <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 mb-4">
+          <h2 className="text-[15px] font-bold text-neutral-900 mb-4">Informations professionnelles</h2>
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Années d&apos;expérience</label>
@@ -549,7 +549,7 @@ export default function DashboardProfilPage() {
                 onChange={(e) => { setYearsExp(e.target.value); markDirty(); }}
                 min={0} max={50}
                 placeholder="Ex : 8"
-                className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
               />
             </div>
 
@@ -559,30 +559,29 @@ export default function DashboardProfilPage() {
                   <ShieldCheck size={13} className="text-neutral-400" />
                   Diplôme officiel <span className="text-neutral-400 font-normal">— vérifié par CHAIR</span>
                 </label>
-                <p className="text-[11px] text-neutral-400 mb-2.5">Envoyez une photo claire de votre diplôme ; il sera validé sous quelques jours.</p>
 
                 {diplomaStatus === 'verified' ? (
-                  <div className="flex items-center gap-2.5 bg-green-50 border border-green-100 text-green-700 text-xs font-semibold px-4 py-3 rounded-xl">
+                  <div className="flex items-center gap-2.5 bg-green-50 text-green-700 text-xs font-semibold px-4 py-3 rounded-2xl">
                     <Check size={14} className="flex-shrink-0" />
                     {diplomaType} — vérifié par CHAIR
                   </div>
                 ) : diplomaStatus === 'pending' ? (
-                  <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold px-4 py-3 rounded-xl">
+                  <div className="flex items-center gap-2.5 bg-amber-50 text-amber-700 text-xs font-semibold px-4 py-3 rounded-2xl">
                     <Clock size={14} className="flex-shrink-0" />
                     {diplomaType} — en cours de vérification
                   </div>
                 ) : (
                   <div className="space-y-2.5">
                     {diplomaStatus === 'rejected' && (
-                      <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-600 text-xs font-semibold px-4 py-3 rounded-xl">
+                      <div className="flex items-center gap-2.5 bg-red-50 text-red-600 text-xs font-semibold px-4 py-3 rounded-2xl">
                         <X size={14} className="flex-shrink-0" />
-                        Document refusé — vérifiez qu&apos;il est lisible et réessayez.
+                        Document refusé — reprenez une photo lisible.
                       </div>
                     )}
                     <select
                       value={diplomaType}
                       onChange={(e) => setDiplomaType(e.target.value)}
-                      className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                      className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
                     >
                       <option value="">Choisir le diplôme obtenu</option>
                       <option value="CAP Coiffure">CAP Coiffure</option>
@@ -593,7 +592,7 @@ export default function DashboardProfilPage() {
                       type="button"
                       disabled={!diplomaType || diplomaUploading}
                       onClick={() => diplomaFileRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 text-xs font-semibold border border-neutral-200 text-neutral-700 px-4 py-3 rounded-xl hover:border-neutral-400 transition-colors disabled:opacity-40"
+                      className="w-full flex items-center justify-center gap-2 text-xs font-semibold bg-neutral-50 text-neutral-700 px-4 py-3 rounded-xl hover:bg-neutral-100 transition-colors disabled:opacity-40"
                     >
                       {diplomaUploading ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
                       {diplomaUploading ? 'Envoi en cours...' : 'Envoyer une photo de mon diplôme'}
@@ -624,12 +623,12 @@ export default function DashboardProfilPage() {
                   value={bookingUrl}
                   onChange={(e) => { setBookingUrl(e.target.value); markDirty(); }}
                   placeholder="https://planity.com/votre-salon"
-                  className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
                 />
                 {!bookingUrl && (
                   <p className="text-[11px] text-amber-600 mt-1.5 leading-relaxed flex items-start gap-1">
                     <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
-                    Ajoutez votre lien de réservation pour permettre aux clients de prendre rendez-vous directement.
+                    Ajoutez-le pour que les clients réservent directement.
                   </p>
                 )}
               </div>
@@ -638,28 +637,28 @@ export default function DashboardProfilPage() {
         </section>
 
         {/* ── Disponibilité ────────────────────────────────────────── */}
-        <section className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-1">Disponibilité</h2>
+        <section className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-5 mb-4">
+          <h2 className="text-[15px] font-bold text-neutral-900 mb-1">Disponibilité</h2>
           <p className="text-xs text-neutral-400 mb-4">Visible sur votre profil public.</p>
           <div className="flex flex-col gap-2">
             {([
-              ['employed',       'En poste',                   'Vous êtes actuellement en salon ou en activité'],
+              ['employed',       'En poste',                   'En salon ou en activité'],
               ['looking_salon',  'Recherche un salon',         'Badge visible — les salons peuvent vous contacter'],
               ['looking_gig',    'Recherche des missions',     'Badge visible — pour des prestations ponctuelles'],
-              ['not_available',  'Pas disponible',             'Profil toujours visible mais sans badge opportunité'],
+              ['not_available',  'Pas disponible',             'Profil visible, sans badge opportunité'],
             ] as const).map(([value, label, desc]) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => { setWorkAvailability(value); markDirty(); }}
-                className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                className={`flex items-start gap-3 px-4 py-3 rounded-2xl text-left transition-all ${
                   workAvailability === value
-                    ? 'border-neutral-900 bg-neutral-900 text-white'
-                    : 'border-neutral-200 hover:border-neutral-400'
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-neutral-50 hover:bg-neutral-100'
                 }`}
               >
                 <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 flex items-center justify-center ${
-                  workAvailability === value ? 'border-white bg-white' : 'border-neutral-400'
+                  workAvailability === value ? 'border-white bg-white' : 'border-neutral-300'
                 }`}>
                   {workAvailability === value && <div className="w-2 h-2 rounded-full bg-neutral-900" />}
                 </div>

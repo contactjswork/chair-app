@@ -138,8 +138,8 @@ export default function OffresEmploiPage() {
             <ChevronLeft size={18} />
           </button>
 
-          {/* Entreprise header — style Indeed */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
+          {/* Entreprise header */}
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-5 mb-4">
             <div className="flex items-start gap-4">
               {detail.salon?.logo ? (
                 <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-neutral-100 relative border border-neutral-100">
@@ -190,14 +190,14 @@ export default function OffresEmploiPage() {
 
           {/* Description */}
           {detail.description && (
-            <div className="bg-white rounded-2xl border border-neutral-100 p-5 mb-4">
+            <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-5 mb-4">
               <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Description du poste</h3>
               <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-line">{detail.description}</p>
             </div>
           )}
 
           {/* CTA candidature */}
-          <div className="bg-white rounded-2xl border border-neutral-100 p-5">
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-5">
             {myApp ? (
               <div className={`flex items-center gap-3 p-3 rounded-xl ${
                 myApp.status === 'accepted' ? 'bg-green-50' :
@@ -278,7 +278,7 @@ export default function OffresEmploiPage() {
         )}
 
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-neutral-100 p-12 text-center">
+          <div className="bg-white rounded-[28px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-12 text-center">
             <Briefcase size={36} className="text-neutral-200 mx-auto mb-3" />
             <p className="text-sm font-semibold text-neutral-700">Aucune offre disponible</p>
             <p className="text-xs text-neutral-400 mt-1">
@@ -292,7 +292,7 @@ export default function OffresEmploiPage() {
               const city   = o.city ?? o.salon?.city ?? null;
               return (
                 <button key={o.id} onClick={() => setDetail(o)}
-                  className="w-full text-left bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-300 hover:shadow-sm transition-all">
+                  className="w-full text-left bg-white rounded-[22px] shadow-[0_2px_12px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4 hover:shadow-[0_8px_24px_-8px_rgba(10,10,10,0.18)] transition-all">
                   <div className="flex items-start gap-3">
                     {/* Logo */}
                     <div className="w-11 h-11 rounded-xl flex-shrink-0 bg-neutral-100 flex items-center justify-center overflow-hidden relative">

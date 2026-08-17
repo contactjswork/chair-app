@@ -85,7 +85,7 @@ export default function PhotoDropzone({ photos, uploading, onUpload, onDelete, o
               onDragStart={() => setDragIndex(i)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => handleReorderDrop(i)}
-              className="relative aspect-square rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200 group"
+              className="relative aspect-square rounded-2xl overflow-hidden bg-neutral-100 ring-1 ring-neutral-100 group"
             >
               <Image src={resolveMediaUrl(url) ?? url} alt="" fill className="object-cover" sizes="200px" />
               {i === 0 && (

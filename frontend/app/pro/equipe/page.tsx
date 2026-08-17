@@ -262,7 +262,7 @@ export default function EquipePage() {
         {/* ── Onglet Inviter ── */}
         {tab === 'invite' && (
           <div className="space-y-4">
-            <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
               <div className="flex bg-neutral-100 rounded-xl p-1 mb-3.5 gap-1">
                 <button onClick={() => { setInviteMode('search'); setInviteEmail(''); }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${inviteMode === 'search' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
@@ -350,8 +350,7 @@ export default function EquipePage() {
               ) : (
                 <div className="space-y-3">
                   <p className="text-xs text-neutral-400 leading-relaxed">
-                    Cette personne n&apos;a pas encore de compte CHAIR ? Un lien d&apos;invitation
-                    sera créé — à vous de le transmettre (SMS, WhatsApp, email...).
+                    Un lien d&apos;invitation sera créé — à vous de le transmettre (SMS, WhatsApp, email...).
                   </p>
                   <div className="relative">
                     <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -380,7 +379,7 @@ export default function EquipePage() {
               {/* Lien à copier — apparaît juste après la création (email
                   sans compte, ou renvoi d'une invitation existante) */}
               {sentShareLink && (
-                <div className="mt-3 space-y-2 p-3 bg-neutral-50 border border-neutral-100 rounded-xl">
+                <div className="mt-3 space-y-2 p-3 bg-neutral-50 rounded-[18px] ring-1 ring-neutral-100">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">Lien à transmettre</p>
                     <button onClick={() => setSentShareLink(null)} className="text-neutral-400 hover:text-neutral-600"><X size={13} /></button>
@@ -396,7 +395,7 @@ export default function EquipePage() {
 
             {/* Invitations envoyées */}
             {invitations.length > 0 && (
-              <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+              <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
                 <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3">Invitations envoyées</h3>
                 <div className="space-y-2">
                   {invitations.map((inv) => {
@@ -478,8 +477,7 @@ export default function EquipePage() {
               </div>
             )}
             <p className="text-[12px] text-neutral-400 leading-relaxed mb-4">
-              Génère un lien valable 48h à envoyer vous-même au client (SMS, WhatsApp...).
-              Il confirme sa visite et rédige lui-même son avis — vous ne pouvez pas le faire à sa place.
+              Lien valable 48h, à envoyer au client (SMS, WhatsApp...). Il confirme sa visite et rédige lui-même son avis.
             </p>
             <button
               onClick={generateInviteLink}
@@ -492,7 +490,7 @@ export default function EquipePage() {
           </>
         ) : (
           <div className="space-y-3">
-            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-3 text-xs text-neutral-600 break-all">
+            <div className="bg-neutral-50 ring-1 ring-neutral-100 rounded-[16px] px-3 py-3 text-xs text-neutral-600 break-all">
               {inviteLink}
             </div>
             <button

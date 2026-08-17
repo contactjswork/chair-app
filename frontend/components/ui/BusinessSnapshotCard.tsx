@@ -10,7 +10,7 @@ export default function BusinessSnapshotCard({ stats }: { stats: ApiStats | null
   if (!stats) return null;
 
   return (
-    <Link href="/pro/business" className="block bg-white rounded-2xl border border-neutral-100 p-5 hover:border-neutral-200 transition-colors">
+    <Link href="/pro/business" className="block bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-neutral-900">Activité commerciale</p>
         <ChevronRight size={14} className="text-neutral-300" />

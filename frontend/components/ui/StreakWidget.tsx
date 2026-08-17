@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { streak as streakApi } from '@/lib/api';
 import type { ApiStreak } from '@/lib/types';
-import { Flame, Zap, Trophy } from 'lucide-react';
+import { Flame, Zap } from 'lucide-react';
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
@@ -34,8 +34,8 @@ export default function StreakWidget({ compact = false }: Props) {
 
   if (compact) {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border ${
-        isActive ? 'bg-orange-50 border-orange-200' : 'bg-neutral-50 border-neutral-200'
+      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl ring-1 ${
+        isActive ? 'bg-orange-50 ring-orange-200' : 'bg-neutral-50 ring-neutral-200'
       }`}>
         <Flame size={13} className={isActive ? 'text-orange-500' : 'text-neutral-300'} />
         <span className={`text-[12px] font-bold ${isActive ? 'text-orange-600' : 'text-neutral-400'}`}>
@@ -46,7 +46,7 @@ export default function StreakWidget({ compact = false }: Props) {
   }
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-4">
+    <div className="bg-neutral-900 rounded-[22px] p-4 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
@@ -104,12 +104,12 @@ export default function StreakWidget({ compact = false }: Props) {
       {/* Message motivant */}
       {!isActive && current > 0 && (
         <p className="text-[11px] text-orange-400 mt-3 pt-2 border-t border-white/10">
-          Publiez ou répondez aujourd'hui pour maintenir votre streak.
+          Publiez ou répondez aujourd&apos;hui pour maintenir votre streak.
         </p>
       )}
       {isActive && (
         <p className="text-[11px] text-green-400 mt-3 pt-2 border-t border-white/10 flex items-center gap-1">
-          <Zap size={11} /> Actif aujourd'hui — streak maintenu.
+          <Zap size={11} /> Actif aujourd&apos;hui — streak maintenu.
         </p>
       )}
       {current === 0 && (

@@ -17,7 +17,7 @@ export default function LocalReputationCard({ specialties, city }: { specialties
   if (ranked.length === 0 && !hasActivity) return null;
 
   return (
-    <Link href="/app/classements" className="block bg-white rounded-2xl border border-neutral-100 p-5 hover:border-neutral-200 transition-colors">
+    <Link href="/app/classements" className="block bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
       <div className="flex items-center gap-2 mb-3">
         <MapPin size={13} className="text-neutral-400" />
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Votre classement</p>

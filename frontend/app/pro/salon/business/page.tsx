@@ -228,7 +228,7 @@ export default function ChairBusinessPage() {
           <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
             {FEATURES_LIVE.map((f, i) => (
               <Reveal key={f.name} delay={i * 80}>
-                <div className="h-full bg-neutral-50 rounded-2xl p-6 border border-neutral-100">
+                <div className="h-full bg-neutral-50 rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-6">
                   <div className="w-11 h-11 rounded-xl bg-neutral-900 flex items-center justify-center mb-4">
                     <f.icon size={19} className="text-white" strokeWidth={1.5} />
                   </div>
@@ -252,7 +252,7 @@ export default function ChairBusinessPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {COMING_SOON.map((f, i) => (
               <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-neutral-50 rounded-2xl border border-dashed border-neutral-200 p-4 opacity-70">
+                <div className="h-full bg-neutral-50 rounded-[20px] border border-dashed border-neutral-200 p-4 opacity-70">
                   <div className="w-9 h-9 rounded-xl bg-neutral-200 flex items-center justify-center mb-3">
                     <f.icon size={15} className="text-neutral-500" strokeWidth={1.5} />
                   </div>
@@ -273,7 +273,7 @@ export default function ChairBusinessPage() {
               const open = openFaq === i;
               return (
                 <Reveal key={item.q} delay={i * 50}>
-                  <div className="border border-neutral-100 rounded-2xl overflow-hidden">
+                  <div className="rounded-[22px] shadow-[0_3px_14px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
                     <button
                       onClick={() => setOpenFaq(open ? null : i)}
                       className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-neutral-50 transition-colors"

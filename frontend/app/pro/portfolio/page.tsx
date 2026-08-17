@@ -251,10 +251,10 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 overflow-hidden mb-5">
+    <div className="bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden mb-5">
       <div className="flex items-center justify-between px-5 pt-5 pb-3">
         <div>
-          <h3 className="font-semibold text-neutral-900 text-sm">Nouvelle réalisation</h3>
+          <h3 className="font-bold text-neutral-900 text-sm">Nouvelle réalisation</h3>
           <p className="text-[11px] text-neutral-400 mt-0.5">Taguez précisément pour apparaître dans le bon feed</p>
         </div>
         <button type="button" onClick={onCancel} className="text-neutral-400 hover:text-neutral-700"><X size={18} /></button>
@@ -402,7 +402,7 @@ function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onToggle
 
   if (editing) {
     return (
-      <div className="bg-white rounded-2xl border border-neutral-100 p-4 space-y-3">
+      <div className="bg-white rounded-[20px] shadow-[0_3px_14px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4 space-y-3">
         <div className="flex items-center justify-between mb-1">
           <p className="text-xs font-bold text-neutral-900">Modifier</p>
           <button onClick={() => setEditing(false)} className="text-neutral-400 hover:text-neutral-700"><X size={16} /></button>
@@ -441,7 +441,7 @@ function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onToggle
   }
 
   return (
-    <div data-post-id={post.id} className={`relative bg-white rounded-2xl border overflow-hidden group ${post.is_pinned ? 'border-neutral-900' : 'border-neutral-100'} ${reorderMode ? 'select-none' : ''}`}>
+    <div data-post-id={post.id} className={`relative bg-white rounded-[20px] shadow-[0_3px_14px_-6px_rgba(10,10,10,0.12)] overflow-hidden group ${post.is_pinned ? 'ring-2 ring-neutral-900' : 'ring-1 ring-neutral-100'} ${reorderMode ? 'select-none' : ''}`}>
       {/* Cover image */}
       <div className={`relative aspect-square bg-neutral-100 ${!post.is_published ? 'opacity-50' : ''}`}>
         {coverImg ? (
@@ -701,54 +701,42 @@ export default function PortfolioPage() {
 
       <div className="max-w-2xl mx-auto px-4 md:px-6 pt-5">
 
-        {/* Stats strip */}
+        {/* Stats & temps forts — un seul panneau au lieu de plusieurs bandeaux empilés */}
         {!loading && posts.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            {[
-              { icon: ImageIcon, label: 'Réalisations', value: posts.length },
-              { icon: Eye,       label: 'Vues totales', value: totalViews },
-              { icon: Star,      label: 'J\'aime',      value: totalLikes },
-            ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="bg-white rounded-2xl border border-neutral-100 p-3.5 text-center">
-                <Icon size={15} className="text-neutral-400 mx-auto mb-1.5" strokeWidth={1.5} />
-                <p className="text-lg font-bold text-neutral-900 leading-none">{value}</p>
-                <p className="text-[9px] text-neutral-400 font-medium mt-1 uppercase tracking-wide">{label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Meilleure réalisation + spécialité dominante */}
-        {!loading && (bestPost || dominantSpecialty) && (
-          <div className="flex gap-3 mb-5">
-            {bestPost && (
-              <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl border border-neutral-100 px-3.5 py-3 min-w-0">
-                <Award size={16} className="text-amber-500 flex-shrink-0" strokeWidth={1.5} />
-                <div className="min-w-0">
-                  <p className="text-[9px] text-neutral-400 uppercase tracking-wide font-semibold">Meilleure réalisation</p>
-                  <p className="text-[12px] font-bold text-neutral-900">{bestPost.likes_count} j&apos;aime</p>
+          <div className="bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 px-4 py-4 mb-5">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              {[
+                { icon: ImageIcon, label: 'Réalisations', value: posts.length },
+                { icon: Eye,       label: 'Vues totales', value: totalViews },
+                { icon: Star,      label: 'J\'aime',      value: totalLikes },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label}>
+                  <Icon size={15} className="text-neutral-400 mx-auto mb-1.5" strokeWidth={1.5} />
+                  <p className="text-xl font-bold text-neutral-900 leading-none">{value}</p>
+                  <p className="text-[9px] text-neutral-400 font-semibold mt-1 uppercase tracking-wide">{label}</p>
                 </div>
+              ))}
+            </div>
+            {(bestPost || dominantSpecialty) && (
+              <div className="flex gap-4 mt-4 pt-4 border-t border-neutral-50">
+                {bestPost && (
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <Award size={14} className="text-amber-500 flex-shrink-0" strokeWidth={1.5} />
+                    <p className="text-[11px] text-neutral-500 truncate">
+                      <span className="font-bold text-neutral-900">{bestPost.likes_count} j&apos;aime</span> · meilleure réalisation
+                    </p>
+                  </div>
+                )}
+                {dominantSpecialty && (
+                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                    <Scissors size={14} className="text-neutral-400 flex-shrink-0" strokeWidth={1.5} />
+                    <p className="text-[11px] text-neutral-500 truncate">
+                      <span className="font-bold text-neutral-900">{dominantSpecialty}</span> · spécialité dominante
+                    </p>
+                  </div>
+                )}
               </div>
             )}
-            {dominantSpecialty && (
-              <div className="flex-1 flex items-center gap-2.5 bg-white rounded-2xl border border-neutral-100 px-3.5 py-3 min-w-0">
-                <Scissors size={16} className="text-neutral-400 flex-shrink-0" strokeWidth={1.5} />
-                <div className="min-w-0">
-                  <p className="text-[9px] text-neutral-400 uppercase tracking-wide font-semibold">Spécialité dominante</p>
-                  <p className="text-[12px] font-bold text-neutral-900 truncate">{dominantSpecialty}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Trend hint */}
-        {!loading && posts.length >= 3 && totalViews > 0 && (
-          <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5 mb-5">
-            <TrendingUp size={14} className="text-green-600 flex-shrink-0" />
-            <p className="text-xs text-green-700 font-medium">
-              Votre portfolio attire l&apos;attention — continuez à publier régulièrement.
-            </p>
           </div>
         )}
 

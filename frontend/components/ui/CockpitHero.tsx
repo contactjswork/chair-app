@@ -10,9 +10,9 @@ export default function CockpitHero({
 }: { firstName: string; bestSpecialty: ApiSpecialtyProgress | null; city: string | null }) {
   if (!bestSpecialty) {
     return (
-      <div className="bg-neutral-900 rounded-2xl p-6">
+      <div className="bg-neutral-900 rounded-[24px] p-6 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
         <h1 className="text-xl font-bold text-white mb-1">Bonjour, {firstName}</h1>
-        <p className="text-sm text-neutral-400">Choisissez vos spécialités pour commencer à construire votre réputation CHAIR.</p>
+        <p className="text-sm text-neutral-400">Choisissez vos spécialités pour construire votre réputation CHAIR.</p>
         <Link href="/pro/profil" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold bg-white text-neutral-900 px-4 py-2.5 rounded-xl">
           Choisir mes spécialités <ArrowRight size={12} />
         </Link>
@@ -27,7 +27,7 @@ export default function CockpitHero({
   const pct = bestSpecialty.next_step ? Math.min(100, Math.round((bestSpecialty.score / target) * 100)) : 100;
 
   return (
-    <div className="bg-neutral-900 rounded-2xl p-6">
+    <div className="bg-neutral-900 rounded-[24px] p-6 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
       <h1 className="text-xl font-bold text-white mb-4">Bonjour, {firstName}</h1>
 
       <div className="flex items-center gap-3 mb-4">

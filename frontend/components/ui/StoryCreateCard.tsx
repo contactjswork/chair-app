@@ -62,7 +62,7 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
 
   if (!eligible) {
     return (
-      <Link href="/pro/chair-plus" className="flex items-center gap-3 bg-white rounded-2xl border border-neutral-100 p-4 hover:border-neutral-200 transition-colors">
+      <Link href="/pro/chair-plus" className="flex items-center gap-3 bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
         <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
           <Lock size={15} className="text-neutral-400" strokeWidth={1.5} />
         </div>
@@ -75,7 +75,7 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 p-4">
+    <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-neutral-900">Stories</p>
         <button
@@ -97,7 +97,7 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
       {mine.length === 0 ? (
-        <p className="text-xs text-neutral-400">Aucune story active. Publiez du contenu du jour — nouvelle couleur, place disponible, coulisses...</p>
+        <p className="text-xs text-neutral-400">Publiez du contenu du jour — nouvelle couleur, place disponible, coulisses...</p>
       ) : (
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {mine.map((s) => (
