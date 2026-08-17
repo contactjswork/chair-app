@@ -12,6 +12,7 @@ import {
   removeRecentSearch, clearRecentSearches, saveRecentSearch,
 } from '@/lib/explore';
 import type { RecentSearch } from '@/lib/explore';
+import { getLiveSpecialtyLabels } from '@/lib/specialties';
 import { FilterChip } from '@/components/ui/Badge';
 import { PrimaryButton, IconButton } from '@/components/ui/Button';
 
@@ -61,8 +62,17 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
   const [cityError, setCityError]     = useState<string | null>(null);
   const [applying, setApplying]       = useState(false);
   const [geoLoading, setGeoLoading]   = useState(false);
+  // Libellés live (DB, administrables sans build) — repli sur SPECIALTY_LABELS
+  // tant que le fetch n'a pas résolu / si l'API tombe.
+  const [liveLabels, setLiveLabels]   = useState<Record<string, string>>(SPECIALTY_LABELS);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLiveLabels(map); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Verrouillage du scroll de fond + fermeture Escape
   useEffect(() => {
@@ -154,7 +164,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
     }
     if (specialties.length === 1) {
       const slug = specialties[0];
-      saveRecentSearch({ type: 'specialty', label: SPECIALTY_LABELS[slug] ?? slug, value: slug, slug });
+      saveRecentSearch({ type: 'specialty', label: liveLabels[slug] ?? slug, value: slug, slug });
     }
     if (cityName && !useMyPosition) {
       saveRecentSearch({ type: 'city', label: cityName, value: cityName });
@@ -250,9 +260,9 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                   key={slug}
                   active
                   onClick={() => setSpecialties(specialties.filter((s) => s !== slug))}
-                  aria-label={`Retirer la spécialité ${SPECIALTY_LABELS[slug] ?? slug}`}
+                  aria-label={`Retirer la spécialité ${liveLabels[slug] ?? slug}`}
                 >
-                  {SPECIALTY_LABELS[slug] ?? slug}
+                  {liveLabels[slug] ?? slug}
                   <X size={12} className="text-neutral-400" />
                 </FilterChip>
               ))}

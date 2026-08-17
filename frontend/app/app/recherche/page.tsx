@@ -23,6 +23,7 @@ import { useExploreSearch } from '@/hooks/useExploreSearch';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
 import { geocodeCity, resultKey, SPECIALTY_LABELS } from '@/lib/explore';
+import { getLiveSpecialtyLabels } from '@/lib/specialties';
 import type { ExploreResult, ExploreType } from '@/lib/explore';
 import type { MapViewport } from '@/components/search/mapProvider';
 import { getStoredLocation, requestBrowserGeolocation, storeLocation } from '@/hooks/useGeolocation';
@@ -68,6 +69,15 @@ function RechercheContent() {
   const [filtersOpen, setFiltersOpen]   = useState(false);
   const [mapMoved, setMapMoved]         = useState(false);
   const [favoriteIds, setFavoriteIds]   = useState<Set<number> | null>(null);
+  // Libellés live (DB, administrables sans build) — repli sur SPECIALTY_LABELS
+  // tant que le fetch n'a pas résolu / si l'API tombe.
+  const [liveLabels, setLiveLabels] = useState<Record<string, string>>(SPECIALTY_LABELS);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLiveLabels(map); });
+    return () => { cancelled = true; };
+  }, []);
 
   const mapRef      = useRef<SearchMapHandle>(null);
   const viewportRef = useRef<MapViewport | null>(null);
@@ -267,7 +277,7 @@ function RechercheContent() {
   // ── Libellés ──────────────────────────────────────────────────────────────
   const barTitle =
     filters.q ? filters.q :
-    filters.specialties.length === 1 ? (SPECIALTY_LABELS[filters.specialties[0]] ?? filters.specialties[0]) :
+    filters.specialties.length === 1 ? (liveLabels[filters.specialties[0]] ?? filters.specialties[0]) :
     filters.specialties.length > 1 ? `${filters.specialties.length} spécialités` :
     'Toutes les prestations';
 
@@ -319,7 +329,7 @@ function RechercheContent() {
   const activeChips: { key: string; label: string; clear: () => void }[] = [
     ...filters.specialties.map((slug) => ({
       key: `spec-${slug}`,
-      label: SPECIALTY_LABELS[slug] ?? slug,
+      label: liveLabels[slug] ?? slug,
       clear: () => setFilters({ specialties: filters.specialties.filter((s) => s !== slug) }),
     })),
     ...(filters.minRating > 0
@@ -431,7 +441,7 @@ function RechercheContent() {
             specialtyRelaxed={explore.specialtyRelaxed}
             specialtyLabel={
               filters.specialties.length === 1
-                ? (SPECIALTY_LABELS[filters.specialties[0]] ?? filters.specialties[0])
+                ? (liveLabels[filters.specialties[0]] ?? filters.specialties[0])
                 : filters.specialties.length > 1 ? `${filters.specialties.length} spécialités` : null
             }
             requestedRadius={filters.radius}

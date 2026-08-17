@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { FEMME_SLUGS, HOMME_SLUGS, getUserPrefs, getUserSpecialtySlugs } from '@/lib/homeFilters';
+import { getLiveSpecialtyLabels } from '@/lib/specialties';
 
 // Toutes les spécialités CHAIR — la personnalisation ne fait que RÉORDONNER
 // ce même jeu de catégories (jamais en inventer, jamais en cacher pour de
@@ -24,15 +25,26 @@ const SPECIALTIES = [
   { slug: 'afro-locks',           label: 'Afro & Locks',           icon: '/onboarding/dreads.png' },
 ];
 
-const PRIORITY_COUNT = 6;
+const DEFAULT_PRIORITY_COUNT = 6;
 
-export default function SpecialtyQuickLinks() {
+export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) {
+  const priorityCount = limit && limit > 0 ? Math.min(limit, SPECIALTIES.length) : DEFAULT_PRIORITY_COUNT;
+
   // État initial déterministe (ordre déclaré ci-dessus) — évite tout écart
   // SSR/client ; la réordonnance selon les préférences arrive juste après le
   // montage, une fois le localStorage lisible (même pattern que les autres
   // strips de la home, voir HomeGeoStrips.tsx).
-  const [visible, setVisible] = useState(SPECIALTIES.slice(0, PRIORITY_COUNT));
-  const [rest, setRest] = useState(SPECIALTIES.slice(PRIORITY_COUNT));
+  const [visible, setVisible] = useState(SPECIALTIES.slice(0, priorityCount));
+  const [rest, setRest] = useState(SPECIALTIES.slice(priorityCount));
+  // Libellés live (DB, administrables sans build) — repli sur le libellé codé
+  // en dur de SPECIALTIES tant que le fetch n'a pas résolu / si l'API tombe.
+  const [labels, setLabels] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLabels(map); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     // getUserSpecialtySlugs() ne renvoie jamais [] (repli DEFAULT_SLUGS en
@@ -59,7 +71,7 @@ export default function SpecialtyQuickLinks() {
     const genderPool = gender === 'homme' ? HOMME_SLUGS : gender === 'femme' ? FEMME_SLUGS : null;
     const fillerCandidates = genderPool ? SPECIALTIES.filter((s) => genderPool.includes(s.slug)) : SPECIALTIES;
     const filler = fillerCandidates.filter((s) => !matchedSlugs.has(s.slug));
-    const visibleOrdered = [...matched, ...filler].slice(0, PRIORITY_COUNT);
+    const visibleOrdered = [...matched, ...filler].slice(0, priorityCount);
 
     // "Voir tout" reste un vrai accès à TOUTES les catégories CHAIR (pas
     // seulement celles du genre) — restreindre les 6 mises en avant ne doit
@@ -68,12 +80,13 @@ export default function SpecialtyQuickLinks() {
     const restOrdered = SPECIALTIES.filter((s) => !visibleSlugs.has(s.slug));
 
     // Lecture localStorage impossible côté serveur — ce réordonnancement ne
-    // peut arriver qu'après montage, une seule fois (deps []), même pattern
-    // que les autres strips de la home (voir HomePersonalized.tsx).
+    // peut arriver qu'après montage, une seule fois par valeur de
+    // priorityCount (venue de la config home, stable en pratique), même
+    // pattern que les autres strips de la home (voir HomePersonalized.tsx).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(visibleOrdered);
     setRest(restOrdered);
-  }, []);
+  }, [priorityCount]);
 
   return (
     <section className="pt-2 pb-1">
@@ -87,13 +100,13 @@ export default function SpecialtyQuickLinks() {
             <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white transition-colors group-hover:bg-neutral-50">
               <Image
                 src={s.icon}
-                alt={s.label}
+                alt={labels[s.slug] ?? s.label}
                 width={54}
                 height={54}
                 className="object-contain mix-blend-multiply"
               />
             </div>
-            <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{s.label}</p>
+            <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
           </Link>
         ))}
 

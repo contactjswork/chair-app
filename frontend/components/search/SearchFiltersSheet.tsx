@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapPin, RotateCcw, Star, X } from 'lucide-react';
 import { SPECIALTY_LABELS } from '@/lib/explore';
 import type { ExploreSort, ExploreType } from '@/lib/explore';
+import { getLiveSpecialtyLabels } from '@/lib/specialties';
 import { getSpecialtyIcon } from './specialtyIcons';
 import { FilterChip } from '@/components/ui/Badge';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/Button';
@@ -72,6 +73,16 @@ function Chip({ active, onClick, icon, children }: { active: boolean; onClick: (
 export default function SearchFiltersSheet({
   open, onClose, filters, onChange, onReset, resultsCount, hasLocation, locationLabel, isLoading,
 }: Props) {
+  // Libellés live (DB, administrables sans build) — repli sur SPECIALTY_LABELS
+  // tant que le fetch n'a pas résolu / si l'API tombe.
+  const [liveLabels, setLiveLabels] = useState<Record<string, string>>(SPECIALTY_LABELS);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLiveLabels(map); });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = 'hidden';
@@ -106,7 +117,7 @@ export default function SearchFiltersSheet({
           {/* Spécialités — le "quoi", premier réglage rencontré */}
           <Section title="Spécialités">
             <div className="flex flex-wrap gap-2">
-              {Object.entries(SPECIALTY_LABELS).map(([slug, label]) => {
+              {Object.entries(liveLabels).map(([slug, label]) => {
                 const active = filters.specialties.includes(slug);
                 return (
                   <Chip

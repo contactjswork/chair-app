@@ -318,19 +318,12 @@ export function getClientPrefs(): ClientPrefs {
 }
 
 // ── Spécialités CHAIR ────────────────────────────────────────────────────────
+// SPECIALTY_LABELS n'est plus défini ici — c'est un simple repli statique
+// (API indisponible) réexporté depuis lib/specialties.ts, source unique.
+// Pour le libellé LIVE (administrable sans build), voir
+// getLiveSpecialtyLabels() dans ce même fichier.
 
-export const SPECIALTY_LABELS: Record<string, string> = {
-  'coupe-homme':          'Coupe Homme',
-  'barbe':                'Barbe',
-  'coupe-femme':          'Coupe Femme',
-  'couleur-balayage':     'Couleur & Balayage',
-  'texture-lissage':      'Texture & Lissage',
-  'boucles-curly':        'Boucles & Curly',
-  'afro-locks':           'Afro & Locks',
-  'extensions':           'Extensions',
-  'evenementiel':         'Événementiel',
-  'soins-transformation': 'Soins & Transformation',
-};
+export { SPECIALTY_LABELS } from './specialties';
 
 /** Ordonne les spécialités selon les préférences du client — sans jamais en cacher. */
 export function orderSpecialties(slugs: string[], prefs: ClientPrefs): string[] {

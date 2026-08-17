@@ -47,6 +47,20 @@ async function getRealisations(): Promise<ApiPost[]> {
   } catch { return []; }
 }
 
+// Libellés de spécialités live (renommage admin sans build, propagation
+// alignée sur le revalidate ISR de 5 min ci-dessus) — repli sur
+// SPECIALTY_LABELS si l'API échoue, jamais un slug brut affiché.
+async function getSpecialtyLabels(): Promise<Record<string, string>> {
+  try {
+    const res = await fetch(`${API}/specialties`);
+    if (!res.ok) return SPECIALTY_LABELS;
+    const data: { slug: string; name: string }[] = await res.json();
+    const map: Record<string, string> = { ...SPECIALTY_LABELS };
+    data.forEach((s) => { if (s.slug && s.name) map[s.slug] = s.name; });
+    return map;
+  } catch { return SPECIALTY_LABELS; }
+}
+
 /* ─────────────────────────────────────────────────────────────
    FEATURE SECTION — texte + mockup, alternés, mobile-first
 ───────────────────────────────────────────────────────────── */
@@ -108,10 +122,11 @@ function FeatureSection({
    PAGE
 ───────────────────────────────────────────────────────────── */
 export default async function HomePage() {
-  const [topRanked, realisations, featuredHairdressers] = await Promise.all([
+  const [topRanked, realisations, featuredHairdressers, specialtyLabels] = await Promise.all([
     getTopRanked(),
     getRealisations(),
     getFeaturedHairdressers(),
+    getSpecialtyLabels(),
   ]);
   return (
     <div className="min-h-screen bg-white text-neutral-900 font-sans overflow-x-hidden [&_section]:overflow-x-hidden">
@@ -344,7 +359,7 @@ export default async function HomePage() {
             </h2>
           </Reveal>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {Object.entries(SPECIALTY_LABELS).map(([slug, label], i) => (
+            {Object.entries(specialtyLabels).map(([slug, label], i) => (
               <Reveal key={slug} delay={(i % 5) * 60}>
                 <Link
                   href={`/app/recherche?specialty=${slug}`}

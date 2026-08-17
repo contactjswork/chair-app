@@ -56,10 +56,13 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
       const prefs = JSON.parse(raw) as { gender?: string; interests?: string[] };
       const interests = prefs.interests ?? [];
       if (interests.length >= 2) {
+        // Repli local uniquement — texte d'indice purement décoratif (jamais
+        // affiché comme "le" nom officiel d'une spécialité), pas la peine
+        // d'y brancher les libellés live et de rendre cet effet réactif.
         const labels = interests.slice(0, 3).map((s) => SLUG_LABEL[s] ?? (s.charAt(0).toUpperCase() + s.slice(1)));
         setPlaceholder(labels.join(', ') + '...');
       } else if (prefs.gender === 'homme') {
-        setPlaceholder('Coupe Homme, Barbe, Afro & Locks...');
+        setPlaceholder(`Coupe Homme, Barbe, ${SLUG_LABEL['afro-locks']}...`);
       } else if (prefs.gender === 'femme') {
         setPlaceholder('Balayage, Boucles & Curly, Lissage...');
       }
