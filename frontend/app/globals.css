@@ -50,6 +50,13 @@ a, button {
   /* Filet de sécurité en plus du viewport meta (maximumScale/userScalable) :
      supprime le double-tap-zoom sur les éléments interactifs. */
   touch-action: manipulation;
+  /* Retour Julien : un appui long sur un bouton/lien permettait de le
+     "déplacer" (drag natif WebKit) — -webkit-touch-callout sur html/body ne
+     couvre que le menu copier/partager, pas le drag lui-même, qui reste
+     activé par défaut sur tout <a>. Sans ça, l'utilisateur peut faire
+     glisser un lien et voir l'URL brute (getchair.app/...) apparaître,
+     trahissant que c'est une page web et pas une app native. */
+  -webkit-user-drag: none;
 }
 
 /* Evite le zoom automatique iOS quand on tape dans un champ de moins de 16px */
