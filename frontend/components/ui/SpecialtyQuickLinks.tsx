@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { FEMME_SLUGS, HOMME_SLUGS, getUserPrefs, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { getLiveSpecialtyLabels } from '@/lib/specialties';
+import Reveal from './Reveal';
 
 // Toutes les spécialités CHAIR — la personnalisation ne fait que RÉORDONNER
 // ce même jeu de catégories (jamais en inventer, jamais en cacher pour de
@@ -89,31 +90,38 @@ export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) 
   }, [priorityCount]);
 
   return (
-    <section className="pt-2 pb-1">
+    // pt-6 (au lieu de pt-2) : la rangée respirait à peine sous "Pour vous" —
+    // reste plus tassée qu'une section titrée (c'est un simple raccourci de
+    // filtre, pas un bloc de contenu), mais assez d'air pour ne plus coller.
+    <section className="pt-6 pb-2">
       <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 no-scrollbar">
-        {visible.map((s) => (
-          <Link
-            key={s.slug}
-            href={`/app/recherche?specialty=${s.slug}`}
-            className="group flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
-          >
-            <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white transition-colors group-hover:bg-neutral-50">
-              <Image
-                src={s.icon}
-                alt={labels[s.slug] ?? s.label}
-                width={54}
-                height={54}
-                className="object-contain mix-blend-multiply"
-              />
-            </div>
-            <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
-          </Link>
+        {visible.map((s, i) => (
+          <Reveal key={s.slug} delay={(i % 6) * 45} className="flex-shrink-0">
+            <Link
+              href={`/app/recherche?specialty=${s.slug}`}
+              className="group flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
+            >
+              <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white transition-colors group-hover:bg-neutral-50">
+                <Image
+                  src={s.icon}
+                  alt={labels[s.slug] ?? s.label}
+                  width={54}
+                  height={54}
+                  className="object-contain mix-blend-multiply"
+                />
+              </div>
+              <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
+            </Link>
+          </Reveal>
         ))}
 
         {rest.length > 0 && (
           <Link
             href="/app/recherche"
-            className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.88] transition-transform duration-150"
+            // Scale harmonisé avec les pastilles voisines (0.94) — rien ne
+            // justifiait que "Voir tout" réagisse plus fort (0.88) au tap
+            // que les catégories juste à côté.
+            className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
           >
             <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-dashed border-neutral-300 flex items-center justify-center bg-white">
               <ChevronRight size={20} className="text-neutral-400" strokeWidth={2.5} />

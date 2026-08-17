@@ -138,13 +138,26 @@ export class LeafletAdapter implements MapAdapter {
     });
     this.map = map;
 
-    // CARTO Voyager — carte en couleur, style clair et net proche d'Apple Maps
-    // (contrairement au rendu Mapnik brut, plus saturé). Gratuit, sans clé.
+    // CARTO Voyager — gratuit, sans clé. Comparé côte à côte (Positron,
+    // Voyager brut, Voyager filtré) sur plusieurs villes/zooms avant de
+    // choisir : Positron est trop plat/monochrome (perd toute couleur de
+    // terrain, eau, végétation — l'effet "délavé" reproché), Voyager brut a
+    // les bons ingrédients (terrain crème, eau bleue, parcs verts, routes
+    // blanches) mais des bâtiments/routes trop saturés (orange vif) pour
+    // évoquer le calme d'Apple Plans. Le filtre CSS ci-dessous (appliqué au
+    // pane des tuiles UNIQUEMENT, jamais aux marqueurs) désature et éclaircit
+    // légèrement pour se rapprocher du rendu Apple Maps, sans changer de
+    // fournisseur ni ajouter de dépendance/clé.
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap',
       maxZoom: 20,
       subdomains: 'abcd',
     }).addTo(map);
+
+    const tilePane = map.getPane('tilePane');
+    if (tilePane) {
+      tilePane.style.filter = 'saturate(0.7) brightness(1.06) contrast(0.93) hue-rotate(4deg)';
+    }
 
     this.markerLayer = L.layerGroup().addTo(map);
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
 import { SectionHeader } from './HomeGeoStrips';
+import Reveal from './Reveal';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
 import type { MapAdapter, MapMarkerData } from '@/components/search/mapProvider';
@@ -100,31 +101,36 @@ export default function NearbyMapSection({
 
   return (
     <section className="pt-10">
-      <SectionHeader tag="Autour de vous" title={titleOverride ?? 'Sur la carte'} href="/app/recherche" />
-      <div className="px-4 md:px-8 max-w-6xl md:mx-auto">
-        <Link
-          href="/app/recherche"
-          // isolate : sans ça, les couches GPU internes de Leaflet
-          // (translate3d sur les tuiles) passent parfois AU-DESSUS de la
-          // barre de navigation fixe au scroll sur iOS/Safari — bug connu de
-          // compositing, pas un simple souci de z-index classique.
-          className="relative isolate block h-[190px] md:h-[240px] rounded-3xl overflow-hidden bg-neutral-100 active:scale-[0.98] transition-transform duration-150"
-        >
-          <div ref={containerRef} className="absolute inset-0 pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-          <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3 pointer-events-none">
-            <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur px-3.5 py-2 rounded-full shadow">
-              <MapPin size={13} className="text-neutral-900" />
-              <span className="text-[12px] font-bold text-neutral-900">
-                {hairdressers.length}+ coiffeurs {geo.city ? `près de ${geo.city}` : 'près de vous'}
-              </span>
+      <Reveal>
+        <SectionHeader tag="Autour de vous" title={titleOverride ?? 'Sur la carte'} href="/app/recherche" />
+        {/* Le cadre (dimensions, coins, overlay, badge) est du ressort de
+            cette section — le rendu interne de la carte (tuiles/marqueurs
+            Leaflet) reste géré par leafletAdapter.ts, non touché ici. */}
+        <div className="px-4 md:px-8 max-w-6xl md:mx-auto">
+          <Link
+            href="/app/recherche"
+            // isolate : sans ça, les couches GPU internes de Leaflet
+            // (translate3d sur les tuiles) passent parfois AU-DESSUS de la
+            // barre de navigation fixe au scroll sur iOS/Safari — bug connu de
+            // compositing, pas un simple souci de z-index classique.
+            className="relative isolate block h-[190px] md:h-[240px] rounded-3xl overflow-hidden bg-neutral-100 active:scale-[0.98] transition-transform duration-150"
+          >
+            <div ref={containerRef} className="absolute inset-0 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-3 pointer-events-none">
+              <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur px-3.5 py-2 rounded-full shadow">
+                <MapPin size={13} className="text-neutral-900" />
+                <span className="text-[12px] font-bold text-neutral-900">
+                  {hairdressers.length}+ coiffeurs {geo.city ? `près de ${geo.city}` : 'près de vous'}
+                </span>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow flex-shrink-0">
+                <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
+              </div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow flex-shrink-0">
-              <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
-            </div>
-          </div>
-        </Link>
-      </div>
+          </Link>
+        </div>
+      </Reveal>
     </section>
   );
 }

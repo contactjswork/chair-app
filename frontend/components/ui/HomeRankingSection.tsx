@@ -7,6 +7,7 @@ import { BadgeCheck, MapPin, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
 import { SectionHeader } from './HomeGeoStrips';
+import Reveal from './Reveal';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { getRankingRadiusTiers } from '@/lib/appConfig';
 
@@ -125,59 +126,65 @@ export default function HomeRankingSection({
 
   return (
     <section className="pt-10">
-      <SectionHeader
-        tag="Classement"
-        tagIcon={<Trophy size={11} className="text-amber-500" />}
-        title={titleOverride ?? title ?? 'Les meilleurs coiffeurs CHAIR'}
-        href="/app/classements"
-      />
+      <Reveal>
+        <SectionHeader
+          tag="Classement"
+          tagIcon={<Trophy size={11} className="text-amber-500" />}
+          title={titleOverride ?? title ?? 'Les meilleurs coiffeurs CHAIR'}
+          href="/app/classements"
+        />
+      </Reveal>
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto space-y-2">
-        {entries.slice(0, effectiveLimit).map((h) => {
+        {/* Cascade ligne par ligne (délai croissant, borné à 5 crans) — un
+            podium qui se révèle dans l'ordre se lit mieux qu'une liste qui
+            apparaît d'un bloc, et rappelle qu'il s'agit bien d'un classement. */}
+        {entries.slice(0, effectiveLimit).map((h, i) => {
           const avatar = resolveMediaUrl(h.avatar);
           const rankCls = RANK_TONE[h.rank] ?? 'bg-neutral-100 text-neutral-500';
           return (
-            <Link
-              key={h.id}
-              href={`/app/coiffeur/${h.slug}`}
-              className="flex items-center gap-3.5 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm active:scale-[0.98] active:bg-neutral-50 transition-all"
-            >
-              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankCls}`}>
-                {h.rank}
-              </span>
-              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
-                {avatar ? (
-                  <Image src={avatar} alt={h.name} fill className="object-cover" sizes="44px" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-neutral-200">
-                    <span className="font-bold text-neutral-400">{h.name.charAt(0)}</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-[14px] font-bold text-neutral-900 truncate">{h.name}</p>
-                  {h.is_verified && <BadgeCheck size={13} className="text-neutral-900 flex-shrink-0" />}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {h.city && (
-                    <span className="flex items-center gap-0.5 text-[11px] text-neutral-400">
-                      <MapPin size={9} />{h.city}
-                    </span>
-                  )}
-                  {h.specialty && <span className="text-[11px] text-neutral-400 truncate">{h.specialty}</span>}
-                </div>
-              </div>
-              {h.reviews_count != null && h.reviews_count > 0 ? (
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-[15px] font-bold text-neutral-900">{(h.avg_rating ?? 0).toFixed(1)}</p>
-                  <p className="text-[10px] text-neutral-400">{h.reviews_count} avis</p>
-                </div>
-              ) : h.level_name ? (
-                <span className="flex-shrink-0 text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">
-                  {h.level_name}
+            <Reveal key={h.id} delay={(i % 5) * 60}>
+              <Link
+                href={`/app/coiffeur/${h.slug}`}
+                className="flex items-center gap-3.5 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm active:scale-[0.98] active:bg-neutral-50 transition-all"
+              >
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankCls}`}>
+                  {h.rank}
                 </span>
-              ) : null}
-            </Link>
+                <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
+                  {avatar ? (
+                    <Image src={avatar} alt={h.name} fill className="object-cover" sizes="44px" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+                      <span className="font-bold text-neutral-400">{h.name.charAt(0)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[14px] font-bold text-neutral-900 truncate">{h.name}</p>
+                    {h.is_verified && <BadgeCheck size={13} className="text-neutral-900 flex-shrink-0" />}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {h.city && (
+                      <span className="flex items-center gap-0.5 text-[11px] text-neutral-400">
+                        <MapPin size={9} />{h.city}
+                      </span>
+                    )}
+                    {h.specialty && <span className="text-[11px] text-neutral-400 truncate">{h.specialty}</span>}
+                  </div>
+                </div>
+                {h.reviews_count != null && h.reviews_count > 0 ? (
+                  <div className="flex-shrink-0 text-right">
+                    <p className="text-[15px] font-bold text-neutral-900">{(h.avg_rating ?? 0).toFixed(1)}</p>
+                    <p className="text-[10px] text-neutral-400">{h.reviews_count} avis</p>
+                  </div>
+                ) : h.level_name ? (
+                  <span className="flex-shrink-0 text-[10px] font-bold text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full">
+                    {h.level_name}
+                  </span>
+                ) : null}
+              </Link>
+            </Reveal>
           );
         })}
       </div>

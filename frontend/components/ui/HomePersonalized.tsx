@@ -6,6 +6,7 @@ import { MapPin, Sparkles, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getStoredToken } from '@/lib/auth';
 import RecommendationCard from './RecommendationCard';
+import Reveal from './Reveal';
 import { SectionHeader } from './HomeGeoStrips';
 import { getUserGeo, getUserPrefs, getUserSpecialtySlugs, hasExplicitInterests } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
@@ -73,7 +74,12 @@ export default function HomePersonalized({
 
   if (!ready) {
     return (
-      <section className="pt-6">
+      // Pas de Reveal ici — le squelette doit apparaître immédiatement (pas
+      // de délai avant le premier retour visuel), seul le contenu final se
+      // fond en douceur une fois prêt (voir plus bas). pt-10 : même rythme
+      // vertical que toutes les autres sections de la home (pt-6 cassait la
+      // cohérence dès qu'une autre section admin passait avant celle-ci).
+      <section className="pt-10">
         <div className="px-4 md:px-8 mb-5 flex items-end justify-between">
           <div className="h-6 w-48 bg-neutral-100 rounded-full animate-pulse" />
         </div>
@@ -89,30 +95,32 @@ export default function HomePersonalized({
   // ── Visiteur sans aucun signal (jamais de préférence inventée) ─────────
   if (!user && !guestHasSignal) {
     return (
-      <section className="pt-6 px-4 md:px-8 max-w-6xl md:mx-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-neutral-900 px-6 py-7">
-          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-1.5 mb-3">
-              <Sparkles size={12} className="text-white/50" />
-              <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour vous</p>
-            </div>
-            <h2 className="text-[20px] font-bold text-white leading-tight mb-2">
-              Le bon coiffeur,<br />selon votre style.
-            </h2>
-            <p className="text-[13px] text-white/55 leading-relaxed mb-5">
-              Créez un compte gratuit, CHAIR sélectionne les profils faits pour vous.
-            </p>
-            <div className="flex gap-2">
-              <Link href="/inscription" className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 active:scale-[0.97] transition-all">
-                <UserPlus size={14} />Créer un compte
-              </Link>
-              <Link href="/connexion" className="flex items-center gap-2 border border-white/20 text-white font-semibold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/10 active:scale-[0.97] transition-all">
-                Se connecter
-              </Link>
+      <section className="pt-10 px-4 md:px-8 max-w-6xl md:mx-auto">
+        <Reveal>
+          <div className="relative overflow-hidden rounded-2xl bg-neutral-900 px-6 py-7">
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-1.5 mb-3">
+                <Sparkles size={12} className="text-white/50" />
+                <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour vous</p>
+              </div>
+              <h2 className="text-[20px] font-bold text-white leading-tight mb-2">
+                Le bon coiffeur,<br />selon votre style.
+              </h2>
+              <p className="text-[13px] text-white/55 leading-relaxed mb-5">
+                Créez un compte gratuit, CHAIR sélectionne les profils faits pour vous.
+              </p>
+              <div className="flex gap-2">
+                <Link href="/inscription" className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 active:scale-[0.97] transition-all">
+                  <UserPlus size={14} />Créer un compte
+                </Link>
+                <Link href="/connexion" className="flex items-center gap-2 border border-white/20 text-white font-semibold text-[13px] px-4 py-2.5 rounded-xl hover:bg-white/10 active:scale-[0.97] transition-all">
+                  Se connecter
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
     );
   }
@@ -122,7 +130,7 @@ export default function HomePersonalized({
   // reste honnête plutôt que de faire comme si la home n'avait rien à dire.
   if (entries.length === 0) {
     return (
-      <section className="pt-6 px-4 md:px-8 max-w-6xl md:mx-auto">
+      <section className="pt-10 px-4 md:px-8 max-w-6xl md:mx-auto">
         <SectionHeader tag="Pour vous" title="Bientôt près de chez vous" />
         <p className="text-[13px] text-neutral-400 -mt-3">
           Aucun coiffeur inscrit sur CHAIR pour le moment. Revenez bientôt.
@@ -137,10 +145,17 @@ export default function HomePersonalized({
   const noGeo = meta?.tier === 'no_geo';
 
   return (
-    <section className="pt-6">
-      <SectionHeader tag="Pour vous" title={title} href="/app/recherche" badge={badge} />
+    <section className="pt-10">
+      <Reveal><SectionHeader tag="Pour vous" title={title} href="/app/recherche" badge={badge} /></Reveal>
       <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
-        {entries.map((r) => <RecommendationCard key={r.id} r={r} size="lg" />)}
+        {/* Cascade légère (délai croissant par carte, borné à 4 crans) — la
+            promesse "pas juste le plus proche" mérite de se dévoiler carte
+            par carte plutôt que d'apparaître comme un bloc figé. */}
+        {entries.map((r, i) => (
+          <Reveal key={r.id} delay={(i % 4) * 70} className="flex-shrink-0">
+            <RecommendationCard r={r} size="lg" />
+          </Reveal>
+        ))}
       </div>
       {noGeo && user && (
         <Link

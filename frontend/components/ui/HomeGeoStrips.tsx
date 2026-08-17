@@ -10,6 +10,7 @@ import type { ApiHairdresserProfile } from '@/lib/types';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
+import Reveal from './Reveal';
 
 function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: string; badgeCls?: string }) {
   const avatar = resolveMediaUrl(h.user.avatar);
@@ -114,7 +115,11 @@ export function SectionHeader({
 function HDStrip({ hairdressers, badge, badgeCls }: { hairdressers: ApiHairdresserProfile[]; badge?: string; badgeCls?: string }) {
   return (
     <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
-      {hairdressers.map((h) => <HDCard key={h.id} h={h} badge={badge} badgeCls={badgeCls} />)}
+      {hairdressers.map((h, i) => (
+        <Reveal key={h.id} delay={(i % 4) * 70} className="flex-shrink-0">
+          <HDCard h={h} badge={badge} badgeCls={badgeCls} />
+        </Reveal>
+      ))}
     </div>
   );
 }
@@ -122,45 +127,47 @@ function HDStrip({ hairdressers, badge, badgeCls }: { hairdressers: ApiHairdress
 function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserProfile[] }) {
   return (
     <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 no-scrollbar">
-      {hairdressers.map((h) => {
+      {hairdressers.map((h, i) => {
         const avatar = resolveMediaUrl(h.user.avatar);
         const spec = h.specialties[0]?.name;
         const hasRating = h.reviews_count > 0;
         const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
         const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
         return (
-          <Link key={h.id} href={`/app/coiffeur/${h.slug}`} className="flex-shrink-0 flex flex-col items-center gap-2 group active:scale-[0.94] transition-transform duration-150" style={{ width: 76 }}>
-            <div
-              className="relative w-[66px] h-[66px] rounded-full p-[2px] shadow-sm"
-              style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
-            >
-              {ring.show && <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />}
-              <div className={`relative rounded-full overflow-hidden bg-neutral-100 group-hover:scale-105 transition-transform duration-300 ${ring.show ? 'w-[calc(100%-4px)] h-[calc(100%-4px)] m-[2px]' : 'w-full h-full ring-2 ring-neutral-100 group-hover:ring-neutral-300 transition-all'}`}>
-                {avatar ? (
-                  <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="66px" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-neutral-200">
-                    <span className="text-xl font-bold text-neutral-400">{h.user.name.charAt(0)}</span>
-                  </div>
-                )}
-                {h.is_verified && (
-                  <div className="absolute bottom-0 right-0 w-[18px] h-[18px] rounded-full bg-white shadow flex items-center justify-center">
-                    <BadgeCheck size={10} className="text-neutral-900" />
-                  </div>
+          <Reveal key={h.id} delay={(i % 4) * 70} className="flex-shrink-0">
+            <Link href={`/app/coiffeur/${h.slug}`} className="flex flex-col items-center gap-2 group active:scale-[0.94] transition-transform duration-150" style={{ width: 76 }}>
+              <div
+                className="relative w-[66px] h-[66px] rounded-full p-[2px] shadow-sm"
+                style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
+              >
+                {ring.show && <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />}
+                <div className={`relative rounded-full overflow-hidden bg-neutral-100 group-hover:scale-105 transition-transform duration-300 ${ring.show ? 'w-[calc(100%-4px)] h-[calc(100%-4px)] m-[2px]' : 'w-full h-full ring-2 ring-neutral-100 group-hover:ring-neutral-300 transition-all'}`}>
+                  {avatar ? (
+                    <Image src={avatar} alt={h.user.name} fill className="object-cover" sizes="66px" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+                      <span className="text-xl font-bold text-neutral-400">{h.user.name.charAt(0)}</span>
+                    </div>
+                  )}
+                  {h.is_verified && (
+                    <div className="absolute bottom-0 right-0 w-[18px] h-[18px] rounded-full bg-white shadow flex items-center justify-center">
+                      <BadgeCheck size={10} className="text-neutral-900" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="text-center w-full">
+                <p className="text-[11px] font-bold text-neutral-900 truncate leading-tight">{h.user.name.split(' ')[0]}</p>
+                {spec && <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">{spec}</p>}
+                {hasRating && (
+                  <p className="flex items-center justify-center gap-0.5 text-[10px] font-semibold text-neutral-500 mt-0.5">
+                    <Star size={8} className="fill-neutral-500 stroke-none" />
+                    {parseFloat(h.avg_rating).toFixed(1)}
+                  </p>
                 )}
               </div>
-            </div>
-            <div className="text-center w-full">
-              <p className="text-[11px] font-bold text-neutral-900 truncate leading-tight">{h.user.name.split(' ')[0]}</p>
-              {spec && <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">{spec}</p>}
-              {hasRating && (
-                <p className="flex items-center justify-center gap-0.5 text-[10px] font-semibold text-neutral-500 mt-0.5">
-                  <Star size={8} className="fill-neutral-500 stroke-none" />
-                  {parseFloat(h.avg_rating).toFixed(1)}
-                </p>
-              )}
-            </div>
-          </Link>
+            </Link>
+          </Reveal>
         );
       })}
     </div>
@@ -186,11 +193,13 @@ export function CoupDeCoeurStrip({
   if (!hairdressers.length) return null;
   return (
     <section className="pt-10">
-      <SectionHeader
-        tag="Sélection CHAIR"
-        title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR')}
-        href="/app/recherche"
-      />
+      <Reveal>
+        <SectionHeader
+          tag="Sélection CHAIR"
+          title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR')}
+          href="/app/recherche"
+        />
+      </Reveal>
       <FeaturedAvatarStrip hairdressers={hairdressers.slice(0, effectiveLimit)} />
     </section>
   );
@@ -215,11 +224,13 @@ export function NewTalentsStrip({
   if (!hairdressers.length) return null;
   return (
     <section className="pt-10">
-      <SectionHeader
-        tag="Nouveau sur CHAIR"
-        title={titleOverride ?? (isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents')}
-        href="/app/recherche"
-      />
+      <Reveal>
+        <SectionHeader
+          tag="Nouveau sur CHAIR"
+          title={titleOverride ?? (isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents')}
+          href="/app/recherche"
+        />
+      </Reveal>
       <HDStrip hairdressers={hairdressers.slice(0, effectiveLimit)} badge="Nouveau" badgeCls="bg-neutral-900" />
     </section>
   );
