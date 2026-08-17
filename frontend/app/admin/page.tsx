@@ -1,245 +1,216 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   Users,
   Scissors,
-  CalendarCheck,
   Building2,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  CheckCircle2,
-  XCircle,
+  CalendarCheck,
   Star,
+  FileText,
+  CreditCard,
+  Flag,
+  GraduationCap,
+  Ban,
+  LifeBuoy,
+  Search,
+  Award,
+  SlidersHorizontal,
+  ArrowRight,
 } from 'lucide-react';
+import { adminApi, AdminApiError, PERMISSIONS, getStoredAdminUser, hasPermission, type DashboardToday } from '@/lib/adminApi';
+import { Card, CardHeader, ErrorBanner, PermissionDenied, Skeleton, StatTile } from './_components/ui';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
-const getToken = () =>
-  typeof window !== 'undefined' ? localStorage.getItem('chair_admin_token') : null;
-
-// ─── StatCard ────────────────────────────────────────────────────────────────
-function StatCard({
-  icon: Icon,
-  iconBg,
-  iconColor,
-  value,
-  label,
-  delta,
-}: {
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  value: string | number;
-  label: string;
-  delta?: number;
-}) {
+function CounterGrid({ counters }: { counters: DashboardToday['today'] }) {
   return (
-    <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm p-5 flex flex-col gap-3">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
-        <Icon size={18} className={iconColor} />
-      </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <StatTile icon={Users} value={counters.new_users} label="Nouveaux comptes" tone="violet" />
+      <StatTile icon={Scissors} value={counters.new_hairdressers} label="Nouveaux coiffeurs" tone="blue" />
+      <StatTile icon={Building2} value={counters.new_salons} label="Nouveaux salons" tone="amber" />
+      <StatTile icon={CalendarCheck} value={counters.new_appointments} label="Réservations" tone="emerald" />
+      <StatTile icon={Star} value={counters.new_reviews} label="Nouveaux avis" tone="neutral" />
+      <StatTile icon={CreditCard} value={counters.new_chair_plus_subscriptions} label="Abonnements CHAIR+" tone="violet" />
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  const user = getStoredAdminUser();
+  const [data, setData] = useState<DashboardToday | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [forbidden, setForbidden] = useState(false);
+
+  useEffect(() => {
+    adminApi
+      .get<DashboardToday>('/admin/dashboard/today')
+      .then(setData)
+      .catch((e) => {
+        if (e instanceof AdminApiError && e.isForbidden) setForbidden(true);
+        else setError(e instanceof Error ? e.message : 'Erreur de chargement');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (forbidden) return <PermissionDenied />;
+
+  const alerts = data?.alerts;
+
+  return (
+    <div className="flex flex-col gap-6">
       <div>
-        <div className="text-[26px] font-bold text-neutral-900 leading-none">{value}</div>
-        <div className="text-[12px] text-neutral-400 mt-1">{label}</div>
+        <h1 className="text-[22px] font-bold text-neutral-900 dark:text-neutral-50">Tableau de bord</h1>
+        <p className="text-[13px] text-neutral-400 mt-0.5">
+          Bonjour {user?.name?.split(' ')[0] ?? ''} — vue d&apos;ensemble de la plateforme CHAIR
+        </p>
       </div>
-      {delta !== undefined && (
-        <div
-          className={`flex items-center gap-1 text-[12px] font-medium ${
-            delta >= 0 ? 'text-emerald-600' : 'text-red-500'
-          }`}
-        >
-          {delta >= 0 ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
-          {delta >= 0 ? '+' : ''}{delta}% ce mois
-        </div>
+
+      {error && <ErrorBanner message={error} />}
+
+      {/* Aujourd'hui */}
+      <div>
+        <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Aujourd&apos;hui</h2>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-28" />
+            ))}
+          </div>
+        ) : data ? (
+          <CounterGrid counters={data.today} />
+        ) : null}
+      </div>
+
+      {/* Cette semaine */}
+      <div>
+        <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">
+          Cette semaine <span className="normal-case text-neutral-300 font-normal">(depuis lundi)</span>
+        </h2>
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-28" />
+            ))}
+          </div>
+        ) : data ? (
+          <CounterGrid counters={data.this_week} />
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Alertes */}
+        <Card className="lg:col-span-2">
+          <CardHeader title="Alertes" subtitle="Ce qui nécessite votre attention maintenant" />
+          {loading ? (
+            <div className="p-5 flex flex-col gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-14" />
+              ))}
+            </div>
+          ) : alerts ? (
+            <div className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <AlertRow
+                icon={Flag}
+                tone="red"
+                label="Signalements en attente"
+                value={alerts.pending_reports}
+                href="/admin/moderation?tab=signalements"
+              />
+              <AlertRow
+                icon={GraduationCap}
+                tone="amber"
+                label="Diplômes à vérifier"
+                value={alerts.hairdressers_to_verify}
+                href="/admin/coiffeurs?tab=diplomes"
+              />
+              <AlertRow icon={Ban} tone="neutral" label="Comptes suspendus" value={alerts.suspended_accounts} href="/admin/utilisateurs?status=suspended" />
+              <AlertRow
+                icon={LifeBuoy}
+                tone={alerts.support_requests_priority_open > 0 ? 'red' : 'blue'}
+                label="Support ouvert"
+                value={alerts.support_requests_open}
+                sublabel={alerts.support_requests_priority_open > 0 ? `dont ${alerts.support_requests_priority_open} prioritaires CHAIR+` : undefined}
+              />
+            </div>
+          ) : (
+            <div className="p-5 text-[13px] text-neutral-400">Aucune donnée</div>
+          )}
+        </Card>
+
+        {/* Actions rapides */}
+        <Card>
+          <CardHeader title="Actions rapides" />
+          <div className="p-3 flex flex-col gap-1">
+            <QuickAction icon={Search} label="Rechercher un utilisateur" href="/admin/recherche" />
+            {hasPermission(user, PERMISSIONS.BADGES_MANAGE) && (
+              <QuickAction icon={Award} label="Créer un badge" href="/admin/badges?new=1" />
+            )}
+            {hasPermission(user, PERMISSIONS.FEATURE_FLAGS_MANAGE) && (
+              <QuickAction icon={SlidersHorizontal} label="Feature flags" href="/admin/configuration?tab=flags" />
+            )}
+            {hasPermission(user, PERMISSIONS.CONTENT_MODERATE) && (
+              <QuickAction icon={FileText} label="File de modération" href="/admin/moderation" />
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {data && (
+        <p className="text-[11px] text-neutral-300 text-right">
+          Généré le {new Date(data.generated_at).toLocaleString('fr-FR')} — semaine ISO démarrée le{' '}
+          {new Date(data.week_started_at).toLocaleDateString('fr-FR')}
+        </p>
       )}
     </div>
   );
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-neutral-100 rounded-xl ${className ?? ''}`} />;
-}
-
-interface Stats {
-  total_users?: number;
-  total_hairdressers?: number;
-  total_clients?: number;
-  total_salons?: number;
-  total_appointments?: number;
-  total_reviews?: number;
-  new_today?: number;
-  new_week?: number;
-  new_month?: number;
-  new_users_this_month?: number;
-  new_users_last_month?: number;
-  new_appointments_this_month?: number;
-  appointments_total?: number;
-  appointments_pending?: number;
-  appointments_confirmed?: number;
-  appointments_cancelled?: number;
-  top_hairdressers?: Array<{ name: string; city: string; appointments: number; rating: number }>;
-}
-
-interface Activity {
-  id?: number;
-  type: string;
-  description?: string;
-  message?: string;
-  created_at: string;
-}
-
-export default function AdminDashboard() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [activity, setActivity] = useState<Activity[]>([]);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingActivity, setLoadingActivity] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const token = getToken();
-    const headers = { Authorization: `Bearer ${token}` };
-
-    fetch(`${API_URL}/admin/stats`, { headers })
-      .then((r) => r.json())
-      .then((d) => { setStats(d); setLoadingStats(false); })
-      .catch(() => { setError('Impossible de charger les statistiques'); setLoadingStats(false); });
-
-    fetch(`${API_URL}/admin/activity`, { headers })
-      .then((r) => r.json())
-      .then((d) => { setActivity(d.activity ?? d ?? []); setLoadingActivity(false); })
-      .catch(() => setLoadingActivity(false));
-  }, []);
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleString('fr-FR', {
-      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-    });
-  }
-
-  function activityIcon(type: string) {
-    if (type?.includes('appointment')) return <CalendarCheck size={14} className="text-blue-500" />;
-    if (type?.includes('review')) return <Star size={14} className="text-amber-500" />;
-    return <Users size={14} className="text-violet-500" />;
-  }
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-[22px] font-bold text-neutral-900">Tableau de bord</h1>
-        <p className="text-[13px] text-neutral-400 mt-0.5">Vue d'ensemble de la plateforme CHAIR</p>
+function AlertRow({
+  icon: Icon,
+  tone,
+  label,
+  sublabel,
+  value,
+  href,
+}: {
+  icon: React.ElementType;
+  tone: 'red' | 'amber' | 'neutral' | 'blue';
+  label: string;
+  sublabel?: string;
+  value: number;
+  href?: string;
+}) {
+  const tones: Record<string, string> = {
+    red: 'bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
+    neutral: 'bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400',
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400',
+  };
+  const content = (
+    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-50 dark:hover:bg-neutral-800/60 transition-colors">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${tones[tone]}`}>
+        <Icon size={16} />
       </div>
-
-      {error && (
-        <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">{error}</div>
-      )}
-
-      {/* KPIs grille */}
-      {loadingStats ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      ) : stats ? (
-        <>
-          <div>
-            <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Utilisateurs</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icon={Users} iconBg="bg-violet-50" iconColor="text-violet-600" value={(stats.total_users ?? 0).toLocaleString('fr')} label="Total utilisateurs" />
-              <StatCard icon={Scissors} iconBg="bg-blue-50" iconColor="text-blue-600" value={(stats.total_hairdressers ?? 0).toLocaleString('fr')} label="Coiffeurs" />
-              <StatCard icon={Users} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={(stats.total_clients ?? 0).toLocaleString('fr')} label="Clients" />
-              <StatCard icon={Building2} iconBg="bg-amber-50" iconColor="text-amber-600" value={(stats.total_salons ?? 0).toLocaleString('fr')} label="Salons" />
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Nouvelles inscriptions</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_today ?? stats.new_users_this_month ?? 0} label="Aujourd'hui" />
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_week ?? 0} label="Cette semaine" />
-              <StatCard icon={TrendingUp} iconBg="bg-neutral-100" iconColor="text-neutral-600" value={stats.new_month ?? stats.new_users_this_month ?? 0} label="Ce mois" />
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-[13px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">Réservations</h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <StatCard icon={CalendarCheck} iconBg="bg-blue-50" iconColor="text-blue-600" value={(stats.appointments_total ?? stats.total_appointments ?? 0).toLocaleString('fr')} label="Total RDV" />
-              <StatCard icon={Clock} iconBg="bg-amber-50" iconColor="text-amber-600" value={stats.appointments_pending ?? 0} label="En attente" />
-              <StatCard icon={CheckCircle2} iconBg="bg-emerald-50" iconColor="text-emerald-600" value={stats.appointments_confirmed ?? 0} label="Confirmés" />
-              <StatCard icon={XCircle} iconBg="bg-red-50" iconColor="text-red-500" value={stats.appointments_cancelled ?? 0} label="Annulés" />
-            </div>
-          </div>
-        </>
-      ) : null}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top coiffeurs */}
-        <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-neutral-100">
-            <h2 className="text-[14px] font-semibold text-neutral-900">Top 5 coiffeurs</h2>
-          </div>
-          {loadingStats ? (
-            <div className="p-5 flex flex-col gap-3">
-              {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-neutral-100">
-                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Nom</th>
-                  <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Ville</th>
-                  <th className="text-right px-3 py-2.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">RDV</th>
-                  <th className="text-right px-5 py-2.5 text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats?.top_hairdressers ?? []).map((h, i) => (
-                  <tr key={i} className={i % 2 === 1 ? 'bg-neutral-50/30' : ''}>
-                    <td className="px-5 py-3 text-[13px] font-medium text-neutral-900">{h.name}</td>
-                    <td className="px-3 py-3 text-[13px] text-neutral-500">{h.city}</td>
-                    <td className="px-3 py-3 text-[13px] text-right text-neutral-700">{h.appointments}</td>
-                    <td className="px-5 py-3 text-[13px] text-right">
-                      <span className="text-amber-500 font-medium">★ {h.rating?.toFixed(1)}</span>
-                    </td>
-                  </tr>
-                ))}
-                {!stats?.top_hairdressers?.length && (
-                  <tr><td colSpan={4} className="px-5 py-6 text-center text-[13px] text-neutral-400">Aucune donnée</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        {/* Activité récente */}
-        <div className="bg-white rounded-2xl border border-neutral-100 shadow-sm">
-          <div className="px-5 py-4 border-b border-neutral-100">
-            <h2 className="text-[14px] font-semibold text-neutral-900">Activité récente</h2>
-          </div>
-          {loadingActivity ? (
-            <div className="p-5 flex flex-col gap-3">
-              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10" />)}
-            </div>
-          ) : activity.length === 0 ? (
-            <div className="px-5 py-8 text-center text-[13px] text-neutral-400">Aucune activité récente</div>
-          ) : (
-            <div className="divide-y divide-neutral-100">
-              {activity.slice(0, 10).map((a) => (
-                <div key={a.id} className="flex items-start gap-3 px-5 py-3">
-                  <div className="mt-0.5">{activityIcon(a.type)}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-neutral-700 leading-snug">{a.description ?? a.message}</p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5">{formatDate(a.created_at)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-neutral-900 dark:text-neutral-100">{label}</p>
+        {sublabel && <p className="text-[11px] text-neutral-400">{sublabel}</p>}
       </div>
+      <span className="text-[18px] font-bold text-neutral-900 dark:text-neutral-50 tabular-nums">{value}</span>
     </div>
+  );
+  return href ? <Link href={href}>{content}</Link> : content;
+}
+
+function QuickAction({ icon: Icon, label, href }: { icon: React.ElementType; label: string; href: string }) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors group"
+    >
+      <Icon size={15} className="text-neutral-400" />
+      <span className="flex-1">{label}</span>
+      <ArrowRight size={13} className="text-neutral-300 group-hover:text-neutral-500 transition-colors" />
+    </Link>
   );
 }

@@ -169,52 +169,58 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
 
 // ── Coup de cœur CHAIR ────────────────────────────────────────────────────────
 
-export function CoupDeCoeurStrip({ fallback }: { fallback: ApiHairdresserProfile[] }) {
+export function CoupDeCoeurStrip({
+  fallback, titleOverride, limit = 10,
+}: { fallback: ApiHairdresserProfile[]; titleOverride?: string | null; limit?: number }) {
   const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
   const [isGeo, setIsGeo] = useState(false);
+  const effectiveLimit = limit && limit > 0 ? limit : 10;
 
   useEffect(() => {
     if (isLoading || !user) return;
-    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), 10)
+    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), effectiveLimit)
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
-  }, [user, isLoading]);
+  }, [user, isLoading, effectiveLimit]);
 
   if (!hairdressers.length) return null;
   return (
     <section className="pt-10">
       <SectionHeader
         tag="Sélection CHAIR"
-        title={isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR'}
+        title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR')}
         href="/app/recherche"
       />
-      <FeaturedAvatarStrip hairdressers={hairdressers} />
+      <FeaturedAvatarStrip hairdressers={hairdressers.slice(0, effectiveLimit)} />
     </section>
   );
 }
 
 // ── Nouveaux talents ──────────────────────────────────────────────────────────
 
-export function NewTalentsStrip({ fallback }: { fallback: ApiHairdresserProfile[] }) {
+export function NewTalentsStrip({
+  fallback, titleOverride, limit = 8,
+}: { fallback: ApiHairdresserProfile[]; titleOverride?: string | null; limit?: number }) {
   const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
   const [isGeo, setIsGeo] = useState(false);
+  const effectiveLimit = limit && limit > 0 ? limit : 8;
 
   useEffect(() => {
     if (isLoading || !user) return;
-    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), 8, { days: '60' })
+    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), effectiveLimit, { days: '60' })
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
-  }, [user, isLoading]);
+  }, [user, isLoading, effectiveLimit]);
 
   if (!hairdressers.length) return null;
   return (
     <section className="pt-10">
       <SectionHeader
         tag="Nouveau sur CHAIR"
-        title={isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents'}
+        title={titleOverride ?? (isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents')}
         href="/app/recherche"
       />
-      <HDStrip hairdressers={hairdressers} badge="Nouveau" badgeCls="bg-neutral-900" />
+      <HDStrip hairdressers={hairdressers.slice(0, effectiveLimit)} badge="Nouveau" badgeCls="bg-neutral-900" />
     </section>
   );
 }

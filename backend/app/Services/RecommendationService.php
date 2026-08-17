@@ -26,7 +26,11 @@ use Illuminate\Support\Collection;
  */
 class RecommendationService
 {
-    // ── Poids de scoring ─────────────────────────────────────────────────
+    // ── Poids de scoring (valeurs par défaut / repli) ───────────────────
+    // Ces constantes restent la SOURCE DE VÉRITÉ du repli : si app_settings
+    // est absent, invalide ou hors-bornes, c'est TOUJOURS ces valeurs qui
+    // s'appliquent (voir weights() ci-dessous) — jamais 0, jamais négatif.
+    //
     // Le spécialité/service exact domine tout le reste : à correspondance
     // égale (0 ou 100%), l'écart qu'il crée doit rester plus grand que
     // n'importe quelle combinaison proximité+réputation+CHAIR+.
@@ -58,6 +62,11 @@ class RecommendationService
     // le national est volontairement large (250km ≈ taille d'une région
     // française) plutôt qu'un vrai découpage administratif : suffisant pour
     // rester honnête sans dépendre d'une résolution région par lat/lng.
+    //
+    // 'km' ici = repli par défaut ; radiusTiers() peut le remplacer par la
+    // valeur configurée en admin (app_settings 'recommendation_radius_tiers_km'),
+    // 'tier'/'label' restent TOUJOURS fixés en code (jamais éditables via
+    // l'admin — voir AdminAppSettingController::assertValidRadiusTiers()).
     const RADIUS_TIERS = [
         ['km' => 10,  'tier' => 'radius_10',  'label' => 'Près de chez vous'],
         ['km' => 25,  'tier' => 'radius_25',  'label' => 'Dans votre secteur'],
@@ -66,6 +75,58 @@ class RecommendationService
         ['km' => 250, 'tier' => 'region',     'label' => 'Dans votre région'],
     ];
     const NATIONAL_TIER = ['tier' => 'national', 'label' => 'Partout en France'];
+
+    /**
+     * RADIUS_TIERS avec les km éventuellement remplacés par la config admin
+     * (app_settings 'recommendation_radius_tiers_km' : 5 valeurs croissantes,
+     * validées à l'écriture par AdminAppSettingController). Repli intégral
+     * sur les km codés en dur si absent/invalide/mauvais nombre de valeurs —
+     * ne casse JAMAIS la cascade (rayon négatif ou décroissant impossible).
+     */
+    public static function radiusTiers(): array
+    {
+        $configured = \App\Services\AppSettingsService::get('recommendation_radius_tiers_km');
+
+        if (!is_array($configured) || count($configured) !== count(self::RADIUS_TIERS)) {
+            return self::RADIUS_TIERS;
+        }
+
+        $values = array_values($configured);
+        $prev = 0;
+        foreach ($values as $km) {
+            if (!is_numeric($km) || $km <= $prev || $km > 2000) {
+                return self::RADIUS_TIERS; // config invalide -> repli intégral
+            }
+            $prev = $km;
+        }
+
+        $tiers = self::RADIUS_TIERS;
+        foreach ($tiers as $i => &$tier) {
+            $tier['km'] = (float) $values[$i];
+        }
+        unset($tier);
+
+        return $tiers;
+    }
+
+    /**
+     * Poids de scoring effectifs — chaque poids lu individuellement depuis
+     * app_settings, avec repli sur la constante si absent/invalide/négatif
+     * (voir app_settings.min = 0 sur chacun, ceinture + bretelles).
+     */
+    public static function weights(): array
+    {
+        return [
+            'specialty_max'       => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_specialty_max', self::WEIGHT_SPECIALTY_MAX)),
+            'proximity_max'       => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_proximity_max', self::WEIGHT_PROXIMITY_MAX)),
+            'proximity_decay_km'  => max(0, (float) \App\Services\AppSettingsService::get('recommendation_proximity_decay_per_km', self::PROXIMITY_DECAY_PER_KM)),
+            'rating_mult'         => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_rating_mult', self::WEIGHT_RATING_MULT)),
+            'reviews_cap'         => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_reviews_cap', self::WEIGHT_REVIEWS_CAP)),
+            'reviews_mult'        => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_reviews_mult', self::WEIGHT_REVIEWS_MULT)),
+            'availability'        => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_availability', self::WEIGHT_AVAILABILITY)),
+            'chair_plus'          => max(0, (float) \App\Services\AppSettingsService::get('recommendation_weight_chair_plus', self::WEIGHT_CHAIR_PLUS)),
+        ];
+    }
 
     // Repli par genre — MÊMES listes que frontend/lib/homeFilters.ts
     // (FEMME_SLUGS/HOMME_SLUGS). Dupliqué volontairement (PHP ne peut pas
@@ -155,7 +216,7 @@ class RecommendationService
         if (empty($wantedSlugs)) return 0;
         $matches = count(array_intersect($wantedSlugs, $haveSlugs));
         if ($matches === 0) return 0;
-        return (int) round(($matches / count($wantedSlugs)) * self::WEIGHT_SPECIALTY_MAX);
+        return (int) round(($matches / count($wantedSlugs)) * self::weights()['specialty_max']);
     }
 
     /**
@@ -171,6 +232,7 @@ class RecommendationService
      */
     public static function score(HairdresserProfile $h, array $context): int
     {
+        $w = self::weights();
         $score = 0;
 
         $wanted = $context['specialty_slugs'] ?? [];
@@ -181,18 +243,18 @@ class RecommendationService
 
         $distance = $h->distance_km ?? null;
         if ($distance !== null) {
-            $score += (int) max(0, round(self::WEIGHT_PROXIMITY_MAX - $distance * self::PROXIMITY_DECAY_PER_KM));
+            $score += (int) max(0, round($w['proximity_max'] - $distance * $w['proximity_decay_km']));
         }
 
-        $score += (int) round(((float) ($h->avg_rating ?? 0)) * self::WEIGHT_RATING_MULT);
-        $score += (int) round(min((int) ($h->reviews_count ?? 0), self::WEIGHT_REVIEWS_CAP) * self::WEIGHT_REVIEWS_MULT);
+        $score += (int) round(((float) ($h->avg_rating ?? 0)) * $w['rating_mult']);
+        $score += (int) round(min((int) ($h->reviews_count ?? 0), (int) $w['reviews_cap']) * $w['reviews_mult']);
 
         if (!empty($context['available_ids']) && in_array($h->id, $context['available_ids'], true)) {
-            $score += self::WEIGHT_AVAILABILITY;
+            $score += (int) $w['availability'];
         }
 
         if (!empty($context['chair_plus_map'][$h->id])) {
-            $score += self::WEIGHT_CHAIR_PLUS;
+            $score += (int) $w['chair_plus'];
         }
 
         return $score;
@@ -245,7 +307,7 @@ class RecommendationService
                 return $h;
             });
 
-        foreach (self::RADIUS_TIERS as $i => $tierDef) {
+        foreach (self::radiusTiers() as $i => $tierDef) {
             $subset = $withDistance->filter(fn ($h) => $h->distance_km <= $tierDef['km'])->values();
             if ($subset->count() >= $minResults) {
                 return self::finalizeTier($subset, $context, $tierDef, $i > 0);

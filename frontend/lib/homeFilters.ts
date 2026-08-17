@@ -53,10 +53,9 @@ export function getUserGeo(user: AuthUser | null | undefined): UserGeo | null {
   return { lat: user.latitude, lng: user.longitude, city: user.city ?? null };
 }
 
-/** Rayon primaire, puis élargi (approx. "régional") avant le dernier recours
- *  France entière — pour tout classement localisé sur la position réelle du
- *  compte (jamais le GPS appareil). Voir HomeRankingSection / /app/classements. */
-export const RADIUS_TIERS: { km: number; label: string }[] = [
-  { km: 50, label: 'près de chez vous' },
-  { km: 200, label: 'dans votre région' },
-];
+// Paliers de rayon du classement local (primaire, puis élargi "régional"
+// avant le dernier recours France entière) — désormais pilotables sans build
+// par le Super Admin (app_settings 'ranking_radius_tiers_km'). Voir
+// lib/appConfig.ts::getRankingRadiusTiers() (source de vérité + repli), qui a
+// remplacé l'ancienne constante RADIUS_TIERS figée ici. Voir
+// HomeRankingSection / /app/classements pour les appelants.

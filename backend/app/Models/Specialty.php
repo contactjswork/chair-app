@@ -9,9 +9,9 @@ class Specialty extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'icon', 'category', 'is_active'];
+    protected $fillable = ['name', 'slug', 'icon', 'category', 'description', 'is_active', 'order'];
 
-    protected $casts = ['is_active' => 'boolean'];
+    protected $casts = ['is_active' => 'boolean', 'order' => 'integer'];
 
     public function hairdressers()
     {

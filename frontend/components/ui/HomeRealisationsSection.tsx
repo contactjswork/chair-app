@@ -12,8 +12,8 @@ import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 const RADIUS_KM = 30;
 
-function RealisationGrid({ posts }: { posts: ApiPost[] }) {
-  const visible = posts.slice(0, 9);
+function RealisationGrid({ posts, limit = 9 }: { posts: ApiPost[]; limit?: number }) {
+  const visible = posts.slice(0, limit && limit > 0 ? limit : 9);
   if (visible.length === 0) return null;
   return (
     <div className="grid grid-cols-3 gap-[3px] px-4 md:px-8 max-w-6xl md:mx-auto">
@@ -57,7 +57,9 @@ function RealisationGrid({ posts }: { posts: ApiPost[] }) {
  * sa ville). Reste sur le flux "tendance" générique pour les visiteurs, qui
  * n'ont ni préférences ni compte à filtrer.
  */
-export default function HomeRealisationsSection({ fallback }: { fallback: ApiPost[] }) {
+export default function HomeRealisationsSection({
+  fallback, titleOverride, limit = 9,
+}: { fallback: ApiPost[]; titleOverride?: string | null; limit?: number }) {
   const { user, isLoading } = useAuth();
   const [posts, setPosts] = useState<ApiPost[]>(fallback);
   const [personalized, setPersonalized] = useState(false);
@@ -99,10 +101,10 @@ export default function HomeRealisationsSection({ fallback }: { fallback: ApiPos
     <section className="pt-10">
       <SectionHeader
         tag="Communauté"
-        title={personalized ? 'Réalisations pour vous' : 'Réalisations du moment'}
+        title={titleOverride ?? (personalized ? 'Réalisations pour vous' : 'Réalisations du moment')}
         href="/app/feed"
       />
-      <RealisationGrid posts={displayPosts} />
+      <RealisationGrid posts={displayPosts} limit={limit} />
     </section>
   );
 }

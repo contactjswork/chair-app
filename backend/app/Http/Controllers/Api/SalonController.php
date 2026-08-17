@@ -20,8 +20,12 @@ class SalonController extends Controller
     /** GET /salons — liste publique */
     public function index(Request $request)
     {
+        // Un salon suspendu (AdminSalonController::suspend) reste en base
+        // intact mais ne doit plus apparaître dans le listing public — pas
+        // un delete, voir Salon::isSuspended().
         $query = Salon::with(['hairdressers.user', 'owner'])
-            ->withCount('hairdressers');
+            ->withCount('hairdressers')
+            ->whereNull('suspended_at');
 
         if ($request->q) {
             $q = $request->q;
@@ -48,7 +52,7 @@ class SalonController extends Controller
             'hairdressers.user',
             'hairdressers.specialties',
             'owner',
-        ])->where('slug', $slug)->firstOrFail();
+        ])->where('slug', $slug)->whereNull('suspended_at')->firstOrFail();
 
         // Fiche unique — pas de risque N+1, contrairement aux endpoints de
         // liste (index()) qui devraient batcher au lieu d'append() par ligne.

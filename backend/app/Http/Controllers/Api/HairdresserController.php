@@ -101,6 +101,12 @@ class HairdresserController extends Controller
                 },
                 'salon',
             ])
+            // Masqué par un admin (AdminHairdresserController::hide) — retiré du
+            // listing public sans toucher au compte ni aux données (voir
+            // migration 2026_08_17_130002). NB : les autres points d'entrée de
+            // découverte (Explore/Search/Recommendation/Leaderboard) ne sont
+            // pas encore filtrés — limite assumée, voir rapport de mission.
+            ->where('is_hidden', false)
             ->when(!empty($specialtySlugs), fn($q) => $q->whereHas('specialties', fn($sq) =>
                 $sq->whereIn('slug', $specialtySlugs)
             ))
@@ -261,6 +267,7 @@ class HairdresserController extends Controller
     {
         $hairdresser = HairdresserProfile::with(['user', 'specialties', 'salon', 'reviews.client', 'trainingBadges'])
             ->where('slug', $slug)
+            ->where('is_hidden', false)
             ->firstOrFail();
         // Profil unique (pas une liste) — coût de hasChairPlus() acceptable ici,
         // voir HairdresserProfile::getIsChairPlusAttribute(). Badge Certifié

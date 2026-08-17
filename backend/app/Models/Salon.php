@@ -35,6 +35,16 @@ class Salon extends Model
         return $this->hasMany(Subscription::class);
     }
 
+    /**
+     * Suspension admin (AdminSalonController) — HORS $fillable, jamais
+     * modifiable par le gérant lui-même. Un salon suspendu reste en base
+     * intact (équipe, historique) mais disparaît du listing public.
+     */
+    public function isSuspended(): bool
+    {
+        return $this->suspended_at !== null;
+    }
+
     /** CHAIR BUSINESS actif — voir HairdresserProfile::hasChairPlus() pour comment ça se propage à l'équipe. */
     public function hasChairBusiness(): bool
     {

@@ -31,6 +31,9 @@ use App\Http\Controllers\Api\ChairRentalController;
 use App\Http\Controllers\Api\JobApplicationController;
 use App\Http\Controllers\Api\SalonInvitationController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AdminHairdresserController;
+use App\Http\Controllers\Api\AdminSalonController;
 use App\Http\Controllers\Api\SpecialtyProgressController;
 use App\Http\Controllers\Api\ReferralController;
 use App\Http\Controllers\Api\StoryController;
@@ -38,36 +41,142 @@ use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\GeoController;
 use App\Http\Controllers\Api\SupportController;
+use App\Http\Controllers\Api\AdminAuthController;
+use App\Http\Controllers\Api\AdminAccountController;
+use App\Http\Controllers\Api\AdminAuditLogController;
+use App\Http\Controllers\Api\AdminFeatureFlagController;
+use App\Http\Controllers\Api\AdminAppSettingController;
+use App\Http\Controllers\Api\AdminBadgeController;
+use App\Http\Controllers\Api\AdminSpecialtyController;
+use App\Http\Controllers\Api\AdminInsightController;
+use App\Http\Controllers\Api\FeatureFlagController;
+use App\Http\Controllers\Api\AppConfigController;
 
-// Admin (token statique via Bearer, ADMIN_API_TOKEN — jamais de secret par défaut)
-Route::prefix('admin')->middleware('admin.token')->group(function () {
-    Route::get('/stats',                        [AdminController::class, 'stats']);
-    Route::get('/top-hairdressers',             [AdminController::class, 'topHairdressers']);
-    Route::get('/activity',                     [AdminController::class, 'recentActivity']);
-    Route::get('/users',                        [AdminController::class, 'users']);
-    Route::get('/users/{id}',                   [AdminController::class, 'showUser']);
-    Route::post('/users/{id}/suspend',          [AdminController::class, 'suspendUser']);
-    Route::post('/users/{id}/unsuspend',        [AdminController::class, 'unsuspendUser']);
-    Route::delete('/users/{id}',                [AdminController::class, 'deleteUser']);
-    Route::get('/hairdressers',                 [AdminController::class, 'hairdressers']);
-    Route::get('/appointments',                 [AdminController::class, 'appointments']);
-    Route::get('/reviews',                      [AdminController::class, 'reviews']);
-    Route::post('/reviews/{id}/hide',           [AdminController::class, 'hideReview']);
-    Route::post('/reviews/{id}/show',           [AdminController::class, 'showReview']);
-    Route::delete('/reviews/{id}',              [AdminController::class, 'deleteReview']);
-    Route::get('/reports',                      [AdminController::class, 'reports']);
-    Route::post('/reports/{id}/ignore',         [AdminController::class, 'ignoreReport']);
-    Route::get('/subscriptions',                [AdminController::class, 'subscriptions']);
-    Route::get('/diplomas/pending',             [AdminController::class, 'pendingDiplomas']);
-    Route::post('/diplomas/{id}/approve',       [AdminController::class, 'approveDiploma']);
-    Route::post('/diplomas/{id}/reject',        [AdminController::class, 'rejectDiploma']);
-    Route::get('/analytics',                    [AdminController::class, 'analyticsStats']);
-    Route::post('/notifications/send',          [AdminController::class, 'sendNotification']);
-    Route::get('/notifications/history',        [AdminController::class, 'notificationHistory']);
-    Route::post('/hairdressers/{id}/chair-pick',   [AdminController::class, 'setChairPick']);
-    Route::delete('/hairdressers/{id}/chair-pick', [AdminController::class, 'removeChairPick']);
-    Route::get('/support-requests',                [AdminController::class, 'supportRequests']);
-    Route::post('/support-requests/{id}/resolve',  [AdminController::class, 'resolveSupportRequest']);
+// Admin — authentification par compte Sanctum réel (role='admin' + un
+// admin_role granulaire), PLUS de jeton statique partagé. Voir
+// EnsureAdminAuthenticated ('admin.auth') et EnsureAdminPermission
+// ('admin.permission:<clé>') pour le détail de la garde. L'ancien
+// middleware 'admin.token' (EnsureAdminToken) n'est plus branché sur aucune
+// route — conservé en fichier seulement, voir son docblock.
+Route::prefix('admin/auth')->group(function () {
+    Route::post('/login', [AdminAuthController::class, 'login'])->middleware('throttle:6,1');
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::post('/logout', [AdminAuthController::class, 'logout']);
+    });
+});
+
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(function () {
+    Route::get('/stats',                        [AdminController::class, 'stats'])->middleware('admin.permission:dashboard.view');
+    // Premier écran admin : "aujourd'hui"/"cette semaine" + alertes (voir
+    // rapport de mission "Statistiques et Insights").
+    Route::get('/dashboard/today',              [AdminController::class, 'dashboardToday'])->middleware('admin.permission:dashboard.view');
+    Route::get('/top-hairdressers',             [AdminController::class, 'topHairdressers'])->middleware('admin.permission:dashboard.view');
+    Route::get('/activity',                     [AdminController::class, 'recentActivity'])->middleware('admin.permission:dashboard.view');
+    Route::get('/users',                        [AdminUserController::class, 'index'])->middleware('admin.permission:users.read');
+    Route::get('/users/{id}',                   [AdminUserController::class, 'show'])->middleware('admin.permission:users.read');
+    Route::post('/users/{id}/suspend',          [AdminUserController::class, 'suspendUser'])->middleware('admin.permission:users.suspend');
+    Route::post('/users/{id}/unsuspend',        [AdminUserController::class, 'unsuspendUser'])->middleware('admin.permission:users.suspend');
+    Route::delete('/users/{id}',                [AdminUserController::class, 'deleteUser'])->middleware('admin.permission:users.delete');
+    // Badges/points — voir rapport de mission "Utilisateurs". badge_code en
+    // dernier segment (pas en query) pour rester RESTful et cohérent avec le
+    // reste des routes admin à ressource imbriquée.
+    Route::post('/users/{id}/badges',                 [AdminUserController::class, 'assignBadge'])->middleware('admin.permission:hairdressers.badges_manage');
+    Route::delete('/users/{id}/badges/{badgeCode}',    [AdminUserController::class, 'removeBadge'])->middleware('admin.permission:hairdressers.badges_manage');
+    Route::post('/users/{id}/points-adjust',           [AdminUserController::class, 'adjustPoints'])->middleware('admin.permission:users.points_adjust');
+
+    Route::get('/hairdressers',                 [AdminHairdresserController::class, 'index'])->middleware('admin.permission:hairdressers.read');
+    Route::get('/hairdressers/{id}',             [AdminHairdresserController::class, 'show'])->middleware('admin.permission:hairdressers.read');
+    Route::post('/hairdressers/{id}/verify',     [AdminHairdresserController::class, 'verify'])->middleware('admin.permission:hairdressers.verify');
+    Route::post('/hairdressers/{id}/unverify',   [AdminHairdresserController::class, 'unverify'])->middleware('admin.permission:hairdressers.verify');
+    Route::post('/hairdressers/{id}/hide',       [AdminHairdresserController::class, 'hide'])->middleware('admin.permission:hairdressers.visibility');
+    Route::post('/hairdressers/{id}/unhide',     [AdminHairdresserController::class, 'unhide'])->middleware('admin.permission:hairdressers.visibility');
+    Route::get('/appointments',                 [AdminController::class, 'appointments'])->middleware('admin.permission:appointments.read');
+    Route::get('/reviews',                      [AdminController::class, 'reviews'])->middleware('admin.permission:content.moderate');
+    Route::post('/reviews/{id}/hide',           [AdminController::class, 'hideReview'])->middleware('admin.permission:content.moderate');
+    Route::post('/reviews/{id}/show',           [AdminController::class, 'showReview'])->middleware('admin.permission:content.moderate');
+    Route::post('/reviews/{id}/mark-reviewed',  [AdminController::class, 'markReviewReviewed'])->middleware('admin.permission:content.moderate');
+    Route::delete('/reviews/{id}',              [AdminController::class, 'deleteReview'])->middleware('admin.permission:content.moderate');
+    Route::get('/reports',                      [AdminController::class, 'reports'])->middleware('admin.permission:reports.manage');
+    Route::post('/reports/{id}/ignore',         [AdminController::class, 'ignoreReport'])->middleware('admin.permission:reports.manage');
+    Route::post('/reports/{id}/delete-content', [AdminController::class, 'deleteReportContent'])->middleware('admin.permission:reports.manage');
+    // Vue d'ensemble modération unifiée — voir AdminController::moderationSummary().
+    Route::get('/moderation/summary',           [AdminController::class, 'moderationSummary'])->middleware('admin.permission:content.moderate');
+    Route::get('/subscriptions',                [AdminController::class, 'subscriptions'])->middleware('admin.permission:subscriptions.read');
+    Route::get('/diplomas/pending',             [AdminHairdresserController::class, 'pendingDiplomas'])->middleware('admin.permission:hairdressers.verify');
+    Route::post('/diplomas/{id}/approve',       [AdminHairdresserController::class, 'approveDiploma'])->middleware('admin.permission:hairdressers.verify');
+    Route::post('/diplomas/{id}/reject',        [AdminHairdresserController::class, 'rejectDiploma'])->middleware('admin.permission:hairdressers.verify');
+    Route::get('/analytics',                    [AdminController::class, 'analyticsStats'])->middleware('admin.permission:analytics.read');
+    // Insights business (voir rapport de mission "Statistiques et Insights") :
+    // demande (proxy préférences) vs offre réelle par ville x spécialité, et
+    // couverture géographique clients vs professionnels par ville.
+    Route::get('/insights/demand-supply',       [AdminInsightController::class, 'demandSupply'])->middleware('admin.permission:analytics.read');
+    Route::get('/insights/geo-coverage',        [AdminInsightController::class, 'geoCoverage'])->middleware('admin.permission:analytics.read');
+    Route::post('/notifications/send',          [AdminController::class, 'sendNotification'])->middleware('admin.permission:notifications.send');
+    Route::get('/notifications/history',        [AdminController::class, 'notificationHistory'])->middleware('admin.permission:notifications.send');
+    Route::post('/hairdressers/{id}/chair-pick',   [AdminHairdresserController::class, 'setChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
+    Route::delete('/hairdressers/{id}/chair-pick', [AdminHairdresserController::class, 'removeChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
+    Route::get('/support-requests',                [AdminController::class, 'supportRequests'])->middleware('admin.permission:support.manage');
+    Route::post('/support-requests/{id}/resolve',  [AdminController::class, 'resolveSupportRequest'])->middleware('admin.permission:support.manage');
+
+    // Salons — module neuf (voir rapport de mission "Salons"). PAS de
+    // transfert de propriété (owner_id) dans cette passe, voir docblock
+    // AdminSalonController.
+    Route::get('/salons',                            [AdminSalonController::class, 'index'])->middleware('admin.permission:salons.read');
+    Route::get('/salons/{id}',                        [AdminSalonController::class, 'show'])->middleware('admin.permission:salons.read');
+    Route::patch('/salons/{id}',                      [AdminSalonController::class, 'update'])->middleware('admin.permission:salons.manage');
+    Route::post('/salons/{id}/verify',                [AdminSalonController::class, 'verify'])->middleware('admin.permission:salons.manage');
+    Route::post('/salons/{id}/unverify',              [AdminSalonController::class, 'unverify'])->middleware('admin.permission:salons.manage');
+    Route::post('/salons/{id}/suspend',               [AdminSalonController::class, 'suspend'])->middleware('admin.permission:salons.manage');
+    Route::post('/salons/{id}/unsuspend',             [AdminSalonController::class, 'unsuspend'])->middleware('admin.permission:salons.manage');
+    Route::delete('/salons/{salonId}/members/{profileId}', [AdminSalonController::class, 'removeMember'])->middleware('admin.permission:salons.manage');
+
+    // Gestion des comptes admin eux-mêmes — réservé Super Admin par défaut
+    // (voir seed migration : 'admins.manage' n'est mappé à aucun rôle sauf
+    // via le bypass super_admin).
+    Route::get('/admins',                       [AdminAccountController::class, 'index'])->middleware('admin.permission:admins.manage');
+    Route::get('/admin-roles',                  [AdminAccountController::class, 'roles'])->middleware('admin.permission:admins.manage');
+    Route::post('/admins',                      [AdminAccountController::class, 'store'])->middleware('admin.permission:admins.manage');
+    Route::patch('/admins/{id}',                [AdminAccountController::class, 'update'])->middleware('admin.permission:admins.manage');
+    Route::post('/admins/{id}/deactivate',      [AdminAccountController::class, 'deactivate'])->middleware('admin.permission:admins.manage');
+
+    Route::get('/audit-logs',                   [AdminAuditLogController::class, 'index'])->middleware('admin.permission:audit_logs.read');
+
+    // Feature flags — CRUD réservé 'feature_flags.manage' (super_admin par
+    // défaut, voir seed migration). Toute écriture invalide le cache public
+    // GET /api/feature-flags et journalise dans admin_audit_logs.
+    Route::get('/feature-flags',                 [AdminFeatureFlagController::class, 'index'])->middleware('admin.permission:feature_flags.manage');
+    Route::post('/feature-flags',                [AdminFeatureFlagController::class, 'store'])->middleware('admin.permission:feature_flags.manage');
+    Route::patch('/feature-flags/{id}',           [AdminFeatureFlagController::class, 'update'])->middleware('admin.permission:feature_flags.manage');
+    Route::delete('/feature-flags/{id}',          [AdminFeatureFlagController::class, 'destroy'])->middleware('admin.permission:feature_flags.manage');
+    Route::post('/feature-flags/reset',           [AdminFeatureFlagController::class, 'resetAll'])->middleware('admin.permission:feature_flags.manage');
+
+    // App settings — CRUD réservé 'settings.update' (super_admin par défaut).
+    // GET reste sous cette même permission : pas de permission 'settings.read'
+    // séparée dans le découpage de l'agent précédent (voir son rapport (e)).
+    Route::get('/settings',                       [AdminAppSettingController::class, 'index'])->middleware('admin.permission:settings.update');
+    Route::post('/settings',                      [AdminAppSettingController::class, 'store'])->middleware('admin.permission:settings.update');
+    Route::patch('/settings/{id}',                 [AdminAppSettingController::class, 'update'])->middleware('admin.permission:settings.update');
+    Route::delete('/settings/{id}',                [AdminAppSettingController::class, 'destroy'])->middleware('admin.permission:settings.update');
+    Route::post('/settings/{group}/reset',         [AdminAppSettingController::class, 'resetGroup'])->middleware('admin.permission:settings.update');
+
+    // Badges — catalogue administrable (table 'badges', voir BadgeService et
+    // AdminBadgeController). Pas de destroy() : "désactiver" seulement, voir
+    // docblock du contrôleur.
+    Route::get('/badges',            [AdminBadgeController::class, 'index'])->middleware('admin.permission:badges.manage');
+    Route::post('/badges',           [AdminBadgeController::class, 'store'])->middleware('admin.permission:badges.manage');
+    Route::patch('/badges/{id}',     [AdminBadgeController::class, 'update'])->middleware('admin.permission:badges.manage');
+    Route::post('/badges/reorder',   [AdminBadgeController::class, 'reorder'])->middleware('admin.permission:badges.manage');
+
+    // Spécialités — CRUD complet, suppression protégée si utilisée (voir
+    // AdminSpecialtyController).
+    Route::get('/specialties',           [AdminSpecialtyController::class, 'index'])->middleware('admin.permission:specialties.manage');
+    Route::post('/specialties',          [AdminSpecialtyController::class, 'store'])->middleware('admin.permission:specialties.manage');
+    Route::patch('/specialties/{id}',    [AdminSpecialtyController::class, 'update'])->middleware('admin.permission:specialties.manage');
+    Route::post('/specialties/{id}/hide',   [AdminSpecialtyController::class, 'hide'])->middleware('admin.permission:specialties.manage');
+    Route::post('/specialties/{id}/unhide', [AdminSpecialtyController::class, 'unhide'])->middleware('admin.permission:specialties.manage');
+    Route::delete('/specialties/{id}',   [AdminSpecialtyController::class, 'destroy'])->middleware('admin.permission:specialties.manage');
+    Route::post('/specialties/reorder',  [AdminSpecialtyController::class, 'reorder'])->middleware('admin.permission:specialties.manage');
 });
 
 // Auth — throttle dédié : le seul throttle:api global (60/min) laisse trop de
@@ -94,6 +203,11 @@ Route::get('/hairdressers/{slug}/services', [ServiceController::class, 'publicLi
 Route::get('/hairdressers/{slug}/availability', [AvailabilityController::class, 'slots']);
 Route::get('/hairdressers/{slug}/available-dates', [AvailabilityController::class, 'availableDates']);
 Route::get('/specialties', [SpecialtyController::class, 'index']);
+
+// Configuration dynamique — publiques, en cache, jamais bloquantes (voir
+// FeatureFlagService / AppConfigController pour le contrat de repli).
+Route::get('/feature-flags', [FeatureFlagController::class, 'index']);
+Route::get('/app-config', [AppConfigController::class, 'index']);
 Route::get('/geocode', [GeocodingController::class, 'geocode']);
 Route::get('/geo/regions', [GeoController::class, 'regions']);
 Route::get('/geo/departments', [GeoController::class, 'departments']);

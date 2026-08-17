@@ -29,11 +29,14 @@ import type { RecommendationResult, RecommendationMeta } from '@/lib/recommendat
  * honnêtement, on affiche l'incitation à créer un compte plutôt que
  * d'inventer une préférence.
  */
-export default function HomePersonalized() {
+export default function HomePersonalized({
+  titleOverride, limit = 12,
+}: { titleOverride?: string | null; limit?: number } = {}) {
   const { user, isLoading } = useAuth();
   const [entries, setEntries] = useState<RecommendationResult[]>([]);
   const [meta, setMeta] = useState<RecommendationMeta | null>(null);
   const [ready, setReady] = useState(false);
+  const effectiveLimit = limit && limit > 0 ? limit : 12;
 
   const guestHasSignal = !user && hasExplicitInterests();
 
@@ -49,7 +52,7 @@ export default function HomePersonalized() {
     const token = getStoredToken();
     const interests = hasExplicitInterests() ? getUserPrefs().interests : undefined;
 
-    fetchRecommendations({ interests, per_page: 12 }, token, controller.signal)
+    fetchRecommendations({ interests, per_page: effectiveLimit }, token, controller.signal)
       .then((res) => { setEntries(res.data); setMeta(res.meta); })
       .catch(async () => {
         // Repli d'urgence — /api/recommendations peut échouer (déploiement
@@ -59,14 +62,14 @@ export default function HomePersonalized() {
         // géographique que NearbyMapSection, plutôt que sur une section vide.
         try {
           const geo = getUserGeo(user);
-          const { results } = await fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, 12);
+          const { results } = await fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, effectiveLimit);
           if (results.length) { setEntries(results.map(fromHairdresserProfile)); setMeta(null); }
         } catch { /* vraiment rien de dispo — l'état vide honnête prend le relais */ }
       })
       .finally(() => setReady(true));
 
     return () => controller.abort();
-  }, [user, isLoading, guestHasSignal]);
+  }, [user, isLoading, guestHasSignal, effectiveLimit]);
 
   if (!ready) {
     return (
@@ -129,7 +132,7 @@ export default function HomePersonalized() {
   }
 
   const personalized = meta ? meta.pref_source !== 'none' : false;
-  const title = personalized ? 'Selon votre style' : 'Les mieux notés';
+  const title = titleOverride ?? (personalized ? 'Selon votre style' : 'Les mieux notés');
   const badge = meta?.is_fallback ? meta.fallback_label ?? undefined : undefined;
   const noGeo = meta?.tier === 'no_geo';
 

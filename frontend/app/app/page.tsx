@@ -10,6 +10,7 @@ import { CoupDeCoeurStrip, NewTalentsStrip } from '@/components/ui/HomeGeoStrips
 import HomeRankingSection, { type RankedEntry } from '@/components/ui/HomeRankingSection';
 import NearbyMapSection from '@/components/ui/NearbyMapSection';
 import HomeRealisationsSection from '@/components/ui/HomeRealisationsSection';
+import { getHomeSectionsConfig, type HomeSectionConfig } from '@/lib/appConfig';
 import type { ApiHairdresserProfile, ApiPost, PaginatedResponse } from '@/lib/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -51,12 +52,92 @@ async function getRanking(limit = 5): Promise<RankedEntry[]> {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
+  // Présence/ordre/titre/limite des 7 sections ci-dessous — piloté par le
+  // Super Admin sans build (app_settings 'home_sections', groupe 'home').
+  // Repli intégral sur l'ordre historique si absent/invalide/panne réseau
+  // (voir lib/appConfig.ts) : LE RENDU de chaque section reste toujours géré
+  // ici par le code, la config ne fait QUE piloter ces 4 attributs.
+  const sections = await getHomeSectionsConfig();
+  const sectionByKey = new Map(sections.map((s) => [s.key, s]));
+  const isEnabled = (key: HomeSectionConfig['key']) => sectionByKey.get(key)?.enabled ?? true;
+  const orderedKeys = [...sections].sort((a, b) => a.order - b.order).map((s) => s.key);
+
+  const coupDeCoeurLimit = sectionByKey.get('coup_de_coeur')?.limit ?? 10;
+  const rankingLimit = sectionByKey.get('ranking')?.limit ?? 5;
+  const newTalentsLimit = sectionByKey.get('new_talents')?.limit ?? 8;
+
   const [featuredHD, newTalentsHD, ranking, trendingPosts] = await Promise.all([
-    getHairdressers('featured', 10),
-    getHairdressers('new_quality', 8, 60),
-    getRanking(5),
-    getFeedPosts('trending', 24),
+    isEnabled('coup_de_coeur') ? getHairdressers('featured', coupDeCoeurLimit) : Promise.resolve([]),
+    isEnabled('new_talents') ? getHairdressers('new_quality', newTalentsLimit, 60) : Promise.resolve([]),
+    isEnabled('ranking') ? getRanking(rankingLimit) : Promise.resolve([]),
+    isEnabled('realisations') ? getFeedPosts('trending', 24) : Promise.resolve([]),
   ]);
+
+  const sectionRenderers: Record<HomeSectionConfig['key'], () => React.ReactNode> = {
+    home_personalized: () => (
+      // ① Pour vous — le vrai moteur de recommandation (GET
+      // /api/recommendations) : spécialité choisie D'ABORD, puis
+      // proximité, réputation, CHAIR+ en dernier départage. Premier
+      // contenu substantiel du fil, avant même les raccourcis spécialité —
+      // c'est la promesse "pas juste le plus proche" de CHAIR.
+      <HomePersonalized
+        key="home_personalized"
+        titleOverride={sectionByKey.get('home_personalized')?.title ?? undefined}
+        limit={sectionByKey.get('home_personalized')?.limit ?? undefined}
+      />
+    ),
+    specialty_quick_links: () => (
+      // Raccourcis spécialité — mêmes 10 catégories pour tout le monde,
+      // mais réordonnées : les préférences réelles en tête, "Voir tout"
+      // pour le reste. Sert à pivoter/filtrer si le ① n'a pas suffi.
+      <SpecialtyQuickLinks key="specialty_quick_links" limit={sectionByKey.get('specialty_quick_links')?.limit ?? undefined} />
+    ),
+    coup_de_coeur: () => (
+      // ② Coup de cœur CHAIR — sélection éditoriale, variété au milieu du fil
+      <CoupDeCoeurStrip
+        key="coup_de_coeur"
+        fallback={featuredHD}
+        titleOverride={sectionByKey.get('coup_de_coeur')?.title}
+        limit={coupDeCoeurLimit}
+      />
+    ),
+    ranking: () => (
+      // ③ Classement — local, scopé sur votre/vos spécialité(s), preuve sociale
+      <HomeRankingSection
+        key="ranking"
+        fallback={ranking}
+        titleOverride={sectionByKey.get('ranking')?.title}
+        limit={rankingLimit}
+      />
+    ),
+    nearby_map: () => (
+      // ④ Carte — rupture de rythme visuelle (spatiale) avant la grille réalisations
+      <NearbyMapSection
+        key="nearby_map"
+        titleOverride={sectionByKey.get('nearby_map')?.title ?? undefined}
+        limit={sectionByKey.get('nearby_map')?.limit ?? undefined}
+      />
+    ),
+    realisations: () => (
+      // ⑤ Réalisations — grille 3 colonnes ciblée sur vos spécialités,
+      // rupture de rythme avec les carrousels horizontaux qui précèdent
+      <HomeRealisationsSection
+        key="realisations"
+        fallback={trendingPosts}
+        titleOverride={sectionByKey.get('realisations')?.title}
+        limit={sectionByKey.get('realisations')?.limit ?? undefined}
+      />
+    ),
+    new_talents: () => (
+      // ⑥ Nouveaux talents — découverte secondaire, fin de fil
+      <NewTalentsStrip
+        key="new_talents"
+        fallback={newTalentsHD}
+        titleOverride={sectionByKey.get('new_talents')?.title}
+        limit={newTalentsLimit}
+      />
+    ),
+  };
 
   return (
     <AppShell>
@@ -77,33 +158,9 @@ export default async function HomePage() {
           vide. */}
       <StoriesBar />
 
-      {/* ① Pour vous — le vrai moteur de recommandation (GET
-          /api/recommendations) : spécialité choisie D'ABORD, puis
-          proximité, réputation, CHAIR+ en dernier départage. Premier
-          contenu substantiel du fil, avant même les raccourcis spécialité —
-          c'est la promesse "pas juste le plus proche" de CHAIR. */}
-      <HomePersonalized />
-
-      {/* Raccourcis spécialité — mêmes 10 catégories pour tout le monde,
-          mais réordonnées : les préférences réelles en tête, "Voir tout"
-          pour le reste. Sert à pivoter/filtrer si le ① n'a pas suffi. */}
-      <SpecialtyQuickLinks />
-
-      {/* ② Coup de cœur CHAIR — sélection éditoriale, variété au milieu du fil */}
-      <CoupDeCoeurStrip fallback={featuredHD} />
-
-      {/* ③ Classement — local, scopé sur votre/vos spécialité(s), preuve sociale */}
-      <HomeRankingSection fallback={ranking} />
-
-      {/* ④ Carte — rupture de rythme visuelle (spatiale) avant la grille réalisations */}
-      <NearbyMapSection />
-
-      {/* ⑤ Réalisations — grille 3 colonnes ciblée sur vos spécialités,
-          rupture de rythme avec les carrousels horizontaux qui précèdent */}
-      <HomeRealisationsSection fallback={trendingPosts} />
-
-      {/* ⑥ Nouveaux talents — découverte secondaire, fin de fil */}
-      <NewTalentsStrip fallback={newTalentsHD} />
+      {/* Les 7 sections ci-dessous : présence/ordre/titre/limite pilotés par
+          la config Super Admin (voir getHomeSectionsConfig ci-dessus). */}
+      {orderedKeys.map((key) => (isEnabled(key) ? sectionRenderers[key]() : null))}
 
       <div className="mx-4 md:mx-8 mt-10 h-px bg-neutral-100 max-w-6xl md:mx-auto" />
 

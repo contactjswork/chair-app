@@ -166,7 +166,7 @@ class ExploreController extends Controller
         // ci-dessus) ; le palier national n'affirme aucune proximité, une
         // correspondance suffit même sans coordonnées.
         if ($hasGeo && $radius !== null) {
-            foreach (RecommendationService::RADIUS_TIERS as $tierDef) {
+            foreach (RecommendationService::radiusTiers() as $tierDef) {
                 if ($tierDef['km'] <= $radius) continue;
                 $attempt = $this->buildResults($q, $specialty, $minRating, $lat, $lng, $tierDef['km'], null);
                 if ($this->hasLocatedMatch($attempt)) {
@@ -190,7 +190,7 @@ class ExploreController extends Controller
 
             // Étape 4 : élargir le rayon aussi, spécialité relâchée.
             if ($hasGeo && $radius !== null) {
-                foreach (RecommendationService::RADIUS_TIERS as $tierDef) {
+                foreach (RecommendationService::radiusTiers() as $tierDef) {
                     if ($tierDef['km'] <= $radius) continue;
                     $attempt = $this->buildResults($q, [], $minRating, $lat, $lng, $tierDef['km'], null);
                     if ($this->hasLocatedMatch($attempt)) {
@@ -260,7 +260,7 @@ class ExploreController extends Controller
 
         $closest = $localized->min('distance_km');
 
-        foreach (RecommendationService::RADIUS_TIERS as $i => $tierDef) {
+        foreach (RecommendationService::radiusTiers() as $i => $tierDef) {
             if ($closest <= $tierDef['km']) {
                 return [
                     'tier'           => $tierDef['tier'],

@@ -9,6 +9,8 @@ class SpecialtyController extends Controller
 {
     public function index()
     {
-        return response()->json(\App\Models\Specialty::where('is_active', true)->get());
+        return response()->json(
+            \App\Models\Specialty::where('is_active', true)->orderBy('order')->orderBy('name')->get()
+        );
     }
 }

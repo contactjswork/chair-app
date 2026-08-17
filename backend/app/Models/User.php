@@ -35,6 +35,54 @@ class User extends Authenticatable
         return $this->hasOne(HairdresserProfile::class);
     }
 
+    /** Rôle admin granulaire (super_admin|admin|moderator) — null si role != 'admin'. */
+    public function adminRole()
+    {
+        return $this->belongsTo(AdminRole::class);
+    }
+
+    public function isAdminAccount(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'admin' && $this->adminRole?->key === 'super_admin';
+    }
+
+    /**
+     * Vérifie une permission granulaire (ex: 'users.suspend'). Un Super
+     * Admin passe toujours — bypass volontaire, voir
+     * 2026_08_17_110007_seed_admin_roles_and_permissions.php.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->role !== 'admin' || !$this->adminRole) {
+            return false;
+        }
+
+        if ($this->adminRole->key === 'super_admin') {
+            return true;
+        }
+
+        return $this->adminRole->permissions()->where('key', $permission)->exists();
+    }
+
+    /** Liste des clés de permission de ce compte admin — utile pour le frontend (afficher/cacher des actions). */
+    public function adminPermissionKeys(): array
+    {
+        if ($this->role !== 'admin' || !$this->adminRole) {
+            return [];
+        }
+
+        if ($this->adminRole->key === 'super_admin') {
+            return Permission::pluck('key')->all();
+        }
+
+        return $this->adminRole->permissions()->pluck('key')->all();
+    }
+
     public function salon()
     {
         return $this->hasOne(Salon::class, 'owner_id');

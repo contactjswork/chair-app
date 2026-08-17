@@ -22,11 +22,14 @@ class Review extends Model
         'specialty_id',
         'is_verified',
         'is_certified',
+        'status',
+        'moderation_reviewed_at',
     ];
 
     protected $casts = [
         'is_verified'  => 'boolean',
         'is_certified' => 'boolean',
+        'moderation_reviewed_at' => 'datetime',
     ];
 
     public function specialtyModel()

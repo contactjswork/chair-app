@@ -7,7 +7,8 @@ import { BadgeCheck, MapPin, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
 import { SectionHeader } from './HomeGeoStrips';
-import { getUserGeo, getUserSpecialtySlugs, RADIUS_TIERS } from '@/lib/homeFilters';
+import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
+import { getRankingRadiusTiers } from '@/lib/appConfig';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -41,10 +42,13 @@ const RANK_TONE: Record<number, string> = {
  * jamais un classement France entière tant qu'un cercle plus proche a des
  * résultats.
  */
-export default function HomeRankingSection({ fallback }: { fallback: RankedEntry[] }) {
+export default function HomeRankingSection({
+  fallback, titleOverride, limit = 5,
+}: { fallback: RankedEntry[]; titleOverride?: string | null; limit?: number }) {
   const { user, isLoading } = useAuth();
   const [entries, setEntries] = useState<RankedEntry[]>(fallback);
   const [title, setTitle] = useState<string | null>(null);
+  const effectiveLimit = limit && limit > 0 ? limit : 5;
 
   useEffect(() => {
     if (isLoading || !user) return;
@@ -53,6 +57,11 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
     const geo = getUserGeo(user);
 
     (async () => {
+      // Paliers configurables (Super Admin) — repli intégral sur 50km/200km
+      // si absent/invalide, voir lib/appConfig.ts.
+      const radiusTiers = await getRankingRadiusTiers();
+      if (cancelled) return;
+
       // 1) Spécialité choisie : localisée en priorité (rayon 50km → 200km),
       // France seulement si vraiment personne dans ce rayon.
       try {
@@ -63,9 +72,9 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
 
         if (chosen && !cancelled) {
           if (geo) {
-            for (const { km, label } of RADIUS_TIERS) {
+            for (const { km, label } of radiusTiers) {
               const params = new URLSearchParams({
-                specialty_id: String(chosen.id), geo: 'radius', limit: '5',
+                specialty_id: String(chosen.id), geo: 'radius', limit: String(effectiveLimit),
                 lat: String(geo.lat), lng: String(geo.lng), radius_km: String(km),
               });
               const res = await fetch(`${API}/leaderboard?${params}`);
@@ -77,7 +86,7 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
               }
             }
           }
-          const params = new URLSearchParams({ specialty_id: String(chosen.id), geo: 'country', limit: '5' });
+          const params = new URLSearchParams({ specialty_id: String(chosen.id), geo: 'country', limit: String(effectiveLimit) });
           const res = await fetch(`${API}/leaderboard?${params}`);
           const data: { results: RankedEntry[] } = await res.json();
           if (!cancelled && data.results?.length) {
@@ -93,9 +102,9 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
       // France entière) reste en place si même le rayon élargi ne donne rien.
       if (cancelled || !geo) return;
       try {
-        for (const { km, label } of RADIUS_TIERS) {
+        for (const { km, label } of radiusTiers) {
           const params = new URLSearchParams({
-            type: 'engagement', limit: '5',
+            type: 'engagement', limit: String(effectiveLimit),
             lat: String(geo.lat), lng: String(geo.lng), radius_km: String(km),
           });
           const res = await fetch(`${API}/leaderboard?${params}`);
@@ -110,7 +119,7 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
     })();
 
     return () => { cancelled = true; };
-  }, [user, isLoading]);
+  }, [user, isLoading, effectiveLimit]);
 
   if (!entries.length) return null;
 
@@ -119,11 +128,11 @@ export default function HomeRankingSection({ fallback }: { fallback: RankedEntry
       <SectionHeader
         tag="Classement"
         tagIcon={<Trophy size={11} className="text-amber-500" />}
-        title={title ?? 'Les meilleurs coiffeurs CHAIR'}
+        title={titleOverride ?? title ?? 'Les meilleurs coiffeurs CHAIR'}
         href="/app/classements"
       />
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto space-y-2">
-        {entries.slice(0, 5).map((h) => {
+        {entries.slice(0, effectiveLimit).map((h) => {
           const avatar = resolveMediaUrl(h.avatar);
           const rankCls = RANK_TONE[h.rank] ?? 'bg-neutral-100 text-neutral-500';
           return (

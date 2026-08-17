@@ -6,7 +6,8 @@ import BottomSheet from '@/components/ui/BottomSheet';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { getUserGeo, RADIUS_TIERS } from '@/lib/homeFilters';
+import { getUserGeo } from '@/lib/homeFilters';
+import { getRankingRadiusTiers } from '@/lib/appConfig';
 import { leaderboard, api } from '@/lib/api';
 import type { ApiLeaderboard, ApiLeaderboardEntry, ApiSpecialty, ApiSpecialtyLeaderboard, ApiSpecialtyLeaderboardEntry } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
@@ -302,11 +303,12 @@ export default function ClassementsPage() {
     setAutoGeoLabel(null);
 
     const geo = geoValue ? null : getUserGeo(user);
+    const radiusTiers = await getRankingRadiusTiers();
 
     try {
       if (specialtyId) {
         if (geo) {
-          for (const { km, label } of RADIUS_TIERS) {
+          for (const { km, label } of radiusTiers) {
             const res = await leaderboard.bySpecialty({
               specialtyId, geo: 'radius', lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30,
             });
@@ -321,7 +323,7 @@ export default function ClassementsPage() {
         setSpecialtyData(res); setGlobalData(null);
       } else {
         if (geo) {
-          for (const { km, label } of RADIUS_TIERS) {
+          for (const { km, label } of radiusTiers) {
             const res = await leaderboard.get({ type: sortType, lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30 }) as ApiLeaderboard;
             if (res.results.length) {
               setGlobalData(res); setSpecialtyData(null); setAutoGeoLabel(label);

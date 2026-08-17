@@ -3,9 +3,19 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shield } from 'lucide-react';
+import { apiEnvironment, setAdminSession } from '@/lib/adminApi';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
+/**
+ * Login admin réel — compte nommé (email + mot de passe PAR PERSONNE) via
+ * Sanctum côté Laravel (POST /admin/auth/login). Remplace l'ancien flow qui
+ * comparait à ADMIN_EMAIL/ADMIN_PASSWORD (variables d'env partagées, avec
+ * des valeurs par défaut en clair dans le code) puis posait un jeton
+ * CODÉ EN DUR ('chair_admin_secret_2026') dans localStorage — exactement
+ * la valeur que le backend rejette désormais explicitement comme non
+ * sécurisée. Voir App\Http\Controllers\Api\AdminAuthController.
+ */
 export default function AdminConnexionPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -19,17 +29,29 @@ export default function AdminConnexionPage() {
     setError('');
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin-auth', {
+      const res = await fetch(`${API_URL}/admin/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ email, password }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? 'Identifiants invalides');
+        throw new Error(data.message ?? 'Identifiants invalides');
       }
-      // Token fixe pour les appels API Laravel admin
-      localStorage.setItem('chair_admin_token', 'chair_admin_secret_2026');
+
+      // Jeton Sanctum réel, propre à CE compte — plus de secret partagé.
+      setAdminSession(data.token, data.user);
+
+      // Pose le cookie httpOnly marqueur que proxy.ts vérifie pour laisser
+      // passer /admin/* — sans ça, proxy.ts renvoie systématiquement vers
+      // /admin/connexion même avec un jeton Sanctum valide en localStorage
+      // (le cookie et le localStorage sont deux mécanismes séparés).
+      await fetch('/api/admin-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: data.token }),
+      });
+
       router.push('/admin');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
@@ -51,6 +73,14 @@ export default function AdminConnexionPage() {
             <span className="text-[28px] font-bold tracking-tight text-neutral-900">CHAIR</span>
           </div>
           <p className="text-[13px] text-neutral-400 font-medium uppercase tracking-widest">Administration</p>
+          <div
+            className={`inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+              apiEnvironment() === 'PRODUCTION' ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            {apiEnvironment()}
+          </div>
         </div>
 
         {/* Form */}

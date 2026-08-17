@@ -17,13 +17,16 @@ import type { MapAdapter, MapMarkerData } from '@/components/search/mapProvider'
  * elle-même pour ne jamais entrer en conflit avec le scroll de la page),
  * qui renvoie vers la vraie carte de recherche au tap.
  */
-export default function NearbyMapSection() {
+export default function NearbyMapSection({
+  titleOverride, limit = 20,
+}: { titleOverride?: string | null; limit?: number } = {}) {
   const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>([]);
   const [ready, setReady] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const adapterRef = useRef<MapAdapter | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const effectiveLimit = limit && limit > 0 ? limit : 20;
 
   // Mémoïsé : getUserGeo(user) renvoie un nouvel objet à chaque appel — sans
   // ça, l'effet de montage carte ci-dessous (déps [geo, hairdressers]) le
@@ -36,11 +39,11 @@ export default function NearbyMapSection() {
       setReady(true);
       return;
     }
-    fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, 20)
+    fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, effectiveLimit)
       .then(({ results }) => setHairdressers(results))
       .finally(() => setReady(true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoading]);
+  }, [user, isLoading, effectiveLimit]);
 
   useEffect(() => {
     if (!containerRef.current || !geo || hairdressers.length === 0) return;
@@ -97,7 +100,7 @@ export default function NearbyMapSection() {
 
   return (
     <section className="pt-10">
-      <SectionHeader tag="Autour de vous" title="Sur la carte" href="/app/recherche" />
+      <SectionHeader tag="Autour de vous" title={titleOverride ?? 'Sur la carte'} href="/app/recherche" />
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto">
         <Link
           href="/app/recherche"

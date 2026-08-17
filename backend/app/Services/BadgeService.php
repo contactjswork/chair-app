@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Badge;
 use App\Models\HairdresserProfile;
 use App\Services\NotificationService;
 use App\Services\ReferralService;
@@ -9,126 +10,74 @@ use App\Services\SpecialtyReputationService;
 use App\Services\StreakService;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Moteur de badges — catalogue chargé depuis la table 'badges' (voir
+ * migration 2026_08_17_140000, modèle App\Models\Badge), plus la même
+ * constante que la mission a demandé de garder pour la doc en tête de
+ * fichier. Deux façons dont un badge peut être "débloqué" :
+ *
+ * 1. GÉNÉRIQUE — badges.criteria = {metric, operator, value}. Évalué par
+ *    evaluateCriteria() contre self::METRICS (liste blanche fixe de
+ *    métriques calculables) et self::OPERATORS (>=, >, ==, <=, <).
+ *    L'admin peut créer/modifier ces badges (AdminBadgeController) SANS
+ *    toucher au code — c'est tout l'objet de cette table.
+ *
+ * 2. DÉDIÉE — badges.criteria = null, slug listé dans self::HARDCODED_SLUGS.
+ *    La règle vit dans hardcodedUnlocked() ci-dessous : combinaison de
+ *    plusieurs critères, classement relatif (top N local, percentile),
+ *    statut venant d'un autre service (SIRET, identité, abonnement). PAS
+ *    exprimable proprement en metric/operator/value — volontairement laissé
+ *    en code, voir le rapport de mission. L'admin peut éditer leurs
+ *    métadonnées (titre, description, icône, points, visibilité...) mais
+ *    jamais leur logique de déblocage via l'API (AdminBadgeController
+ *    refuse d'attacher un criteria à un slug de cette liste).
+ */
 class BadgeService
 {
     // Au-delà de quel id de profil un coiffeur n'est plus "pionnier" —
     // constante figée, pas recalculée dynamiquement (sinon "pionnier"
-    // perdrait son sens au fil du temps).
+    // perdrait son sens au fil du temps). Doublon volontaire de la valeur
+    // seedée dans badges.criteria pour 'pioneer_chair' (voir migration) —
+    // gardée en constante pour rester lisible dans ce fichier, pas relue
+    // par le moteur (qui lit uniquement la ligne 'badges').
     const PIONEER_MAX_ID = 200;
 
-    // ── Définition des badges CARRIÈRE et EXCEPTIONNELS ──────────────────────
-    // Les badges MÉTIER (par spécialité : Spécialiste/Expert/Référence locale/
-    // Référence régionale) ne sont PAS ici — ils sont dérivés dynamiquement de
-    // hairdresser_specialty_progress (voir SpecialtyReputationService), pas
-    // stockés dans un catalogue statique puisque leur nom dépend de la
-    // spécialité (10 possibles). Voir docs/REPUTATION_ARCHITECTURE.md.
-    //
-    // pts    : points ajoutés au score CHAIR quand débloqué
-    // tier   : 1=bronze (accessible), 2=argent (motivant), 3=or (difficile), 4=légendaire (badge noir), 5=ultime (combinaison de critères, quasi impossible)
-    // rarity : reflet produit du tier — 'commun'|'rare'|'epique'|'legendaire'|'ultime'
-    // family : 'carriere' | 'exceptionnel'
-    // visible: true = affiché sur le profil public
-    // roles  : restreint l'affichage du badge à un rôle (absent = tous) — ex.
-    //          un badge agenda/RDV n'a aucun sens pour un salarié qui ne prend
-    //          pas de réservation CHAIR (voir section 12 du brief masterclass).
-    const BADGES = [
-        // ── Profil (carrière) ──
-        ['code' => 'photo_added',   'name' => 'Première impression',  'desc' => 'Photo de profil ajoutée',              'category' => 'profil', 'family' => 'carriere', 'pts' => 20,  'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'banner_added',  'name' => 'Vitrine',              'desc' => 'Bannière de profil ajoutée',            'category' => 'profil', 'family' => 'carriere', 'pts' => 15,  'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'full_profile',  'name' => 'Profil complet',       'desc' => 'Toutes les infos remplies',             'category' => 'profil', 'family' => 'carriere', 'pts' => 50,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-
-        // ── Démarrage (carrière) — premières actions, accessibles dès les
-        //    premiers jours pour prouver que "mon compte prend déjà de la valeur" ──
-        ['code' => 'first_specialty',      'name' => 'Premier pas métier',       'desc' => 'Au moins une spécialité sélectionnée',              'category' => 'demarrage', 'family' => 'carriere', 'pts' => 10, 'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'first_review_received','name' => 'Premier avis',             'desc' => '1er avis client reçu',                              'category' => 'demarrage', 'family' => 'carriere', 'pts' => 15, 'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'first_verified_visit', 'name' => 'Premier passage prouvé',   'desc' => '1ère visite certifiée par QR',                      'category' => 'demarrage', 'family' => 'carriere', 'pts' => 15, 'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'first_service',        'name' => 'Prestation en ligne',      'desc' => '1er service renseigné',                             'category' => 'demarrage', 'family' => 'carriere', 'pts' => 10, 'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'first_appointment',    'name' => 'Premier rendez-vous',      'desc' => '1er rendez-vous reçu via CHAIR',                    'category' => 'demarrage', 'family' => 'carriere', 'pts' => 15, 'tier' => 1, 'rarity' => 'commun', 'visible' => false, 'roles' => ['independent']],
-        ['code' => 'first_share',          'name' => 'Premier partage',          'desc' => '1er partage de profil ou de réalisation',           'category' => 'demarrage', 'family' => 'carriere', 'pts' => 10, 'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-
-        // ── Réalisations totales (carrière — toutes spécialités confondues,
-        //    distinct du niveau MÉTIER par spécialité) ──
-        ['code' => 'first_post',    'name' => 'Première réalisation', 'desc' => '1ère réalisation publiée',                          'category' => 'contenu', 'family' => 'carriere', 'pts' => 10,  'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'portfolio_10',  'name' => 'Portfolio en construction', 'desc' => '10 réalisations publiées, toutes spécialités confondues', 'category' => 'contenu', 'family' => 'carriere', 'pts' => 40,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'portfolio_50',  'name' => 'Portfolio conséquent', 'desc' => '50 réalisations publiées, toutes spécialités confondues',      'category' => 'contenu', 'family' => 'carriere', 'pts' => 120, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'portfolio_300', 'name' => 'Œuvre complète',       'desc' => '300 réalisations publiées — des années de travail documentées','category' => 'contenu', 'family' => 'carriere', 'pts' => 600, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-
-        // ── Avis et visites (carrière, globaux — complètent les paliers par
-        //    spécialité qui vivent dans hairdresser_specialty_progress) ──
-        ['code' => 'review_10',  'name' => 'Confiance grandissante', 'desc' => '10 avis reçus',  'category' => 'avis', 'family' => 'carriere', 'pts' => 40,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'review_50',  'name' => 'Réputation solide',      'desc' => '50 avis reçus',  'category' => 'avis', 'family' => 'carriere', 'pts' => 120, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'review_100', 'name' => 'Cent voix',              'desc' => '100 avis reçus', 'category' => 'avis', 'family' => 'carriere', 'pts' => 250, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'review_500', 'name' => 'Institution locale',     'desc' => '500 avis reçus', 'category' => 'avis', 'family' => 'carriere', 'pts' => 700, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'visit_25',   'name' => 'Habitué du terrain',     'desc' => '25 visites certifiées par QR',  'category' => 'visites', 'family' => 'carriere', 'pts' => 40,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'visit_100',  'name' => 'Terrain conquis',        'desc' => '100 visites certifiées par QR', 'category' => 'visites', 'family' => 'carriere', 'pts' => 150, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'regular_clients_5', 'name' => 'Clientèle fidèle', 'desc' => '5 clients revenus au moins deux fois', 'category' => 'avis', 'family' => 'carriere', 'pts' => 60, 'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-
-        // ── Abonnés (carrière) — paliers volontairement difficiles pour
-        //    rester motivants même après plusieurs années sur CHAIR ──
-        ['code' => 'follower_10',    'name' => 'Premiers soutiens',    'desc' => '10 abonnés',    'category' => 'communauté', 'family' => 'carriere', 'pts' => 10,   'tier' => 1, 'rarity' => 'commun', 'visible' => false],
-        ['code' => 'follower_100',   'name' => 'Communauté naissante', 'desc' => '100 abonnés',    'category' => 'communauté', 'family' => 'carriere', 'pts' => 30,   'tier' => 1, 'rarity' => 'commun', 'visible' => true],
-        ['code' => 'follower_500',   'name' => 'Voix qui compte',      'desc' => '500 abonnés',    'category' => 'communauté', 'family' => 'carriere', 'pts' => 100,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'follower_1000',  'name' => 'Mille fidèles',        'desc' => '1 000 abonnés',  'category' => 'communauté', 'family' => 'carriere', 'pts' => 180,  'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'follower_2500',  'name' => 'Figure locale',        'desc' => '2 500 abonnés',  'category' => 'communauté', 'family' => 'carriere', 'pts' => 300,  'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'follower_5000',  'name' => 'Voix majeure',         'desc' => '5 000 abonnés',  'category' => 'communauté', 'family' => 'carriere', 'pts' => 550,  'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'follower_15000', 'name' => 'Icône CHAIR',          'desc' => '15 000 abonnés', 'category' => 'communauté', 'family' => 'carriere', 'pts' => 1000, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-
-        // ── Partages (carrière) — réutilise share_events (voir ReferralService),
-        //    lecture seule ici, aucune règle de récompense/parrainage modifiée ──
-        ['code' => 'share_10',   'name' => 'Ambassadeur en herbe', 'desc' => '10 partages de profil ou de réalisations',  'category' => 'reseau', 'family' => 'carriere', 'pts' => 30,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'share_100',  'name' => 'Voix qui porte',       'desc' => '100 partages de profil ou de réalisations', 'category' => 'reseau', 'family' => 'carriere', 'pts' => 120, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'share_1000', 'name' => 'Porte-voix CHAIR',     'desc' => '1 000 partages de profil ou de réalisations','category' => 'reseau', 'family' => 'carriere', 'pts' => 400, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-
-        // ── Ancienneté (carrière) ──
-        ['code' => 'veteran_3m', 'name' => 'Installé',          'desc' => '3 mois sur CHAIR', 'category' => 'ancienneté', 'family' => 'carriere', 'pts' => 20,   'tier' => 1, 'rarity' => 'commun', 'visible' => true],
-        ['code' => 'veteran_1y', 'name' => 'Fidèle',             'desc' => '1 an sur CHAIR',   'category' => 'ancienneté', 'family' => 'carriere', 'pts' => 80,   'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'veteran_3y', 'name' => 'Pilier',             'desc' => '3 ans sur CHAIR',  'category' => 'ancienneté', 'family' => 'carriere', 'pts' => 300,  'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'veteran_7y', 'name' => 'Historique CHAIR',   'desc' => '7 ans sur CHAIR',  'category' => 'ancienneté', 'family' => 'carriere', 'pts' => 1000, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-
-        // ── Activité — streak + journées parfaites (carrière) ──
-        ['code' => 'streak_7',   'name' => 'Sur un rythme',         'desc' => "7 jours d'activité consécutifs",   'category' => 'streak', 'family' => 'carriere', 'pts' => 50,   'tier' => 1, 'rarity' => 'commun', 'visible' => true],
-        ['code' => 'streak_30',  'name' => 'Inarrêtable',           'desc' => "30 jours d'activité consécutifs",  'category' => 'streak', 'family' => 'carriere', 'pts' => 150,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'streak_100', 'name' => 'Légende du quotidien',  'desc' => "100 jours d'activité consécutifs", 'category' => 'streak', 'family' => 'carriere', 'pts' => 400,  'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'streak_365', 'name' => 'Inarrêtable depuis un an', 'desc' => "365 jours d'activité consécutifs, sans interruption", 'category' => 'streak', 'family' => 'carriere', 'pts' => 1200, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'streak_1000','name' => 'Millénaire CHAIR',      'desc' => "1 000 jours d'activité consécutifs, sans interruption", 'category' => 'streak', 'family' => 'carriere', 'pts' => 2000, 'tier' => 5, 'rarity' => 'ultime', 'visible' => true],
-        ['code' => 'weekly_4',   'name' => 'Mois parfait',          'desc' => '4 semaines consécutives actives',  'category' => 'streak', 'family' => 'carriere', 'pts' => 100,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'perfect_day_1',   'name' => 'Journée parfaite',   'desc' => 'Les 3 objectifs du jour complétés une fois',  'category' => 'discipline', 'family' => 'carriere', 'pts' => 20,  'tier' => 1, 'rarity' => 'commun', 'visible' => true],
-        ['code' => 'perfect_week_7',  'name' => 'Semaine sans faute', 'desc' => '7 journées parfaites cumulées',               'category' => 'discipline', 'family' => 'carriere', 'pts' => 80,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'perfect_month_30','name' => 'Discipline de fer',  'desc' => '30 journées parfaites cumulées',              'category' => 'discipline', 'family' => 'carriere', 'pts' => 200, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'perfect_100',     'name' => 'Machine CHAIR',      'desc' => '100 journées parfaites cumulées',             'category' => 'discipline', 'family' => 'carriere', 'pts' => 450, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'pro_active', 'name' => 'Professionnel actif', 'desc' => 'Activité régulière sur CHAIR', 'category' => 'streak', 'family' => 'carriere', 'pts' => 50, 'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-
-        // ── Vérification (carrière) — décisions de vérification différées
-        //    avec l'associé (indépendant vs salon), logique inchangée ──
-        ['code' => 'verified',          'name' => 'Certifié CHAIR',    'desc' => 'Abonné CHAIR+', 'category' => 'vérification', 'family' => 'carriere', 'pts' => 100, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'identity_verified', 'name' => 'Identité vérifiée', 'desc' => 'Identité confirmée par CHAIR',                       'category' => 'vérification', 'family' => 'carriere', 'pts' => 80,  'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'siret_verified',    'name' => 'SIRET vérifié',     'desc' => 'Numéro SIRET salon validé',                          'category' => 'vérification', 'family' => 'carriere', 'pts' => 100, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'diploma_added',     'name' => 'Diplômé',           'desc' => 'Diplôme officiel de coiffure vérifié par CHAIR (CAP, BP, BM...)', 'category' => 'vérification', 'family' => 'carriere', 'pts' => 70,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-        ['code' => 'formation_badge',   'name' => 'Formations suivies','desc' => 'A renseigné au moins une formation professionnelle suivie',       'category' => 'profil',       'family' => 'carriere', 'pts' => 60,  'tier' => 2, 'rarity' => 'rare', 'visible' => true],
-
-        // ── Ambassadeur (carrière — le programme lui-même n'existe pas
-        //    encore, badge verrouillé par construction, voir docs) ──
-        ['code' => 'ambassador_program', 'name' => 'Ambassadeur CHAIR', 'desc' => '20 filleuls parrainés sur CHAIR', 'category' => 'ambassadeur', 'family' => 'carriere', 'pts' => 200, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-
-        ['code' => 'new_talent', 'name' => 'Nouveau talent', 'desc' => 'Nouveau sur la plateforme', 'category' => 'spécial', 'family' => 'carriere', 'pts' => 0, 'tier' => 1, 'rarity' => 'commun', 'visible' => true],
-
-        // ── EXCEPTIONNELS — badge noir, palier ultime ────────────────────────
-        ['code' => 'top_5_local',        'name' => 'Top 5 local',         'desc' => "Classé dans le top 5 d'une spécialité, dans sa ville",             'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 350, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'top_10_local',       'name' => 'Top 10 local',        'desc' => "Classé dans le top 10 d'une spécialité, dans sa ville",            'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 200, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'top_3_local',        'name' => 'Podium local',        'desc' => "Classé dans le top 3 d'une spécialité, dans sa ville",             'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 500, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'pioneer_chair',      'name' => 'Pionnier CHAIR',      'desc' => 'Parmi les 200 premiers coiffeurs inscrits sur CHAIR',              'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 300, 'tier' => 3, 'rarity' => 'epique', 'visible' => true],
-        ['code' => 'top_1_percent',      'name' => 'Top 1% CHAIR',        'desc' => 'Parmi le 1% des coiffeurs les mieux classés sur toute la plateforme','category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 600, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'national_reference', 'name' => 'Référence nationale', 'desc' => 'Top 1% France entière sur au moins une spécialité',                'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 800, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-        ['code' => 'ambassador_national','name' => 'Ambassadeur national','desc' => '100 filleuls parrainés — a fait grandir CHAIR à l\'échelle nationale', 'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 900, 'tier' => 4, 'rarity' => 'legendaire', 'visible' => true],
-
-        // ── Badge ultime — le "badge noir" absolu. Combinaison volontaire de
-        //    critères (jamais un seul chiffre) : référence nationale sur au
-        //    moins une spécialité + top 1% CHAIR toutes disciplines + ancienneté
-        //    prouvée (≥3 ans) + activité récente + volume de clients distincts
-        //    suffisant pour exclure tout coup de chance ou fraude isolée. Doit
-        //    rester rare même dans 5 ou 10 ans (Julien, brief masterclass badges).
-        ['code' => 'legende_ultime', 'name' => 'Légende ultime CHAIR', 'desc' => 'Référence nationale, top 1% CHAIR, 3 ans d\'ancienneté, activité récente et clientèle distincte prouvée — le sommet absolu', 'category' => 'exceptionnel', 'family' => 'exceptionnel', 'pts' => 500, 'tier' => 5, 'rarity' => 'ultime', 'visible' => true],
+    /**
+     * Liste blanche FIXE des métriques calculables exposées au moteur
+     * générique. Ajouter une métrique ici = ajouter son calcul dans
+     * computeMetrics() ci-dessous — jamais d'expression libre/eval, une
+     * métrique = une clé de ce tableau, un nombre.
+     */
+    const METRICS = [
+        'posts_count', 'reviews_count', 'verified_visits_count', 'followers_count',
+        'share_count', 'referral_count', 'account_age_days', 'longest_streak',
+        'weekly_streak', 'perfect_days_count', 'regular_clients_count',
+        'services_count', 'specialties_count', 'appointments_count', 'profile_id',
     ];
+
+    /** Opérateurs autorisés dans badges.criteria — rien d'autre n'est évalué. */
+    const OPERATORS = ['>=', '>', '==', '<=', '<'];
+
+    /**
+     * Slugs dont le déblocage reste écrit en dur dans hardcodedUnlocked()
+     * (combinaison de critères ou classement relatif — voir docblock de
+     * classe). AdminBadgeController s'appuie sur cette liste pour refuser
+     * qu'un admin attache un criteria à l'un de ces slugs (le moteur
+     * générique l'ignorerait silencieusement, mieux vaut un 422 explicite).
+     */
+    const HARDCODED_SLUGS = [
+        'photo_added', 'banner_added', 'full_profile', 'formation_badge',
+        'pro_active', 'verified', 'new_talent', 'identity_verified',
+        'siret_verified', 'diploma_added',
+        'top_5_local', 'top_10_local', 'top_3_local', 'top_1_percent',
+        'national_reference', 'legende_ultime',
+    ];
+
+    /** Cache statique (durée de la requête) du catalogue actif, pour éviter une requête par badge évalué. */
+    private static ?\Illuminate\Support\Collection $catalogCache = null;
+
+    /** Cache statique (durée de la requête) des métriques déjà calculées par profil. */
+    private static array $metricsCache = [];
 
     // ── Niveaux ──────────────────────────────────────────────────────────────
     // Courbe volontairement asymétrique : les 2 premiers paliers restent
@@ -147,13 +96,33 @@ class BadgeService
     ];
 
     // ── Vérification d'un badge ──────────────────────────────────────────────
+    /**
+     * Point d'entrée unique. Dispatch vers le moteur générique (criteria en
+     * base) ou vers hardcodedUnlocked() (16 slugs listés dans
+     * HARDCODED_SLUGS) selon ce que dit la ligne 'badges' de ce slug.
+     */
     public static function isBadgeUnlocked(HairdresserProfile $profile, string $code): bool
     {
-        $posts     = (int) ($profile->posts_count ?? 0);
-        $followers = (int) ($profile->followers_count ?? 0);
+        $badge = self::badgeRow($code);
 
+        if ($badge && $badge->criteria) {
+            return self::evaluateCriteria(self::computeMetrics($profile), $badge->criteria);
+        }
+
+        return self::hardcodedUnlocked($profile, $code);
+    }
+
+    /**
+     * Les 16 badges dont la règle ne rentre PAS dans metric/operator/value
+     * (voir HARDCODED_SLUGS et le rapport de mission) : combinaison de
+     * plusieurs critères, classement relatif, ou statut lu depuis un autre
+     * domaine (abonnement, vérification identité/SIRET/diplôme). Codes
+     * inchangés depuis l'ancienne const BADGES — seule la métadonnée
+     * (titre, points, rareté...) a bougé vers la table 'badges'.
+     */
+    private static function hardcodedUnlocked(HairdresserProfile $profile, string $code): bool
+    {
         switch ($code) {
-            // Profil
             case 'photo_added':    return !empty($profile->user->avatar ?? null);
             case 'banner_added':   return !empty($profile->banner_image);
             case 'full_profile':   return self::profileScore($profile) >= 80;
@@ -162,80 +131,12 @@ class BadgeService
                     ->where('hairdresser_profile_id', $profile->id)
                     ->exists();
 
-            // Démarrage — premières actions, dès les premiers jours
-            case 'first_specialty':
-                $profile->loadMissing('specialties');
-                return $profile->specialties->count() >= 1;
-            case 'first_review_received': return ($profile->reviews_count ?? 0) >= 1;
-            case 'first_verified_visit':  return ($profile->verified_visits_count ?? 0) >= 1;
-            case 'first_service':
-                return DB::table('services')->where('hairdresser_id', $profile->id)->exists();
-            case 'first_appointment':
-                return $profile->is_independent
-                    && DB::table('appointments')->where('hairdresser_id', $profile->id)->exists();
-            case 'first_share':
-                return $profile->user && DB::table('share_events')
-                    ->where('user_id', $profile->user->id)
-                    ->whereIn('action_type', ['share_profile', 'share_post'])
-                    ->exists();
-
-            // Réalisations totales (carrière, toutes spécialités confondues)
-            case 'first_post':    return $posts >= 1;
-            case 'portfolio_10':  return $posts >= 10;
-            case 'portfolio_50':  return $posts >= 50;
-            case 'portfolio_300': return $posts >= 300;
-
-            // Avis et visites (carrière, globaux)
-            case 'review_10':  return ($profile->reviews_count ?? 0) >= 10;
-            case 'review_50':  return ($profile->reviews_count ?? 0) >= 50;
-            case 'review_100': return ($profile->reviews_count ?? 0) >= 100;
-            case 'review_500': return ($profile->reviews_count ?? 0) >= 500;
-            case 'visit_25':   return ($profile->verified_visits_count ?? 0) >= 25;
-            case 'visit_100':  return ($profile->verified_visits_count ?? 0) >= 100;
-            case 'regular_clients_5':
-                return self::countRegularClients($profile) >= 5;
-
-            // Abonnés
-            case 'follower_10':    return $followers >= 10;
-            case 'follower_100':   return $followers >= 100;
-            case 'follower_500':   return $followers >= 500;
-            case 'follower_1000':  return $followers >= 1000;
-            case 'follower_2500':  return $followers >= 2500;
-            case 'follower_5000':  return $followers >= 5000;
-            case 'follower_15000': return $followers >= 15000;
-
-            // Partages — lecture seule de share_events (ReferralService reste
-            // seul maître des règles de récompense/parrainage, non modifié ici)
-            case 'share_10':
-            case 'share_100':
-            case 'share_1000': {
-                if (!$profile->user) return false;
-                $shares = DB::table('share_events')
-                    ->where('user_id', $profile->user->id)
-                    ->whereIn('action_type', ['share_profile', 'share_post'])
-                    ->count();
-                if ($code === 'share_10')   return $shares >= 10;
-                if ($code === 'share_100')  return $shares >= 100;
-                if ($code === 'share_1000') return $shares >= 1000;
-            }
-
-            // Ancienneté
-            case 'veteran_3m':
-            case 'veteran_1y':
-            case 'veteran_3y':
-            case 'veteran_7y': {
-                $days = $profile->created_at ? now()->diffInDays($profile->created_at) : 0;
-                if ($code === 'veteran_3m') return $days >= 90;
-                if ($code === 'veteran_1y') return $days >= 365;
-                if ($code === 'veteran_3y') return $days >= 1095;
-                if ($code === 'veteran_7y') return $days >= 2555;
-            }
-
-            // Spécial / vérification
-            case 'verified':      return $profile->hasChairPlus();
-            case 'new_talent':
+            case 'verified': return $profile->hasChairPlus();
+            case 'new_talent': {
+                $posts = (int) ($profile->posts_count ?? 0);
                 $days = $profile->created_at ? now()->diffInDays($profile->created_at) : 999;
                 return $days <= 90 && $posts >= 1;
+            }
             case 'identity_verified': return (bool) $profile->identity_verified;
             case 'siret_verified':
                 return DB::table('salons')
@@ -245,25 +146,15 @@ class BadgeService
             case 'diploma_added':
                 return $profile->diploma_status === 'verified';
             case 'pro_active':
-                return $posts >= 3 && ($profile->visits_count ?? 0) >= 5;
+                return (int) ($profile->posts_count ?? 0) >= 3 && ($profile->visits_count ?? 0) >= 5;
 
-            // Ambassadeur — voir docs/GROWTH.md. 20 filleuls (palier fondateur,
-            // ne pas modifier sans repasser par Julien) pour le badge carrière,
-            // 100 pour l'exceptionnel national (même palier que l'accès anticipé).
-            case 'ambassador_program':
-                return $profile->user && ReferralService::referralCount($profile->user) >= 20;
-            case 'ambassador_national':
-                return $profile->user && ReferralService::referralCount($profile->user) >= 100;
-
-            // ── Exceptionnels ──
+            // ── Exceptionnels — classement relatif ──
             case 'top_10_local':
                 return SpecialtyReputationService::hasTop10Local($profile);
             case 'top_5_local':
                 return SpecialtyReputationService::hasTopNLocal($profile, 5);
             case 'top_3_local':
                 return SpecialtyReputationService::hasTopNLocal($profile, 3);
-            case 'pioneer_chair':
-                return $profile->id <= self::PIONEER_MAX_ID;
             case 'top_1_percent': {
                 // Vrai percentile (1%, pas 10%) — comparé au chair_score déjà
                 // persisté des autres coiffeurs actifs, deux COUNT indexés.
@@ -279,9 +170,9 @@ class BadgeService
                 return SpecialtyReputationService::isNationalReference($profile);
 
             // Badge ultime — combinaison volontaire, jamais un seul chiffre
-            // (voir commentaire du catalogue). Anti-fraude : ≥30 clients
-            // distincts sur toute la carrière, pas seulement dans la
-            // spécialité de référence.
+            // (voir migration de seed). Anti-fraude : ≥30 clients distincts
+            // sur toute la carrière, pas seulement dans la spécialité de
+            // référence.
             case 'legende_ultime': {
                 if (!SpecialtyReputationService::isNationalReference($profile)) return false;
                 if (!self::isBadgeUnlocked($profile, 'top_1_percent')) return false;
@@ -292,35 +183,108 @@ class BadgeService
 
                 return self::countDistinctClients($profile) >= 30;
             }
-
-            // Streak
-            case 'streak_7':
-            case 'streak_30':
-            case 'streak_100':
-            case 'streak_365':
-            case 'streak_1000':
-            case 'weekly_4': {
-                $streak = StreakService::get($profile->id);
-                if ($code === 'streak_7')   return $streak['longest_streak'] >= 7;
-                if ($code === 'streak_30')  return $streak['longest_streak'] >= 30;
-                if ($code === 'streak_100') return $streak['longest_streak'] >= 100;
-                if ($code === 'streak_365') return $streak['longest_streak'] >= 365;
-                if ($code === 'streak_1000')return $streak['longest_streak'] >= 1000;
-                if ($code === 'weekly_4')   return $streak['weekly_streak'] >= 4;
-            }
-            // Discipline (journées parfaites)
-            case 'perfect_day_1':
-            case 'perfect_week_7':
-            case 'perfect_month_30':
-            case 'perfect_100': {
-                $perfectDays = StreakService::get($profile->id)['perfect_days_count'];
-                if ($code === 'perfect_day_1')   return $perfectDays >= 1;
-                if ($code === 'perfect_week_7')  return $perfectDays >= 7;
-                if ($code === 'perfect_month_30')return $perfectDays >= 30;
-                if ($code === 'perfect_100')     return $perfectDays >= 100;
-            }
         }
         return false;
+    }
+
+    // ── Moteur générique ─────────────────────────────────────────────────────
+
+    /** Ligne 'badges' pour ce slug (via le catalogue actif en cache), ou null si désactivé/inconnu. */
+    private static function badgeRow(string $code): ?Badge
+    {
+        return self::allBadgeRows()->firstWhere('slug', $code);
+    }
+
+    private static function allBadgeRows(): \Illuminate\Support\Collection
+    {
+        if (self::$catalogCache === null) {
+            self::$catalogCache = Badge::where('enabled', true)->orderBy('order')->orderBy('id')->get();
+        }
+        return self::$catalogCache;
+    }
+
+    /** À appeler après toute écriture sur la table badges (voir AdminBadgeController). */
+    public static function clearCatalogCache(): void
+    {
+        self::$catalogCache = null;
+    }
+
+    /**
+     * Évalue UNE règle {metric, operator, value} contre les métriques déjà
+     * calculées. Whitelist stricte (self::METRICS / self::OPERATORS) — une
+     * règle malformée ou une métrique/opérateur hors liste blanche ne
+     * débloque JAMAIS rien, elle n'est pas interprétée comme du code.
+     */
+    private static function evaluateCriteria(array $metrics, $criteria): bool
+    {
+        if (!is_array($criteria)) return false;
+
+        $metric   = $criteria['metric'] ?? null;
+        $operator = $criteria['operator'] ?? null;
+        $value    = $criteria['value'] ?? null;
+
+        if (!in_array($metric, self::METRICS, true)) return false;
+        if (!in_array($operator, self::OPERATORS, true)) return false;
+        if (!is_numeric($value)) return false;
+        if (!array_key_exists($metric, $metrics)) return false;
+
+        $current = $metrics[$metric];
+
+        switch ($operator) {
+            case '>=': return $current >= $value;
+            case '>':  return $current > $value;
+            case '==': return $current == $value;
+            case '<=': return $current <= $value;
+            case '<':  return $current < $value;
+        }
+        return false;
+    }
+
+    /**
+     * Calcule la liste blanche METRICS pour ce profil — une seule fois par
+     * profil et par requête (cache statique, voir syncCounters() qui
+     * l'invalide). Les compteurs déjà persistés sur le profil (posts,
+     * followers, avis, visites) sont lus tels quels, jamais recalculés ici
+     * (voir syncCounters() pour ça) ; le reste vient d'une requête ciblée.
+     */
+    private static function computeMetrics(HairdresserProfile $profile): array
+    {
+        if (isset(self::$metricsCache[$profile->id])) {
+            return self::$metricsCache[$profile->id];
+        }
+
+        $profile->loadMissing('specialties');
+        $streak = StreakService::get($profile->id);
+
+        $metrics = [
+            'posts_count'            => (int) ($profile->posts_count ?? 0),
+            'reviews_count'          => (int) ($profile->reviews_count ?? 0),
+            'verified_visits_count'  => (int) ($profile->verified_visits_count ?? 0),
+            'followers_count'        => (int) ($profile->followers_count ?? 0),
+            'share_count'            => self::shareCount($profile),
+            'referral_count'         => $profile->user ? ReferralService::referralCount($profile->user) : 0,
+            'account_age_days'       => $profile->created_at ? now()->diffInDays($profile->created_at) : 0,
+            'longest_streak'         => (int) ($streak['longest_streak'] ?? 0),
+            'weekly_streak'          => (int) ($streak['weekly_streak'] ?? 0),
+            'perfect_days_count'     => (int) ($streak['perfect_days_count'] ?? 0),
+            'regular_clients_count'  => self::countRegularClients($profile),
+            'services_count'         => DB::table('services')->where('hairdresser_id', $profile->id)->count(),
+            'specialties_count'      => $profile->specialties->count(),
+            'appointments_count'     => DB::table('appointments')->where('hairdresser_id', $profile->id)->count(),
+            'profile_id'             => (int) $profile->id,
+        ];
+
+        self::$metricsCache[$profile->id] = $metrics;
+        return $metrics;
+    }
+
+    private static function shareCount(HairdresserProfile $profile): int
+    {
+        if (!$profile->user) return 0;
+        return DB::table('share_events')
+            ->where('user_id', $profile->user->id)
+            ->whereIn('action_type', ['share_profile', 'share_post'])
+            ->count();
     }
 
     // ── Catalogue filtré par rôle — un badge agenda/RDV n'a aucun sens pour
@@ -329,10 +293,50 @@ class BadgeService
     public static function catalogFor(HairdresserProfile $profile): array
     {
         $role = $profile->is_independent ? 'independent' : 'salaried';
-        return array_values(array_filter(
-            self::BADGES,
-            fn($b) => empty($b['roles']) || in_array($role, $b['roles'], true)
-        ));
+        return self::allBadgeRows()
+            ->filter(fn(Badge $b) => empty($b->roles) || in_array($role, $b->roles, true))
+            ->map(fn(Badge $b) => self::toArrayShape($b))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Forme le même tableau associatif qu'avant (mêmes clés que l'ancienne
+     * const BADGES) — contrat public inchangé pour tous les appelants
+     * existants (frontend ApiChairBadge, AdminUserController, etc.).
+     */
+    private static function toArrayShape(Badge $b): array
+    {
+        return [
+            'code'     => $b->slug,
+            'name'     => $b->title,
+            'desc'     => $b->description,
+            'category' => $b->category,
+            'family'   => $b->family,
+            'pts'      => (int) $b->reward,
+            'tier'     => (int) $b->tier,
+            'rarity'   => $b->rarity,
+            'visible'  => (bool) $b->visible,
+            'roles'    => $b->roles ?? [],
+        ];
+    }
+
+    // ── Codes attribués manuellement par un admin (AdminUserController::assignBadge)
+    //    — force un badge visible même si isBadgeUnlocked() est faux (ex: badge
+    //    exceptionnel décidé éditorialement). Voir migration 2026_08_17_130004.
+    private static function manuallyAwardedCodes(HairdresserProfile $profile): array
+    {
+        return DB::table('hairdresser_badges')
+            ->where('hairdresser_profile_id', $profile->id)
+            ->where('is_admin_override', true)
+            ->pluck('badge_code')
+            ->all();
+    }
+
+    /** Débloqué "réellement" (condition calculée) OU forcé par un admin. */
+    private static function isEffectivelyUnlocked(HairdresserProfile $profile, string $code, array $manualCodes): bool
+    {
+        return self::isBadgeUnlocked($profile, $code) || in_array($code, $manualCodes, true);
     }
 
     // ── Tous les badges débloqués ────────────────────────────────────────────
@@ -341,16 +345,19 @@ class BadgeService
         // S'assurer que user est chargé
         $profile->loadMissing('user');
 
-        // Dates réelles de déblocage (persistées par persistNewlyUnlocked) —
+        // Dates réelles de déblocage (persistées par persistNewlyUnlocked, ou
+        // par AdminUserController::assignBadge pour une attribution manuelle) —
         // affichées sur la page badges, jamais recalculées/inventées.
         $unlockedAt = DB::table('hairdresser_badges')
             ->where('hairdresser_profile_id', $profile->id)
             ->pluck('unlocked_at', 'badge_code');
+        $manualCodes = self::manuallyAwardedCodes($profile);
 
         $unlocked = [];
         foreach (self::catalogFor($profile) as $badge) {
-            if (self::isBadgeUnlocked($profile, $badge['code'])) {
+            if (self::isEffectivelyUnlocked($profile, $badge['code'], $manualCodes)) {
                 $badge['unlocked_at'] = $unlockedAt->get($badge['code']);
+                $badge['admin_awarded'] = in_array($badge['code'], $manualCodes, true);
                 $unlocked[] = $badge;
             }
         }
@@ -367,11 +374,13 @@ class BadgeService
         $unlockedAt = DB::table('hairdresser_badges')
             ->where('hairdresser_profile_id', $profile->id)
             ->pluck('unlocked_at', 'badge_code');
+        $manualCodes = self::manuallyAwardedCodes($profile);
 
-        return array_map(function ($badge) use ($profile, $unlockedAt) {
-            $unlocked = self::isBadgeUnlocked($profile, $badge['code']);
-            $badge['unlocked']    = $unlocked;
-            $badge['unlocked_at'] = $unlocked ? $unlockedAt->get($badge['code']) : null;
+        return array_map(function ($badge) use ($profile, $unlockedAt, $manualCodes) {
+            $unlocked = self::isEffectivelyUnlocked($profile, $badge['code'], $manualCodes);
+            $badge['unlocked']      = $unlocked;
+            $badge['unlocked_at']   = $unlocked ? $unlockedAt->get($badge['code']) : null;
+            $badge['admin_awarded'] = in_array($badge['code'], $manualCodes, true);
             return $badge;
         }, self::catalogFor($profile));
     }
@@ -383,6 +392,62 @@ class BadgeService
             self::getUnlockedBadges($profile),
             fn($b) => $b['visible']
         ));
+    }
+
+    /**
+     * Tous les slugs de badge valides — pour valider une attribution admin
+     * (AdminUserController::assignBadge). Volontairement TOUS les badges,
+     * y compris enabled=false : un admin doit pouvoir forcer manuellement
+     * un badge temporairement retiré du catalogue actif.
+     */
+    public static function allBadgeCodes(): array
+    {
+        return Badge::pluck('slug')->all();
+    }
+
+    /**
+     * Attribution manuelle par un admin (AdminUserController::assignBadge).
+     * Idempotent : ré-attribuer un badge déjà présent ne change que
+     * awarded_by_admin_id, jamais unlocked_at (date réelle conservée).
+     */
+    public static function adminAssign(HairdresserProfile $profile, string $code, int $adminUserId): void
+    {
+        $existing = DB::table('hairdresser_badges')
+            ->where('hairdresser_profile_id', $profile->id)
+            ->where('badge_code', $code)
+            ->first();
+
+        if ($existing) {
+            DB::table('hairdresser_badges')->where('id', $existing->id)->update([
+                'is_admin_override'   => true,
+                'awarded_by_admin_id' => $adminUserId,
+            ]);
+            return;
+        }
+
+        DB::table('hairdresser_badges')->insert([
+            'hairdresser_profile_id' => $profile->id,
+            'badge_code'             => $code,
+            'is_admin_override'      => true,
+            'awarded_by_admin_id'    => $adminUserId,
+            'unlocked_at'            => now(),
+        ]);
+    }
+
+    /**
+     * Retire un badge (annule une attribution manuelle, ou masque ponctuellement
+     * un badge organique). Si la condition calculée par isBadgeUnlocked() reste
+     * vraie (badge gagné légitimement par de vraies données), il réapparaîtra
+     * au prochain BadgeService::refresh() — un badge organique n'est jamais
+     * "faussé" pour rester retiré, seule une attribution manuelle est réversible
+     * de façon permanente. Documenté comme tel côté admin (voir rapport).
+     */
+    public static function adminRemove(HairdresserProfile $profile, string $code): void
+    {
+        DB::table('hairdresser_badges')
+            ->where('hairdresser_profile_id', $profile->id)
+            ->where('badge_code', $code)
+            ->delete();
     }
 
     // ── Points totaux ────────────────────────────────────────────────────────
@@ -397,20 +462,31 @@ class BadgeService
 
         $pts = self::careerPoints($profile);
         $pts += SpecialtyReputationService::weightedAggregate($profile);
+        // Correction manuelle admin (AdminUserController::adjustPoints) — voir
+        // migration 2026_08_17_130001. Additive, jamais écrasée par un
+        // refresh() ultérieur puisque persistée dans sa propre colonne.
+        $pts += (int) ($profile->chair_score_adjustment ?? 0);
 
-        return $pts;
+        // chair_score est unsignedInteger — un retrait de points ne doit
+        // jamais faire passer le total sous zéro.
+        return max(0, $pts);
     }
 
     private static function careerPoints(HairdresserProfile $profile): int
     {
         // Plus de filtre par catégorie : les badges "métier" (avis/visites/
-        // réalisations par spécialité) ne sont plus dans self::BADGES du tout
+        // réalisations par spécialité) ne sont plus dans le catalogue du tout
         // depuis la V2 — ils vivent dans hairdresser_specialty_progress (voir
         // SpecialtyReputationService). Tout ce qui reste ici est carrière ou
-        // exceptionnel, donc compte intégralement.
+        // exceptionnel, donc compte intégralement. catalogFor() (pas
+        // allBadgeRows()) pour rester cohérent avec ce qui est réellement
+        // affichable pour ce rôle — un badge restreint par 'roles' ne doit
+        // jamais compter dans les points d'un profil qui ne peut pas le voir.
+        $manualCodes = self::manuallyAwardedCodes($profile);
+
         $pts = 0;
-        foreach (self::BADGES as $badge) {
-            if ($badge['pts'] > 0 && self::isBadgeUnlocked($profile, $badge['code'])) {
+        foreach (self::catalogFor($profile) as $badge) {
+            if ($badge['pts'] > 0 && self::isEffectivelyUnlocked($profile, $badge['code'], $manualCodes)) {
                 $pts += $badge['pts'];
             }
         }
@@ -476,6 +552,12 @@ class BadgeService
     // Appelé avant chaque lecture de badges pour garantir la cohérence.
     public static function syncCounters(HairdresserProfile $profile): void
     {
+        // Les métriques du moteur générique (computeMetrics) dépendent des
+        // compteurs mis à jour ci-dessous — invalide le cache pour que le
+        // prochain isBadgeUnlocked() de ce profil relise des valeurs fraîches
+        // (protection contre un double syncCounters()+lecture dans la même requête).
+        unset(self::$metricsCache[$profile->id]);
+
         $id = $profile->id;
 
         $postsCount = DB::table('posts')
@@ -535,6 +617,8 @@ class BadgeService
         $newlyUnlocked = self::persistNewlyUnlocked($profile, $unlocked);
 
         $points = self::careerPoints($profile) + SpecialtyReputationService::weightedAggregate($profile);
+        $points += (int) ($profile->chair_score_adjustment ?? 0);
+        $points = max(0, $points);
         $level = self::getLevel($points);
 
         DB::table('hairdresser_profiles')->where('id', $profile->id)->update([
@@ -646,35 +730,27 @@ class BadgeService
     public static function nextBadges(HairdresserProfile $profile, int $limit = 5): array
     {
         $profile->loadMissing('specialties');
+        $metrics = self::computeMetrics($profile);
 
-        $posts       = (int) ($profile->posts_count ?? 0);
-        $followers   = (int) ($profile->followers_count ?? 0);
-        $reviews     = (int) ($profile->reviews_count ?? 0);
-        $visits      = (int) ($profile->verified_visits_count ?? 0);
-        $streak      = StreakService::get($profile->id)['longest_streak'] ?? 0;
-        $shares      = $profile->user
-            ? DB::table('share_events')->where('user_id', $profile->user->id)->whereIn('action_type', ['share_profile', 'share_post'])->count()
-            : 0;
-        $accountDays = $profile->created_at ? now()->diffInDays($profile->created_at) : 0;
-
-        // [current, target] pour chaque badge à condition numérique simple —
-        // seule source de vérité pour la barre de progression affichée.
-        $numeric = [
-            'portfolio_10' => [$posts, 10], 'portfolio_50' => [$posts, 50], 'portfolio_300' => [$posts, 300],
-            'follower_10' => [$followers, 10], 'follower_100' => [$followers, 100], 'follower_500' => [$followers, 500],
-            'follower_1000' => [$followers, 1000], 'follower_2500' => [$followers, 2500], 'follower_5000' => [$followers, 5000], 'follower_15000' => [$followers, 15000],
-            'review_10' => [$reviews, 10], 'review_50' => [$reviews, 50], 'review_100' => [$reviews, 100], 'review_500' => [$reviews, 500],
-            'visit_25' => [$visits, 25], 'visit_100' => [$visits, 100],
-            'share_10' => [$shares, 10], 'share_100' => [$shares, 100], 'share_1000' => [$shares, 1000],
-            'streak_7' => [$streak, 7], 'streak_30' => [$streak, 30], 'streak_100' => [$streak, 100], 'streak_365' => [$streak, 365], 'streak_1000' => [$streak, 1000],
-            'veteran_3m' => [$accountDays, 90], 'veteran_1y' => [$accountDays, 365], 'veteran_3y' => [$accountDays, 1095], 'veteran_7y' => [$accountDays, 2555],
-        ];
-
+        // Dérivé DIRECTEMENT de badges.criteria (metric/operator/'>=' uniquement
+        // — une cible "au moins X" est la seule qui a un sens en barre de
+        // progression). Contrairement à l'ancienne version, un badge généré
+        // par un admin apparaît ici automatiquement, sans toucher au code.
         $candidates = [];
         foreach (self::getFullCatalog($profile) as $badge) {
-            if ($badge['unlocked'] || !isset($numeric[$badge['code']])) continue;
-            [$current, $target] = $numeric[$badge['code']];
-            if ($current >= $target) continue; // condition annexe encore non remplie malgré le seuil (rare, ex. rôle)
+            if ($badge['unlocked']) continue;
+
+            $row = self::badgeRow($badge['code']);
+            if (!$row || !$row->criteria) continue; // pas de logique dédiée/relative dans une barre de progression
+            $criteria = $row->criteria;
+            if (($criteria['operator'] ?? null) !== '>=') continue;
+            $metric = $criteria['metric'] ?? null;
+            if (!isset($metrics[$metric])) continue;
+
+            $current = $metrics[$metric];
+            $target  = $criteria['value'];
+            if ($current >= $target) continue;
+
             $candidates[] = [
                 'type'    => 'badge',
                 'code'    => $badge['code'],
@@ -683,7 +759,7 @@ class BadgeService
                 'rarity'  => $badge['rarity'],
                 'current' => $current,
                 'target'  => $target,
-                'pct'     => (int) round(($current / $target) * 100),
+                'pct'     => $target > 0 ? (int) round(($current / $target) * 100) : 0,
             ];
         }
 

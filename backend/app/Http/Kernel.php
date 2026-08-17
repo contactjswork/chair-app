@@ -64,7 +64,11 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'chair.plus' => \App\Http\Middleware\EnsureChairPlus::class,
+        // Ancien jeton statique partagé — conservé pour mémoire, plus utilisé
+        // par aucune route (voir EnsureAdminAuthenticated + EnsureAdminPermission).
         'admin.token' => \App\Http\Middleware\EnsureAdminToken::class,
+        'admin.auth' => \App\Http\Middleware\EnsureAdminAuthenticated::class,
+        'admin.permission' => \App\Http\Middleware\EnsureAdminPermission::class,
         'not.suspended' => \App\Http\Middleware\EnsureNotSuspended::class,
     ];
 }
