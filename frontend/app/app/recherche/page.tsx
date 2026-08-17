@@ -493,8 +493,6 @@ function RechercheContent() {
           title={barTitle}
           subtitle={locationLabel}
           onOpenSearch={() => setModalOpen(true)}
-          onOpenFilters={() => setFiltersOpen(true)}
-          activeFiltersCount={activeFiltersCount}
         />
       </div>
 

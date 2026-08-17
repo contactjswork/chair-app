@@ -119,6 +119,42 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
  * dans ce cas (mais sans danger si transmis quand même, la priorité est
  * gérée côté backend : explicite > user_preferences > relais > rien).
  */
+/**
+ * Repli d'urgence — convertit une fiche `/api/hairdressers` (route legacy,
+ * indépendante du moteur de recommandation) en `RecommendationResult` pour
+ * que RecommendationCard puisse l'afficher sans distinction. Utilisé
+ * uniquement quand `fetchRecommendations` échoue (déploiement backend en
+ * retard, panne...) — jamais de section "aucun coiffeur sur CHAIR" quand
+ * c'est en réalité juste CET appel qui a raté. Voir HomePersonalized.tsx.
+ */
+export function fromHairdresserProfile(h: import('./types').ApiHairdresserProfile): RecommendationResult {
+  const lat = h.latitude != null ? Number(h.latitude) : null;
+  const lng = h.longitude != null ? Number(h.longitude) : null;
+  return {
+    type: 'hairdresser',
+    id: h.id,
+    slug: h.slug,
+    name: h.user.name,
+    image: h.banner_image,
+    avatar: h.user.avatar,
+    city: h.city,
+    latitude: lat,
+    longitude: lng,
+    has_coords: lat != null && lng != null,
+    distance_km: h.distance_km ?? null,
+    avg_rating: parseFloat(h.avg_rating) || 0,
+    reviews_count: h.reviews_count,
+    is_verified: h.is_verified,
+    is_chair_plus: h.is_chair_plus,
+    is_chair_pick: h.is_chair_pick,
+    salon: h.salon ? { name: h.salon.name, slug: h.salon.slug } : null,
+    specialties: h.specialties.map((s) => ({ name: s.name, slug: s.slug })),
+    chair_level: h.chair_level ? { level: h.chair_level.level, name: h.chair_level.name, color: h.chair_level.color } : null,
+    tagline: h.tagline,
+    match_score: 0,
+  };
+}
+
 export async function fetchRecommendations(
   params: RecommendationParams,
   token?: string | null,

@@ -70,9 +70,9 @@ export default function SpecialtyQuickLinks() {
           <Link
             key={s.slug}
             href={`/app/recherche?specialty=${s.slug}`}
-            className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.88] transition-transform duration-150"
+            className="group flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
           >
-            <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white">
+            <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white transition-colors group-hover:bg-neutral-50">
               <Image
                 src={s.icon}
                 alt={s.label}

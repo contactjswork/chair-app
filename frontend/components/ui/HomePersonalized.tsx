@@ -7,8 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getStoredToken } from '@/lib/auth';
 import RecommendationCard from './RecommendationCard';
 import { SectionHeader } from './HomeGeoStrips';
-import { getUserPrefs, hasExplicitInterests } from '@/lib/homeFilters';
-import { fetchRecommendations } from '@/lib/recommendation';
+import { getUserGeo, getUserPrefs, getUserSpecialtySlugs, hasExplicitInterests } from '@/lib/homeFilters';
+import { fetchHairdressersProgressive } from '@/lib/homeFetch';
+import { fetchRecommendations, fromHairdresserProfile } from '@/lib/recommendation';
 import type { RecommendationResult, RecommendationMeta } from '@/lib/recommendation';
 
 /**
@@ -50,7 +51,18 @@ export default function HomePersonalized() {
 
     fetchRecommendations({ interests, per_page: 12 }, token, controller.signal)
       .then((res) => { setEntries(res.data); setMeta(res.meta); })
-      .catch(() => {})
+      .catch(async () => {
+        // Repli d'urgence — /api/recommendations peut échouer (déploiement
+        // backend en retard, panne...). Ne JAMAIS afficher "aucun coiffeur
+        // sur CHAIR" dans ce cas, c'est faux : on retombe sur /api/hairdressers
+        // (route plus ancienne, indépendante) avec la même cascade
+        // géographique que NearbyMapSection, plutôt que sur une section vide.
+        try {
+          const geo = getUserGeo(user);
+          const { results } = await fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, 12);
+          if (results.length) { setEntries(results.map(fromHairdresserProfile)); setMeta(null); }
+        } catch { /* vraiment rien de dispo — l'état vide honnête prend le relais */ }
+      })
       .finally(() => setReady(true));
 
     return () => controller.abort();
