@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
-import { getUserSpecialtySlugs } from '@/lib/homeFilters';
+import { FEMME_SLUGS, HOMME_SLUGS, getUserPrefs, getUserSpecialtySlugs } from '@/lib/homeFilters';
 
 // Toutes les spécialités CHAIR — la personnalisation ne fait que RÉORDONNER
 // ce même jeu de catégories (jamais en inventer, jamais en cacher pour de
@@ -40,27 +40,39 @@ export default function SpecialtyQuickLinks() {
     // de 10 icônes (ex. préférence très granulaire de l'onboarding sans
     // équivalent ici), `matched` reste vide et l'ordre par défaut est gardé
     // tel quel, sans faux réordonnancement.
+    const { gender } = getUserPrefs();
     const preferred = getUserSpecialtySlugs();
     const matched = preferred
       .map((slug) => SPECIALTIES.find((s) => s.slug === slug))
       .filter((s): s is (typeof SPECIALTIES)[number] => Boolean(s));
     if (matched.length === 0) return;
 
-    // Priorité stricte : catégories réellement choisies (ou repli genre)
-    // d'abord, dans l'ordre où l'utilisateur les a sélectionnées, puis le
-    // reste des catégories CHAIR pour compléter jusqu'à PRIORITY_COUNT —
-    // jamais une rangée à moitié vide juste parce que l'utilisateur n'a
-    // choisi qu'un ou deux styles.
+    // Priorité stricte : catégories réellement choisies d'abord, dans l'ordre
+    // où l'utilisateur les a sélectionnées, puis complète jusqu'à
+    // PRIORITY_COUNT — jamais une rangée à moitié vide juste parce que
+    // l'utilisateur n'a choisi qu'un ou deux styles. Le complément ne pioche
+    // JAMAIS dans les catégories de l'autre genre (un homme qui a choisi
+    // Coupe Homme + Barbe ne doit pas voir Coupe Femme apparaître pour
+    // remplir les cases vides) — seules les vraies catégories choisies
+    // peuvent traverser le genre, jamais le remplissage automatique.
     const matchedSlugs = new Set(matched.map((s) => s.slug));
-    const filler = SPECIALTIES.filter((s) => !matchedSlugs.has(s.slug));
-    const ordered = [...matched, ...filler];
+    const genderPool = gender === 'homme' ? HOMME_SLUGS : gender === 'femme' ? FEMME_SLUGS : null;
+    const fillerCandidates = genderPool ? SPECIALTIES.filter((s) => genderPool.includes(s.slug)) : SPECIALTIES;
+    const filler = fillerCandidates.filter((s) => !matchedSlugs.has(s.slug));
+    const visibleOrdered = [...matched, ...filler].slice(0, PRIORITY_COUNT);
+
+    // "Voir tout" reste un vrai accès à TOUTES les catégories CHAIR (pas
+    // seulement celles du genre) — restreindre les 6 mises en avant ne doit
+    // jamais restreindre ce qui reste découvrable derrière.
+    const visibleSlugs = new Set(visibleOrdered.map((s) => s.slug));
+    const restOrdered = SPECIALTIES.filter((s) => !visibleSlugs.has(s.slug));
 
     // Lecture localStorage impossible côté serveur — ce réordonnancement ne
     // peut arriver qu'après montage, une seule fois (deps []), même pattern
     // que les autres strips de la home (voir HomePersonalized.tsx).
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisible(ordered.slice(0, PRIORITY_COUNT));
-    setRest(ordered.slice(PRIORITY_COUNT));
+    setVisible(visibleOrdered);
+    setRest(restOrdered);
   }, []);
 
   return (
