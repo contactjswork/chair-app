@@ -24,12 +24,16 @@ import type { RecommendationResult } from '@/lib/recommendation';
 export default function RecommendationCard({ r, size = 'lg' }: { r: RecommendationResult; size?: 'lg' | 'md' }) {
   const banner = resolveMediaUrl(r.image);
   const avatar = resolveMediaUrl(r.avatar);
-  const photo = banner ?? avatar;
+  // Photo de profil en priorité (retour Julien : la bannière salon prenait
+  // toute la carte à la place du visage du coiffeur) — la bannière ne sert
+  // plus qu'en repli si aucune photo de profil n'existe.
+  const photo = avatar ?? banner;
   const hasRating = r.reviews_count > 0;
   const spec = r.specialties[0]?.name;
   const levelColor = r.chair_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
-  const width = size === 'lg' ? 'w-[182px] md:w-[212px]' : 'w-[160px] md:w-[182px]';
+  // Réduite (retour Julien : la nouvelle carte était "un peu" trop grande).
+  const width = size === 'lg' ? 'w-[152px] md:w-[176px]' : 'w-[134px] md:w-[152px]';
 
   return (
     <Link
@@ -66,25 +70,18 @@ export default function RecommendationCard({ r, size = 'lg' }: { r: Recommendati
               <BadgeCheck size={11} className="text-neutral-900" />
             </div>
           )}
-
-          {/* Médaillon avatar — à cheval sur la jonction photo/panneau, comme
-              une fiche listing premium plutôt qu'un avatar noyé au centre. */}
-          <div className="absolute -bottom-6 left-3.5 z-10 w-[46px] h-[46px] rounded-full p-[2.5px] bg-white shadow-lg">
-            {ring.show && <div className={`absolute inset-[2.5px] rounded-full ${ringGradientClass(levelColor)}`} />}
-            <div className={`relative w-full h-full rounded-full overflow-hidden ${ring.show ? 'm-[2.5px] w-[calc(100%-5px)] h-[calc(100%-5px)]' : 'ring-2 ring-neutral-100'}`}>
-              {avatar ? (
-                <Image src={avatar} alt={r.name} fill className="object-cover" sizes="46px" />
-              ) : (
-                <div className="w-full h-full bg-neutral-300 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">{r.name.charAt(0)}</span>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
-        {/* Panneau d'info — fond blanc franc, jamais de texte sur photo */}
-        <div className="pt-8 pb-3 px-3.5">
+        {/* Liseré fin — seul vestige du niveau CHAIR ici (plus de médaillon,
+            voir plus bas) ; `ringGradientClass` renvoie une classe bg-*,
+            jamais utilisable comme couleur de bordure directement. */}
+        {ring.show && <div className={`h-[3px] w-full ${ringGradientClass(levelColor)}`} />}
+
+        {/* Panneau d'info — fond blanc franc, jamais de texte sur photo. Plus
+            de médaillon avatar ici : la photo principale EST déjà la photo
+            de profil (voir `photo` ci-dessus), un médaillon aurait juste
+            dupliqué le même visage en plus petit. */}
+        <div className="pt-3 pb-3 px-3.5">
           {spec && <p className="text-[9px] font-bold text-neutral-400 tracking-[0.1em] uppercase mb-0.5 truncate">{spec}</p>}
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-neutral-900 font-bold text-[14px] leading-tight truncate">{r.name}</h3>

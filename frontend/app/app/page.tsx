@@ -1,7 +1,6 @@
 import AppShell from '@/components/layout/AppShell';
 import HideOnScrollBar from '@/components/layout/HideOnScrollBar';
 import HeroSearch from '@/components/ui/HeroSearch';
-import HomeGreeting from '@/components/ui/HomeGreeting';
 import StoriesBar from '@/components/ui/StoriesBar';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import SpecialtyQuickLinks from '@/components/ui/SpecialtyQuickLinks';
@@ -145,8 +144,7 @@ export default async function HomePage() {
 
       {/* Recherche — se cache au scroll vers le bas, réapparaît vers le haut (mobile) */}
       <HideOnScrollBar>
-        <div className="px-4 pt-4 pb-3 max-w-2xl md:max-w-3xl md:mx-auto">
-          <HomeGreeting />
+        <div className="px-4 py-3 max-w-2xl md:max-w-3xl md:mx-auto">
           <HeroSearch compact />
         </div>
       </HideOnScrollBar>
