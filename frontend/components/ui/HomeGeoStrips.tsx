@@ -10,6 +10,7 @@ import type { ApiHairdresserProfile } from '@/lib/types';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
+import { useDedupedList } from '@/contexts/HomeDedupeContext';
 import Reveal from './Reveal';
 
 function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: string; badgeCls?: string }) {
@@ -190,7 +191,11 @@ export function CoupDeCoeurStrip({
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
   }, [user, isLoading, effectiveLimit]);
 
-  if (!hairdressers.length) return null;
+  // Exclut les coiffeurs déjà affichés par "Pour vous" (voir HomeDedupeContext)
+  // — jamais le même visage deux fois de suite sur la home.
+  const displayed = useDedupedList(hairdressers, (h) => h.id, effectiveLimit);
+
+  if (!displayed.length) return null;
   return (
     <section className="pt-10">
       <Reveal>
@@ -200,7 +205,7 @@ export function CoupDeCoeurStrip({
           href="/app/recherche"
         />
       </Reveal>
-      <FeaturedAvatarStrip hairdressers={hairdressers.slice(0, effectiveLimit)} />
+      <FeaturedAvatarStrip hairdressers={displayed} />
     </section>
   );
 }
@@ -221,7 +226,12 @@ export function NewTalentsStrip({
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
   }, [user, isLoading, effectiveLimit]);
 
-  if (!hairdressers.length) return null;
+  // Exclut les coiffeurs déjà affichés par "Pour vous" ET "Coup de cœur"
+  // (voir HomeDedupeContext) — dernière section de la home à filtrer, elle
+  // a donc la vue la plus complète de ce qui a déjà été montré.
+  const displayed = useDedupedList(hairdressers, (h) => h.id, effectiveLimit);
+
+  if (!displayed.length) return null;
   return (
     <section className="pt-10">
       <Reveal>
@@ -231,7 +241,7 @@ export function NewTalentsStrip({
           href="/app/recherche"
         />
       </Reveal>
-      <HDStrip hairdressers={hairdressers.slice(0, effectiveLimit)} badge="Nouveau" badgeCls="bg-neutral-900" />
+      <HDStrip hairdressers={displayed} badge="Nouveau" badgeCls="bg-neutral-900" />
     </section>
   );
 }

@@ -12,6 +12,7 @@ import { getUserGeo, getUserPrefs, getUserSpecialtySlugs, hasExplicitInterests }
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
 import { fetchRecommendations, fromHairdresserProfile } from '@/lib/recommendation';
 import type { RecommendationResult, RecommendationMeta } from '@/lib/recommendation';
+import { useHomeDedupe } from '@/contexts/HomeDedupeContext';
 
 /**
  * "Pour vous" — section hero de la home, branchée sur le vrai moteur
@@ -38,6 +39,10 @@ export default function HomePersonalized({
   const [meta, setMeta] = useState<RecommendationMeta | null>(null);
   const [ready, setReady] = useState(false);
   const effectiveLimit = limit && limit > 0 ? limit : 12;
+  // "Pour vous" est premier dans le fil — ses picks ont priorité, les
+  // sections suivantes (Coup de cœur, Nouveaux talents) les excluent des
+  // leurs pour ne jamais montrer deux fois le même coiffeur sur la home.
+  const { claim } = useHomeDedupe();
 
   const guestHasSignal = !user && hasExplicitInterests();
 
@@ -54,7 +59,7 @@ export default function HomePersonalized({
     const interests = hasExplicitInterests() ? getUserPrefs().interests : undefined;
 
     fetchRecommendations({ interests, per_page: effectiveLimit }, token, controller.signal)
-      .then((res) => { setEntries(res.data); setMeta(res.meta); })
+      .then((res) => { setEntries(res.data); setMeta(res.meta); claim(res.data.map((e) => e.id)); })
       .catch(async () => {
         // Repli d'urgence — /api/recommendations peut échouer (déploiement
         // backend en retard, panne...). Ne JAMAIS afficher "aucun coiffeur
@@ -64,13 +69,17 @@ export default function HomePersonalized({
         try {
           const geo = getUserGeo(user);
           const { results } = await fetchHairdressersProgressive(getUserSpecialtySlugs(), geo, effectiveLimit);
-          if (results.length) { setEntries(results.map(fromHairdresserProfile)); setMeta(null); }
+          if (results.length) {
+            setEntries(results.map(fromHairdresserProfile));
+            setMeta(null);
+            claim(results.map((h) => h.id));
+          }
         } catch { /* vraiment rien de dispo — l'état vide honnête prend le relais */ }
       })
       .finally(() => setReady(true));
 
     return () => controller.abort();
-  }, [user, isLoading, guestHasSignal, effectiveLimit]);
+  }, [user, isLoading, guestHasSignal, effectiveLimit, claim]);
 
   if (!ready) {
     return (

@@ -11,6 +11,7 @@ import HomeRankingSection, { type RankedEntry } from '@/components/ui/HomeRankin
 import NearbyMapSection from '@/components/ui/NearbyMapSection';
 import HomeRealisationsSection from '@/components/ui/HomeRealisationsSection';
 import { getHomeSectionsConfig, type HomeSectionConfig } from '@/lib/appConfig';
+import { HomeDedupeProvider } from '@/contexts/HomeDedupeContext';
 import type { ApiHairdresserProfile, ApiPost, PaginatedResponse } from '@/lib/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -159,8 +160,13 @@ export default async function HomePage() {
       <StoriesBar />
 
       {/* Les 7 sections ci-dessous : présence/ordre/titre/limite pilotés par
-          la config Super Admin (voir getHomeSectionsConfig ci-dessus). */}
-      {orderedKeys.map((key) => (isEnabled(key) ? sectionRenderers[key]() : null))}
+          la config Super Admin (voir getHomeSectionsConfig ci-dessus).
+          HomeDedupeProvider : évite qu'un même coiffeur apparaisse dans
+          plusieurs sections "personnes" (Pour vous / Coup de cœur /
+          Nouveaux talents), voir contexts/HomeDedupeContext.tsx. */}
+      <HomeDedupeProvider>
+        {orderedKeys.map((key) => (isEnabled(key) ? sectionRenderers[key]() : null))}
+      </HomeDedupeProvider>
 
       <div className="mx-4 md:mx-8 mt-10 h-px bg-neutral-100 max-w-6xl md:mx-auto" />
 

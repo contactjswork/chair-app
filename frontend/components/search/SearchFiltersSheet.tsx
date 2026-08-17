@@ -98,21 +98,20 @@ export default function SearchFiltersSheet({
 
   return (
     <div className="fixed inset-0 z-[85] flex flex-col justify-end md:items-center md:justify-center">
-      <div className="absolute inset-0 bg-neutral-900/40" onClick={onClose} />
+      <div className="absolute inset-0 bg-neutral-900/30 backdrop-blur-[2px]" onClick={onClose} />
 
-      <div className="relative flex flex-col bg-white rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[92vh] md:max-h-[85vh] md:w-full md:max-w-lg overflow-hidden">
-        <div className="flex justify-center pt-3 pb-1 md:hidden">
-          <div className="w-10 h-1 bg-neutral-200 rounded-full" />
-        </div>
-
-        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-100 flex-shrink-0">
-          <h2 className="text-[17px] font-bold text-neutral-900 tracking-[-0.01em]">Filtres</h2>
+      {/* Retour Julien : le trait de poignée en haut faisait "moche" — retiré.
+          Coins très arrondis + ombre plutôt qu'un bord dur, même langage que
+          le reste de la home (RecommendationCard, pastilles spécialités). */}
+      <div className="relative flex flex-col bg-white rounded-t-[32px] md:rounded-[32px] shadow-[0_-8px_40px_-8px_rgba(10,10,10,0.25)] md:shadow-[0_24px_60px_-12px_rgba(10,10,10,0.3)] max-h-[92vh] md:max-h-[85vh] md:w-full md:max-w-lg overflow-hidden">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
+          <h2 className="text-[20px] font-bold text-neutral-900 tracking-[-0.02em]">Filtres</h2>
           <IconButton onClick={onClose} aria-label="Fermer" size="sm">
             <X size={15} />
           </IconButton>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 space-y-7">
 
           {/* Spécialités — le "quoi", premier réglage rencontré */}
           <Section title="Spécialités">
@@ -173,8 +172,8 @@ export default function SearchFiltersSheet({
           </Section>
         </div>
 
-        {/* Actions sticky */}
-        <div className="flex-shrink-0 border-t border-neutral-100 px-5 py-4 pb-safe flex gap-2.5 bg-white">
+        {/* Actions — ombre plutôt que trait dur pour séparer du contenu qui scroll */}
+        <div className="flex-shrink-0 shadow-[0_-8px_20px_-12px_rgba(10,10,10,0.15)] px-6 py-5 pb-safe flex gap-2.5 bg-white">
           <SecondaryButton onClick={onReset} icon={<RotateCcw size={13} />}>
             Effacer
           </SecondaryButton>

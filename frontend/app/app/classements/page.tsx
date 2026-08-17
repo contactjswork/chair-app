@@ -79,7 +79,7 @@ function GeoSearchBar({ value, onChange }: { value: string; onChange: (v: string
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => onChange(draft.trim())}
         placeholder="Rechercher une ville, une région ou un département"
-        className="w-full pl-11 pr-9 py-3.5 bg-neutral-100 rounded-2xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all"
+        className="w-full pl-11 pr-9 py-3.5 bg-white shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 rounded-2xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-neutral-300 transition-all"
       />
       {draft && (
         <button
@@ -196,7 +196,9 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`relative flex flex-col items-center text-center bg-white rounded-2xl border border-neutral-100 hover:border-neutral-300 hover:shadow-md active:scale-[0.97] transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
+      // Relief par ombre douce plutôt que bordure — même langage que le
+      // reste de la home (RecommendationCard, HomeRankingSection).
+      className={`relative flex flex-col items-center text-center bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.14)] hover:shadow-[0_10px_26px_-8px_rgba(10,10,10,0.22)] active:scale-[0.97] transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
         isFirst ? 'px-4 pb-5 flex-[1.15]' : 'px-3 pb-3.5 flex-1'
       }`}
     >
@@ -211,7 +213,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
             <span className={`font-bold text-neutral-500 ${isFirst ? 'text-2xl' : 'text-lg'}`}>{initial}</span>
           )}
         </div>
-        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full font-bold border-2 border-white ${RANK_BADGE[entry.rank] ?? 'bg-neutral-100 text-neutral-600'} ${isFirst ? 'w-7 h-7 text-[12px]' : 'w-6 h-6 text-[11px]'}`}>
+        <span className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full font-bold border-2 border-white shadow-sm ${RANK_BADGE[entry.rank] ?? 'bg-neutral-100 text-neutral-600'} ${isFirst ? 'w-7 h-7 text-[12px]' : 'w-6 h-6 text-[11px]'}`}>
           {entry.rank}
         </span>
       </div>
@@ -234,7 +236,8 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
   );
 }
 
-// ── Ligne de liste (rang 4+) ────────────────────────────────────────────
+// ── Ligne de liste (rang 4+) — cartes individuelles avec relief, même
+// langage que HomeRankingSection sur la home (plus de liste plate à traits). ─
 function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
   const avatar = resolveMediaUrl(entry.avatar);
   const initial = (entry.name ?? '?').charAt(0).toUpperCase();
@@ -242,15 +245,17 @@ function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
   return (
     <Link
       href={`/coiffeur/${entry.slug}`}
-      className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-50 active:bg-neutral-100 transition-colors ${isMe ? 'bg-neutral-900/[0.03] ring-1 ring-inset ring-neutral-300' : ''}`}
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3.5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] active:scale-[0.98] transition-all ${
+        isMe ? 'bg-neutral-900/[0.03] ring-1 ring-neutral-200' : 'bg-white ring-1 ring-neutral-100'
+      }`}
     >
       <span className="w-7 text-center text-[13px] font-bold text-neutral-400 flex-shrink-0">{entry.rank}</span>
-      <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center flex-shrink-0">
-        {avatar ? <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="40px" /> : <span className="text-sm font-bold text-neutral-500">{initial}</span>}
+      <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-200 flex items-center justify-center flex-shrink-0">
+        {avatar ? <Image src={avatar} alt={entry.name} fill className="object-cover" sizes="44px" /> : <span className="text-sm font-bold text-neutral-500">{initial}</span>}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <p className="text-[13px] font-semibold text-neutral-900 truncate">{entry.name}</p>
+          <p className="text-[14px] font-bold text-neutral-900 truncate">{entry.name}</p>
           {isMe && <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Vous</span>}
           {entry.isVerified && <BadgeCheck size={11} className="text-neutral-900 flex-shrink-0" />}
         </div>
@@ -494,10 +499,10 @@ export default function ClassementsPage() {
               </div>
             )}
 
-            {/* Liste */}
+            {/* Liste — cartes espacées plutôt que traits, même relief que le podium */}
             {rest.length > 0 && (
-              <div className="border-t border-neutral-100">
-                <div className="divide-y divide-neutral-50">
+              <div className="px-4 pt-2">
+                <div className="space-y-2">
                   {rest.map((entry) => (
                     <RankRow key={entry.id} entry={entry} isMe={entry.id === myProfileId} />
                   ))}
