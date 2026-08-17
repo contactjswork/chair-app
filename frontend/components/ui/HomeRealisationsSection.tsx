@@ -21,7 +21,7 @@ function RealisationGrid({ posts, limit = 9 }: { posts: ApiPost[]; limit?: numbe
     // "mur de photos" voulue ; rounded-2xl aligne ces tuiles sur le même
     // rayon de coin que les autres cartes de la home (recommandation, HD,
     // carte) plutôt que le rounded-xl isolé qui détonnait ici.
-    <div className="grid grid-cols-3 gap-1 px-4 md:px-8 max-w-6xl md:mx-auto">
+    <div className="grid grid-cols-3 gap-1.5 px-4 md:px-8 max-w-6xl md:mx-auto">
       {visible.map((post, i) => {
         const url = resolveMediaUrl(getAfterImage(post));
         const hd = post.hairdresser as (ApiHairdresserProfile & { user: ApiUser }) | undefined;
@@ -29,7 +29,7 @@ function RealisationGrid({ posts, limit = 9 }: { posts: ApiPost[]; limit?: numbe
           <Reveal key={post.id} delay={(i % 6) * 50}>
             <Link
               href={`/app/realisation/${post.id}`}
-              className="relative block aspect-square overflow-hidden rounded-2xl bg-neutral-100 group active:scale-[0.98] transition-transform duration-150"
+              className="relative block aspect-square overflow-hidden rounded-[20px] bg-neutral-100 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] group active:scale-[0.97] transition-transform duration-200"
             >
               {url ? (
                 <Image

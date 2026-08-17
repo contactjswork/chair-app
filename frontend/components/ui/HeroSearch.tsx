@@ -118,10 +118,12 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
       <form onSubmit={handleSubmit}>
         <div className={`flex items-center bg-white overflow-hidden ${
           compact
-            ? 'rounded-2xl border border-neutral-200 hover:border-neutral-300 transition-colors'
+            // Relief par ombre douce plutôt que simple contour — la barre
+            // flottait à plat sur la page, sans présence (retour de Julien).
+            ? 'rounded-2xl shadow-[0_4px_20px_-6px_rgba(10,10,10,0.12)] ring-1 ring-neutral-100 hover:shadow-[0_6px_24px_-6px_rgba(10,10,10,0.16)] hover:ring-neutral-200 transition-all duration-300'
             : 'rounded-2xl shadow-2xl ring-1 ring-white/20'
         }`}>
-          <Search size={compact ? 15 : 17} className="ml-4 text-neutral-400 flex-shrink-0" />
+          <Search size={compact ? 16 : 17} className="ml-4.5 text-neutral-400 flex-shrink-0" />
           <input
             type="text"
             value={value}
@@ -129,15 +131,15 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
             onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className={`flex-1 min-w-0 pl-3 pr-2 text-sm text-neutral-900 placeholder-neutral-400 focus:outline-none bg-transparent ${
-              compact ? 'py-2.5' : 'py-4'
+            className={`flex-1 min-w-0 pl-3 pr-2 text-neutral-900 placeholder-neutral-400 focus:outline-none bg-transparent ${
+              compact ? 'py-3 text-[14.5px]' : 'py-4 text-sm'
             }`}
             autoComplete="off"
           />
           <button
             type="submit"
-            className={`flex-shrink-0 bg-neutral-900 text-white font-semibold rounded-xl hover:bg-neutral-700 transition-colors ${
-              compact ? 'm-1.5 px-4 py-2 text-xs' : 'm-2 px-5 py-2.5 text-sm'
+            className={`flex-shrink-0 bg-neutral-900 text-white font-semibold rounded-xl hover:bg-neutral-700 active:scale-95 transition-all ${
+              compact ? 'm-1.5 px-4 py-2.5 text-xs' : 'm-2 px-5 py-2.5 text-sm'
             }`}
           >
             {compact ? <Search size={14} /> : 'Rechercher'}

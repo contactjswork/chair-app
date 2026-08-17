@@ -90,27 +90,28 @@ export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) 
   }, [priorityCount]);
 
   return (
-    // pt-6 (au lieu de pt-2) : la rangée respirait à peine sous "Pour vous" —
-    // reste plus tassée qu'une section titrée (c'est un simple raccourci de
-    // filtre, pas un bloc de contenu), mais assez d'air pour ne plus coller.
-    <section className="pt-6 pb-2">
+    // Pastilles agrandies + relief par ombre plutôt que contour noir dur
+    // (retour de Julien : la version précédente se lisait "plate") — même
+    // esprit que RecommendationCard (profondeur douce, jamais de bordure
+    // épaisse). pt-8 : plus d'air sous "Pour vous".
+    <section className="pt-8 pb-2">
       <div className="flex gap-4 overflow-x-auto px-4 md:px-8 pb-2 no-scrollbar">
         {visible.map((s, i) => (
           <Reveal key={s.slug} delay={(i % 6) * 45} className="flex-shrink-0">
             <Link
               href={`/app/recherche?specialty=${s.slug}`}
-              className="group flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
+              className="group flex flex-col items-center gap-2.5 w-[82px] active:scale-[0.94] transition-transform duration-200"
             >
-              <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-neutral-900 flex items-center justify-center bg-white transition-colors group-hover:bg-neutral-50">
+              <div className="w-[86px] h-[86px] rounded-[28px] flex items-center justify-center bg-white shadow-[0_3px_14px_-4px_rgba(10,10,10,0.14)] ring-1 ring-neutral-100 group-hover:shadow-[0_8px_22px_-6px_rgba(10,10,10,0.2)] group-hover:ring-neutral-200 group-hover:-translate-y-0.5 transition-all duration-300">
                 <Image
                   src={s.icon}
                   alt={labels[s.slug] ?? s.label}
-                  width={54}
-                  height={54}
+                  width={58}
+                  height={58}
                   className="object-contain mix-blend-multiply"
                 />
               </div>
-              <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
+              <p className="text-[11.5px] font-bold text-neutral-800 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
             </Link>
           </Reveal>
         ))}
@@ -118,15 +119,12 @@ export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) 
         {rest.length > 0 && (
           <Link
             href="/app/recherche"
-            // Scale harmonisé avec les pastilles voisines (0.94) — rien ne
-            // justifiait que "Voir tout" réagisse plus fort (0.88) au tap
-            // que les catégories juste à côté.
-            className="flex-shrink-0 flex flex-col items-center gap-2 w-[72px] active:scale-[0.94] transition-transform duration-150"
+            className="flex-shrink-0 flex flex-col items-center gap-2.5 w-[82px] active:scale-[0.94] transition-transform duration-200"
           >
-            <div className="w-[76px] h-[76px] rounded-[20px] border-2 border-dashed border-neutral-300 flex items-center justify-center bg-white">
-              <ChevronRight size={20} className="text-neutral-400" strokeWidth={2.5} />
+            <div className="w-[86px] h-[86px] rounded-[28px] flex items-center justify-center bg-neutral-50 ring-1 ring-dashed ring-neutral-200 hover:ring-neutral-300 transition-colors">
+              <ChevronRight size={22} className="text-neutral-400" strokeWidth={2.5} />
             </div>
-            <p className="text-[11px] font-semibold text-neutral-500 text-center leading-tight">Voir tout</p>
+            <p className="text-[11.5px] font-bold text-neutral-500 text-center leading-tight">Voir tout</p>
           </Link>
         )}
       </div>

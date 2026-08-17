@@ -14,79 +14,90 @@ import type { RecommendationResult } from '@/lib/recommendation';
  * RecommendationResult (pas de `user` imbriqué, chair_level déjà résolu par
  * le backend, jamais estimé côté client faute de posts_count/followers_count
  * dans ce contrat volontairement allégé).
+ *
+ * Refonte visuelle (retour de Julien : la version précédente — photo floutée
+ * + texte blanc en surimpression — se lisait "plate"/"pas envie") : vraie
+ * photo NETTE en pleine carte façon fiche listing (Airbnb), panneau
+ * d'information blanc en dessous (jamais du texte sur fond flouté peu
+ * lisible), avatar en médaillon à cheval sur la jonction photo/panneau.
  */
 export default function RecommendationCard({ r, size = 'lg' }: { r: RecommendationResult; size?: 'lg' | 'md' }) {
   const banner = resolveMediaUrl(r.image);
   const avatar = resolveMediaUrl(r.avatar);
-  const bg = banner ?? avatar;
+  const photo = banner ?? avatar;
   const hasRating = r.reviews_count > 0;
   const spec = r.specialties[0]?.name;
   const levelColor = r.chair_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
-  const width = size === 'lg' ? 'w-[172px] md:w-[200px]' : 'w-[155px] md:w-[172px]';
+  const width = size === 'lg' ? 'w-[182px] md:w-[212px]' : 'w-[160px] md:w-[182px]';
 
   return (
     <Link
       href={`/app/coiffeur/${r.slug}`}
-      className={`relative flex-shrink-0 ${width} block group active:scale-[0.98] transition-transform duration-150`}
+      className={`relative flex-shrink-0 ${width} block group active:scale-[0.97] transition-transform duration-200`}
     >
-      <div className="relative rounded-2xl overflow-hidden bg-neutral-900 aspect-[3/4]">
-        {bg ? (
-          <Image
-            src={bg}
-            alt={r.name}
-            fill
-            className="object-cover scale-110 blur-sm brightness-50 group-hover:brightness-60 transition-all duration-500"
-            sizes="200px"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-black/15" />
+      <div className="rounded-[24px] overflow-hidden bg-white shadow-[0_10px_28px_-10px_rgba(10,10,10,0.22)] group-hover:shadow-[0_18px_38px_-12px_rgba(10,10,10,0.3)] transition-shadow duration-300">
+        {/* Photo NETTE, jamais floutée — c'est le vrai portfolio du coiffeur */}
+        <div className="relative aspect-[4/5] bg-neutral-200 overflow-hidden">
+          {photo ? (
+            <Image
+              src={photo}
+              alt={r.name}
+              fill
+              className="object-cover group-hover:scale-[1.05] transition-transform duration-500"
+              sizes="212px"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-300 to-neutral-400 flex items-center justify-center">
+              <span className="text-4xl font-bold text-white/70">{r.name.charAt(0)}</span>
+            </div>
+          )}
+          {/* Voile discret en haut, juste pour la lisibilité des badges — pas
+              un habillage plein cadre comme avant. */}
+          <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
 
-        {r.is_chair_pick && (
-          <span className="absolute top-2.5 left-2.5 z-10 text-[8px] font-bold tracking-[0.12em] uppercase text-white px-2 py-1 rounded-full bg-neutral-900/80 backdrop-blur-sm border border-white/10">
-            Coup de cœur
-          </span>
-        )}
-        {r.is_verified && (
-          <div className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center shadow">
-            <BadgeCheck size={11} className="text-neutral-900" />
-          </div>
-        )}
+          {r.is_chair_pick && (
+            <span className="absolute top-2.5 left-2.5 z-10 text-[8px] font-bold tracking-[0.12em] uppercase text-neutral-900 px-2 py-1 rounded-full bg-white shadow-sm">
+              Coup de cœur
+            </span>
+          )}
+          {r.is_verified && (
+            <div className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm">
+              <BadgeCheck size={11} className="text-neutral-900" />
+            </div>
+          )}
 
-        <div className="absolute inset-0 flex items-center justify-center pb-12">
-          <div
-            className="relative w-[64px] h-[64px] rounded-full p-[2px] shadow-xl group-hover:scale-105 transition-transform duration-300"
-            style={ring.show && ring.glow ? { boxShadow: ring.glow } : undefined}
-          >
-            {ring.show && <div className={`absolute inset-0 rounded-full ${ringGradientClass(levelColor)}`} />}
-            <div className={`relative rounded-full overflow-hidden ${ring.show ? 'w-[calc(100%-4px)] h-[calc(100%-4px)] m-[2px]' : 'w-full h-full ring-2 ring-white/25'}`}>
+          {/* Médaillon avatar — à cheval sur la jonction photo/panneau, comme
+              une fiche listing premium plutôt qu'un avatar noyé au centre. */}
+          <div className="absolute -bottom-6 left-3.5 z-10 w-[46px] h-[46px] rounded-full p-[2.5px] bg-white shadow-lg">
+            {ring.show && <div className={`absolute inset-[2.5px] rounded-full ${ringGradientClass(levelColor)}`} />}
+            <div className={`relative w-full h-full rounded-full overflow-hidden ${ring.show ? 'm-[2.5px] w-[calc(100%-5px)] h-[calc(100%-5px)]' : 'ring-2 ring-neutral-100'}`}>
               {avatar ? (
-                <Image src={avatar} alt={r.name} fill className="object-cover" sizes="64px" />
+                <Image src={avatar} alt={r.name} fill className="object-cover" sizes="46px" />
               ) : (
-                <div className="w-full h-full bg-neutral-700 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-white/40">{r.name.charAt(0)}</span>
+                <div className="w-full h-full bg-neutral-300 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">{r.name.charAt(0)}</span>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-3.5">
-          {spec && <p className="text-[8px] font-bold text-white/55 tracking-[0.14em] uppercase mb-1 truncate">{spec}</p>}
-          <h3 className="text-white font-bold text-[13px] leading-tight truncate">{r.name}</h3>
-          <div className="flex items-center justify-between mt-1 gap-2">
-            <p className="text-white/45 text-[10px] truncate">
-              {r.distance_km != null ? `à ${formatDistance(r.distance_km)}` : (r.city ?? '')}
-            </p>
+        {/* Panneau d'info — fond blanc franc, jamais de texte sur photo */}
+        <div className="pt-8 pb-3 px-3.5">
+          {spec && <p className="text-[9px] font-bold text-neutral-400 tracking-[0.1em] uppercase mb-0.5 truncate">{spec}</p>}
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-neutral-900 font-bold text-[14px] leading-tight truncate">{r.name}</h3>
             {hasRating && (
               <div className="flex items-center gap-0.5 flex-shrink-0">
-                <Star size={9} className="fill-white stroke-none" />
-                <span className="text-white text-[10px] font-bold">{r.avg_rating.toFixed(1)}</span>
+                <Star size={10} className="fill-neutral-900 stroke-none" />
+                <span className="text-neutral-900 text-[11px] font-bold">{r.avg_rating.toFixed(1)}</span>
               </div>
             )}
           </div>
+          <p className="text-neutral-400 text-[11px] mt-0.5 truncate">
+            {r.distance_km != null ? `à ${formatDistance(r.distance_km)}` : (r.city ?? '')}
+          </p>
         </div>
       </div>
     </Link>

@@ -36,6 +36,15 @@ const RANK_TONE: Record<number, string> = {
   3: 'bg-orange-400 text-white',
 };
 
+// Le podium (top 3) se détache par relief plutôt que rester visuellement
+// identique au reste de la liste — retour de Julien : le classement se lisait
+// comme une liste plate sans hiérarchie visuelle.
+const ROW_TONE: Record<number, string> = {
+  1: 'bg-gradient-to-r from-amber-50 to-white ring-amber-100',
+  2: 'bg-white ring-neutral-100',
+  3: 'bg-white ring-neutral-100',
+};
+
 /**
  * Classement LOCALISÉ sur la position réelle du compte — scopé sur la
  * spécialité choisie par l'utilisateur quand elle existe (pas un classement
@@ -141,18 +150,20 @@ export default function HomeRankingSection({
         {entries.slice(0, effectiveLimit).map((h, i) => {
           const avatar = resolveMediaUrl(h.avatar);
           const rankCls = RANK_TONE[h.rank] ?? 'bg-neutral-100 text-neutral-500';
+          const rowCls = ROW_TONE[h.rank] ?? 'bg-white ring-neutral-100';
+          const isTop = h.rank <= 3;
           return (
             <Reveal key={h.id} delay={(i % 5) * 60}>
               <Link
                 href={`/app/coiffeur/${h.slug}`}
-                className="flex items-center gap-3.5 bg-white rounded-2xl border border-neutral-100 px-4 py-3.5 hover:border-neutral-200 hover:shadow-sm active:scale-[0.98] active:bg-neutral-50 transition-all"
+                className={`flex items-center gap-3.5 rounded-2xl ring-1 px-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] active:scale-[0.98] transition-all ${rowCls} ${isTop ? 'py-4' : 'py-3.5'}`}
               >
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${rankCls}`}>
+                <span className={`rounded-full flex items-center justify-center font-bold flex-shrink-0 ${rankCls} ${isTop ? 'w-8 h-8 text-[13px] shadow-sm' : 'w-6 h-6 text-[11px]'}`}>
                   {h.rank}
                 </span>
-                <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
+                <div className={`relative rounded-full overflow-hidden bg-neutral-100 flex-shrink-0 ${isTop ? 'w-12 h-12 ring-2 ring-white shadow-sm' : 'w-11 h-11'}`}>
                   {avatar ? (
-                    <Image src={avatar} alt={h.name} fill className="object-cover" sizes="44px" />
+                    <Image src={avatar} alt={h.name} fill className="object-cover" sizes="48px" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-neutral-200">
                       <span className="font-bold text-neutral-400">{h.name.charAt(0)}</span>
@@ -161,7 +172,7 @@ export default function HomeRankingSection({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className="text-[14px] font-bold text-neutral-900 truncate">{h.name}</p>
+                    <p className={`font-bold text-neutral-900 truncate ${isTop ? 'text-[15px]' : 'text-[14px]'}`}>{h.name}</p>
                     {h.is_verified && <BadgeCheck size={13} className="text-neutral-900 flex-shrink-0" />}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
