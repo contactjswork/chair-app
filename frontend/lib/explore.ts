@@ -1,6 +1,8 @@
 // Moteur de découverte de la page Recherche client — client API /explore,
 // types unifiés salon/indépendant, recherches récentes, cache court.
 
+import type { RecommendationFallback } from './recommendation';
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -62,6 +64,14 @@ export interface ExploreResponse {
   counts: ExploreCounts;
   per_page: number;
   current_page: number;
+  /** Repli géographique honnête (voir RecommendationFallback) — null si le
+   *  client a lui-même demandé un rayon/une zone précise (son choix fait
+   *  déjà foi) ou si aucune position n'est connue. */
+  fallback: RecommendationFallback | null;
+  /** true si le filtre spécialité demandé a dû être abandonné faute de
+   *  correspondance exacte — les résultats affichés sont alors "les mieux
+   *  notés autour de vous", jamais un vrai match spécialité. */
+  specialty_filter_relaxed: boolean;
 }
 
 export interface ExploreBbox {
@@ -231,6 +241,8 @@ async function fetchExploreLegacy(params: ExploreParams, signal?: AbortSignal): 
     counts: { all: results.length, salons: 0, hairdressers: results.length },
     per_page: 50,
     current_page: 1,
+    fallback: null,
+    specialty_filter_relaxed: false,
   };
 }
 

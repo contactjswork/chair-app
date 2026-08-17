@@ -71,28 +71,38 @@ export default async function HomePage() {
       {/* Ville active — pilote tout le filtrage géo de la home, changeable ici */}
       <LocationBar />
 
-      {/* Toutes les spécialités — navigation brute, jamais personnalisée */}
-      <SpecialtyQuickLinks />
-
-      {/* Stories — coiffeurs suivis uniquement, jamais un feed mondial */}
+      {/* Stories — coiffeurs suivis uniquement, jamais un feed mondial. Se
+          masque toute seule si vide (visiteur, ou personne suivi) : ne
+          repousse jamais le contenu personnalisé ci-dessous d'un espace
+          vide. */}
       <StoriesBar />
 
-      {/* ① Pour vous — mélange toutes les spécialités choisies, près de chez vous */}
+      {/* ① Pour vous — le vrai moteur de recommandation (GET
+          /api/recommendations) : spécialité choisie D'ABORD, puis
+          proximité, réputation, CHAIR+ en dernier départage. Premier
+          contenu substantiel du fil, avant même les raccourcis spécialité —
+          c'est la promesse "pas juste le plus proche" de CHAIR. */}
       <HomePersonalized />
 
-      {/* ② Coup de cœur CHAIR */}
+      {/* Raccourcis spécialité — mêmes 10 catégories pour tout le monde,
+          mais réordonnées : les préférences réelles en tête, "Voir tout"
+          pour le reste. Sert à pivoter/filtrer si le ① n'a pas suffi. */}
+      <SpecialtyQuickLinks />
+
+      {/* ② Coup de cœur CHAIR — sélection éditoriale, variété au milieu du fil */}
       <CoupDeCoeurStrip fallback={featuredHD} />
 
-      {/* ③ Classement — local, scopé sur votre/vos spécialité(s) */}
+      {/* ③ Classement — local, scopé sur votre/vos spécialité(s), preuve sociale */}
       <HomeRankingSection fallback={ranking} />
 
-      {/* ④ Carte — coiffeurs autour de vous */}
+      {/* ④ Carte — rupture de rythme visuelle (spatiale) avant la grille réalisations */}
       <NearbyMapSection />
 
-      {/* ⑤ Réalisations — ciblées sur vos spécialités */}
+      {/* ⑤ Réalisations — grille 3 colonnes ciblée sur vos spécialités,
+          rupture de rythme avec les carrousels horizontaux qui précèdent */}
       <HomeRealisationsSection fallback={trendingPosts} />
 
-      {/* ⑥ Nouveaux talents */}
+      {/* ⑥ Nouveaux talents — découverte secondaire, fin de fil */}
       <NewTalentsStrip fallback={newTalentsHD} />
 
       <div className="mx-4 md:mx-8 mt-10 h-px bg-neutral-100 max-w-6xl md:mx-auto" />

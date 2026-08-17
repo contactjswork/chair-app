@@ -271,7 +271,13 @@ class HairdresserController extends Controller
         // PostController::show) ; alimente les analytics premium "portée".
         $viewer = Auth::guard('sanctum')->user();
         if (!$viewer || $viewer->id !== $hairdresser->user_id) {
-            \App\Models\ProfileView::create(['hairdresser_profile_id' => $hairdresser->id]);
+            \App\Models\ProfileView::create([
+                'hairdresser_profile_id' => $hairdresser->id,
+                // Connu seulement si le visiteur est connecté — jamais de
+                // fingerprinting anonyme. Alimente le signal "déjà consulté"
+                // du scoring de recommandation (RecommendationService).
+                'viewer_user_id'         => $viewer?->id,
+            ]);
         }
 
         $points = BadgeService::computePoints($hairdresser);

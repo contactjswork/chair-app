@@ -9,7 +9,7 @@ class ProfileView extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['hairdresser_profile_id', 'created_at'];
+    protected $fillable = ['hairdresser_profile_id', 'viewer_user_id', 'created_at'];
 
     protected $casts = [
         'created_at' => 'datetime',

@@ -4,61 +4,77 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { MapPin, Sparkles, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import HairdresserCard from './HairdresserCard';
+import { getStoredToken } from '@/lib/auth';
+import RecommendationCard from './RecommendationCard';
 import { SectionHeader } from './HomeGeoStrips';
-import { getUserGeo, getUserSpecialtySlugs, hasExplicitInterests } from '@/lib/homeFilters';
-import { fetchHairdressersProgressive } from '@/lib/homeFetch';
-import type { ApiHairdresserProfile } from '@/lib/types';
+import { getUserPrefs, hasExplicitInterests } from '@/lib/homeFilters';
+import { fetchRecommendations } from '@/lib/recommendation';
+import type { RecommendationResult, RecommendationMeta } from '@/lib/recommendation';
 
 /**
- * "Pour vous" — UNE seule section qui mélange TOUTES les spécialités choisies
- * par l'utilisateur (plus de tirage d'une seule au hasard). Essaie d'abord
- * près de sa ville réelle, élargit si besoin — jamais de section vide juste
- * parce que la couverture locale est encore faible ou que la ville manque.
+ * "Pour vous" — section hero de la home, branchée sur le vrai moteur
+ * GET /api/recommendations (même service que /app/recherche). Hiérarchie de
+ * poids gérée entièrement côté backend : spécialité choisie à l'onboarding
+ * D'ABORD, puis proximité, puis réputation, CHAIR+ en tout dernier
+ * départage — voir RecommendationService pour le détail des poids.
+ *
+ * Connecté : le backend lit user_preferences + la géo du compte tout seul,
+ * inutile de lui repasser quoi que ce soit d'explicite ici (il ferait
+ * prioritaire sur le vrai profil serveur de toute façon). On transmet quand
+ * même le relais localStorage en filet de sécurité (compte multi-appareil
+ * pas encore synchro).
+ * Visiteur : seul le relais localStorage (préférences choisies avant de
+ * créer un compte) peut personnaliser — sans lui, rien à segmenter
+ * honnêtement, on affiche l'incitation à créer un compte plutôt que
+ * d'inventer une préférence.
  */
 export default function HomePersonalized() {
   const { user, isLoading } = useAuth();
-  const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>([]);
+  const [entries, setEntries] = useState<RecommendationResult[]>([]);
+  const [meta, setMeta] = useState<RecommendationMeta | null>(null);
   const [ready, setReady] = useState(false);
-  const [isGeo, setIsGeo] = useState(false);
-  const [hasLocation, setHasLocation] = useState(true);
+
+  const guestHasSignal = !user && hasExplicitInterests();
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) {
+    if (!user && !guestHasSignal) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setReady(true);
       return;
     }
 
-    const geo = getUserGeo(user);
-    setHasLocation(!!geo);
-    const slugs = getUserSpecialtySlugs();
+    const controller = new AbortController();
+    const token = getStoredToken();
+    const interests = hasExplicitInterests() ? getUserPrefs().interests : undefined;
 
-    fetchHairdressersProgressive(slugs, geo, 10)
-      .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); })
+    fetchRecommendations({ interests, per_page: 12 }, token, controller.signal)
+      .then((res) => { setEntries(res.data); setMeta(res.meta); })
+      .catch(() => {})
       .finally(() => setReady(true));
-  }, [user, isLoading]);
+
+    return () => controller.abort();
+  }, [user, isLoading, guestHasSignal]);
 
   if (!ready) {
     return (
-      <section className="pt-9">
-        <div className="px-4 mb-5 flex items-end justify-between">
+      <section className="pt-6">
+        <div className="px-4 md:px-8 mb-5 flex items-end justify-between">
           <div className="h-6 w-48 bg-neutral-100 rounded-full animate-pulse" />
         </div>
-        <div className="flex gap-3 overflow-x-auto px-4 no-scrollbar">
+        <div className="flex gap-3 overflow-x-auto px-4 md:px-8 no-scrollbar">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex-shrink-0 w-[160px] aspect-[3/4] rounded-2xl bg-neutral-100 animate-pulse" />
+            <div key={i} className="flex-shrink-0 w-[172px] md:w-[200px] aspect-[3/4] rounded-2xl bg-neutral-100 animate-pulse" />
           ))}
         </div>
       </section>
     );
   }
 
-  // ── Visiteur non connecté ──────────────────────────────────────────────
-  if (!user) {
+  // ── Visiteur sans aucun signal (jamais de préférence inventée) ─────────
+  if (!user && !guestHasSignal) {
     return (
-      <section className="mt-10 px-4 md:px-8 max-w-6xl md:mx-auto">
+      <section className="pt-6 px-4 md:px-8 max-w-6xl md:mx-auto">
         <div className="relative overflow-hidden rounded-2xl bg-neutral-900 px-6 py-7">
           <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
           <div className="relative z-10">
@@ -86,26 +102,32 @@ export default function HomePersonalized() {
     );
   }
 
-  // Vraiment rien nulle part (même en national) — arrive seulement sur une
-  // spécialité ultra-niche sans aucun coiffeur inscrit. Jamais de blocage
-  // par simple absence de ville : on montre juste un rappel discret en plus.
-  if (hairdressers.length === 0) return null;
+  // Vraiment aucun profil géolocalisé nulle part sur CHAIR (tier 'empty') —
+  // arrive seulement si la base est vide. Jamais de section masquée : on
+  // reste honnête plutôt que de faire comme si la home n'avait rien à dire.
+  if (entries.length === 0) {
+    return (
+      <section className="pt-6 px-4 md:px-8 max-w-6xl md:mx-auto">
+        <SectionHeader tag="Pour vous" title="Bientôt près de chez vous" />
+        <p className="text-[13px] text-neutral-400 -mt-3">
+          Aucun coiffeur inscrit sur CHAIR pour le moment. Revenez bientôt.
+        </p>
+      </section>
+    );
+  }
+
+  const personalized = meta ? meta.pref_source !== 'none' : false;
+  const title = personalized ? 'Selon votre style' : 'Les mieux notés';
+  const badge = meta?.is_fallback ? meta.fallback_label ?? undefined : undefined;
+  const noGeo = meta?.tier === 'no_geo';
 
   return (
-    <section className="mt-10 md:mt-14">
-      <SectionHeader
-        tag="Pour vous"
-        title={hasExplicitInterests() ? 'Selon votre style' : 'Près de chez vous'}
-        href="/app/recherche"
-      />
+    <section className="pt-6">
+      <SectionHeader tag="Pour vous" title={title} href="/app/recherche" badge={badge} />
       <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
-        {hairdressers.map((h) => (
-          <div key={h.id} className="flex-shrink-0 w-[160px] md:w-[190px]">
-            <HairdresserCard hairdresser={h} showFlame={false} />
-          </div>
-        ))}
+        {entries.map((r) => <RecommendationCard key={r.id} r={r} size="lg" />)}
       </div>
-      {!hasLocation && (
+      {noGeo && user && (
         <Link
           href="/app/compte/modifier"
           className="mx-4 md:mx-8 mt-3 flex items-center gap-2 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors w-fit"
@@ -113,9 +135,9 @@ export default function HomePersonalized() {
           <MapPin size={12} />Ajoutez votre ville pour affiner ces résultats
         </Link>
       )}
-      {hasLocation && !isGeo && (
+      {meta?.specialty_filter_relaxed && (
         <p className="mx-4 md:mx-8 mt-3 text-[12px] text-neutral-400">
-          Aucun résultat tout près — élargi au national.
+          Aucun profil ne correspond exactement à votre style dans le secteur — voici les mieux notés autour de vous.
         </p>
       )}
     </section>

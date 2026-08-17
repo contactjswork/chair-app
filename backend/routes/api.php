@@ -102,6 +102,10 @@ Route::get('/geo/reverse-city', [GeoController::class, 'reverseCity'])->middlewa
 Route::get('/search', [SearchController::class, 'search']);
 Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
 Route::get('/explore', [App\Http\Controllers\Api\ExploreController::class, 'index']);
+// Recommandations — point d'entrée home (voir RecommendationController). Publique
+// (visiteur = lat/lng+interests en query) mais personnalisée dès qu'un Bearer
+// Sanctum valide accompagne la requête (résolu manuellement dans le contrôleur).
+Route::get('/recommendations', [App\Http\Controllers\Api\RecommendationController::class, 'index']);
 Route::get('/posts/{postId}', [PostController::class, 'show']);
 Route::post('/appointments', [AppointmentController::class, 'store'])->middleware('throttle:15,1');
 Route::post('/review-by-token/{token}', [AppointmentController::class, 'reviewByToken'])->middleware('throttle:10,1');
@@ -128,6 +132,7 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::delete('/account', [AuthController::class, 'deleteAccount']);
     Route::post('/preferences', [PreferenceController::class, 'store']);
+    Route::get('/preferences',  [PreferenceController::class, 'show']);
 
     // Double identité gérant/coiffeur
     Route::post('/my-account/enable-hairdresser-mode', [AuthController::class, 'enableHairdresserMode']);

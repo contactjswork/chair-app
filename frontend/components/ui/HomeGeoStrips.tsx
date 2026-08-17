@@ -80,8 +80,8 @@ function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: stri
 // même structure tag/titre/sous-titre/chevron à la main. `tagIcon` couvre le
 // seul cas qui différait réellement (le trophée devant "Classement").
 export function SectionHeader({
-  tag, tagIcon, title, subtitle, href,
-}: { tag?: string; tagIcon?: ReactNode; title: string; subtitle?: string; href?: string }) {
+  tag, tagIcon, title, subtitle, href, badge,
+}: { tag?: string; tagIcon?: ReactNode; title: string; subtitle?: string; href?: string; badge?: string }) {
   return (
     <div className="px-4 md:px-8 max-w-6xl md:mx-auto mb-5 flex items-end justify-between gap-3">
       <div>
@@ -90,7 +90,16 @@ export function SectionHeader({
             {tagIcon}{tag}
           </p>
         )}
-        <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">{title}</h2>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-[20px] md:text-[22px] font-bold text-neutral-900 tracking-tight leading-tight">{title}</h2>
+          {/* Repli géo honnête — jamais laisser croire à de la proximité quand
+              on a dû élargir le rayon (voir RecommendationFallback côté contrat). */}
+          {badge && (
+            <span className="text-[9px] font-bold tracking-[0.08em] uppercase text-neutral-500 bg-neutral-100 px-2 py-1 rounded-full whitespace-nowrap">
+              {badge}
+            </span>
+          )}
+        </div>
         {subtitle && <p className="text-[12px] text-neutral-400 mt-1 leading-relaxed max-w-sm">{subtitle}</p>}
       </div>
       {href && (

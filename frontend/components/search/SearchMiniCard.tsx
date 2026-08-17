@@ -69,6 +69,19 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
               </span>
             )}
           </div>
+          {/* Spécialité dominante + prix — une seule ligne, tronquée */}
+          {(r.specialties.length > 0 || r.price_from != null) && (
+            <p className="flex items-baseline gap-1.5 mt-0.5 text-[10.5px]">
+              {r.specialties.length > 0 && (
+                <span className="text-neutral-500 truncate">{r.specialties[0].name}</span>
+              )}
+              {r.price_from != null && (
+                <span className="flex-shrink-0 font-semibold text-neutral-900 tabular-nums">
+                  dès {Number.isInteger(r.price_from) ? r.price_from : r.price_from.toFixed(2).replace('.', ',')} €
+                </span>
+              )}
+            </p>
+          )}
           {!isSalon && r.salon && (
             <p className="flex items-center gap-1 text-[10px] text-neutral-400 mt-0.5 truncate">
               <Building2 size={9} className="flex-shrink-0" />

@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchExplore, getClientPrefs } from '@/lib/explore';
 import type { ExploreBbox, ExploreCounts, ExploreResult, ExploreSort, ExploreType } from '@/lib/explore';
+import type { RecommendationFallback } from '@/lib/recommendation';
 
 const PER_PAGE = 40;
 
@@ -43,6 +44,10 @@ export function useExploreSearch(userLocation: { lat: number; lng: number } | nu
   const [total, setTotal]           = useState(0);
   const [isLoading, setIsLoading]   = useState(true);
   const [error, setError]           = useState(false);
+  // Repli honnête — voir contrat RecommendationFallback (lib/recommendation.ts) :
+  // null tant qu'aucune recherche n'a dû s'écarter des critères exacts.
+  const [fallback, setFallback]           = useState<RecommendationFallback | null>(null);
+  const [specialtyRelaxed, setSpecialtyRelaxed] = useState(false);
 
   const abortRef    = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -115,12 +120,16 @@ export function useExploreSearch(userLocation: { lat: number; lng: number } | nu
         setResults(explore.data);
         setCounts(explore.counts);
         setTotal(explore.total);
+        setFallback(explore.fallback);
+        setSpecialtyRelaxed(explore.specialty_filter_relaxed);
         setIsLoading(false);
       } catch (e) {
         if ((e as Error).name === 'AbortError') return;
         setResults([]);
         setCounts(null);
         setTotal(0);
+        setFallback(null);
+        setSpecialtyRelaxed(false);
         setError(true);
         setIsLoading(false);
       }
@@ -169,6 +178,8 @@ export function useExploreSearch(userLocation: { lat: number; lng: number } | nu
     results,
     counts,
     total,
+    fallback,
+    specialtyRelaxed,
     hasMore: results.length < total,
     loadMore,
     isLoading,

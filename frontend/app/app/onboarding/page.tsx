@@ -18,13 +18,17 @@ type Step   = 'genre' | 'styles' | 'done';
 
 interface StyleOption { slug: string; label: string; icon: string; }
 
+// Slugs alignés sur la table `specialties` réelle (voir
+// backend/database/seeders/SpecialtySeeder.php) — sans ça, les choix
+// onboarding ne matchent JAMAIS aucun coiffeur côté RecommendationService
+// (specialtyMatchScore fait un array_intersect strict par slug).
 const FEMME: StyleOption[] = [
-  { slug: 'balayage',    label: 'Balayage',         icon: '/onboarding/balayage.png' },
-  { slug: 'coupe-femme', label: 'Coupe & Frange',   icon: '/onboarding/coupe.png' },
-  { slug: 'boucles',     label: 'Boucles',          icon: '/onboarding/boucles.png' },
-  { slug: 'lissage',     label: 'Lissage',          icon: '/onboarding/lissage.png' },
-  { slug: 'coloration',  label: 'Couleur Créative', icon: '/onboarding/couleur-femme.png' },
-  { slug: 'chignon',     label: 'Chignon & Soirée', icon: '/onboarding/chignon.png' },
+  { slug: 'couleur-balayage', label: 'Balayage',         icon: '/onboarding/balayage.png' },
+  { slug: 'coupe-femme',      label: 'Coupe & Frange',   icon: '/onboarding/coupe.png' },
+  { slug: 'boucles-curly',    label: 'Boucles',          icon: '/onboarding/boucles.png' },
+  { slug: 'texture-lissage',  label: 'Lissage',          icon: '/onboarding/lissage.png' },
+  { slug: 'coloration',       label: 'Couleur Créative', icon: '/onboarding/couleur-femme.png' },
+  { slug: 'chignon',          label: 'Chignon & Soirée', icon: '/onboarding/chignon.png' },
 ];
 
 const HOMME: StyleOption[] = [
@@ -33,22 +37,22 @@ const HOMME: StyleOption[] = [
   { slug: 'coupe-longue',  label: 'Cheveux Longs',    icon: '/onboarding/cheveux-longs.png' },
   { slug: 'barbe',         label: 'Barbe',            icon: '/onboarding/barbe.png' },
   { slug: 'couleur-homme', label: 'Couleur & Créatif',icon: '/onboarding/couleur.png' },
-  { slug: 'dreads',        label: 'Dreads & Locks',   icon: '/onboarding/dreads.png' },
+  { slug: 'afro-locks',    label: 'Dreads & Locks',   icon: '/onboarding/dreads.png' },
 ];
 
 const ALL: StyleOption[] = [
-  { slug: 'balayage',      label: 'Balayage',          icon: '/onboarding/balayage.png' },
-  { slug: 'barber',        label: 'Barber & Dégradé',  icon: '/onboarding/barber.png' },
-  { slug: 'coupe-femme',   label: 'Coupe & Frange',    icon: '/onboarding/coupe.png' },
-  { slug: 'coupe-homme',   label: 'Coupe Classique',   icon: '/onboarding/classique.png' },
-  { slug: 'boucles',       label: 'Boucles & Locks',   icon: '/onboarding/boucles.png' },
-  { slug: 'coloration',    label: 'Couleur Créative',  icon: '/onboarding/couleur-femme.png' },
-  { slug: 'barbe',         label: 'Barbe',             icon: '/onboarding/barbe.png' },
-  { slug: 'chignon',       label: 'Chignon & Soirée',  icon: '/onboarding/chignon.png' },
-  { slug: 'coupe-longue',  label: 'Cheveux Longs',     icon: '/onboarding/cheveux-longs.png' },
-  { slug: 'lissage',       label: 'Lissage',           icon: '/onboarding/lissage.png' },
-  { slug: 'couleur-homme', label: 'Couleur & Créatif', icon: '/onboarding/couleur.png' },
-  { slug: 'dreads',        label: 'Dreads & Locks',    icon: '/onboarding/dreads.png' },
+  { slug: 'couleur-balayage', label: 'Balayage',          icon: '/onboarding/balayage.png' },
+  { slug: 'barber',           label: 'Barber & Dégradé',  icon: '/onboarding/barber.png' },
+  { slug: 'coupe-femme',      label: 'Coupe & Frange',    icon: '/onboarding/coupe.png' },
+  { slug: 'coupe-homme',      label: 'Coupe Classique',   icon: '/onboarding/classique.png' },
+  { slug: 'boucles-curly',    label: 'Boucles & Locks',   icon: '/onboarding/boucles.png' },
+  { slug: 'coloration',       label: 'Couleur Créative',  icon: '/onboarding/couleur-femme.png' },
+  { slug: 'barbe',            label: 'Barbe',             icon: '/onboarding/barbe.png' },
+  { slug: 'chignon',          label: 'Chignon & Soirée',  icon: '/onboarding/chignon.png' },
+  { slug: 'coupe-longue',     label: 'Cheveux Longs',     icon: '/onboarding/cheveux-longs.png' },
+  { slug: 'texture-lissage',  label: 'Lissage',           icon: '/onboarding/lissage.png' },
+  { slug: 'couleur-homme',    label: 'Couleur & Créatif', icon: '/onboarding/couleur.png' },
+  { slug: 'afro-locks',       label: 'Dreads & Locks',    icon: '/onboarding/dreads.png' },
 ];
 
 function getOptions(g: Gender): StyleOption[] {

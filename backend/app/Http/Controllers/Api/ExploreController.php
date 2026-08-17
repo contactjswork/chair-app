@@ -7,6 +7,8 @@ use App\Models\HairdresserProfile;
 use App\Models\Salon;
 use App\Models\Service;
 use App\Services\BadgeService;
+use App\Services\Geo;
+use App\Services\RecommendationService;
 use Illuminate\Http\Request;
 
 /**
@@ -54,22 +56,27 @@ class ExploreController extends Controller
             ];
         }
 
-        $hairdressers = $this->hairdresserResults($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
-        $salons       = $this->salonResults($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
+        // Recherche avec repli honnête en cascade : rayon exact demandé d'abord,
+        // puis élargissement progressif (mêmes paliers que la home, voir
+        // RecommendationService::RADIUS_TIERS), puis en dernier recours
+        // relâchement de la spécialité elle-même — jamais silencieux, voir
+        // fallbackSearch() pour le détail des étapes et $specialtyRelaxed.
+        [$results, $fallbackMeta, $specialtyRelaxed] = $this->fallbackSearch($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
 
-        $results = $hairdressers->concat($salons);
-
-        if ($q !== '') {
-            $results = $results->filter(fn ($r) => $r['_score'] > 0);
-        }
-
-        // Boost soft des préférences client (jamais excluant)
-        if (!empty($interests)) {
-            $results = $results->map(function ($r) use ($interests) {
+        // Boost de correspondance spécialité — DOMINANT sur la popularité (même
+        // poids que RecommendationService::WEIGHT_SPECIALTY_MAX = 220, contre
+        // ~30 maximum pour le signal social pur dans scoreHairdresser/scoreSalon).
+        // Priorité au filtre spécialité EXPLICITE (chips choisies par
+        // l'utilisateur dans cet écran) : un profil qui coche les 2 spécialités
+        // demandées doit toujours passer devant un profil qui n'en coche qu'une,
+        // même si ce dernier est mieux noté — jamais l'inverse. À défaut de
+        // filtre explicite, on retombe sur les préférences client (interests)
+        // comme avant, en repli doux (jamais excluant).
+        $wantedForBoost = !empty($specialty) ? $specialty : $interests;
+        if (!empty($wantedForBoost)) {
+            $results = $results->map(function ($r) use ($wantedForBoost) {
                 $slugs = array_column($r['specialties'], 'slug');
-                if (count(array_intersect($interests, $slugs)) > 0) {
-                    $r['_score'] += 8;
-                }
+                $r['_score'] += RecommendationService::specialtyMatchScore($wantedForBoost, $slugs);
                 return $r;
             });
         }
@@ -99,7 +106,175 @@ class ExploreController extends Controller
             'counts'       => $counts,
             'per_page'     => $perPage,
             'current_page' => $page,
+            // null si aucune position connue ou si le client a lui-même
+            // demandé un rayon/une zone précise (son choix fait déjà foi).
+            'fallback'     => $fallbackMeta,
+            // true si le filtre spécialité demandé a dû être abandonné faute
+            // de correspondance exacte (même sémantique que
+            // RecommendationMeta.specialty_filter_relaxed côté home) — le
+            // frontend DOIT alors présenter les résultats comme "les mieux
+            // notés", jamais comme un vrai match spécialité.
+            'specialty_filter_relaxed' => $specialtyRelaxed,
         ]);
+    }
+
+    /**
+     * Recherche avec repli en cascade, honnête à chaque étape :
+     *   1. Critères exacts demandés (spécialité + rayon/bbox tels quels).
+     *   2. Si vide et une position est connue et un rayon était fixé : on
+     *      élargit le rayon palier par palier (mêmes seuils que la home,
+     *      RecommendationService::RADIUS_TIERS) en gardant la spécialité,
+     *      jusqu'au national.
+     *   3. Si toujours vide (ou pas de géo du tout) et qu'une spécialité
+     *      était demandée : on la relâche entièrement — les meilleurs profils
+     *      disponibles restent affichés, mais $specialtyRelaxed=true prévient
+     *      le frontend qu'aucun profil ne correspond réellement au critère.
+     *   4. On réessaie même l'élargissement de rayon SANS la spécialité avant
+     *      d'abandonner.
+     * Une bbox explicite ("rechercher dans cette zone") ne déclenche jamais
+     * cette cascade : la zone dessinée par l'utilisateur fait déjà foi.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array|null, 2: bool}
+     */
+    private function fallbackSearch(string $q, array $specialty, float $minRating, ?float $lat, ?float $lng, ?float $radius, ?array $bbox): array
+    {
+        $hasGeo = $lat !== null && $lng !== null;
+
+        $exact = $this->buildResults($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
+        // Une fiche sans coordonnées passe TOUJOURS le filtre SQL de rayon
+        // (voir applyGeoSql — c'est volontaire, elle reste affichée en fin de
+        // liste plutôt que cachée). Mais elle ne peut pas, à elle seule,
+        // rendre honnête une promesse de rayon explicite ("à 10 km" ne veut
+        // rien dire pour un profil dont la position est inconnue) : quand un
+        // rayon précis a été demandé, "l'exact" n'est validé que s'il contient
+        // AU MOINS une fiche réellement localisée dans ce rayon.
+        $exactOk = ($hasGeo && $radius !== null) ? $this->hasLocatedMatch($exact) : $exact->isNotEmpty();
+
+        if ($exactOk || $bbox !== null) {
+            // Repli géographique honnête — informatif seulement, n'exclut rien
+            // de plus que ce que radius/bbox excluaient déjà : si une position
+            // est connue et qu'aucun rayon strict n'a été demandé explicitement,
+            // indique quel palier couvre réellement le premier résultat localisé.
+            $fallbackMeta = ($bbox === null && $hasGeo && $radius === null)
+                ? $this->fallbackMetaFromResults($exact)
+                : null;
+            return [$exact, $fallbackMeta, false];
+        }
+
+        // Étape 2 : élargir le rayon, spécialité conservée. Chaque palier fini
+        // exige une correspondance réellement localisée (même raison que
+        // ci-dessus) ; le palier national n'affirme aucune proximité, une
+        // correspondance suffit même sans coordonnées.
+        if ($hasGeo && $radius !== null) {
+            foreach (RecommendationService::RADIUS_TIERS as $tierDef) {
+                if ($tierDef['km'] <= $radius) continue;
+                $attempt = $this->buildResults($q, $specialty, $minRating, $lat, $lng, $tierDef['km'], null);
+                if ($this->hasLocatedMatch($attempt)) {
+                    return [$attempt, $this->tierMeta($tierDef, true), false];
+                }
+            }
+            $attempt = $this->buildResults($q, $specialty, $minRating, $lat, $lng, null, null);
+            if ($attempt->isNotEmpty()) {
+                return [$attempt, $this->tierMeta(self::nationalTierDef(), true), false];
+            }
+        }
+
+        // Étape 3 : plus rien même en élargissant la zone — relâcher la spécialité.
+        if (!empty($specialty)) {
+            $noSpecialty = $this->buildResults($q, [], $minRating, $lat, $lng, $radius, $bbox);
+            $noSpecialtyOk = ($hasGeo && $radius !== null) ? $this->hasLocatedMatch($noSpecialty) : $noSpecialty->isNotEmpty();
+            if ($noSpecialtyOk) {
+                $meta = ($hasGeo && $radius === null) ? $this->fallbackMetaFromResults($noSpecialty) : null;
+                return [$noSpecialty, $meta, true];
+            }
+
+            // Étape 4 : élargir le rayon aussi, spécialité relâchée.
+            if ($hasGeo && $radius !== null) {
+                foreach (RecommendationService::RADIUS_TIERS as $tierDef) {
+                    if ($tierDef['km'] <= $radius) continue;
+                    $attempt = $this->buildResults($q, [], $minRating, $lat, $lng, $tierDef['km'], null);
+                    if ($this->hasLocatedMatch($attempt)) {
+                        return [$attempt, $this->tierMeta($tierDef, true), true];
+                    }
+                }
+                $attempt = $this->buildResults($q, [], $minRating, $lat, $lng, null, null);
+                if ($attempt->isNotEmpty()) {
+                    return [$attempt, $this->tierMeta(self::nationalTierDef(), true), true];
+                }
+            }
+        }
+
+        return [collect(), [
+            'tier' => 'empty', 'is_fallback' => true,
+            'fallback_label' => 'Aucun profil disponible pour le moment', 'radius_km' => null,
+        ], !empty($specialty)];
+    }
+
+    /** Au moins une fiche du jeu a une position réellement connue (distance_km non nulle). */
+    private function hasLocatedMatch($results): bool
+    {
+        return $results->contains(fn ($r) => $r['distance_km'] !== null);
+    }
+
+    private static function nationalTierDef(): array
+    {
+        return ['tier' => RecommendationService::NATIONAL_TIER['tier'], 'label' => RecommendationService::NATIONAL_TIER['label'], 'km' => null];
+    }
+
+    private function tierMeta(array $tierDef, bool $isFallback): array
+    {
+        return [
+            'tier'           => $tierDef['tier'],
+            'is_fallback'    => $isFallback,
+            'fallback_label' => $isFallback ? $tierDef['label'] : null,
+            'radius_km'      => $tierDef['km'] ?? null,
+        ];
+    }
+
+    /** Construit le jeu de résultats bruts (coiffeurs + salons, scorés) pour un jeu de critères donné. */
+    private function buildResults(string $q, array $specialty, float $minRating, ?float $lat, ?float $lng, ?float $radius, ?array $bbox)
+    {
+        $hairdressers = $this->hairdresserResults($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
+        $salons       = $this->salonResults($q, $specialty, $minRating, $lat, $lng, $radius, $bbox);
+
+        $results = $hairdressers->concat($salons);
+
+        if ($q !== '') {
+            $results = $results->filter(fn ($r) => $r['_score'] > 0);
+        }
+
+        return $results->values();
+    }
+
+    /**
+     * Palier de distance honnête atteint par le MEILLEUR résultat localisé
+     * déjà produit par la recherche (mêmes paliers que
+     * RecommendationService::RADIUS_TIERS) — purement informatif, ne filtre
+     * ni ne re-trie rien : la recherche garde son tri texte/pertinence
+     * existant, ceci sert uniquement l'étiquette honnête côté frontend.
+     */
+    private function fallbackMetaFromResults($results): ?array
+    {
+        $localized = $results->filter(fn ($r) => $r['distance_km'] !== null);
+        if ($localized->isEmpty()) return null;
+
+        $closest = $localized->min('distance_km');
+
+        foreach (RecommendationService::RADIUS_TIERS as $i => $tierDef) {
+            if ($closest <= $tierDef['km']) {
+                return [
+                    'tier'           => $tierDef['tier'],
+                    'is_fallback'    => $i > 0,
+                    'fallback_label' => $i > 0 ? $tierDef['label'] : null,
+                    'radius_km'      => $tierDef['km'],
+                ];
+            }
+        }
+
+        return [
+            'tier' => RecommendationService::NATIONAL_TIER['tier'], 'is_fallback' => true,
+            'fallback_label' => RecommendationService::NATIONAL_TIER['label'], 'radius_km' => null,
+        ];
     }
 
     // ── Coiffeurs (salariés ET indépendants — chacun sa propre fiche) ────────
@@ -173,50 +348,15 @@ class ExploreController extends Controller
     }
 
     /**
-     * Batché (une requête pour tout le lot) — même principe que
-     * HairdresserController::batchChairPlusMap(), voir ce fichier pour le
-     * détail. Un appel par profil (hasChairPlus()) ferait un N+1 sur cette
-     * liste de recherche potentiellement large.
+     * Batché (une requête pour tout le lot) — délègue à
+     * RecommendationService::chairPlusMap(), même règle que
+     * HairdresserController::batchChairPlusMap() mais centralisée pour ne
+     * pas diverger entre recherche et home. Un appel par profil
+     * (hasChairPlus()) ferait un N+1 sur cette liste potentiellement large.
      */
     private function batchChairPlusMap($hairdressers): array
     {
-        $ids = $hairdressers->pluck('id')->all();
-        if (empty($ids)) return [];
-
-        $now = now();
-        $map = [];
-
-        foreach ($hairdressers as $h) {
-            if ($h->chair_plus_until && $now->lt($h->chair_plus_until)) $map[$h->id] = true;
-        }
-
-        $remaining = array_diff($ids, array_keys($map));
-        if (!empty($remaining)) {
-            \App\Models\Subscription::whereIn('hairdresser_profile_id', $remaining)
-                ->where('plan', 'chair_plus')
-                ->whereIn('status', ['trialing', 'active', 'past_due'])
-                ->get()
-                ->groupBy('hairdresser_profile_id')
-                ->each(function ($subs, $hid) use (&$map) {
-                    if ($subs->first(fn($s) => $s->coversToday())) $map[$hid] = true;
-                });
-        }
-
-        $salonIds = $hairdressers->pluck('salon_id')->filter()->unique()->all();
-        if (!empty($salonIds)) {
-            $businessSalonIds = \App\Models\Subscription::whereIn('salon_id', $salonIds)
-                ->where('plan', 'chair_business')
-                ->whereIn('status', ['trialing', 'active', 'past_due'])
-                ->get()
-                ->groupBy('salon_id')
-                ->filter(fn($subs) => $subs->first(fn($s) => $s->coversToday()))
-                ->keys();
-            foreach ($hairdressers as $h) {
-                if ($h->salon_id && $businessSalonIds->contains($h->salon_id)) $map[$h->id] = true;
-            }
-        }
-
-        return $map;
+        return RecommendationService::chairPlusMap($hairdressers);
     }
 
     // ── Salons ───────────────────────────────────────────────────────────────
@@ -492,10 +632,6 @@ class ExploreController extends Controller
 
     private function haversine(float $lat1, float $lon1, float $lat2, float $lon2): float
     {
-        $R    = 6371;
-        $dLat = deg2rad($lat2 - $lat1);
-        $dLon = deg2rad($lon2 - $lon1);
-        $a    = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLon / 2) ** 2;
-        return $R * 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return Geo::haversineKm($lat1, $lon1, $lat2, $lon2);
     }
 }
