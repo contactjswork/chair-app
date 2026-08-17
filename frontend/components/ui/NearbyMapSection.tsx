@@ -101,7 +101,11 @@ export default function NearbyMapSection() {
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto">
         <Link
           href="/app/recherche"
-          className="relative block h-[190px] md:h-[240px] rounded-3xl overflow-hidden bg-neutral-100 active:scale-[0.98] transition-transform duration-150"
+          // isolate : sans ça, les couches GPU internes de Leaflet
+          // (translate3d sur les tuiles) passent parfois AU-DESSUS de la
+          // barre de navigation fixe au scroll sur iOS/Safari — bug connu de
+          // compositing, pas un simple souci de z-index classique.
+          className="relative isolate block h-[190px] md:h-[240px] rounded-3xl overflow-hidden bg-neutral-100 active:scale-[0.98] transition-transform duration-150"
         >
           <div ref={containerRef} className="absolute inset-0 pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
