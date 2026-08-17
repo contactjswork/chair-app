@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect } from 'react';
-import {
-  Building2, LayoutGrid, Navigation, RotateCcw, Sparkles, Star, TrendingUp, User, X,
-} from 'lucide-react';
+import { MapPin, RotateCcw, Star, X } from 'lucide-react';
 import { SPECIALTY_LABELS } from '@/lib/explore';
-import type { ExploreCounts, ExploreSort, ExploreType } from '@/lib/explore';
+import type { ExploreSort, ExploreType } from '@/lib/explore';
 import { getSpecialtyIcon } from './specialtyIcons';
 import { FilterChip } from '@/components/ui/Badge';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/Button';
@@ -25,18 +23,10 @@ interface Props {
   onChange: (patch: Partial<FiltersState>) => void;
   onReset: () => void;
   resultsCount: number;
-  counts: ExploreCounts | null;
   hasLocation: boolean;
   locationLabel: string;
   isLoading: boolean;
 }
-
-const SORT_OPTIONS: { label: string; value: ExploreSort; icon: React.ReactNode; needsLocation?: boolean }[] = [
-  { label: 'Meilleure correspondance', value: 'relevance', icon: <Sparkles size={13} /> },
-  { label: 'Les plus proches',         value: 'distance',  icon: <Navigation size={13} />, needsLocation: true },
-  { label: 'Les mieux notés',          value: 'rating',    icon: <Star size={13} /> },
-  { label: 'Les plus demandés',        value: 'popular',   icon: <TrendingUp size={13} /> },
-];
 
 const RATING_STEPS = [
   { label: 'Toutes', value: 0   },
@@ -74,71 +64,13 @@ function Chip({ active, onClick, icon, children }: { active: boolean; onClick: (
   );
 }
 
-/** Frise à points (diagramme) — utilisée pour la distance et la note minimum,
- *  plus lisible que des chips pour une échelle ordonnée à peu d'étapes. */
-function StepTrack({ options, activeIndex, onChange }: {
-  options: string[];
-  activeIndex: number;
-  onChange: (i: number) => void;
-}) {
-  const n   = options.length - 1;
-  const pct = (activeIndex / n) * 100;
-
-  return (
-    <div className="px-1">
-      <div className="relative h-6 flex items-center">
-        <div className="absolute inset-x-0 h-[2px] rounded-full" style={{ background: '#e5e5e5' }} />
-        <div
-          className="absolute h-[2px] bg-neutral-900 rounded-full transition-all duration-250"
-          style={{ width: `${pct}%` }}
-        />
-        {options.map((_, i) => {
-          const past   = i < activeIndex;
-          const active = i === activeIndex;
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onChange(i)}
-              style={{ left: `${(i / n) * 100}%` }}
-              className="absolute -translate-x-1/2 flex items-center justify-center w-8 h-8"
-            >
-              <span className={`block rounded-full transition-all duration-200 ${
-                active
-                  ? 'w-5 h-5 bg-neutral-900 ring-[3px] ring-white outline outline-[2px] outline-neutral-900'
-                  : past
-                  ? 'w-3 h-3 bg-neutral-900'
-                  : 'w-3 h-3 bg-neutral-200'
-              }`} />
-            </button>
-          );
-        })}
-      </div>
-      <div className="relative h-6 mt-1">
-        {options.map((label, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onChange(i)}
-            style={{ left: `${(i / n) * 100}%` }}
-            className={`absolute -translate-x-1/2 text-[11px] font-semibold whitespace-nowrap transition-colors ${
-              i === activeIndex ? 'text-neutral-900' : 'text-neutral-400'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Grande sheet de filtres — les changements s'appliquent en direct, le
- *  compteur du CTA reflète le nombre réel de résultats. Coiffeurs et salons
- *  sont deux façons de chercher, pas deux catégories qui se hiérarchisent —
- *  même poids visuel, "Coiffeurs" en premier (l'app met en avant la personne). */
+/** Sheet de filtres minimale — volontairement réduite à ce qui compte pour
+ *  trouver un coiffeur (spécialité / distance / note). Le tri (déjà
+ *  "meilleure correspondance" par défaut, le plus utile) et le type
+ *  coiffeurs/salons (déjà disponible juste au-dessus de la liste) ne sont PAS
+ *  dupliqués ici — une seule surface pour chaque réglage, pas deux. */
 export default function SearchFiltersSheet({
-  open, onClose, filters, onChange, onReset, resultsCount, counts, hasLocation, locationLabel, isLoading,
+  open, onClose, filters, onChange, onReset, resultsCount, hasLocation, locationLabel, isLoading,
 }: Props) {
   useEffect(() => {
     if (!open) return;
@@ -152,15 +84,6 @@ export default function SearchFiltersSheet({
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const typeTabs: { label: string; value: ExploreType; count?: number; icon: React.ReactNode }[] = [
-    { label: 'Tous',      value: 'all',         count: counts?.all,          icon: <LayoutGrid size={14} /> },
-    { label: 'Coiffeurs', value: 'hairdresser', count: counts?.hairdressers, icon: <User size={14} /> },
-    { label: 'Salons',    value: 'salon',       count: counts?.salons,       icon: <Building2 size={14} /> },
-  ];
-
-  const radiusIndex = RADIUS_STEPS.findIndex((o) => o.value === filters.radius);
-  const ratingIndex = RATING_STEPS.findIndex((o) => o.value === filters.minRating);
 
   return (
     <div className="fixed inset-0 z-[85] flex flex-col justify-end md:items-center md:justify-center">
@@ -180,47 +103,7 @@ export default function SearchFiltersSheet({
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 space-y-8">
 
-          {/* Type */}
-          <div className="flex bg-neutral-100 rounded-2xl p-1">
-            {typeTabs.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => onChange({ type: t.value })}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] ${
-                  filters.type === t.value ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500'
-                }`}
-              >
-                {t.icon}
-                {t.label}
-                {t.count != null && <span className="text-[11px] font-normal text-neutral-400">{t.count}</span>}
-              </button>
-            ))}
-          </div>
-
-          {/* Tri */}
-          <Section title="Trier par">
-            <div className="flex flex-wrap gap-2">
-              {SORT_OPTIONS.filter((o) => !o.needsLocation || hasLocation).map((opt) => (
-                <Chip key={opt.value} active={filters.sort === opt.value} icon={opt.icon} onClick={() => onChange({ sort: opt.value })}>
-                  {opt.label}
-                </Chip>
-              ))}
-            </div>
-          </Section>
-
-          {/* Distance — diagramme */}
-          <Section
-            title="Distance"
-            hint={hasLocation ? `Autour de ${locationLabel}` : 'Choisissez une ville ou activez la localisation pour filtrer par distance.'}
-          >
-            <StepTrack
-              options={RADIUS_STEPS.map((o) => o.label)}
-              activeIndex={radiusIndex < 0 ? RADIUS_STEPS.length - 1 : radiusIndex}
-              onChange={(i) => onChange({ radius: RADIUS_STEPS[i].value })}
-            />
-          </Section>
-
-          {/* Spécialités */}
+          {/* Spécialités — le "quoi", premier réglage rencontré */}
           <Section title="Spécialités">
             <div className="flex flex-wrap gap-2">
               {Object.entries(SPECIALTY_LABELS).map(([slug, label]) => {
@@ -243,13 +126,39 @@ export default function SearchFiltersSheet({
             </div>
           </Section>
 
-          {/* Note minimum — diagramme */}
+          {/* Distance — le "où", chips simples plutôt qu'un diagramme à points */}
+          <Section
+            title="Distance"
+            hint={hasLocation ? `Autour de ${locationLabel}` : 'Choisissez une ville ou activez la localisation pour filtrer par distance.'}
+          >
+            <div className="flex flex-wrap gap-2">
+              {RADIUS_STEPS.map((opt) => (
+                <Chip
+                  key={String(opt.value)}
+                  active={filters.radius === opt.value}
+                  icon={opt.value === null ? undefined : <MapPin size={13} />}
+                  onClick={() => onChange({ radius: opt.value })}
+                >
+                  {opt.label}
+                </Chip>
+              ))}
+            </div>
+          </Section>
+
+          {/* Note minimum — même gabarit de chips que Distance */}
           <Section title="Note minimum">
-            <StepTrack
-              options={RATING_STEPS.map((o) => o.label)}
-              activeIndex={ratingIndex < 0 ? 0 : ratingIndex}
-              onChange={(i) => onChange({ minRating: RATING_STEPS[i].value })}
-            />
+            <div className="flex flex-wrap gap-2">
+              {RATING_STEPS.map((opt) => (
+                <Chip
+                  key={String(opt.value)}
+                  active={filters.minRating === opt.value}
+                  icon={opt.value > 0 ? <Star size={13} /> : undefined}
+                  onClick={() => onChange({ minRating: opt.value })}
+                >
+                  {opt.label}
+                </Chip>
+              ))}
+            </div>
           </Section>
         </div>
 

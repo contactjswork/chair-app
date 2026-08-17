@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Building2, LayoutGrid, Loader2, MapPinOff, RefreshCw, SlidersHorizontal, User, X } from 'lucide-react';
+import { Building2, LayoutGrid, Loader2, LocateFixed, MapPinOff, RefreshCw, SlidersHorizontal, User, X } from 'lucide-react';
 import TopNav from '@/components/layout/TopNav';
 import BottomNav from '@/components/layout/BottomNav';
 import ReviewPromptTrigger from '@/components/ui/ReviewPromptTrigger';
@@ -18,6 +18,7 @@ import SearchResultCard from '@/components/search/SearchResultCard';
 import SearchMiniCard from '@/components/search/SearchMiniCard';
 import SearchEmptyState from '@/components/search/SearchEmptyState';
 import SearchResultSkeleton from '@/components/search/SearchResultSkeleton';
+import SearchFallbackBanner from '@/components/search/SearchFallbackBanner';
 import { useExploreSearch } from '@/hooks/useExploreSearch';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
@@ -219,6 +220,25 @@ function RechercheContent() {
     }
   }, []);
 
+  // ── Recentrage carte sur ma position ──────────────────────────────────────
+  // Ne recentre QUE la carte — ne relance jamais la recherche ni ne change le
+  // filtre de zone : l'utilisateur peut vouloir juste se repérer sans perdre
+  // les résultats déjà affichés (ex : il a choisi une autre ville).
+  const [locatingMe, setLocatingMe] = useState(false);
+  const recenterOnMe = useCallback(async () => {
+    if (userLocation) {
+      mapRef.current?.setCenter(userLocation, 14);
+      return;
+    }
+    setLocatingMe(true);
+    const ok = await requestGeo();
+    setLocatingMe(false);
+    if (ok) {
+      const stored = getStoredLocation();
+      if (stored) mapRef.current?.setCenter({ lat: stored.latitude, lng: stored.longitude }, 14);
+    }
+  }, [userLocation, requestGeo]);
+
   const modalDraft: SearchDraft = {
     q: filters.q,
     specialties: filters.specialties,
@@ -406,6 +426,16 @@ function RechercheContent() {
 
       {!explore.isLoading && !explore.error && displayResults.length > 0 && (
         <div className="space-y-2">
+          <SearchFallbackBanner
+            fallback={explore.fallback}
+            specialtyRelaxed={explore.specialtyRelaxed}
+            specialtyLabel={
+              filters.specialties.length === 1
+                ? (SPECIALTY_LABELS[filters.specialties[0]] ?? filters.specialties[0])
+                : filters.specialties.length > 1 ? `${filters.specialties.length} spécialités` : null
+            }
+            requestedRadius={filters.radius}
+          />
           {displayResults.map((r) => {
             const key = resultKey(r);
             return (
@@ -493,6 +523,20 @@ function RechercheContent() {
           </div>
         </div>
       )}
+
+      {/* Recentrer sur ma position — placé sous la barre flottante, à droite,
+          pour ne jamais chevaucher la mini fiche (pleine largeur, en bas). */}
+      <div className="absolute top-[76px] right-3 z-20">
+        <button
+          onClick={recenterOnMe}
+          disabled={locatingMe}
+          aria-label="Recentrer sur ma position"
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-white border border-neutral-100 text-neutral-700 transition-transform active:scale-90 disabled:opacity-50"
+          style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.1)' }}
+        >
+          {locatingMe ? <Loader2 size={17} className="animate-spin" /> : <LocateFixed size={17} />}
+        </button>
+      </div>
     </>
   );
 
@@ -578,7 +622,6 @@ function RechercheContent() {
         }}
         onReset={() => { autoFitRef.current = true; setMapMoved(false); explore.resetFilters(); }}
         resultsCount={explore.total}
-        counts={explore.counts}
         hasLocation={explore.center !== null || explore.bbox !== null}
         locationLabel={locationLabel}
         isLoading={explore.isLoading}

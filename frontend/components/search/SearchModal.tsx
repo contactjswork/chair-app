@@ -2,17 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
-  Clock, LayoutGrid, Loader2, MapPin, Navigation,
+  Clock, Loader2, MapPin, Navigation,
   Scissors, Search, User, X,
 } from 'lucide-react';
 import { search as searchApi } from '@/lib/api';
 import type { ApiSearchSuggestion } from '@/lib/types';
 import {
-  SPECIALTY_LABELS, geocodeCity, getClientPrefs, getRecentSearches, orderSpecialties,
+  SPECIALTY_LABELS, geocodeCity, getRecentSearches,
   removeRecentSearch, clearRecentSearches, saveRecentSearch,
 } from '@/lib/explore';
 import type { RecentSearch } from '@/lib/explore';
-import { getSpecialtyIcon } from './specialtyIcons';
 import { FilterChip } from '@/components/ui/Badge';
 import { PrimaryButton, IconButton } from '@/components/ui/Button';
 
@@ -34,14 +33,6 @@ interface Props {
   onApply: (draft: SearchDraft) => void;
 }
 
-const RADIUS_OPTIONS = [
-  { label: '5 km',   value: 5 },
-  { label: '10 km',  value: 10 },
-  { label: '20 km',  value: 20 },
-  { label: '50 km',  value: 50 },
-  { label: 'Toute la France', value: null },
-];
-
 const SUGGESTION_TAG: Record<string, string> = {
   specialty:   'Spécialité',
   hairdresser: 'Coiffeur',
@@ -50,14 +41,18 @@ const SUGGESTION_TAG: Record<string, string> = {
   service:     'Service',
 };
 
-/** Modale Recherche plein écran — quoi / où / quand + récents + catégories. */
+/** Modale Recherche plein écran — quoi (texte/spécialité) + où (ville/position) +
+ *  récents. La distance/note/tri vivent uniquement dans "Filtres" (une seule
+ *  surface pour ça) — ce modal ne duplique plus le grand picker de catégories. */
 export default function SearchModal({ open, initial, hasGeolocation, onRequestGeolocation, onClose, onApply }: Props) {
   const [q, setQ]                     = useState(initial.q);
   const [specialties, setSpecialties] = useState<string[]>(initial.specialties);
   const [cityInput, setCityInput]     = useState(initial.city ?? '');
   const [cityCoords, setCityCoords]   = useState(initial.cityCoords);
   const [useMyPosition, setUseMyPos]  = useState(initial.useMyPosition);
-  const [radius, setRadius]           = useState<number | null>(initial.radius);
+  // Le rayon est réglé dans "Filtres" (une seule surface pour ça) — ce
+  // modal ne fait que transmettre la valeur courante sans la modifier.
+  const radius = initial.radius;
 
   const [suggestions, setSuggestions] = useState<ApiSearchSuggestion[]>([]);
   // Le parent remonte la modale via une prop `key` à chaque ouverture — les
@@ -68,7 +63,6 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
   const [geoLoading, setGeoLoading]   = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const orderedSpecialties = orderSpecialties(Object.keys(SPECIALTY_LABELS), getClientPrefs());
 
   // Verrouillage du scroll de fond + fermeture Escape
   useEffect(() => {
@@ -302,21 +296,6 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
               )}
             </div>
             {cityError && <p className="text-[12px] text-neutral-500 mt-1.5 px-1">{cityError}</p>}
-
-            {/* Rayon */}
-            {(useMyPosition || cityInput.trim()) && (
-              <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2.5">
-                {RADIUS_OPTIONS.map((opt) => (
-                  <FilterChip
-                    key={String(opt.value)}
-                    active={radius === opt.value}
-                    onClick={() => setRadius(opt.value)}
-                  >
-                    {opt.label}
-                  </FilterChip>
-                ))}
-              </div>
-            )}
           </div>
 
           {/* ── Récents ── */}
@@ -353,37 +332,6 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
               ))}
             </div>
           )}
-
-          {/* ── Catégories ── */}
-          <div className="mt-7">
-            <h3 className="text-[15px] font-bold text-neutral-900 mb-3">Catégories</h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                onClick={() => setSpecialties([])}
-                className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all active:scale-[0.97] ${
-                  specialties.length === 0 ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400'
-                }`}
-              >
-                <LayoutGrid size={20} strokeWidth={1.6} className="text-neutral-900" />
-                <span className="text-[12px] font-semibold text-neutral-900 leading-tight text-left">Toutes les prestations</span>
-              </button>
-              {orderedSpecialties.map((slug) => {
-                const active = specialties.includes(slug);
-                return (
-                  <button
-                    key={slug}
-                    onClick={() => setSpecialties(active ? specialties.filter((s) => s !== slug) : [...specialties, slug])}
-                    className={`flex flex-col items-start gap-2.5 p-4 rounded-2xl border transition-all active:scale-[0.97] ${
-                      active ? 'border-neutral-900 bg-neutral-50' : 'border-neutral-200 hover:border-neutral-400'
-                    }`}
-                  >
-                    <span className="text-neutral-900">{getSpecialtyIcon(slug, 20)}</span>
-                    <span className="text-[12px] font-semibold text-neutral-900 leading-tight text-left">{SPECIALTY_LABELS[slug]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
         {/* CTA sticky */}
