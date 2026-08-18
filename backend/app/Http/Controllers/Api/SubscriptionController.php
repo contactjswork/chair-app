@@ -51,7 +51,15 @@ class SubscriptionController extends Controller
 
         try {
             $url = StripeService::createCheckoutSession($request->user(), $validated['plan']);
-        } catch (\Stripe\Exception\ApiErrorException $e) {
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            // abort(422, ...) dans StripeService (profil/salon manquant) — message
+            // métier déjà clair, on laisse Laravel le restituer tel quel.
+            throw $e;
+        } catch (\Throwable $e) {
+            // Toute autre panne (clé Stripe absente/invalide, price_id mal
+            // configuré, erreur réseau, erreur API Stripe elle-même...) ne
+            // doit JAMAIS remonter une erreur brute au client — seulement ce
+            // message, quelle que soit la cause exacte (loguée pour diagnostic).
             report($e);
             return response()->json(['message' => 'Le service de paiement est momentanément indisponible. Réessayez dans quelques instants.'], 502);
         }
