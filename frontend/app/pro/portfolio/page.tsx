@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
@@ -9,10 +10,11 @@ import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
+import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import {
   Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
   Eye, Star, TrendingUp, Archive, ArchiveRestore, Award, Scissors,
-  Pin, PinOff, GripVertical, Move, Bookmark, Sparkles, Film, Play,
+  Pin, PinOff, GripVertical, Move, Bookmark, Sparkles, Film, Play, ChevronLeft,
 } from 'lucide-react';
 
 const MAX_VIDEO_MB = 25;
@@ -292,10 +294,10 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
             Photos
           </button>
           <button type="button" onClick={() => isPremium ? setMode('video') : (window.location.href = '/pro/chair-plus')}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 text-xs font-semibold rounded-xl border transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
               mode === 'video' ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
             }`}>
-            <Film size={12} /> Vidéo courte
+            <Film size={12} className="flex-shrink-0" /> Vidéo
             {!isPremium && <PremiumBadge />}
           </button>
         </div>
@@ -678,32 +680,50 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-neutral-50 pb-28">
 
-      {/* Mobile header */}
-      <div className="md:hidden sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-neutral-100 px-4 h-14 pt-safe flex items-center justify-between">
-        <span className="text-base font-bold text-neutral-900">Portfolio</span>
-        <div className="flex items-center gap-2">
-          {saved && <span className="text-[11px] font-semibold text-green-600">Enregistré</span>}
-          {!showForm && posts.length > 1 && (
-            <button onClick={() => setReorderMode((v) => !v)}
-              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition-colors ${
-                reorderMode ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600'
-              }`}>
-              {reorderMode ? <Check size={13} /> : <Move size={13} />}
-              {reorderMode ? 'Terminé' : 'Réorganiser'}
-            </button>
-          )}
-          {!showForm && !reorderMode && (
-            <button onClick={() => setShowForm(true)}
-              className="flex items-center gap-1.5 bg-neutral-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl hover:bg-neutral-700 transition-colors">
-              <Plus size={13} /> Ajouter
-            </button>
-          )}
-        </div>
+      {/* Header mobile — même gabarit que le reste de CHAIR PRO (profil, services,
+          notifications...) : évite de dupliquer un second bandeau de marque
+          juste sous ProTopBar (retour de Julien, la page faisait "horrible"). */}
+      <div className="px-4 pt-4 md:hidden">
+        <DashboardPageHeader
+          title="Portfolio"
+          right={
+            saved ? (
+              <span className="flex items-center gap-1 text-[11px] font-semibold text-green-600">
+                <Check size={12} />Enregistré
+              </span>
+            ) : reorderMode ? (
+              <button onClick={() => setReorderMode(false)} className="text-[13px] font-semibold text-neutral-900">
+                Terminé
+              </button>
+            ) : (
+              <div className="flex items-center gap-3">
+                {!showForm && posts.length > 1 && (
+                  <button onClick={() => setReorderMode(true)}
+                    className="flex items-center gap-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
+                    <Move size={13} />Réorganiser
+                  </button>
+                )}
+                {!showForm && (
+                  <button onClick={() => setShowForm(true)} aria-label="Ajouter une réalisation"
+                    className="w-8 h-8 rounded-full bg-neutral-900 text-white flex items-center justify-center hover:bg-neutral-700 transition-colors flex-shrink-0">
+                    <Plus size={16} strokeWidth={2.25} />
+                  </button>
+                )}
+              </div>
+            )
+          }
+        />
       </div>
 
-      {/* Desktop header */}
-      <header className="hidden md:flex sticky top-0 z-10 bg-white border-b border-neutral-100 px-8 h-14 items-center justify-between">
-        <span className="text-sm font-bold text-neutral-900">Portfolio</span>
+      {/* Header desktop */}
+      <header className="hidden md:flex sticky top-0 z-10 bg-white border-b border-neutral-100 px-4 md:px-8 h-14 items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors p-1 -ml-1 rounded-lg">
+            <ChevronLeft size={18} />
+          </Link>
+          <span className="text-neutral-200">|</span>
+          <span className="text-sm font-semibold text-neutral-900">Portfolio</span>
+        </div>
         <div className="flex items-center gap-2.5">
           {saved && <span className="text-[12px] font-semibold text-green-600">Enregistré</span>}
           {!showForm && posts.length > 1 && (
@@ -724,7 +744,7 @@ export default function PortfolioPage() {
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 md:px-6 pt-5">
+      <div className="max-w-2xl mx-auto px-4 md:px-6 pt-3 md:pt-5">
 
         {/* Stats & temps forts — un seul panneau au lieu de plusieurs bandeaux empilés */}
         {!loading && posts.length > 0 && (
