@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 import { useProNav } from '@/hooks/useProNav';
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, ArrowLeft, LogOut } from 'lucide-react';
 import ChairLogo from '@/components/ui/ChairLogo';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
@@ -21,13 +21,11 @@ export default function ProSidebar() {
 
   return (
     <aside className="hidden md:flex flex-col w-60 bg-white shadow-[4px_0_20px_-8px_rgba(10,10,10,0.08)] fixed top-0 bottom-0 left-0 z-10">
-      {/* Le lien "App" vers /app a été retiré (retour de Julien — CHAIR et
-          CHAIR PRO sont deux applis séparées) : un coiffeur/gérant connecté
-          y était de toute façon immédiatement rebondi vers /pro par le garde
-          de app/app/layout.tsx, un aller-retour mort plutôt qu'un vrai
-          changement d'appli. */}
-      <div className="px-5 py-5 border-b border-neutral-50">
+      <div className="px-5 py-5 border-b border-neutral-50 flex items-center justify-between">
         <ChairLogo href={homeHref} size="sm" pro />
+        <Link href="/app" className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
+          <ArrowLeft size={12} /><span>App</span>
+        </Link>
       </div>
       {(user?.can_manage_salon && user?.has_hairdresser_profile) && (
         <div className="px-4 pt-3">

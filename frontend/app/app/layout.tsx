@@ -22,15 +22,10 @@ const PUBLIC_PREFIXES = [
   '/app/realisation/',
   '/app/avis/',
   '/app/scan/',
+  '/app/classements',
   // Suppression de compte doit rester atteignable depuis CHAIR PRO (gérant/coiffeur) —
-  // pas de flow de suppression dédié côté pro, celui-ci est réutilisé tel quel
-  // (page neutre sans AppShell depuis le fix retour de Julien — voir
-  // app/app/compte/supprimer/page.tsx).
+  // pas de flow de suppression dédié côté pro, celui-ci est réutilisé tel quel.
   '/app/compte/supprimer',
-  // /app/classements retiré : a maintenant son propre équivalent /pro/classements
-  // (retour de Julien — "Classement" depuis CHAIR PRO ouvrait l'interface CHAIR
-  // sans changer d'appli). Un coiffeur/gérant qui atterrit ici est renvoyé
-  // vers /pro comme n'importe quelle autre page CHAIR non publique.
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

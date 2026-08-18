@@ -1,18 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AlertCircle, Lock, Mail, MapPin, Phone, Scissors, User } from 'lucide-react';
+import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
-import ChoiceCard from '@/components/onboarding/ChoiceCard';
 import CityAutocomplete from '@/components/ui/CityAutocomplete';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 
-type Step = 'role' | 'name' | 'city' | 'email' | 'phone' | 'password';
-const STEPS: Step[] = ['role', 'name', 'city', 'email', 'phone', 'password'];
+type Step = 'name' | 'city' | 'email' | 'phone' | 'password';
+const STEPS: Step[] = ['name', 'city', 'email', 'phone', 'password'];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,13 +22,7 @@ const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 round
 
 export default function InscriptionPage() {
   const { register } = useAuth();
-  const router = useRouter();
   const { animClass, transition } = useStepTransition();
-
-  // Retour de Julien : un coiffeur qui choisissait "je suis coiffeur" ici
-  // restait sur l'inscription CHAIR au lieu de basculer sur CHAIR PRO (appli
-  // séparée) — cette étape lui évite de créer un compte client par erreur.
-  const [accountType, setAccountType] = useState<'client' | 'pro' | ''>('');
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -56,17 +48,6 @@ export default function InscriptionPage() {
     } else {
       submitForm();
     }
-  }
-
-  // "Coiffeur / Salon" bascule vers CHAIR PRO — appli séparée, jamais un
-  // compte client créé par erreur puis à corriger après coup.
-  function handleRoleContinue() {
-    if (accountType === 'pro') {
-      tapFeedback();
-      router.push('/pro/inscription');
-      return;
-    }
-    goNext();
   }
 
   function goBack() {
@@ -115,41 +96,6 @@ export default function InscriptionPage() {
       )}
 
       <div className={`flex-1 flex flex-col min-h-0 transition-all duration-180 ease-out ${animClass}`}>
-
-        {/* ── Rôle ── */}
-        {step === 'role' && (
-          <Screen
-            eyebrow="Bienvenue sur CHAIR"
-            title="Tu es plutôt...?"
-            ctaLabel={accountType === 'pro' ? 'Continuer sur CHAIR PRO' : 'Continuer'}
-            ctaDisabled={!accountType}
-            onNext={handleRoleContinue}
-          >
-            <div className="grid grid-cols-2 gap-3">
-              <ChoiceCard
-                icon={User}
-                label="Client"
-                sublabel="Je cherche un coiffeur"
-                active={accountType === 'client'}
-                onClick={() => setAccountType('client')}
-                variant="dark"
-              />
-              <ChoiceCard
-                icon={Scissors}
-                label="Coiffeur / Salon"
-                sublabel="Je propose mes services"
-                active={accountType === 'pro'}
-                onClick={() => setAccountType('pro')}
-                variant="dark"
-              />
-            </div>
-            {accountType === 'pro' && (
-              <p className="text-[11px] text-neutral-500 mt-4 text-center leading-relaxed">
-                Le compte professionnel se crée sur CHAIR PRO, une application séparée.
-              </p>
-            )}
-          </Screen>
-        )}
 
         {/* ── Nom ── */}
         {step === 'name' && (

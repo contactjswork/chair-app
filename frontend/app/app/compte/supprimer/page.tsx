@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Trash2, AlertTriangle, User, CalendarDays, Star, MessageSquare } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -40,25 +41,22 @@ export default function SupprimerComptePage() {
 
   if (deleted) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4 text-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
-          <Trash2 size={24} className="text-neutral-400" />
+      <AppShell>
+        <div className="max-w-lg mx-auto px-4 flex flex-col items-center justify-center min-h-[60vh] text-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center">
+            <Trash2 size={24} className="text-neutral-400" />
+          </div>
+          <h1 className="text-[20px] font-bold text-neutral-900">Compte supprimé</h1>
+          <p className="text-[14px] text-neutral-400 leading-relaxed max-w-[280px]">
+            Ton compte et toutes tes données ont été supprimés. Tu vas être redirigé dans quelques secondes.
+          </p>
         </div>
-        <h1 className="text-[20px] font-bold text-neutral-900">Compte supprimé</h1>
-        <p className="text-[14px] text-neutral-400 leading-relaxed max-w-[280px]">
-          Ton compte et toutes tes données ont été supprimés. Tu vas être redirigé dans quelques secondes.
-        </p>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    // Pas d'AppShell (TopNav/BottomNav) : cette page est atteignable depuis
-    // CHAIR *et* CHAIR PRO (retour de Julien — plus aucun endroit ne doit
-    // basculer sur l'interface de l'autre app sans vraiment en changer). Page
-    // neutre autoportante plutôt que dupliquer tout un flow de suppression
-    // côté pro pour une action aussi rare.
-    <div className="min-h-screen bg-white pt-safe">
+    <AppShell>
       <div className="max-w-lg mx-auto pb-28">
 
         {/* Header */}
@@ -133,6 +131,6 @@ export default function SupprimerComptePage() {
           Tu peux aussi envoyer une demande à <span className="underline">contact@getchair.app</span>
         </p>
       </div>
-    </div>
+    </AppShell>
   );
 }
