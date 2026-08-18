@@ -32,6 +32,38 @@ export const SPECIALTY_LABELS: Record<string, string> = {
   'soins-transformation': 'Soins & Transformation',
 };
 
+// Taxonomie finale (14 spécialités actives, décidée avec Julien le
+// 2026-08-18) : 6 homme + 8 femme. Source UNIQUE de la répartition par genre
+// — avant, chaque écran (SpecialtyPicker PRO, compte/modifier, onboarding
+// client) codait sa propre liste en dur, désynchronisées entre elles (des
+// spécialités actives en base n'apparaissaient nulle part). Toute évolution
+// de cette répartition se fait ICI, jamais en dupliquant une liste ailleurs.
+export const HOMME_SPECIALTY_SLUGS = ['barber', 'coupe-homme', 'coupe-longue', 'barbe', 'couleur-homme', 'afro-locks'];
+export const FEMME_SPECIALTY_SLUGS = ['couleur-balayage', 'coupe-femme', 'boucles-curly', 'texture-lissage', 'coloration', 'evenementiel', 'extensions', 'soins-transformation'];
+
+/**
+ * Illustrations de repli — utilisées uniquement quand une spécialité n'a pas
+ * encore de vraie photo en base (Specialty.image_url, administrable depuis
+ * Configuration > Spécialités). Priorité toujours : image_url > ce repli >
+ * emoji (s.icon) > icône vectorielle générique > jamais un carré vide.
+ */
+export const SPECIALTY_ILLUSTRATIONS: Record<string, string> = {
+  'couleur-balayage':     '/onboarding/balayage.png',
+  'coupe-femme':          '/onboarding/coupe.png',
+  'boucles-curly':        '/onboarding/boucles.png',
+  'texture-lissage':      '/onboarding/lissage.png',
+  'coloration':           '/onboarding/couleur-femme.png',
+  'barber':               '/onboarding/barber.png',
+  'coupe-homme':          '/onboarding/classique.png',
+  'coupe-longue':         '/onboarding/cheveux-longs.png',
+  'barbe':                '/onboarding/barbe.png',
+  'couleur-homme':        '/onboarding/couleur.png',
+  'afro-locks':           '/onboarding/dreads.png',
+  'soins-transformation': '/onboarding/couleur.png',
+  'evenementiel':         '/onboarding/chignon.png',
+  'extensions':           '/onboarding/cheveux-longs.png',
+};
+
 // Cache mémoire court + dédoublonnage des requêtes concurrentes — même
 // contrat que lib/appConfig.ts : jamais plus qu'un fetch par fenêtre, jamais
 // bloquant, repli silencieux si l'API échoue.

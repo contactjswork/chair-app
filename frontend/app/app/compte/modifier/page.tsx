@@ -10,7 +10,7 @@ import { api } from '@/lib/api';
 import { ChevronLeft, User, Camera, Check, Sparkles } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import CityAutocomplete from '@/components/ui/CityAutocomplete';
-import { getLiveSpecialtyImages } from '@/lib/specialties';
+import { getLiveSpecialties, SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS, type LiveSpecialty } from '@/lib/specialties';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -18,46 +18,18 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 type Gender = 'femme' | 'homme' | 'non-binaire' | null;
 
-interface StyleOpt { slug: string; label: string; icon: string }
-
-// Slugs alignés sur la table `specialties` réelle (voir
-// backend/database/seeders/SpecialtySeeder.php) — sans ça, les choix
-// n'appairent jamais aucun coiffeur côté RecommendationService
-// (specialtyMatchScore fait un array_intersect strict par slug).
-const STYLES_FEMME: StyleOpt[] = [
-  { slug: 'couleur-balayage', label: 'Balayage',         icon: '/onboarding/balayage.png' },
-  { slug: 'coupe-femme',      label: 'Coupe & Frange',   icon: '/onboarding/coupe.png' },
-  { slug: 'boucles-curly',    label: 'Boucles',          icon: '/onboarding/boucles.png' },
-  { slug: 'texture-lissage',  label: 'Lissage',          icon: '/onboarding/lissage.png' },
-  { slug: 'coloration',       label: 'Couleur Créative', icon: '/onboarding/couleur-femme.png' },
-  { slug: 'chignon',          label: 'Chignon & Soirée', icon: '/onboarding/chignon.png' },
-];
-
-const STYLES_HOMME: StyleOpt[] = [
-  { slug: 'barber',        label: 'Barber & Dégradé', icon: '/onboarding/barber.png' },
-  { slug: 'coupe-homme',   label: 'Coupe Classique',  icon: '/onboarding/classique.png' },
-  { slug: 'coupe-longue',  label: 'Cheveux Longs',    icon: '/onboarding/cheveux-longs.png' },
-  { slug: 'barbe',         label: 'Barbe',            icon: '/onboarding/barbe.png' },
-  { slug: 'couleur-homme', label: 'Couleur & Créatif',icon: '/onboarding/couleur.png' },
-  { slug: 'afro-locks',    label: 'Dreads & Locks',   icon: '/onboarding/dreads.png' },
-];
-
-const STYLES_NON_BINAIRE: StyleOpt[] = [
-  { slug: 'barber',           label: 'Barber & Dégradé',  icon: '/onboarding/barber.png' },
-  { slug: 'coupe-courte',     label: 'Coupe Courte',      icon: '/onboarding/classique.png' },
-  { slug: 'couleur-balayage', label: 'Balayage & Couleur', icon: '/onboarding/balayage.png' },
-  { slug: 'coupe-longue',     label: 'Cheveux Longs',     icon: '/onboarding/cheveux-longs.png' },
-  { slug: 'boucles-curly',    label: 'Boucles & Locks',   icon: '/onboarding/boucles.png' },
-  { slug: 'chignon',          label: 'Soirée & Créatif',  icon: '/onboarding/chignon.png' },
-];
-
-function getStyles(g: Gender): StyleOpt[] {
-  if (g === 'femme') return STYLES_FEMME;
-  if (g === 'homme') return STYLES_HOMME;
-  if (g === 'non-binaire') return STYLES_NON_BINAIRE;
-  return [...STYLES_FEMME, ...STYLES_HOMME].filter(
-    (s, i, arr) => arr.findIndex((x) => x.slug === s.slug) === i
-  );
+// Les 14 spécialités actives (source : /api/specialties) réparties par genre
+// selon HOMME_SPECIALTY_SLUGS/FEMME_SPECIALTY_SLUGS (lib/specialties.ts,
+// seule source de vérité) — plus de liste codée en dur ici qui pouvait
+// diverger de la vraie taxonomie en base.
+function getStyles(g: Gender, all: LiveSpecialty[]): LiveSpecialty[] {
+  const bySlug = new Map(all.map((s) => [s.slug, s]));
+  const pick = (slugs: string[]) => slugs.map((slug) => bySlug.get(slug)).filter((s): s is LiveSpecialty => Boolean(s));
+  if (g === 'femme') return pick(FEMME_SPECIALTY_SLUGS);
+  if (g === 'homme') return pick(HOMME_SPECIALTY_SLUGS);
+  // non-binaire / "je préfère ne pas dire" : les 14 spécialités, jamais un
+  // sous-ensemble caché faute de genre précisé.
+  return pick([...FEMME_SPECIALTY_SLUGS, ...HOMME_SPECIALTY_SLUGS]);
 }
 
 const GENDER_OPTIONS: { value: Gender; label: string; emoji: string }[] = [
@@ -91,10 +63,12 @@ export default function ModifierProfilPage() {
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState('');
 
-  // Photos réelles (Cloudinary, administrables sans build depuis
-  // Configuration > Spécialités) — {} tant qu'un slug n'a pas encore de
-  // photo en base : STYLES_*[].icon reste alors le repli, jamais un carré vide.
-  const [liveImages, setLiveImages] = useState<Record<string, string>>({});
+  // Taxonomie live (id/slug/name/image_url), administrable sans build depuis
+  // Configuration > Spécialités — [] tant que le fetch n'a pas résolu (bref
+  // état transitoire au montage, pas de repli statique ici : la liste des 14
+  // spécialités elle-même vit uniquement en base, contrairement au libellé
+  // d'une spécialité connue qui a un repli SPECIALTY_LABELS).
+  const [liveSpecialties, setLiveSpecialties] = useState<LiveSpecialty[]>([]);
 
   useEffect(() => {
     if (!isLoading && !user) router.replace('/connexion');
@@ -102,7 +76,7 @@ export default function ModifierProfilPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
+    getLiveSpecialties().then((list) => { if (!cancelled) setLiveSpecialties(list); });
     return () => { cancelled = true; };
   }, []);
 
@@ -284,22 +258,32 @@ export default function ModifierProfilPage() {
 
             {/* Styles — grille 3 colonnes, cartes icône compactes */}
             <div className="grid grid-cols-3 gap-1">
-              {getStyles(gender).map((opt) => {
+              {getStyles(gender, liveSpecialties).map((opt) => {
                 const active = selected.has(opt.slug);
+                const photo = opt.image_url;
+                const illustration = SPECIALTY_ILLUSTRATIONS[opt.slug];
                 return (
                   <button key={opt.slug} type="button" onClick={() => toggleSlug(opt.slug)}
                     className={`relative flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl transition-all duration-200 active:scale-[0.88] ${
                       active ? 'ring-2 ring-neutral-900 bg-white shadow-sm' : 'hover:bg-neutral-50'
                     }`}>
                     <div className="relative">
-                      {liveImages[opt.slug] ? (
+                      {photo ? (
                         // Vraie photo (Cloudinary) : cadre rond plein, pas de
                         // blend — réservé aux illustrations fond blanc ci-dessous.
                         <div className="relative w-[72px] h-[72px] rounded-2xl overflow-hidden">
-                          <Image src={liveImages[opt.slug]} alt={opt.label} fill sizes="72px" className="object-cover" />
+                          <Image src={photo} alt={opt.name} fill sizes="72px" className="object-cover" />
+                        </div>
+                      ) : illustration ? (
+                        <Image src={illustration} alt={opt.name} width={72} height={72} className="object-contain mix-blend-multiply" />
+                      ) : opt.icon ? (
+                        <div className="w-[72px] h-[72px] rounded-2xl bg-neutral-100 flex items-center justify-center">
+                          <span style={{ fontSize: 40 }} className="leading-none">{opt.icon}</span>
                         </div>
                       ) : (
-                        <Image src={opt.icon} alt={opt.label} width={72} height={72} className="object-contain mix-blend-multiply" />
+                        <div className="w-[72px] h-[72px] rounded-2xl bg-neutral-100 flex items-center justify-center">
+                          <Sparkles size={28} className="text-neutral-400" />
+                        </div>
                       )}
                       {active && (
                         <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-900 flex items-center justify-center"
@@ -309,7 +293,7 @@ export default function ModifierProfilPage() {
                       )}
                     </div>
                     <p className={`text-[11px] font-semibold text-center leading-tight ${active ? 'text-neutral-900' : 'text-neutral-500'}`}>
-                      {opt.label}
+                      {opt.name}
                     </p>
                   </button>
                 );

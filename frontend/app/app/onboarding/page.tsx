@@ -10,56 +10,25 @@ import { Check, ArrowRight, Share2 } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { useStepTransition } from '@/hooks/useStepTransition';
-import { getLiveSpecialtyImages } from '@/lib/specialties';
+import { getLiveSpecialties, SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS, type LiveSpecialty } from '@/lib/specialties';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 type Gender = 'femme' | 'homme' | 'non-binaire' | null;
 type Step   = 'genre' | 'styles' | 'done';
 
-interface StyleOption { slug: string; label: string; icon: string; }
-
-// Slugs alignés sur la table `specialties` réelle (voir
-// backend/database/seeders/SpecialtySeeder.php) — sans ça, les choix
-// onboarding ne matchent JAMAIS aucun coiffeur côté RecommendationService
-// (specialtyMatchScore fait un array_intersect strict par slug).
-const FEMME: StyleOption[] = [
-  { slug: 'couleur-balayage', label: 'Balayage',         icon: '/onboarding/balayage.png' },
-  { slug: 'coupe-femme',      label: 'Coupe & Frange',   icon: '/onboarding/coupe.png' },
-  { slug: 'boucles-curly',    label: 'Boucles',          icon: '/onboarding/boucles.png' },
-  { slug: 'texture-lissage',  label: 'Lissage',          icon: '/onboarding/lissage.png' },
-  { slug: 'coloration',       label: 'Couleur Créative', icon: '/onboarding/couleur-femme.png' },
-  { slug: 'chignon',          label: 'Chignon & Soirée', icon: '/onboarding/chignon.png' },
-];
-
-const HOMME: StyleOption[] = [
-  { slug: 'barber',        label: 'Barber & Dégradé', icon: '/onboarding/barber.png' },
-  { slug: 'coupe-homme',   label: 'Coupe Classique',  icon: '/onboarding/classique.png' },
-  { slug: 'coupe-longue',  label: 'Cheveux Longs',    icon: '/onboarding/cheveux-longs.png' },
-  { slug: 'barbe',         label: 'Barbe',            icon: '/onboarding/barbe.png' },
-  { slug: 'couleur-homme', label: 'Couleur & Créatif',icon: '/onboarding/couleur.png' },
-  { slug: 'afro-locks',    label: 'Dreads & Locks',   icon: '/onboarding/dreads.png' },
-];
-
-const ALL: StyleOption[] = [
-  { slug: 'couleur-balayage', label: 'Balayage',          icon: '/onboarding/balayage.png' },
-  { slug: 'barber',           label: 'Barber & Dégradé',  icon: '/onboarding/barber.png' },
-  { slug: 'coupe-femme',      label: 'Coupe & Frange',    icon: '/onboarding/coupe.png' },
-  { slug: 'coupe-homme',      label: 'Coupe Classique',   icon: '/onboarding/classique.png' },
-  { slug: 'boucles-curly',    label: 'Boucles & Locks',   icon: '/onboarding/boucles.png' },
-  { slug: 'coloration',       label: 'Couleur Créative',  icon: '/onboarding/couleur-femme.png' },
-  { slug: 'barbe',            label: 'Barbe',             icon: '/onboarding/barbe.png' },
-  { slug: 'chignon',          label: 'Chignon & Soirée',  icon: '/onboarding/chignon.png' },
-  { slug: 'coupe-longue',     label: 'Cheveux Longs',     icon: '/onboarding/cheveux-longs.png' },
-  { slug: 'texture-lissage',  label: 'Lissage',           icon: '/onboarding/lissage.png' },
-  { slug: 'couleur-homme',    label: 'Couleur & Créatif', icon: '/onboarding/couleur.png' },
-  { slug: 'afro-locks',       label: 'Dreads & Locks',    icon: '/onboarding/dreads.png' },
-];
-
-function getOptions(g: Gender): StyleOption[] {
-  if (g === 'femme') return FEMME;
-  if (g === 'homme') return HOMME;
-  return ALL;
+// Les 14 spécialités actives (source : /api/specialties) réparties par genre
+// selon HOMME_SPECIALTY_SLUGS/FEMME_SPECIALTY_SLUGS (lib/specialties.ts,
+// seule source de vérité) — plus de liste codée en dur ici qui pouvait
+// diverger de la vraie taxonomie en base (des spécialités actives
+// n'apparaissaient jamais dans cet onboarding).
+function getOptions(g: Gender, all: LiveSpecialty[]): LiveSpecialty[] {
+  const bySlug = new Map(all.map((s) => [s.slug, s]));
+  const pick = (slugs: string[]) => slugs.map((slug) => bySlug.get(slug)).filter((s): s is LiveSpecialty => Boolean(s));
+  if (g === 'femme') return pick(FEMME_SPECIALTY_SLUGS);
+  if (g === 'homme') return pick(HOMME_SPECIALTY_SLUGS);
+  // non-binaire / "je préfère ne pas dire" : les 14 spécialités.
+  return pick([...FEMME_SPECIALTY_SLUGS, ...HOMME_SPECIALTY_SLUGS]);
 }
 
 // Progression de l'onboarding client, mappée sur la même échelle 0-100 que
@@ -79,10 +48,9 @@ export default function ClientOnboardingPage() {
   const [saving,   setSaving]   = useState(false);
   const [myReferral, setMyReferral] = useState<ApiReferral | null>(null);
   const [shareOpen,  setShareOpen]  = useState(false);
-  // Photos réelles (Cloudinary, administrables sans build depuis
-  // Configuration > Spécialités) — {} tant qu'un slug n'a pas encore de photo
-  // en base : StyleOption.icon reste alors le repli, jamais un carré vide.
-  const [liveImages, setLiveImages] = useState<Record<string, string>>({});
+  // Taxonomie live (id/slug/name/image_url), administrable sans build depuis
+  // Configuration > Spécialités — [] tant que le fetch n'a pas résolu.
+  const [liveSpecialties, setLiveSpecialties] = useState<LiveSpecialty[]>([]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -92,7 +60,7 @@ export default function ClientOnboardingPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
+    getLiveSpecialties().then((list) => { if (!cancelled) setLiveSpecialties(list); });
     return () => { cancelled = true; };
   }, []);
 
@@ -141,7 +109,7 @@ export default function ClientOnboardingPage() {
   if (isLoading || !user) return null;
 
   const firstName = user.name.split(' ')[0];
-  const options   = getOptions(gender);
+  const options   = getOptions(gender, liveSpecialties);
 
   return (
     <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
@@ -224,6 +192,8 @@ export default function ClientOnboardingPage() {
               <div className={`gap-2 ${options.length <= 6 ? 'grid grid-cols-3 grid-rows-2 h-full' : 'grid grid-cols-3'}`}>
                 {options.map((opt) => {
                   const active = selected.has(opt.slug);
+                  const photo = opt.image_url;
+                  const illustration = SPECIALTY_ILLUSTRATIONS[opt.slug];
                   return (
                     <button
                       key={opt.slug}
@@ -233,14 +203,20 @@ export default function ClientOnboardingPage() {
                       }`}
                     >
                       <div className="relative">
-                        {liveImages[opt.slug] ? (
+                        {photo ? (
                           // Vraie photo (Cloudinary) : cadre plein, pas de
                           // blend — réservé aux illustrations fond blanc ci-dessous.
                           <div className="relative w-[68px] h-[68px] rounded-2xl overflow-hidden">
-                            <Image src={liveImages[opt.slug]} alt={opt.label} fill sizes="68px" className="object-cover" />
+                            <Image src={photo} alt={opt.name} fill sizes="68px" className="object-cover" />
+                          </div>
+                        ) : illustration ? (
+                          <Image src={illustration} alt={opt.name} width={68} height={68} className="object-contain mix-blend-multiply" />
+                        ) : opt.icon ? (
+                          <div className="w-[68px] h-[68px] rounded-2xl bg-neutral-100 flex items-center justify-center">
+                            <span style={{ fontSize: 38 }} className="leading-none">{opt.icon}</span>
                           </div>
                         ) : (
-                          <Image src={opt.icon} alt={opt.label} width={68} height={68} className="object-contain mix-blend-multiply" />
+                          <div className="w-[68px] h-[68px] rounded-2xl bg-neutral-100" />
                         )}
                         {active && (
                           <span
@@ -252,7 +228,7 @@ export default function ClientOnboardingPage() {
                         )}
                       </div>
                       <p className={`text-[11px] font-semibold text-center leading-tight px-1 ${active ? 'text-neutral-900' : 'text-neutral-500'}`}>
-                        {opt.label}
+                        {opt.name}
                       </p>
                     </button>
                   );
@@ -299,10 +275,10 @@ export default function ClientOnboardingPage() {
             {selected.size > 0 && (
               <div className="flex flex-wrap justify-center gap-1.5 mb-6 max-w-[300px]">
                 {[...selected].slice(0, 6).map((slug) => {
-                  const opt = [...FEMME, ...HOMME, ...ALL].find((o) => o.slug === slug);
+                  const opt = liveSpecialties.find((o) => o.slug === slug);
                   return opt ? (
                     <span key={slug} className="text-[11px] font-semibold text-neutral-600 bg-neutral-100 px-2.5 py-1 rounded-full">
-                      {opt.label}
+                      {opt.name}
                     </span>
                   ) : null;
                 })}
