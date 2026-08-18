@@ -22,7 +22,9 @@ import { PremiumBadge } from '@/components/ui/PremiumLock';
  * d'information blanc en dessous (jamais du texte sur fond flouté peu
  * lisible), avatar en médaillon à cheval sur la jonction photo/panneau.
  */
-export default function RecommendationCard({ r, size = 'lg' }: { r: RecommendationResult; size?: 'lg' | 'md' }) {
+export default function RecommendationCard({
+  r, size = 'lg', showChairPlusBadge = true,
+}: { r: RecommendationResult; size?: 'lg' | 'md'; showChairPlusBadge?: boolean }) {
   const banner = resolveMediaUrl(r.image);
   const avatar = resolveMediaUrl(r.avatar);
   // Photo de profil en priorité (retour Julien : la bannière salon prenait
@@ -66,14 +68,14 @@ export default function RecommendationCard({ r, size = 'lg' }: { r: Recommendati
               Coup de cœur
             </span>
           )}
-          {(r.is_verified || r.is_chair_plus) && (
+          {(r.is_verified || (showChairPlusBadge && r.is_chair_plus)) && (
             <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
               {r.is_verified && (
                 <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-sm">
                   <BadgeCheck size={11} className="text-neutral-900" />
                 </div>
               )}
-              {r.is_chair_plus && <PremiumBadge />}
+              {showChairPlusBadge && r.is_chair_plus && <PremiumBadge />}
             </div>
           )}
         </div>

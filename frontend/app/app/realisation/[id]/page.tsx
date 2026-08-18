@@ -40,6 +40,8 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
 
   const images    = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const avatarUrl = resolveMediaUrl(hairdresser.user.avatar);
+  const videoUrl  = post.type === 'video' ? resolveMediaUrl(post.video_url) : null;
+  const videoPoster = resolveMediaUrl(post.video_thumbnail_url) ?? undefined;
 
   return (
     <AppShell>
@@ -80,8 +82,20 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
           </div>
         </div>
 
-        {/* ── Carrousel photos ── */}
-        <PostCarousel images={images} alt={post.description || hairdresser.user.name} aspectClass="aspect-square" />
+        {/* ── Média : vidéo (lecture native) ou carrousel photos ── */}
+        {videoUrl ? (
+          <div className="relative w-full aspect-square bg-black">
+            <video
+              src={videoUrl}
+              poster={videoPoster}
+              controls
+              playsInline
+              className="w-full h-full object-contain"
+            />
+          </div>
+        ) : (
+          <PostCarousel images={images} alt={post.description || hairdresser.user.name} aspectClass="aspect-square" />
+        )}
 
         {/* ── Coiffeur ── */}
         <div className="px-4 pt-4 pb-3">

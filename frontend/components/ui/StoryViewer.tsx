@@ -105,7 +105,7 @@ export default function StoryViewer({
           <img
             src={resolveMediaUrl(current.media_url) ?? current.media_url}
             alt=""
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         ) : current ? (
           <video

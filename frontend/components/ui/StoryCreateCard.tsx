@@ -13,6 +13,53 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 // 'video_duration_seconds' => 'max:15') et avec le portfolio (même règle).
 const MAX_VIDEO_SECONDS = 15;
 
+/**
+ * Recadre une photo en 9:16 (centré) avant envoi, comme Instagram — une
+ * story doit toujours remplir l'écran, jamais de bandes noires en haut/bas
+ * parce que la photo d'origine était dans un autre format.
+ */
+function cropImageTo9x16(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(img.src);
+
+      const targetRatio = 9 / 16;
+      const srcRatio = img.width / img.height;
+
+      let cropWidth = img.width;
+      let cropHeight = img.height;
+      if (srcRatio > targetRatio) {
+        // Photo trop large — on recadre les côtés.
+        cropWidth = img.height * targetRatio;
+      } else {
+        // Photo trop haute/carrée — on recadre haut/bas.
+        cropHeight = img.width / targetRatio;
+      }
+      const srcX = (img.width - cropWidth) / 2;
+      const srcY = (img.height - cropHeight) / 2;
+
+      // Résolution de sortie plafonnée (perf/poids), en gardant le 9:16 exact.
+      const outWidth = Math.min(1080, Math.round(cropWidth));
+      const outHeight = Math.round(outWidth * (16 / 9));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = outWidth;
+      canvas.height = outHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Recadrage impossible.')); return; }
+      ctx.drawImage(img, srcX, srcY, cropWidth, cropHeight, 0, 0, outWidth, outHeight);
+
+      canvas.toBlob((blob) => {
+        if (!blob) { reject(new Error('Recadrage impossible.')); return; }
+        resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error("Impossible de lire cette photo.")); };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 /** Mesure la durée d'une vidéo côté client avant upload (via onLoadedMetadata). */
 function getVideoDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -47,20 +94,23 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
     storiesApi.mine().then(setMine).catch(() => {});
   }, [eligible]);
 
-  async function handleFile(file: File) {
-    const isVideo = file.type.startsWith('video/');
+  async function handleFile(rawFile: File) {
+    const isVideo = rawFile.type.startsWith('video/');
     setUploading(true);
     setError('');
     try {
       let durationSeconds: number | null = null;
       if (isVideo) {
-        durationSeconds = Math.round(await getVideoDuration(file));
+        durationSeconds = Math.round(await getVideoDuration(rawFile));
         if (durationSeconds > MAX_VIDEO_SECONDS) {
           setError(`Vidéo story — ${MAX_VIDEO_SECONDS} secondes maximum. Coupez-la avant d'envoyer.`);
           setUploading(false);
           return;
         }
       }
+      // Photo : toujours recadrée en 9:16 avant envoi (comme Instagram) — la
+      // vidéo n'est pas recadrée ici (recadrage vidéo = ré-encodage, hors scope).
+      const file = isVideo ? rawFile : await cropImageTo9x16(rawFile);
       const form = new FormData();
       form.append('media', file);
       form.append('type', isVideo ? 'video' : 'image');

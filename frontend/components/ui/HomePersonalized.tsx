@@ -162,7 +162,7 @@ export default function HomePersonalized({
             par carte plutôt que d'apparaître comme un bloc figé. */}
         {entries.map((r, i) => (
           <Reveal key={r.id} delay={(i % 4) * 70} className="flex-shrink-0">
-            <RecommendationCard r={r} size="lg" />
+            <RecommendationCard r={r} size="lg" showChairPlusBadge={false} />
           </Reveal>
         ))}
       </div>

@@ -195,11 +195,43 @@ function CardShareButton({
 
 // ── Carte verticale plein écran ───────────────────────────────────────
 
+function FeedVideo({ src, poster }: { src: string; poster?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Lecture uniquement quand la carte est visible à l'écran (feed scroll-snap
+  // vertical, plusieurs cartes montées à la fois) — sinon toutes les vidéos
+  // du feed se mettraient à jouer en même temps hors écran.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) video.play().catch(() => {}); else video.pause(); },
+      { threshold: 0.6 }
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      poster={poster}
+      className="absolute inset-0 w-full h-full object-cover"
+      loop
+      muted
+      playsInline
+    />
+  );
+}
+
 function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void }) {
   const hd       = post.hairdresser as (ApiHairdresserProfile & { user: ApiUser }) | undefined;
   const images   = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const avatarUrl = resolveMediaUrl(hd?.user?.avatar ?? null);
   const specialty = post.specialty;
+  const videoUrl   = post.type === 'video' ? resolveMediaUrl(post.video_url) : null;
+  const videoPoster = resolveMediaUrl(post.video_thumbnail_url) ?? undefined;
 
   return (
     <div
@@ -208,7 +240,11 @@ function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void 
     >
       {/* ── Zone image ── */}
       <div className="relative flex-1 overflow-hidden">
-        <InlineCarousel images={images} alt={post.description || hd?.user?.name || ''} />
+        {videoUrl ? (
+          <FeedVideo src={videoUrl} poster={videoPoster} />
+        ) : (
+          <InlineCarousel images={images} alt={post.description || hd?.user?.name || ''} />
+        )}
 
         <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/95 via-black/50 to-transparent pointer-events-none" />
 
