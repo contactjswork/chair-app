@@ -10,6 +10,10 @@ export interface NavItem {
   icon: typeof Home;
   /** Correspond à une raison sélectionnée dans pro_goals (onboarding) — mis en avant dans la nav. */
   highlight?: boolean;
+  /** Pointe vers l'autre appli (CHAIR) — ouvert en dehors du shell pro courant
+   *  plutôt que d'afficher la mauvaise interface à l'intérieur de CHAIR PRO
+   *  (retour de Julien : "quand un bouton mène vers l'autre appli, ça switch"). */
+  external?: boolean;
 }
 
 interface ProNavConfig {
@@ -37,7 +41,7 @@ function salarieNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/services',      label: 'Mes expertises',  icon: Scissors },
       { href: '/pro/business',      label: 'Performance',     icon: TrendingUp },
       { href: '/pro/badges',        label: 'Badges',          icon: Crown },
-      { href: '/app/classements',   label: 'Classement',      icon: Trophy },
+      { href: '/app/classements',   label: 'Classement',      icon: Trophy, external: true },
       { href: '/pro/parrainage',    label: 'Parrainage',      icon: Gift },
       { href: '/pro/chair-plus',    label: 'CHAIR+',          icon: Sparkles },
       { href: '/pro/offres-emploi', label: "Offres d'emploi", icon: Briefcase },
@@ -62,7 +66,7 @@ function independantNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/reservations',      label: 'Réservations',      icon: Clock },
       { href: '/pro/services',          label: 'Services',          icon: Scissors },
       { href: '/pro/badges',            label: 'Badges',            icon: Crown },
-      { href: '/app/classements',       label: 'Classement',        icon: Trophy },
+      { href: '/app/classements',       label: 'Classement',        icon: Trophy, external: true },
       { href: '/pro/parrainage',        label: 'Parrainage',        icon: Gift },
       { href: '/pro/chair-plus',        label: 'CHAIR+',            icon: Sparkles },
       { href: '/pro/fauteuils-a-louer', label: 'Louer un fauteuil', icon: Armchair },

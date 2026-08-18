@@ -94,8 +94,10 @@ export default function ProPlusPage() {
         )}
 
         <div className="mt-2 bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 divide-y divide-neutral-50 px-4 overflow-hidden">
-          {secondary.map(({ href, label, icon: Icon, highlight }) => (
+          {secondary.map(({ href, label, icon: Icon, highlight, external }) => (
             <Link key={href} href={href}
+              target={external ? '_blank' : undefined}
+              rel={external ? 'noopener noreferrer' : undefined}
               className="flex items-center gap-3.5 py-4 hover:bg-neutral-50 transition-colors -mx-4 px-4"
             >
               <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${highlight ? 'bg-neutral-900' : 'bg-neutral-100'}`}>

@@ -157,7 +157,7 @@ export default function ProComptePage() {
           <LogOut size={14} />Se déconnecter
         </button>
 
-        <Link href="/app/compte/supprimer"
+        <Link href="/app/compte/supprimer" target="_blank" rel="noopener noreferrer"
           className="w-full flex items-center justify-center gap-2 text-xs text-neutral-300 hover:text-red-500 transition-colors mt-2 py-2">
           <Trash2 size={12} />Supprimer mon compte
         </Link>

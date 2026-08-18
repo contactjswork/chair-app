@@ -23,7 +23,9 @@ export default function ProSidebar() {
     <aside className="hidden md:flex flex-col w-60 bg-white shadow-[4px_0_20px_-8px_rgba(10,10,10,0.08)] fixed top-0 bottom-0 left-0 z-10">
       <div className="px-5 py-5 border-b border-neutral-50 flex items-center justify-between">
         <ChairLogo href={homeHref} size="sm" pro />
-        <Link href="/app" className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
+        {/* Vers CHAIR (autre appli) — ouvert hors du shell pro courant, pas
+            de bascule silencieuse vers la mauvaise interface. */}
+        <Link href="/app" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-neutral-700 transition-colors">
           <ArrowLeft size={12} /><span>App</span>
         </Link>
       </div>
@@ -48,8 +50,10 @@ export default function ProSidebar() {
           <>
             <div className="border-t border-neutral-100 my-2" />
             <p className="px-3 pb-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400">Outils</p>
-            {secondary.map(({ href, label, icon: Icon, highlight }) => (
+            {secondary.map(({ href, label, icon: Icon, highlight, external }) => (
               <Link key={href} href={href}
+                target={external ? '_blank' : undefined}
+                rel={external ? 'noopener noreferrer' : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive(href) ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}

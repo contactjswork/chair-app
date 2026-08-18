@@ -115,6 +115,8 @@ export default function ComptePage() {
               <p className="text-xs text-neutral-400 text-center mb-4">Vous êtes coiffeur ?</p>
               <Link
                 href="/pro/inscription"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex items-center justify-between w-full border border-neutral-200 text-neutral-700 px-5 py-4 rounded-xl hover:border-neutral-400 active:scale-[0.98] active:bg-neutral-50 transition-all"
               >
                 <div className="flex items-center gap-3">
@@ -184,6 +186,8 @@ export default function ComptePage() {
                 {user.role === 'hairdresser' && (
                   <Link
                     href="/pro"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 active:scale-[0.97] active:bg-neutral-50 transition-all"
                   >
                     <LayoutDashboard size={14} />
@@ -193,6 +197,8 @@ export default function ComptePage() {
                 {user.role === 'salon_owner' && (
                   <Link
                     href="/pro/salon"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-2 px-5 py-2.5 border border-neutral-200 text-neutral-700 rounded-xl text-sm font-semibold hover:border-neutral-400 active:scale-[0.97] active:bg-neutral-50 transition-all"
                   >
                     <LayoutDashboard size={14} />
@@ -416,6 +422,8 @@ export default function ComptePage() {
                 {user.role === 'client' && (
                   <Link
                     href="/pro/inscription"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                   >
                     <div className="flex items-center gap-3">

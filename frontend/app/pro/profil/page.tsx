@@ -677,7 +677,7 @@ export default function DashboardProfilPage() {
             className="w-full flex items-center justify-center gap-2 text-sm text-neutral-400 hover:text-red-500 transition-colors py-2">
             <LogOut size={14} />Se déconnecter
           </button>
-          <Link href="/app/compte/supprimer"
+          <Link href="/app/compte/supprimer" target="_blank" rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-2 text-xs text-neutral-300 hover:text-red-500 transition-colors mt-1 py-2">
             <Trash2 size={12} />Supprimer mon compte
           </Link>
