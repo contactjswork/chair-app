@@ -88,6 +88,10 @@ export default function SpecialitesPage() {
       setImgError('Fichier image requis (JPG, PNG, WebP)');
       return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      setImgError('Image trop lourde (max 10 Mo)');
+      return;
+    }
     setImgUploading(true);
     setImgError('');
     try {
@@ -97,7 +101,10 @@ export default function SpecialitesPage() {
       setForm((f) => (f ? { ...f, image_url: res.image_url } : f));
       load();
     } catch (e) {
-      setImgError(e instanceof AdminApiError ? e.message : "Échec de l'upload");
+      // e.message est le message générique Laravel ("The given data was
+      // invalid.") — e.errors.image[0] porte la vraie raison (taille,
+      // format...), toujours préférée quand elle existe.
+      setImgError(e instanceof AdminApiError ? (e.errors?.image?.[0] ?? e.message) : "Échec de l'upload");
     } finally {
       setImgUploading(false);
     }
@@ -336,7 +343,7 @@ export default function SpecialitesPage() {
                     {imgError ? (
                       <p className="text-[11px] text-red-500">{imgError}</p>
                     ) : (
-                      <p className="text-[11px] text-neutral-400">JPG, PNG ou WebP — max 5 Mo. Remplace instantanément l&apos;icône partout (CHAIR + CHAIR PRO), sans déploiement.</p>
+                      <p className="text-[11px] text-neutral-400">JPG, PNG ou WebP — max 10 Mo. Remplace instantanément l&apos;icône partout (CHAIR + CHAIR PRO), sans déploiement.</p>
                     )}
                   </div>
                   <input

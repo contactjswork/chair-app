@@ -112,7 +112,9 @@ class AdminSpecialtyController extends Controller
         $specialty = Specialty::findOrFail($id);
 
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,webp|max:5120',
+            // 10 Mo : les vraies photos (PNG haute résolution notamment)
+            // dépassent vite les 5 Mo, contrairement à un avatar/logo classique.
+            'image' => 'required|image|mimes:jpeg,png,webp|max:10240',
         ]);
 
         $cloudinary = new CloudinaryService();
