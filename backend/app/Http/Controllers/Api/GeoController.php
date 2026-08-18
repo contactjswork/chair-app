@@ -43,6 +43,23 @@ class GeoController extends Controller
         ]);
     }
 
+    /**
+     * Autocomplétion adresse (numéro + rue) — champ "Adresse" une fois une
+     * ville choisie, scopée par citycode quand fourni. Public (pas de
+     * middleware auth) : utile dès l'inscription, avant token.
+     */
+    public function searchAddress(Request $request)
+    {
+        $validated = $request->validate([
+            'q'        => 'required|string|max:150',
+            'citycode' => 'nullable|string|max:10',
+        ]);
+
+        return response()->json([
+            'results' => GeocodingService::searchAddress($validated['q'], $validated['citycode'] ?? null),
+        ]);
+    }
+
     /** Ville la plus proche d'une position GPS — bouton "Ma position". */
     public function reverseCity(Request $request)
     {

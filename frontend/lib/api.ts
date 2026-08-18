@@ -116,6 +116,12 @@ export const geo = {
   searchCity: (q: string) =>
     api.get<{ results: CitySuggestion[] }>(`/geo/search-city?q=${encodeURIComponent(q)}`),
 
+  /** Autocomplétion adresse (numéro + rue) — scopée à une ville via son citycode une fois connue. */
+  searchAddress: (q: string, citycode?: string | null) =>
+    api.get<{ results: AddressSuggestion[] }>(
+      `/geo/search-address?q=${encodeURIComponent(q)}${citycode ? `&citycode=${encodeURIComponent(citycode)}` : ''}`
+    ),
+
   /** Ville la plus proche d'une position GPS — bouton "Ma position". */
   reverseCity: (lat: number, lng: number) =>
     api.get<CitySuggestion>(`/geo/reverse-city?lat=${lat}&lng=${lng}`),
@@ -125,8 +131,17 @@ export interface CitySuggestion {
   label: string;
   city: string;
   postcode: string | null;
+  /** Code INSEE — permet de scoper une recherche d'adresse à CETTE commune
+   *  précise (deux communes homonymes de départements différents n'auraient
+   *  sinon aucun moyen d'être distinguées). */
+  citycode: string | null;
   lat: number;
   lng: number;
+}
+
+export interface AddressSuggestion {
+  label: string;
+  postcode: string | null;
 }
 
 // ── Search ───────────────────────────────────────────────────────────

@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { useAuth } from '@/contexts/AuthContext';
 import { api, appointments as apptApi, specialtyProgress } from '@/lib/api';
 import { computeScore } from '@/lib/profileScore';
 import {
@@ -16,7 +15,7 @@ import {
   apptDateStr,
 } from '@/lib/types';
 import {
-  ChevronRight, Eye, Clock, LogOut, Gift, Pencil, CalendarDays,
+  ChevronRight, Eye, Clock, Gift, Pencil, CalendarDays,
 } from 'lucide-react';
 import CockpitHero from '@/components/ui/CockpitHero';
 import NextStepCard from '@/components/ui/NextStepCard';
@@ -32,7 +31,6 @@ import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
 export default function CockpitPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
-  const { logout } = useAuth();
   const router = useRouter();
 
   // Filet de sécurité : un compte double-identité en mode Gérant qui atterrit
@@ -287,13 +285,6 @@ export default function CockpitPage() {
         <Pencil size={15} className="text-neutral-600" />
         <p className="text-sm font-semibold text-neutral-700">Modifier mon profil</p>
       </Link>
-
-      {/* ── Déconnexion mobile ── */}
-      <div className="pb-2 md:hidden text-center">
-        <button onClick={logout} className="text-xs text-neutral-300 hover:text-neutral-500 transition-colors py-2">
-          <LogOut size={12} className="inline mr-1.5" />Se déconnecter
-        </button>
-      </div>
 
     </div>
   );

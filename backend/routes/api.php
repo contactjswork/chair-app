@@ -214,6 +214,7 @@ Route::get('/geocode', [GeocodingController::class, 'geocode']);
 Route::get('/geo/regions', [GeoController::class, 'regions']);
 Route::get('/geo/departments', [GeoController::class, 'departments']);
 Route::get('/geo/search-city', [GeoController::class, 'searchCity'])->middleware('throttle:30,1');
+Route::get('/geo/search-address', [GeoController::class, 'searchAddress'])->middleware('throttle:30,1');
 Route::get('/geo/reverse-city', [GeoController::class, 'reverseCity'])->middleware('throttle:30,1');
 Route::get('/search', [SearchController::class, 'search']);
 Route::get('/search/suggestions', [SearchController::class, 'suggestions']);

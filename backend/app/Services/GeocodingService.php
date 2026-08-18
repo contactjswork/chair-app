@@ -56,6 +56,11 @@ class GeocodingService
                         'label'    => $props['label'] ?? $props['city'] ?? '',
                         'city'     => $props['city'] ?? $props['label'] ?? '',
                         'postcode' => $props['postcode'] ?? null,
+                        // Code INSEE — nécessaire pour scoper une recherche de
+                        // rue à CETTE commune précise (searchAddress ci-dessous),
+                        // deux communes homonymes de départements différents
+                        // n'ayant sinon aucun moyen de les distinguer.
+                        'citycode' => $props['citycode'] ?? null,
                         'lat'      => (float) $coords[1],
                         'lng'      => (float) $coords[0],
                     ];
@@ -65,6 +70,43 @@ class GeocodingService
                 ->all();
         } catch (\Throwable $e) {
             Log::warning('GeocodingService::search API Adresse injoignable', ['message' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Autocomplétion adresse (numéro + rue) — utilisée par le champ "Adresse"
+     * de l'inscription pro une fois une ville choisie. Scopée par citycode
+     * quand connu (deux communes homonymes de départements différents
+     * n'auraient sinon aucun moyen d'être distinguées) ; sans citycode, reste
+     * une recherche libre sur toute la France.
+     *
+     * @return array<int, array{label: string, postcode: ?string}>
+     */
+    public static function searchAddress(string $query, ?string $citycode = null, int $limit = 8): array
+    {
+        $query = trim($query);
+        if (mb_strlen($query) < 3) return [];
+
+        try {
+            $params = ['q' => $query, 'type' => 'housenumber', 'limit' => min(10, max(1, $limit))];
+            if ($citycode) $params['citycode'] = $citycode;
+
+            $res = Http::timeout(3)->get(self::API_BASE . '/search/', $params);
+            if (!$res->successful()) return [];
+
+            return collect($res->json('features', []))
+                ->map(function ($feature) {
+                    $props = $feature['properties'] ?? [];
+                    $label = $props['label'] ?? null;
+                    if (!$label) return null;
+                    return ['label' => $label, 'postcode' => $props['postcode'] ?? null];
+                })
+                ->filter()
+                ->values()
+                ->all();
+        } catch (\Throwable $e) {
+            Log::warning('GeocodingService::searchAddress API Adresse injoignable', ['message' => $e->getMessage()]);
             return [];
         }
     }

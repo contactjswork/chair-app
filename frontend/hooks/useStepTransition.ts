@@ -15,7 +15,14 @@ export function useStepTransition(durationMs = 180) {
     setTimeout(() => { fn(); setAnim('in'); }, durationMs);
   }
 
-  const animClass = anim === 'out' ? 'opacity-0 translate-y-3' : 'opacity-100 translate-y-0';
+  // 'in' (repos) ne porte AUCUNE classe translate-* — même translate-y-0
+  // pose `transform: translate(0,0)` (une valeur "réelle", pas `none`), ce
+  // qui crée un nouveau bloc de positionnement et casse tout `position:
+  // fixed` descendant (le CTA sticky au-dessus du clavier, voir
+  // QuestionScreen.tsx) : il se retrouverait ancré à CETTE boîte au lieu du
+  // vrai viewport. Le fondu translate-y-3 → immobile reste identique à
+  // l'oeil, `transition-transform` anime très bien vers `none`.
+  const animClass = anim === 'out' ? 'opacity-0 translate-y-3' : 'opacity-100';
 
   return { animClass, transition, durationMs };
 }

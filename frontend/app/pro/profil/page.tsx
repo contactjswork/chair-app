@@ -11,7 +11,7 @@ import ImageUpload from '@/components/ui/ImageUpload';
 import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
 import {
   ChevronLeft, Save, Check, AlertCircle, Plus, Eye, Scissors,
-  Clock, ShieldCheck, Upload, Loader, X, ChevronDown, Sparkles,
+  Clock, ShieldCheck, Upload, Loader, X, ChevronDown, Sparkles, LogOut, Trash2,
 } from 'lucide-react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 
@@ -75,7 +75,7 @@ function computeCompletion(
 
 export default function DashboardProfilPage() {
   const { user, isLoading: authLoading } = useRequireAuth(['hairdresser']);
-  const { updateUser } = useAuth();
+  const { updateUser, logout } = useAuth();
 
   const [profile, setProfile]           = useState<ProfileData | null>(null);
   const [loading, setLoading]           = useState(true);
@@ -670,6 +670,18 @@ export default function DashboardProfilPage() {
             ))}
           </div>
         </section>
+
+        {/* ── Compte — tout en bas, hors de l'accueil (retour Julien) ──── */}
+        <div className="pt-2 pb-8">
+          <button onClick={logout}
+            className="w-full flex items-center justify-center gap-2 text-sm text-neutral-400 hover:text-red-500 transition-colors py-2">
+            <LogOut size={14} />Se déconnecter
+          </button>
+          <Link href="/app/compte/supprimer"
+            className="w-full flex items-center justify-center gap-2 text-xs text-neutral-300 hover:text-red-500 transition-colors mt-1 py-2">
+            <Trash2 size={12} />Supprimer mon compte
+          </Link>
+        </div>
       </div>
 
       {/* ── Sticky save bar (mobile) ─────────────────────────────────── */}

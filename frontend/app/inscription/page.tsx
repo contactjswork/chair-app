@@ -83,7 +83,9 @@ export default function InscriptionPage() {
   }
 
   return (
-    <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
+    // min-h (pas h fixe) + pas d'overflow-hidden : évite que le CTA passe
+    // sous le clavier mobile ouvert (voir pro/inscription/page.tsx).
+    <div className="min-h-[100dvh] bg-white flex flex-col">
       <OnboardingHeader progress={progress} onBack={stepIndex > 0 ? goBack : undefined} />
 
       {error && (
