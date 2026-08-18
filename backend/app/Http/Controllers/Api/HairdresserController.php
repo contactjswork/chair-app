@@ -30,8 +30,12 @@ class HairdresserController extends Controller
         $now = now();
         $map = [];
 
-        // 1. Banqué (déjà chargé sur le modèle, coût nul)
+        // 1. Mode test admin puis banqué (déjà chargés sur le modèle, coût nul)
         foreach ($hairdressers as $h) {
+            if ($h->chair_plus_test_mode) {
+                $map[$h->id] = true;
+                continue;
+            }
             if ($h->chair_plus_until && $now->lt($h->chair_plus_until)) {
                 $map[$h->id] = true;
             }

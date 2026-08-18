@@ -79,8 +79,10 @@ class LeaderboardController extends Controller
                 'hp.verified_visits_count',
                 'hp.is_verified',
                 'hp.identity_verified',
-                // Nécessaires pour RecommendationService::chairPlusMap() (banqué +
-                // abonnement individuel + CHAIR BUSINESS salon) — voir plus bas.
+                // Nécessaires pour RecommendationService::chairPlusMap() (mode
+                // test admin + banqué + abonnement individuel + CHAIR BUSINESS
+                // salon) — voir plus bas.
+                'hp.chair_plus_test_mode',
                 'hp.chair_plus_until',
                 'hp.salon_id',
                 'u.name',
@@ -238,7 +240,7 @@ class LeaderboardController extends Controller
         // partout ailleurs via RecommendationService::chairPlusMap().
         if (!empty($results)) {
             $profiles = HairdresserProfile::whereIn('id', array_column($results, 'id'))
-                ->get(['id', 'chair_plus_until', 'salon_id']);
+                ->get(['id', 'chair_plus_test_mode', 'chair_plus_until', 'salon_id']);
             $chairPlusMap = RecommendationService::chairPlusMap($profiles);
             $results = array_map(function ($row) use ($chairPlusMap) {
                 $row['is_chair_plus'] = !empty($chairPlusMap[$row['id']]);

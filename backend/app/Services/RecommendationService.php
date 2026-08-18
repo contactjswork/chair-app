@@ -358,6 +358,11 @@ class RecommendationService
         $map = [];
 
         foreach ($hairdressers as $h) {
+            // Mode test admin (voir HairdresserProfile::hasChairPlus()) — même
+            // priorité que là-bas, sinon un profil en mode test n'apparaît
+            // jamais CHAIR+ ici alors qu'il l'est réellement (hasChairPlus()
+            // vrai) pour toutes les fonctionnalités gated côté serveur.
+            if ($h->chair_plus_test_mode) { $map[$h->id] = true; continue; }
             if ($h->chair_plus_until && $now->lt($h->chair_plus_until)) $map[$h->id] = true;
         }
 
