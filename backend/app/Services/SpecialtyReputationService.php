@@ -358,9 +358,15 @@ class SpecialtyReputationService
 
         if (empty($scores)) return 0;
 
+        // end() exige une variable passée par référence — une constante de
+        // classe (self::RANK_WEIGHTS) n'en est pas une, PHP 8 lève une Error
+        // fatale ("cannot be passed by reference") dès qu'un coiffeur a plus
+        // de spécialités notées que RANK_WEIGHTS n'a de paliers (10) — cassait
+        // /profile et le profil public de tout coiffeur dans ce cas.
+        $lastWeight = self::RANK_WEIGHTS[count(self::RANK_WEIGHTS) - 1];
         $sum = 0.0;
         foreach ($scores as $i => $score) {
-            $weight = self::RANK_WEIGHTS[$i] ?? end(self::RANK_WEIGHTS);
+            $weight = self::RANK_WEIGHTS[$i] ?? $lastWeight;
             $sum += $score * $weight;
         }
 
