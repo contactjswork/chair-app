@@ -9,7 +9,7 @@ import type { ApiPost, ApiSpecialty } from '@/lib/types';
 import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
-import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
+import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS } from '@/lib/specialties';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import {
   Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
@@ -215,10 +215,17 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Retour de Julien : le filtre précédent n'excluait qu'1-2 slugs au lieu de
+  // vraiment filtrer par genre — on voyait "Boucles"/"Balayage" en mode Homme
+  // et "Barber & Dégradé"/"Dreads & Locks" en mode Femme. Utilise maintenant
+  // la répartition canonique (lib/specialties.ts) ; une spécialité non
+  // classée (ni homme ni femme dans cette répartition) reste toujours visible
+  // dans les deux sens, jamais cachée silencieusement.
+  const classifiedSlugs = new Set([...HOMME_SPECIALTY_SLUGS, ...FEMME_SPECIALTY_SLUGS]);
   const suggestedSpecialties = gender === 'homme'
-    ? specialties.filter(s => s.slug !== 'coupe-femme')
+    ? specialties.filter(s => HOMME_SPECIALTY_SLUGS.includes(s.slug) || !classifiedSlugs.has(s.slug))
     : gender === 'femme'
-    ? specialties.filter(s => s.slug !== 'coupe-homme' && s.slug !== 'barbe')
+    ? specialties.filter(s => FEMME_SPECIALTY_SLUGS.includes(s.slug) || !classifiedSlugs.has(s.slug))
     : specialties;
 
   function handleGenderChange(g: 'homme' | 'femme' | '') {
