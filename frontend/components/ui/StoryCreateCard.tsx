@@ -9,6 +9,27 @@ import { hasChairPlus, resolveMediaUrl } from '@/lib/types';
 import type { ApiHairdresserProfile, ApiStory } from '@/lib/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+// Doit rester synchronisé avec la limite serveur (StoryController::store,
+// 'video_duration_seconds' => 'max:15') et avec le portfolio (même règle).
+const MAX_VIDEO_SECONDS = 15;
+
+/** Mesure la durée d'une vidéo côté client avant upload (via onLoadedMetadata). */
+function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      const duration = video.duration;
+      URL.revokeObjectURL(video.src);
+      resolve(duration);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error('Impossible de lire cette vidéo.'));
+    };
+    video.src = URL.createObjectURL(file);
+  });
+}
 
 // Création de story — réservée CHAIR+. Le serveur fait autorité (403 si pas
 // abonné), cette carte évite juste à un non-abonné de tenter l'upload pour
@@ -31,9 +52,19 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
     setUploading(true);
     setError('');
     try {
+      let durationSeconds: number | null = null;
+      if (isVideo) {
+        durationSeconds = Math.round(await getVideoDuration(file));
+        if (durationSeconds > MAX_VIDEO_SECONDS) {
+          setError(`Vidéo story — ${MAX_VIDEO_SECONDS} secondes maximum. Coupez-la avant d'envoyer.`);
+          setUploading(false);
+          return;
+        }
+      }
       const form = new FormData();
       form.append('media', file);
       form.append('type', isVideo ? 'video' : 'image');
+      if (durationSeconds != null) form.append('video_duration_seconds', String(durationSeconds));
       const token = getStoredToken();
       const res = await fetch(`${API_URL}/stories`, {
         method: 'POST',
@@ -95,6 +126,8 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
       </div>
 
       {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+
+      <p className="text-[10px] text-neutral-400 mb-2">Vidéo story — {MAX_VIDEO_SECONDS} secondes maximum</p>
 
       {mine.length === 0 ? (
         <p className="text-xs text-neutral-400">Publiez du contenu du jour — nouvelle couleur, place disponible, coulisses...</p>

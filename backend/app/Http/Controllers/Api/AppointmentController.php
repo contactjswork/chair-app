@@ -499,6 +499,15 @@ class AppointmentController extends Controller
             ->where('hairdresser_id', $profile->id)
             ->count();
 
+        // Vraies vues cumulées du profil public (table profile_views, voir
+        // HairdresserController::show) — remplace l'ancien libellé "Visites
+        // profil" qui affichait en réalité visits_count (RDV terminés, pas
+        // des vues de page, voir incrément dans update() ci-dessus). Gratuit
+        // pour tous, comme le reste de ces stats de base.
+        $profileViewsCount = \DB::table('profile_views')
+            ->where('hairdresser_profile_id', $profile->id)
+            ->count();
+
         $revenueEstimate = Appointment::where('hairdresser_id', $profile->id)
             ->where('status', 'completed')
             ->whereNotNull('price')
@@ -524,6 +533,7 @@ class AppointmentController extends Controller
             'reviews_count'             => $profile->reviews_count,
             'review_breakdown'          => $reviewBreakdown,
             'visits_count'              => $profile->visits_count,
+            'profile_views_count'       => $profileViewsCount,
             'saved_count'               => $savedCount,
             'appointments_pending'      => (clone $appointmentBase)->where('status', 'pending')->count(),
             'appointments_confirmed'    => (clone $appointmentBase)->where('status', 'confirmed')->count(),

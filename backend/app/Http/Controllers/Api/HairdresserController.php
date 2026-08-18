@@ -158,6 +158,10 @@ class HairdresserController extends Controller
                     elseif ($dist <= 30)   $score += 5;
 
                     $h->_score = $score;
+                    // Badge CHAIR+ affiché sur les cartes listing (HairdresserCard,
+                    // HomeGeoStrips) — même map déjà calculée pour le boost de score,
+                    // juste exposée en plus dans la réponse JSON.
+                    $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
                     return $h;
                 })
                 ->sortByDesc('_score')
@@ -194,6 +198,7 @@ class HairdresserController extends Controller
                     $score += ($chairPlusMap[$h->id] ?? false) ? 30 : 0;
                     $score += $this->profileCompletionScore($h);
                     $h->_score = $score;
+                    $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
                     return $h;
                 })
                 ->filter(fn($h) => $h->_score > 0)    // exclure les profils vides
@@ -217,14 +222,18 @@ class HairdresserController extends Controller
             $days = max(7, min(365, intval($request->days ?? 60)));
             $hairdressers = $query
                 ->where('created_at', '>=', now()->subDays($days))
-                ->get()
-                ->map(function ($h) {
+                ->get();
+            $chairPlusMap = $this->batchChairPlusMap($hairdressers);
+
+            $hairdressers = $hairdressers
+                ->map(function ($h) use ($chairPlusMap) {
                     // Score léger pour les nouveaux : complétion + activité naissante
                     $score = $this->profileCompletionScore($h);
                     $score += min($h->posts_count ?? 0, 20) * 3;
                     $score += (float)($h->avg_rating ?? 0) * ($h->reviews_count ?? 0) * 2;
                     $score += $h->is_verified ? 20 : 0;
                     $h->_score = $score;
+                    $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
                     return $h;
                 })
                 ->filter(fn($h) => $h->_score >= 5)   // seuil minimal de qualité
@@ -255,6 +264,13 @@ class HairdresserController extends Controller
 
         $paginated = $query->paginate($perPage);
         BadgeService::attachGamification($paginated->items());
+
+        // Badge CHAIR+ — batché sur la page courante (jamais un N+1), même
+        // règle que les autres modes de ce contrôleur (voir batchChairPlusMap).
+        $chairPlusMap = $this->batchChairPlusMap(collect($paginated->items()));
+        foreach ($paginated->items() as $h) {
+            $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
+        }
 
         return response()->json($paginated);
     }
@@ -318,6 +334,10 @@ class HairdresserController extends Controller
         $posts = Post::with(['hairdresser.user', 'images', 'specialty'])
             ->where('hairdresser_id', $hairdresser->id)
             ->where('is_published', true)
+            // Les réalisations épinglées remontent aussi côté vitrine publique
+            // (jusqu'ici seul le dashboard pro appliquait ce tri).
+            ->orderByDesc('is_pinned')
+            ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->paginate(12);
 
@@ -343,6 +363,7 @@ class HairdresserController extends Controller
         // ── TRENDING — score engagements + saves + qualité coiffeur ─────────
         if ($request->sort === 'trending') {
             $posts = $query->orderByDesc('created_at')->limit(300)->get();
+            $this->attachChairPlusToPosts($posts);
 
             // Préchargement des saved_counts pour éviter N+1
             $postIds    = $posts->pluck('id')->toArray();
@@ -399,6 +420,7 @@ class HairdresserController extends Controller
         // Chaque réalisation est scorée sur SES PROPRES tags, pas sur les spécialités du coiffeur.
         if ($request->sort === 'personalized' && $authUser) {
             $posts = $query->with(['tags', 'hairdresser'])->orderByDesc('created_at')->limit(300)->get();
+            $this->attachChairPlusToPosts($posts);
 
             // Rayon géographique — la home ne doit jamais montrer un coiffeur de
             // Paris à un utilisateur de Haguenau. On filtre sur les coordonnées
@@ -538,6 +560,7 @@ class HairdresserController extends Controller
             $postIds = collect($paginated->items())->pluck('id')->toArray();
             $savedPostIds = SavedPost::where('user_id', $authUser->id)
                 ->whereIn('post_id', $postIds)->pluck('post_id')->toArray();
+            $this->attachChairPlusToPosts(collect($paginated->items()));
 
             $items = collect($paginated->items())->map(function ($post) use ($savedPostIds) {
                 $post->saved_by_user = in_array($post->id, $savedPostIds);
@@ -556,6 +579,7 @@ class HairdresserController extends Controller
         // ── SCORED GÉO ───────────────────────────────────────────────────────
         if ($request->sort === 'scored' && $lat !== null && $lng !== null) {
             $posts = $query->orderByDesc('created_at')->limit(200)->get();
+            $this->attachChairPlusToPosts($posts);
 
             $postIds     = $posts->pluck('id')->toArray();
             $savedCounts = SavedPost::whereIn('post_id', $postIds)
@@ -611,6 +635,7 @@ class HairdresserController extends Controller
         $query->orderByDesc('created_at');
         $result = $query->paginate($perPage);
         $this->attachSavedByUser($result->getCollection(), $authUser);
+        $this->attachChairPlusToPosts($result->getCollection());
         return response()->json($result);
     }
 
@@ -643,6 +668,26 @@ class HairdresserController extends Controller
             ->toArray();
         foreach ($posts as $post) {
             $post->saved_by_user = in_array($post->id, $savedIds);
+        }
+    }
+
+    /**
+     * Badge CHAIR+ sur le coiffeur auteur de chaque post du feed — batché sur
+     * l'ensemble des posts (une seule map calculée via batchChairPlusMap, donc
+     * jamais un N+1 par post) puis assigné directement sur l'objet `hairdresser`
+     * déjà chargé en eager-loading. PostCard/FeedPostCard lisent
+     * hairdresser.is_chair_plus exactement comme partout ailleurs (hasChairPlus()).
+     */
+    private function attachChairPlusToPosts($posts): void
+    {
+        if ($posts->isEmpty()) return;
+        $hairdressers = $posts->map(fn($p) => $p->hairdresser)->filter()->unique('id')->values();
+        if ($hairdressers->isEmpty()) return;
+        $chairPlusMap = $this->batchChairPlusMap($hairdressers);
+        foreach ($posts as $post) {
+            if ($post->hairdresser) {
+                $post->hairdresser->is_chair_plus = $chairPlusMap[$post->hairdresser->id] ?? false;
+            }
         }
     }
 

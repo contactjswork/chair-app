@@ -19,7 +19,7 @@ class StoryService
 {
     const LIFETIME_HOURS = 24;
 
-    public static function create(User $author, UploadedFile $file, string $type): Story
+    public static function create(User $author, UploadedFile $file, string $type, ?int $videoDurationSeconds = null): Story
     {
         $profile = $author->hairdresserProfile;
         if (!$profile || !$profile->hasChairPlus()) {
@@ -30,12 +30,13 @@ class StoryService
         $url = $cloudinary->upload($file, 'chair/stories', $type === 'video' ? 'video' : 'image');
 
         return Story::create([
-            'user_id'     => $author->id,
-            'media_url'   => $url,
-            'type'        => $type,
-            'expires_at'  => now()->addHours(self::LIFETIME_HOURS),
-            'views_count' => 0,
-            'created_at'  => now(),
+            'user_id'                 => $author->id,
+            'media_url'               => $url,
+            'type'                    => $type,
+            'video_duration_seconds'  => $type === 'video' ? $videoDurationSeconds : null,
+            'expires_at'              => now()->addHours(self::LIFETIME_HOURS),
+            'views_count'             => 0,
+            'created_at'              => now(),
         ]);
     }
 

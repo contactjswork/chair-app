@@ -102,11 +102,11 @@ class PostController extends Controller
             $request->validate([
                 // 25 Mo — plafond volontaire pour maîtriser le coût de stockage
                 // Cloudinary (voir docs/CHAIR_PLUS.md) ; durée/résolution/codec
-                // (30s max, 1080x1920, H264) sont des contraintes déclarées côté
+                // (15s max, 1080x1920, H264) sont des contraintes déclarées côté
                 // client (enregistrement/compression avant envoi) — aucune lib de
                 // transcodage serveur n'existe dans ce stack pour les vérifier ici.
                 'video'            => 'required|mimes:mp4,mov|max:25600',
-                'video_duration_seconds' => 'nullable|integer|min:1|max:30',
+                'video_duration_seconds' => 'nullable|integer|min:1|max:15',
                 'description'      => 'nullable|string|max:1000',
                 'gender'           => 'nullable|string|in:homme,femme',
                 'specialty_id'     => 'nullable|integer|exists:specialties,id',
@@ -329,10 +329,13 @@ class PostController extends Controller
     // ÉPINGLER
     // ════════════════════════════════════════════════════════════════
 
+    const MAX_PINNED_POSTS = 3;
+
     /**
      * POST /posts/{id}/pin — épingle/désépingle une réalisation en tête de
-     * portfolio. Pas de limite en base — la limite (3 max, cohérence
-     * visuelle) est appliquée côté frontend au moment d'épingler.
+     * portfolio. Limite de MAX_PINNED_POSTS épinglées appliquée côté
+     * frontend ET ici (défense en profondeur — le frontend seul ne protège
+     * pas contre un appel API direct).
      */
     public function togglePin(Request $request, int $postId)
     {
@@ -340,6 +343,18 @@ class PostController extends Controller
         $post    = Post::where('id', $postId)
             ->where('hairdresser_id', $profile?->id)
             ->firstOrFail();
+
+        if (!$post->is_pinned) {
+            $pinnedCount = Post::where('hairdresser_id', $profile?->id)
+                ->where('is_pinned', true)
+                ->count();
+
+            if ($pinnedCount >= self::MAX_PINNED_POSTS) {
+                return response()->json([
+                    'message' => 'Vous ne pouvez épingler que ' . self::MAX_PINNED_POSTS . ' réalisations maximum. Désépinglez-en une avant d\'en ajouter une nouvelle.',
+                ], 422);
+            }
+        }
 
         $post->update(['is_pinned' => !$post->is_pinned]);
 

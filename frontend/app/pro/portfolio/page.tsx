@@ -18,7 +18,10 @@ import {
 } from 'lucide-react';
 
 const MAX_VIDEO_MB = 25;
-const MAX_VIDEO_SECONDS = 30;
+const MAX_VIDEO_SECONDS = 15;
+// Doit rester synchronisé avec PostController::MAX_PINNED_POSTS côté backend
+// (défense en profondeur : cette limite est vérifiée ici ET côté serveur).
+const MAX_PINNED_POSTS = 3;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 const MAX_PHOTOS = 10;
@@ -389,8 +392,8 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   );
 }
 
-function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onTogglePin, dragHandlers }: {
-  post: ApiPost; specialties: ApiSpecialty[]; reorderMode: boolean;
+function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpdate, onTogglePin, dragHandlers }: {
+  post: ApiPost; specialties: ApiSpecialty[]; reorderMode: boolean; pinnedCount: number;
   onDelete: () => void; onUpdate: (updated: ApiPost) => void; onTogglePin: () => void;
   dragHandlers?: { onPointerDown: (e: React.PointerEvent) => void };
 }) {
@@ -402,16 +405,29 @@ function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onToggle
   const [archiving, setArchiving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pinning, setPinning] = useState(false);
+  const [pinError, setPinError] = useState('');
 
   const allImages = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const coverImg = allImages[0] ?? null;
 
   async function handleTogglePin() {
+    // Garde côté client — évite l'aller-retour réseau pour le cas courant.
+    // Le backend refait la même vérification en 422 (défense en profondeur),
+    // gérée dans le catch ci-dessous si jamais désynchronisée.
+    if (!post.is_pinned && pinnedCount >= MAX_PINNED_POSTS) {
+      setPinError(`Vous ne pouvez épingler que ${MAX_PINNED_POSTS} réalisations maximum. Désépinglez-en une avant d'en ajouter une nouvelle.`);
+      setTimeout(() => setPinError(''), 3500);
+      return;
+    }
     setPinning(true);
+    setPinError('');
     try {
       await api.post<{ is_pinned: boolean }>(`/posts/${post.id}/pin`, {});
       onTogglePin();
-    } catch { /* ignore */ }
+    } catch (err) {
+      setPinError(err instanceof Error ? err.message : 'Échec de l\'épinglage');
+      setTimeout(() => setPinError(''), 3500);
+    }
     setPinning(false);
   }
 
@@ -575,6 +591,11 @@ function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onToggle
               )}
             </div>
           </>
+        )}
+        {pinError && (
+          <div className="absolute inset-x-0 bottom-0 bg-neutral-900/90 text-white text-[10px] font-semibold px-2 py-1.5 leading-tight">
+            {pinError}
+          </div>
         )}
       </div>
 
@@ -825,6 +846,7 @@ export default function PortfolioPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {posts.map((post) => (
               <PostCard key={post.id} post={post} specialties={specialties} reorderMode={reorderMode}
+                pinnedCount={posts.filter((p) => p.is_pinned).length}
                 onDelete={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
                 onUpdate={(updated) => setPosts((prev) => prev.map((p) => p.id === updated.id ? updated : p))}
                 onTogglePin={() => setPosts((prev) => {

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { BadgeCheck, MapPin, Trophy } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SectionHeader } from './HomeGeoStrips';
 import Reveal from './Reveal';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
@@ -24,6 +25,7 @@ export interface RankedEntry {
   avg_rating?: number;
   reviews_count?: number;
   is_verified: boolean;
+  is_chair_plus?: boolean;
   // Présents uniquement sur un classement scopé "spécialité" (/leaderboard?specialty_id=)
   score?: number;
   level_name?: string;
@@ -174,6 +176,7 @@ export default function HomeRankingSection({
                   <div className="flex items-center gap-1.5">
                     <p className={`font-bold text-neutral-900 truncate ${isTop ? 'text-[15px]' : 'text-[14px]'}`}>{h.name}</p>
                     {h.is_verified && <BadgeCheck size={13} className="text-neutral-900 flex-shrink-0" />}
+                    {h.is_chair_plus && <PremiumBadge />}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
                     {h.city && (

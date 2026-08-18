@@ -5,6 +5,8 @@ import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { Star, Award, Flame } from 'lucide-react';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { hasChairPlus } from '@/lib/types';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 export default function HairdresserCard({
   hairdresser,
@@ -54,15 +56,18 @@ export default function HairdresserCard({
         {/* Overlay gradient doux */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-black/20" />
 
-        {/* ── Badge vérifié ── */}
-        {hairdresser.is_verified && (
-          <div className="absolute top-3 right-3 z-10">
-            <div className="w-6 h-6 rounded-full bg-white/95 flex items-center justify-center shadow">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
+        {/* ── Badge vérifié + CHAIR+ ── */}
+        {(hairdresser.is_verified || hasChairPlus(hairdresser)) && (
+          <div className="absolute top-3 right-3 z-10 flex items-center gap-1">
+            {hairdresser.is_verified && (
+              <div className="w-6 h-6 rounded-full bg-white/95 flex items-center justify-center shadow">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+              </div>
+            )}
+            {hasChairPlus(hairdresser) && <PremiumBadge />}
           </div>
         )}
 

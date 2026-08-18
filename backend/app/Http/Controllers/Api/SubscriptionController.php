@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
+use App\Services\FeatureFlagService;
 use App\Services\StripeService;
 use Illuminate\Http\Request;
 
@@ -43,6 +44,10 @@ class SubscriptionController extends Controller
         $validated = $request->validate([
             'plan' => 'required|in:chair_plus,chair_business',
         ]);
+
+        if ($validated['plan'] === 'chair_plus' && !FeatureFlagService::isEnabled('chair_plus_enabled')) {
+            return response()->json(['message' => "CHAIR+ n'est pas encore disponible."], 403);
+        }
 
         try {
             $url = StripeService::createCheckoutSession($request->user(), $validated['plan']);

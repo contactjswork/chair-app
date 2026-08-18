@@ -5,9 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Star, ChevronRight, BadgeCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveMediaUrl } from '@/lib/types';
+import { resolveMediaUrl, hasChairPlus } from '@/lib/types';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
 import { useDedupedList } from '@/contexts/HomeDedupeContext';
@@ -37,9 +38,14 @@ function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: stri
             {badge}
           </span>
         )}
-        {h.is_verified && (
-          <div className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-white/95 flex items-center justify-center shadow">
-            <BadgeCheck size={11} className="text-neutral-900" />
+        {(h.is_verified || hasChairPlus(h)) && (
+          <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+            {h.is_verified && (
+              <div className="w-5 h-5 rounded-full bg-white/95 flex items-center justify-center shadow">
+                <BadgeCheck size={11} className="text-neutral-900" />
+              </div>
+            )}
+            {hasChairPlus(h) && <PremiumBadge />}
           </div>
         )}
         <div className="absolute inset-0 flex items-center justify-center pb-12">
@@ -158,7 +164,10 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
                 </div>
               </div>
               <div className="text-center w-full">
-                <p className="text-[11px] font-bold text-neutral-900 truncate leading-tight">{h.user.name.split(' ')[0]}</p>
+                <p className="flex items-center justify-center gap-1 text-[11px] font-bold text-neutral-900 leading-tight">
+                  <span className="truncate">{h.user.name.split(' ')[0]}</span>
+                  {hasChairPlus(h) && <PremiumBadge />}
+                </p>
                 {spec && <p className="text-[10px] text-neutral-400 truncate leading-tight mt-0.5">{spec}</p>}
                 {hasRating && (
                   <p className="flex items-center justify-center gap-0.5 text-[10px] font-semibold text-neutral-500 mt-0.5">

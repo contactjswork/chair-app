@@ -3,10 +3,11 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Heart } from 'lucide-react';
+import { Heart, BadgeCheck } from 'lucide-react';
 import type { ApiPost, ApiHairdresserProfile, ApiUser } from '@/lib/types';
-import { getAfterImage, resolveMediaUrl } from '@/lib/types';
+import { getAfterImage, resolveMediaUrl, hasChairPlus } from '@/lib/types';
 import { savedPosts } from '@/lib/api';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 interface Props {
   post: ApiPost;
@@ -90,7 +91,11 @@ export default function FeedPostCard({ post, hairdresser: hdProp, aspect = 'port
           </p>
         )}
         {name && (
-          <p className="text-[12px] font-semibold text-white leading-tight truncate">{name}</p>
+          <p className="flex items-center gap-1 text-[12px] font-semibold text-white leading-tight">
+            <span className="truncate">{name}</span>
+            {hd?.is_verified && <BadgeCheck size={11} className="text-white flex-shrink-0" />}
+            {hasChairPlus(hd) && <PremiumBadge />}
+          </p>
         )}
       </div>
     </div>

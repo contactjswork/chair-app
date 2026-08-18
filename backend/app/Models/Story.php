@@ -9,7 +9,7 @@ class Story extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'user_id', 'media_url', 'type', 'expires_at', 'views_count', 'created_at',
+        'user_id', 'media_url', 'type', 'video_duration_seconds', 'expires_at', 'views_count', 'created_at',
     ];
 
     protected $casts = [

@@ -1,20 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import StarRating from '@/components/ui/StarRating';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi, analytics as analyticsApi, api, streak as streakApi } from '@/lib/api';
+import { resolveMediaUrl } from '@/lib/types';
 import type {
   ApiStats, ApiAppointment, ApiAnalytics, ApiAnalyticsTimeseries,
   ApiChairLevel, ApiNextBadge, ApiStreak, ApiHairdresserProfile,
 } from '@/lib/types';
 import { BadgeMedallion } from '@/components/ui/ChairBadges';
+import { PremiumLockCard } from '@/components/ui/PremiumLock';
 import {
   Users, Star, Eye, Bookmark, Euro, Percent, TrendingUp, TrendingDown, Minus,
   Crown, ChevronRight, Calendar, CheckCircle2, Clock, ImageIcon, Lightbulb, ArrowRight,
-  Flame, Medal, Scissors, MessageSquare, UserPlus,
+  Flame, Medal, Scissors, MessageSquare, UserPlus, Heart,
 } from 'lucide-react';
 
 // ── Tendance ──────────────────────────────────────────────────────────
@@ -93,9 +96,18 @@ const CHART_METRICS = [
   { key: 'followers'    as const, label: 'Abonnés',      color: '#f59e0b' },
 ];
 
-function MiniBarChart({ data, labels, period }: { data: number[]; labels: string[]; period: '7d' | '30d' | '12mo' }) {
+// Réservé CHAIR+ — backend ne calcule visits/conversion que si is_premium
+// (voir AnalyticsController::timeseries). Ajoutés aux boutons du graphique
+// existant uniquement pour les profils premium, jamais affichés/cliquables
+// pour les autres (pas de données à montrer).
+const PREMIUM_CHART_METRICS = [
+  { key: 'visits'     as const, label: 'Vues réelles', color: '#0ea5e9' },
+  { key: 'conversion' as const, label: 'Conversion',   color: '#10b981' },
+];
+
+function MiniBarChart({ data, labels, period, unit }: { data: number[]; labels: string[]; period: '7d' | '30d' | '90d' | '12mo'; unit?: string }) {
   const max = Math.max(1, ...data);
-  const showEvery = period === '30d' ? 5 : period === '12mo' ? 1 : 1;
+  const showEvery = period === '90d' ? 10 : period === '30d' ? 5 : period === '12mo' ? 1 : 1;
   return (
     <div className="flex items-end gap-[3px] h-24">
       {data.map((v, i) => (
@@ -104,7 +116,7 @@ function MiniBarChart({ data, labels, period }: { data: number[]; labels: string
             <div
               className="w-full max-w-[14px] rounded-t bg-neutral-900 transition-all"
               style={{ height: `${Math.max(2, (v / max) * 72)}px`, opacity: v === 0 ? 0.15 : 1 }}
-              title={`${labels[i]} : ${v}`}
+              title={`${labels[i]} : ${v}${unit ?? ''}`}
             />
           </div>
           {i % showEvery === 0 && (
@@ -127,8 +139,8 @@ export default function PerformancePage() {
   const [nextBadges,   setNextBadges]   = useState<ApiNextBadge[]>([]);
   const [streak,       setStreak]       = useState<ApiStreak | null>(null);
   const [loading,      setLoading]      = useState(true);
-  const [chartPeriod,  setChartPeriod]  = useState<'7d' | '30d' | '12mo'>('7d');
-  const [chartMetric,  setChartMetric]  = useState<typeof CHART_METRICS[number]['key']>('appointments');
+  const [chartPeriod,  setChartPeriod]  = useState<'7d' | '30d' | '90d' | '12mo'>('7d');
+  const [chartMetric,  setChartMetric]  = useState<typeof CHART_METRICS[number]['key'] | typeof PREMIUM_CHART_METRICS[number]['key']>('appointments');
   const [timeseries,   setTimeseries]   = useState<ApiAnalyticsTimeseries | null>(null);
   const [chartLoading, setChartLoading] = useState(true);
 
@@ -257,7 +269,10 @@ export default function PerformancePage() {
                   trend={analyticsData?.followers.trend}
                   context={analyticsData && analyticsData.followers.this_week > 0 ? `+${analyticsData.followers.this_week} cette semaine` : undefined} />
                 <StatCard icon={Star} label="Avis clients" value={stats?.reviews_count ?? 0} />
-                <StatCard icon={Eye} label="Visites profil" value={stats?.visits_count ?? 0} />
+                {/* Compteur cumulé réel (table profile_views), plus l'ancien
+                    "Visites profil" qui affichait en fait des RDV terminés
+                    (hairdresser_profiles.visits_count) — voir ApiStats.visits_count. */}
+                <StatCard icon={Eye} label="Vues du profil" value={stats?.profile_views_count ?? 0} />
                 <StatCard icon={Bookmark} label="Favoris" value={stats?.saved_count ?? 0} />
               </div>
               {analyticsData?.top_specialty && (
@@ -284,19 +299,29 @@ export default function PerformancePage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400">Évolution</p>
                 <div className="flex items-center gap-1 bg-neutral-100 rounded-full p-0.5">
-                  {(['7d', '30d', '12mo'] as const).map((p) => (
+                  {(analyticsData?.is_premium ? (['7d', '30d', '90d', '12mo'] as const) : (['7d', '30d', '12mo'] as const)).map((p) => (
                     <button key={p} onClick={() => { setChartPeriod(p); setChartLoading(true); }}
                       className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
                         chartPeriod === p ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'
                       }`}>
-                      {p === '7d' ? '7j' : p === '30d' ? '30j' : '12mois'}
+                      {p === '7d' ? '7j' : p === '30d' ? '30j' : p === '90d' ? '90j' : '12mois'}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
-                <div className="flex items-center gap-1.5 mb-3">
+                <div className="flex items-center gap-1.5 mb-3 flex-wrap">
                   {CHART_METRICS.map((m) => (
+                    <button key={m.key} onClick={() => setChartMetric(m.key)}
+                      className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
+                        chartMetric === m.key ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200'
+                      }`}>
+                      {m.label}
+                    </button>
+                  ))}
+                  {/* Réservé CHAIR+ — timeseries.visits/conversion ne sont
+                      présents que si is_premium (voir AnalyticsController::timeseries). */}
+                  {analyticsData?.is_premium && PREMIUM_CHART_METRICS.map((m) => (
                     <button key={m.key} onClick={() => setChartMetric(m.key)}
                       className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
                         chartMetric === m.key ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200'
@@ -308,10 +333,112 @@ export default function PerformancePage() {
                 {chartLoading || !timeseries ? (
                   <div className="h-24 bg-neutral-50 rounded-xl animate-pulse" />
                 ) : (
-                  <MiniBarChart data={timeseries[chartMetric]} labels={timeseries.labels} period={chartPeriod} />
+                  <MiniBarChart
+                    data={(timeseries[chartMetric as keyof ApiAnalyticsTimeseries] as number[] | undefined) ?? []}
+                    labels={timeseries.labels}
+                    period={chartPeriod}
+                    unit={chartMetric === 'conversion' ? '%' : undefined}
+                  />
                 )}
               </div>
+              {analyticsData && !analyticsData.is_premium && (
+                <div className="mt-3">
+                  <PremiumLockCard
+                    title="Vues réelles & conversion"
+                    subtitle="Visites du profil (pas seulement les RDV) et taux de conversion en rendez-vous, jusqu'à 90 jours d'historique."
+                    compact
+                  />
+                </div>
+              )}
             </section>
+
+            {/* ── Analytics avancées (CHAIR+) ── */}
+            {analyticsData && (
+              <section>
+                <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Analytics avancées</p>
+                {analyticsData.is_premium ? (
+                  <div className="space-y-3">
+                    {(analyticsData.premium?.top_services.length ?? 0) > 0 && (
+                      <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
+                        <p className="text-[13px] font-bold text-neutral-900 mb-3">Services les plus réservés</p>
+                        <div className="space-y-2">
+                          {analyticsData.premium!.top_services.map((s, i) => (
+                            <div key={s.id} className="flex items-center gap-3">
+                              <span className="text-[11px] font-bold text-neutral-300 w-4 flex-shrink-0">{i + 1}</span>
+                              <p className="flex-1 text-[13px] font-medium text-neutral-800 truncate">{s.name}</p>
+                              <span className="text-[11px] text-neutral-400 flex-shrink-0">{s.bookings_count} RDV</span>
+                              <span className="text-[12px] font-semibold text-neutral-900 flex-shrink-0">{s.revenue.toFixed(0)}€</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(analyticsData.premium?.top_posts.length ?? 0) > 0 && (
+                      <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
+                        <p className="text-[13px] font-bold text-neutral-900 mb-3">Réalisations les plus performantes</p>
+                        <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
+                          {analyticsData.premium!.top_posts.map((p) => (
+                            <Link key={p.id} href="/pro/realisations" className="flex-shrink-0 w-[72px]">
+                              <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-neutral-100">
+                                {p.cover_image && (
+                                  <Image src={resolveMediaUrl(p.cover_image)!} alt="" fill className="object-cover" sizes="72px" />
+                                )}
+                              </div>
+                              <p className="text-[9px] text-neutral-400 mt-1 text-center">{p.score} pts</p>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {((analyticsData.premium?.best_times.by_day.length ?? 0) > 0 || (analyticsData.premium?.best_times.by_hour.length ?? 0) > 0) && (
+                      <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
+                        <p className="text-[13px] font-bold text-neutral-900 mb-3">Meilleurs jours &amp; heures</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wide mb-2">Jours</p>
+                            <div className="space-y-1.5">
+                              {analyticsData.premium!.best_times.by_day.slice(0, 3).map((d) => (
+                                <div key={d.day} className="flex items-center justify-between text-[12px]">
+                                  <span className="text-neutral-700">{d.day}</span>
+                                  <span className="font-semibold text-neutral-900">{d.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-wide mb-2">Heures</p>
+                            <div className="space-y-1.5">
+                              {analyticsData.premium!.best_times.by_hour.slice(0, 3).map((h) => (
+                                <div key={h.hour} className="flex items-center justify-between text-[12px]">
+                                  <span className="text-neutral-700">{h.hour}h</span>
+                                  <span className="font-semibold text-neutral-900">{h.count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <StatCard icon={Heart} label="Favoris cette semaine" value={analyticsData.premium?.saved_growth.this_week ?? 0}
+                      trend={analyticsData.premium?.saved_growth.trend}
+                      context={`${analyticsData.premium?.saved_growth.total ?? 0} au total`} />
+
+                    {!analyticsData.premium?.top_services.length && !analyticsData.premium?.top_posts.length
+                      && !analyticsData.premium?.best_times.by_day.length && (
+                      <p className="text-[12px] text-neutral-400 text-center py-2">Pas encore assez de données pour ces analyses.</p>
+                    )}
+                  </div>
+                ) : (
+                  <PremiumLockCard
+                    title="Analytics avancées"
+                    subtitle="Services les plus réservés, réalisations qui marchent le mieux, meilleurs jours/heures et croissance des favoris."
+                  />
+                )}
+              </section>
+            )}
 
             {/* ── Revenus (indépendants) ── */}
             {isIndependent && (

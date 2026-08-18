@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, ImageOff } from 'lucide-react';
+import { Heart, ImageOff, Pin } from 'lucide-react';
 import type { ApiPost } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 import EmptyState from './EmptyState';
@@ -16,6 +16,16 @@ function LikesBadge({ count }: { count: number }) {
     <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-semibold text-white bg-black/35 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
       <Heart size={10} fill="currentColor" strokeWidth={0} />
       {count}
+    </span>
+  );
+}
+
+/** Badge sobre — même info que côté dashboard pro, jamais montrée au visiteur avant. */
+function PinnedBadge() {
+  return (
+    <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[9px] font-bold tracking-wide uppercase text-neutral-900 bg-white/90 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
+      <Pin size={9} fill="currentColor" strokeWidth={0} />
+      Épinglé
     </span>
   );
 }
@@ -35,6 +45,7 @@ function PortfolioItem({ post }: { post: ApiPost }) {
         className="object-cover group-hover:scale-[1.06] transition-transform duration-500 ease-out"
         sizes="(max-width: 768px) 33vw, 224px"
       />
+      {post.is_pinned && <PinnedBadge />}
       <LikesBadge count={post.likes_count} />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/35 transition-colors duration-300 flex flex-col justify-end p-2">
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-y-0.5">
@@ -69,6 +80,7 @@ function FeaturedItem({ post }: { post: ApiPost }) {
         sizes="(max-width: 768px) 67vw, 450px"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+      {post.is_pinned && <PinnedBadge />}
       <LikesBadge count={post.likes_count} />
       <div className="absolute bottom-0 left-0 right-0 p-3">
         {post.specialty && (
@@ -115,6 +127,7 @@ export default function PortfolioGrid({ posts }: Props) {
     return (
       <Link href={`/realisation/${posts[0].id}`} className="relative block aspect-[4/3] overflow-hidden bg-neutral-100 group md:rounded-2xl">
         <Image src={url} alt="Réalisation" fill priority className="object-cover group-hover:scale-[1.03] transition-transform duration-700" sizes="100vw" />
+        {posts[0].is_pinned && <PinnedBadge />}
       </Link>
     );
   }

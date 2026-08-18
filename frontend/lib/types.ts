@@ -24,6 +24,7 @@ export interface ApiLeaderboardEntry {
   posts_count: number;
   is_verified: boolean;
   identity_verified: boolean;
+  is_chair_plus?: boolean;
   score: number;
 }
 
@@ -47,6 +48,7 @@ export interface ApiSpecialtyLeaderboardEntry {
   level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
   is_reference: boolean;
   is_verified: boolean;
+  is_chair_plus?: boolean;
 }
 
 export interface ApiSpecialtyLeaderboard {
@@ -84,6 +86,8 @@ export interface ApiAnalyticsTrend {
 }
 
 export interface ApiAnalytics {
+  /** Statut CHAIR+ du profil — pilote l'affichage verrouillé de `premium` côté frontend. */
+  is_premium: boolean;
   posts: { this_week: number; last_week: number; trend: ApiAnalyticsTrend };
   appointments: {
     this_week: number; last_week: number;
@@ -96,6 +100,22 @@ export interface ApiAnalytics {
   recommendations: Array<{
     type: string; title: string; desc: string; cta: string; href: string; urgency: 'high' | 'medium' | 'low';
   }>;
+  /** Réservé CHAIR+ — null si is_premium=false (jamais calculé côté serveur dans ce cas). */
+  premium: ApiAnalyticsPremium | null;
+}
+
+export interface ApiAnalyticsPremium {
+  /** Services les plus réservés (RDV confirmés/terminés), top 5. */
+  top_services: Array<{ id: number; name: string; bookings_count: number; revenue: number }>;
+  /** Réalisations les plus performantes (score = vues + likes×2 + favoris×3), top 5. */
+  top_posts: Array<{ id: number; cover_image: string | null; views_count: number; likes_count: number; saved_count: number; score: number }>;
+  /** Jours/heures les plus performants pour les RDV confirmés/terminés. */
+  best_times: {
+    by_day: Array<{ day: string; count: number }>;
+    by_hour: Array<{ hour: number; count: number }>;
+  };
+  /** Croissance des favoris (saved_profiles) — même pattern this_week/last_week/trend que followers. */
+  saved_growth: { this_week: number; last_week: number; trend: ApiAnalyticsTrend; total: number };
 }
 
 export interface ApiAnalyticsTimeseries {
@@ -342,7 +362,7 @@ export interface ApiPost {
   id: number;
   type: 'before_after' | 'result' | 'technique' | 'video';
   description: string;
-  /** Vidéo courte CHAIR+ (type='video' uniquement) — 30s max, 25 Mo max. */
+  /** Vidéo courte CHAIR+ (type='video' uniquement) — 15s max, 25 Mo max. */
   video_url?: string | null;
   video_thumbnail_url?: string | null;
   video_duration_seconds?: number | null;
@@ -595,7 +615,10 @@ export interface ApiStats {
   avg_rating: string;
   reviews_count: number;
   review_breakdown?: Record<number, number>; // { 1: X, 2: X, 3: X, 4: X, 5: X }
+  /** Trompeur malgré son nom : proxy de RDV terminés (hairdresser_profiles.visits_count), PAS des vues de page. Préférer profile_views_count pour l'affichage. Conservé pour compat (chairLevel, admin, ranking). */
   visits_count: number;
+  /** Vraies vues cumulées du profil public (table profile_views) — à afficher, jamais visits_count. */
+  profile_views_count: number;
   saved_count: number;
   appointments_pending: number;
   appointments_confirmed: number;

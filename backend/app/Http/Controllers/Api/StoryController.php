@@ -34,11 +34,20 @@ class StoryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'media' => 'required|file|mimes:jpeg,png,webp,mp4,mov|max:51200',
-            'type'  => 'required|in:image,video',
+            'media'                   => 'required|file|mimes:jpeg,png,webp,mp4,mov|max:51200',
+            'type'                    => 'required|in:image,video',
+            // Même limite que le portfolio (15s max) — mesurée côté client via
+            // onLoadedMetadata, revalidée ici (aucune lib de transcodage
+            // serveur dans ce stack pour la vérifier autrement).
+            'video_duration_seconds'  => 'nullable|integer|min:1|max:15',
         ]);
 
-        $story = StoryService::create($request->user(), $request->file('media'), $validated['type']);
+        $story = StoryService::create(
+            $request->user(),
+            $request->file('media'),
+            $validated['type'],
+            $validated['video_duration_seconds'] ?? null
+        );
 
         return response()->json($story, 201);
     }

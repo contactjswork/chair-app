@@ -1,105 +1,59 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { subscription } from '@/lib/api';
+import { isFeatureEnabled } from '@/lib/featureFlags';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
+import { PremiumBadge } from '@/components/ui/PremiumLock';
+import PremiumUpsellSheet from '@/components/ui/PremiumUpsellSheet';
 import {
-  ArrowLeft, Sparkles, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
-  Camera, BadgeCheck, TrendingUp, Heart, BarChart3, Film, Headphones,
-  ChevronDown, CalendarCheck, Repeat, Euro, Star, X,
-  Bot, Download, LayoutTemplate, AtSign, FlaskConical,
+  ArrowLeft, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
+  Camera, BadgeCheck, TrendingUp, Heart, BarChart3, Film, Pin, X, Sparkles,
 } from 'lucide-react';
-
-// ── Reveal — fondu discret au scroll, sans dépendance externe ──────────────
-
-function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setVisible(true); obs.disconnect(); }
-    }, { threshold: 0.15 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`transition-all duration-700 ease-out ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'} ${className}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {children}
-    </div>
-  );
-}
 
 // ── Data ─────────────────────────────────────────────────────────────────
 
-const VALUE_PROPS = [
+const BENEFIT_GROUPS = [
   {
-    icon: TrendingUp, title: 'Plus de visibilité',
-    desc: "Un léger boost dans les recherches locales et le badge Certifié CHAIR visible partout — recherche, profil, portfolio. Le mérite reste toujours le premier facteur de classement.",
+    title: 'Créez davantage',
+    items: [
+      { icon: Camera, label: 'Stories',          desc: '24h, réservées à vos abonnés.' },
+      { icon: Film,   label: 'Vidéos',            desc: 'Format court pour montrer votre geste.' },
+      { icon: Pin,    label: 'Posts épinglés',    desc: '3 réalisations en tête de votre portfolio.' },
+    ],
   },
   {
-    icon: CalendarCheck, title: 'Plus de réservations',
-    desc: "Les vidéos courtes et les stories captent l'attention là où les photos seules ne suffisent plus — plus d'engagement, plus de clics vers votre profil.",
+    title: 'Soyez davantage visible',
+    items: [
+      { icon: BadgeCheck,  label: 'Badge CHAIR+',   desc: 'Visible sur profil, recherche et portfolio.' },
+      { icon: Heart,       label: 'Coup de cœur',   desc: "Éligibilité à la sélection éditoriale CHAIR." },
+      { icon: TrendingUp,  label: 'Boost local',    desc: 'Un coup de pouce léger, jamais au détriment du mérite.' },
+    ],
   },
   {
-    icon: Repeat, title: 'Plus de fidélisation',
-    desc: "Les stories créent un rendez-vous quotidien avec vos abonnés — un réflexe que les clients gardent, pas juste une visite ponctuelle.",
-  },
-  {
-    icon: Euro, title: 'Plus de revenus',
-    desc: "Les analytics premium vous montrent précisément ce qui convertit — visites, réalisations, avis — pour investir votre temps là où ça rapporte.",
+    title: 'Comprenez votre activité',
+    items: [
+      { icon: BarChart3, label: 'Analytics avancées', desc: 'Visites, favoris, conversion — 7, 30 ou 90 jours.' },
+    ],
   },
 ];
 
-const FEATURES = [
-  { icon: Camera,      name: 'Stories',                  desc: "24h, réservées à vos abonnés — un nouveau réflexe quotidien.", live: true },
-  { icon: Film,        name: 'Vidéos courtes',            desc: "30s max, format portrait — montrez votre geste, pas juste le résultat.", live: true },
-  { icon: BadgeCheck,  name: 'Badge Certifié CHAIR',      desc: "Visible sur votre profil, dans la recherche et le portfolio.", live: true },
-  { icon: TrendingUp,  name: 'Boost local plafonné',      desc: "Un coup de pouce dans les recherches, sans jamais écraser le mérite.", live: true },
-  { icon: Heart,       name: 'Coup de cœur CHAIR',        desc: "Éligibilité à la sélection éditoriale de l'équipe CHAIR.", live: true },
-  { icon: BarChart3,   name: 'Analytics premium',         desc: "Visites, favoris, conversion — sur 7, 30 ou 90 jours.", live: true },
-  { icon: Headphones,  name: 'Support prioritaire',       desc: "Vos demandes remontent en tête de file.", live: true },
-];
-
-const COMING_SOON = [
-  { icon: Bot,            name: 'IA Premium',                     desc: 'Suggestions de contenu et de description automatiques.' },
-  { icon: Download,       name: 'Export statistiques',             desc: 'Vos analytics en PDF ou Excel, prêtes à partager.' },
-  { icon: LayoutTemplate, name: 'Page personnalisée',              desc: 'Mise en page de profil sur-mesure.' },
-  { icon: AtSign,         name: "Nom d'utilisateur personnalisé",  desc: 'Un lien CHAIR à votre image.' },
-  { icon: FlaskConical,   name: 'Bêta privée',                     desc: 'Testez les prochaines fonctionnalités en avant-première.' },
-];
-
-const COMPARISON: { label: string; free: boolean | string; plus: boolean | string }[] = [
-  { label: 'Profil public + réservations en ligne', free: true, plus: true },
-  { label: 'Portfolio (photos illimitées)',          free: true, plus: true },
-  { label: 'Réalisation épinglée en tête',           free: true, plus: true },
-  { label: 'Badges & classement CHAIR',              free: true, plus: true },
-  { label: 'Stories (24h)',                          free: false, plus: true },
-  { label: 'Vidéos courtes',                         free: false, plus: true },
-  { label: 'Badge Certifié CHAIR',                   free: false, plus: true },
-  { label: 'Boost local plafonné',                   free: false, plus: true },
-  { label: 'Éligibilité Coup de cœur CHAIR',          free: false, plus: true },
-  { label: 'Analytics',                              free: '7 jours', plus: 'Jusqu\'à 90 jours + conversion' },
-  { label: 'Support',                                 free: 'Standard', plus: 'Prioritaire' },
-];
-
-const FAQ = [
-  { q: "Comment fonctionne l'essai gratuit ?", a: "30 jours d'accès complet à CHAIR+ dès l'activation, sans engagement. Aucun prélèvement avant la fin de l'essai." },
-  { q: 'Puis-je annuler à tout moment ?', a: "Oui, en un clic depuis \"Gérer mon abonnement\". Vous gardez l'accès jusqu'à la fin de la période déjà payée — jamais coupé en cours de route." },
-  { q: 'Le paiement est-il sécurisé ?', a: 'Le paiement est géré entièrement par Stripe, leader mondial du paiement en ligne — CHAIR ne stocke jamais vos coordonnées bancaires.' },
-  { q: 'Le boost local, est-ce du "pay to win" ?', a: "Non. Le boost CHAIR+ est un bonus léger et plafonné, toujours inférieur aux facteurs de mérite (avis, activité, complétion du profil). Un profil excellent et gratuit reste devant un profil boosté mais faible." },
-  { q: 'Que se passe-t-il si mon paiement échoue ?', a: "Stripe retente automatiquement le prélèvement pendant quelques jours — vous gardez l'accès pendant cette fenêtre. L'accès n'est coupé qu'après un échec définitif ou une annulation." },
+const COMPARISON: { label: string; free: boolean; plus: boolean }[] = [
+  { label: 'Profil',                    free: true,  plus: true },
+  { label: 'Réservations',              free: true,  plus: true },
+  { label: 'Portfolio photo',           free: true,  plus: true },
+  { label: 'Analytics essentielles',    free: true,  plus: true },
+  { label: 'Stories 24h',               free: false, plus: true },
+  { label: 'Vidéos 15s',                free: false, plus: true },
+  { label: '3 posts épinglés',          free: false, plus: true },
+  { label: 'Badge CHAIR+',              free: false, plus: true },
+  { label: 'Boost local léger',         free: false, plus: true },
+  { label: 'Coups de cœur éligibles',   free: false, plus: true },
+  { label: 'Analytics avancées',        free: false, plus: true },
 ];
 
 // ── Helpers état ─────────────────────────────────────────────────────────
@@ -124,12 +78,18 @@ export default function ChairPlusPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [flagEnabled, setFlagEnabled] = useState(true);
+  const [flagLoading, setFlagLoading] = useState(true);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     subscription.mine().then(setData).catch(() => {}).finally(() => setDataLoading(false));
   }, [user]);
+
+  useEffect(() => {
+    isFeatureEnabled('chair_plus_enabled').then(setFlagEnabled).finally(() => setFlagLoading(false));
+  }, []);
 
   async function handleSubscribe() {
     setBusy(true);
@@ -166,6 +126,11 @@ export default function ChairPlusPage() {
   const sub = data?.subscription;
   const hasPlus = data?.has_chair_plus ?? false;
   const state = chairPlusState(hasPlus, sub ?? null);
+  // Un abonnement déjà existant (actif, en essai, ou en annulation programmée)
+  // reste gérable même si le flag est désactivé — le flag ne bloque que les
+  // NOUVELLES souscriptions, jamais l'entitlement déjà acquis (voir SubscriptionController::subscribe).
+  const canManage = !!sub && state !== 'expired';
+  const showComingSoon = !flagLoading && !flagEnabled && !canManage;
 
   return (
     <div className="min-h-screen bg-white">
@@ -174,239 +139,187 @@ export default function ChairPlusPage() {
         <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-          <Sparkles size={13} /> CHAIR+
+        <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
+          CHAIR+ <PremiumBadge />
         </span>
       </div>
 
-      <div className="hidden md:flex items-center gap-3 max-w-3xl mx-auto px-6 pt-8">
+      <div className="hidden md:flex items-center gap-3 max-w-2xl mx-auto px-6 pt-8">
         <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
           <ArrowLeft size={16} />
         </Link>
         <span className="text-neutral-200">/</span>
-        <h1 className="text-lg font-bold text-neutral-900">CHAIR+</h1>
+        <h1 className="text-lg font-bold text-neutral-900 flex items-center gap-1.5">CHAIR+ <PremiumBadge /></h1>
       </div>
 
-      {checkoutResult === 'success' && (
-        <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4">
-          <div className="bg-green-50 shadow-[0_2px_10px_-4px_rgba(16,185,129,0.15)] ring-1 ring-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-semibold flex items-center gap-2">
-            <Check size={15} />Abonnement en cours d&apos;activation — quelques secondes le temps que Stripe confirme.
-          </div>
-        </div>
-      )}
-      {checkoutResult === 'cancel' && (
-        <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4">
-          <div className="bg-neutral-100 rounded-2xl px-4 py-3 text-sm text-neutral-600">
-            Abonnement annulé — vous pouvez réessayer à tout moment.
-          </div>
-        </div>
-      )}
-
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-neutral-900">
-        <div className="pointer-events-none absolute inset-0 opacity-40" style={{
-          background: 'radial-gradient(600px circle at 50% -10%, rgba(255,255,255,0.12), transparent 60%)',
-        }} />
-        <div className="relative max-w-3xl mx-auto px-6 pt-12 pb-10 md:pt-16 md:pb-14 text-center">
-          <div className="inline-flex items-center gap-1.5 bg-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-6">
-            <Sparkles size={12} /> Premium
-          </div>
-          <h1 className="text-[32px] md:text-[44px] font-black text-white leading-[1.08] tracking-tight mb-4">
-            Passe au niveau<br />supérieur.
-          </h1>
-          <p className="text-[15px] md:text-base text-white/60 max-w-md mx-auto leading-relaxed mb-8">
-            Développe ton activité, améliore ton référencement et fidélise tes clients.
-          </p>
-
-          {dataLoading ? (
-            <div className="h-32 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto" />
-          ) : (
-            <>
-              <div className="flex items-end justify-center gap-1 mb-1">
-                <span className="text-[15px] text-white/50 font-semibold mb-1.5">€</span>
-                <span className="text-5xl font-black text-white tracking-tight">9,99</span>
-                <span className="text-[15px] text-white/50 font-semibold mb-1.5">/mois</span>
+      {showComingSoon ? (
+        <ComingSoonState />
+      ) : (
+        <>
+          {checkoutResult === 'success' && (
+            <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
+              <div className="bg-neutral-900 rounded-2xl px-4 py-3 text-sm text-white font-semibold flex items-center gap-2">
+                <Check size={15} />Abonnement en cours d&apos;activation — quelques secondes le temps que Stripe confirme.
               </div>
-              <p className="text-xs text-white/40 font-medium mb-7">
-                30 jours d&apos;essai gratuit · sans engagement · annulation à tout moment
-              </p>
-
-              {error && <p className="text-xs text-red-300 mb-3">{error}</p>}
-
-              <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
-
-              {/* Expiré : sub existe encore (ligne canceled en base) mais ne couvre
-                  plus rien — il faut se réabonner (nouveau Checkout), pas gérer
-                  une souscription Stripe déjà terminée. */}
-              {sub && state !== 'expired' ? (
-                <button
-                  onClick={handleManage}
-                  disabled={busy}
-                  className="group relative w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-all disabled:opacity-50 shadow-[0_0_0_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_0_8px_rgba(255,255,255,0.08)]"
-                >
-                  <ExternalLink size={15} />{busy ? 'Chargement...' : 'Gérer mon abonnement'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubscribe}
-                  disabled={busy}
-                  className="group relative w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-all disabled:opacity-50 shadow-[0_0_0_0_rgba(255,255,255,0.3)] hover:shadow-[0_0_0_8px_rgba(255,255,255,0.08)] animate-[pulse-glow_2.4s_ease-in-out_infinite]"
-                >
-                  {busy ? 'Chargement...' : state === 'expired' ? 'Réactiver CHAIR+' : 'Commencer gratuitement'}
-                  {!busy && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
-                </button>
-              )}
-            </>
+            </div>
           )}
-        </div>
-        <style>{`
-          @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0.25); }
-            50% { box-shadow: 0 0 0 10px rgba(255,255,255,0); }
-          }
-        `}</style>
-      </section>
-
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-16 md:space-y-24">
-
-        {/* ── Pourquoi CHAIR+ ── */}
-        <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Pourquoi CHAIR+</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Ce que ça change vraiment</h2></Reveal>
-          <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
-            {VALUE_PROPS.map((v, i) => (
-              <Reveal key={v.title} delay={i * 80}>
-                <div className="h-full bg-neutral-50 rounded-[22px] p-6 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.06)] ring-1 ring-neutral-100">
-                  <div className="flex items-center gap-0.5 mb-4 text-neutral-900">
-                    {Array.from({ length: 5 }).map((_, j) => <Star key={j} size={13} fill="currentColor" />)}
-                  </div>
-                  <div className="w-11 h-11 rounded-xl bg-neutral-900 flex items-center justify-center mb-4">
-                    <v.icon size={19} className="text-white" strokeWidth={1.5} />
-                  </div>
-                  <p className="font-bold text-neutral-900 mb-1.5">{v.title}</p>
-                  <p className="text-[13px] text-neutral-500 leading-relaxed">{v.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Comparatif ── */}
-        <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Comparer</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Gratuit vs CHAIR+</h2></Reveal>
-          <Reveal>
-            <div className="rounded-[22px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
-              <div className="grid grid-cols-[1fr_auto_auto] bg-neutral-50 border-b border-neutral-100">
-                <div className="px-4 py-3" />
-                <div className="px-4 py-3 w-20 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-400">Gratuit</div>
-                <div className="px-4 py-3 w-28 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-900 bg-neutral-100">CHAIR+</div>
+          {checkoutResult === 'cancel' && (
+            <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
+              <div className="bg-neutral-100 rounded-2xl px-4 py-3 text-sm text-neutral-600">
+                Abonnement annulé — vous pouvez réessayer à tout moment.
               </div>
-              {COMPARISON.map((row, i) => (
-                <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-neutral-50' : ''}`}>
-                  <div className="px-4 py-3.5 text-[13px] font-medium text-neutral-700">{row.label}</div>
-                  <div className="px-4 py-3.5 w-20 flex items-center justify-center">
-                    {typeof row.free === 'boolean'
-                      ? (row.free ? <Check size={16} className="text-neutral-400" /> : <X size={14} className="text-neutral-200" />)
-                      : <span className="text-[11px] font-semibold text-neutral-400">{row.free}</span>}
-                  </div>
-                  <div className="px-4 py-3.5 w-28 flex items-center justify-center bg-neutral-50/60">
-                    {typeof row.plus === 'boolean'
-                      ? (row.plus ? <Check size={16} className="text-neutral-900" strokeWidth={2.5} /> : <X size={14} className="text-neutral-200" />)
-                      : <span className="text-[11px] font-bold text-neutral-900 text-center">{row.plus}</span>}
+            </div>
+          )}
+
+          {/* ── Hero ─────────────────────────────────────────────────── */}
+          <section className="bg-neutral-900">
+            <div className="max-w-2xl mx-auto px-6 pt-12 pb-10 md:pt-16 md:pb-14 text-center">
+              <h1 className="text-[32px] md:text-[40px] font-black text-white leading-[1.1] tracking-tight mb-3">
+                Passez au niveau<br />supérieur.
+              </h1>
+
+              {dataLoading || flagLoading ? (
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto mt-6" />
+              ) : (
+                <>
+                  <p className="text-[13px] text-white/50 font-medium mb-8">
+                    30 jours gratuits, puis 15,99€/mois
+                  </p>
+
+                  {error && <p className="text-xs text-red-300 mb-3">{error}</p>}
+
+                  <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
+
+                  {/* Expiré : sub existe encore (ligne canceled en base) mais ne couvre
+                      plus rien — il faut se réabonner (nouveau Checkout), pas gérer
+                      une souscription Stripe déjà terminée. */}
+                  {canManage ? (
+                    <button
+                      onClick={handleManage}
+                      disabled={busy}
+                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                    >
+                      <ExternalLink size={15} />{busy ? 'Chargement...' : 'Gérer mon abonnement'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSubscribe}
+                      disabled={busy}
+                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                    >
+                      {busy ? 'Chargement...' : 'Essayer CHAIR+ gratuitement'}
+                      {!busy && <ArrowRight size={15} />}
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setSheetOpen(true)}
+                    className="mt-4 text-[12px] font-semibold text-white/40 underline underline-offset-4 decoration-white/20 hover:text-white/70 transition-colors"
+                  >
+                    Aperçu rapide des avantages
+                  </button>
+                </>
+              )}
+            </div>
+          </section>
+
+          <div className="max-w-2xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-14 md:space-y-16">
+
+            {/* ── Bénéfices ── */}
+            <section className="space-y-6">
+              {BENEFIT_GROUPS.map((group) => (
+                <div key={group.title} className="bg-neutral-50 rounded-[22px] p-5 md:p-6 ring-1 ring-neutral-100">
+                  <p className="text-[13px] font-bold text-neutral-900 mb-4">{group.title}</p>
+                  <div className="space-y-3">
+                    {group.items.map((item) => (
+                      <div key={item.label} className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+                          <item.icon size={15} className="text-white" strokeWidth={1.5} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[13px] font-bold text-neutral-900">{item.label}</p>
+                          <p className="text-[12px] text-neutral-500 leading-relaxed">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
-            </div>
-          </Reveal>
-        </section>
+            </section>
 
-        {/* ── Ce que les membres utilisent le plus ── */}
-        <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Populaire</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Ce que les membres CHAIR+ utilisent le plus</h2></Reveal>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {FEATURES.map((f, i) => (
-              <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.18)] hover:ring-neutral-200 transition-all">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center mb-3">
-                    <f.icon size={15} className="text-white" strokeWidth={1.5} />
-                  </div>
-                  <p className="text-[13px] font-bold text-neutral-900 mb-1">{f.name}</p>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed">{f.desc}</p>
+            {/* ── Comparatif ── */}
+            <section>
+              <h2 className="text-xl font-black text-neutral-900 text-center mb-6">Gratuit vs CHAIR+</h2>
+              <div className="rounded-[22px] ring-1 ring-neutral-100 overflow-hidden">
+                <div className="grid grid-cols-[1fr_auto_auto] bg-neutral-50 border-b border-neutral-100">
+                  <div className="px-4 py-3" />
+                  <div className="px-4 py-3 w-20 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-400">Gratuit</div>
+                  <div className="px-4 py-3 w-20 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-900 bg-neutral-100">CHAIR+</div>
                 </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        {/* ── À venir ── */}
-        <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Feuille de route</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Bientôt disponible</h2></Reveal>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-            {COMING_SOON.map((f, i) => (
-              <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-neutral-50 rounded-[22px] p-4 opacity-70 ring-1 ring-dashed ring-neutral-200">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-200 flex items-center justify-center mb-3">
-                    <f.icon size={15} className="text-neutral-500" strokeWidth={1.5} />
-                  </div>
-                  <p className="text-[13px] font-bold text-neutral-600 mb-1">{f.name}</p>
-                  <p className="text-[11px] text-neutral-400 leading-relaxed">{f.desc}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
-        {/* ── FAQ ── */}
-        <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Questions</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Foire aux questions</h2></Reveal>
-          <div className="space-y-2 max-w-xl mx-auto">
-            {FAQ.map((item, i) => {
-              const open = openFaq === i;
-              return (
-                <Reveal key={item.q} delay={i * 50}>
-                  <div className="rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.06)] ring-1 ring-neutral-100 overflow-hidden">
-                    <button
-                      onClick={() => setOpenFaq(open ? null : i)}
-                      className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-neutral-50 transition-colors"
-                    >
-                      <span className="text-[13px] font-bold text-neutral-900">{item.q}</span>
-                      <ChevronDown size={16} className={`text-neutral-400 flex-shrink-0 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} />
-                    </button>
-                    <div className={`grid transition-all duration-300 ease-out ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-                      <div className="overflow-hidden">
-                        <p className="px-5 pb-4 text-[13px] text-neutral-500 leading-relaxed">{item.a}</p>
-                      </div>
+                {COMPARISON.map((row, i) => (
+                  <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-neutral-50' : ''}`}>
+                    <div className="px-4 py-3.5 text-[13px] font-medium text-neutral-700">{row.label}</div>
+                    <div className="px-4 py-3.5 w-20 flex items-center justify-center">
+                      {row.free ? <Check size={16} className="text-neutral-400" /> : <X size={14} className="text-neutral-200" />}
+                    </div>
+                    <div className="px-4 py-3.5 w-20 flex items-center justify-center bg-neutral-50/60">
+                      {row.plus ? <Check size={16} className="text-neutral-900" strokeWidth={2.5} /> : <X size={14} className="text-neutral-200" />}
                     </div>
                   </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── CTA final ── */}
-        {!hasPlus && (
-          <Reveal>
-            <section className="bg-neutral-900 rounded-3xl p-8 md:p-12 text-center">
-              <Sparkles size={22} className="text-white/50 mx-auto mb-4" />
-              <h2 className="text-2xl md:text-3xl font-black text-white mb-3">Prêt à passer au niveau supérieur ?</h2>
-              <p className="text-sm text-white/50 mb-7 max-w-sm mx-auto">30 jours d&apos;essai gratuit. Sans engagement. Annulation à tout moment.</p>
-              <button
-                onClick={handleSubscribe}
-                disabled={busy}
-                className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold px-8 py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
-              >
-                {busy ? 'Chargement...' : 'Commencer gratuitement'}
-                {!busy && <ArrowRight size={15} />}
-              </button>
+                ))}
+              </div>
             </section>
-          </Reveal>
-        )}
+
+            {/* ── CTA final ── */}
+            {!canManage && (
+              <section className="bg-neutral-900 rounded-3xl p-8 md:p-10 text-center">
+                <Sparkles size={20} className="text-white/50 mx-auto mb-4" />
+                <h2 className="text-xl md:text-2xl font-black text-white mb-2">Prêt à passer au niveau supérieur ?</h2>
+                <p className="text-[13px] text-white/50 mb-6">30 jours gratuits, puis 15,99€/mois. Annulation à tout moment.</p>
+                <button
+                  onClick={handleSubscribe}
+                  disabled={busy}
+                  className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold px-7 py-3.5 rounded-2xl text-[14px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                >
+                  {busy ? 'Chargement...' : 'Essayer CHAIR+ gratuitement'}
+                  {!busy && <ArrowRight size={15} />}
+                </button>
+              </section>
+            )}
+          </div>
+        </>
+      )}
+
+      <PremiumUpsellSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+    </div>
+  );
+}
+
+// ── État "pas encore disponible" — flag désactivé, honnête, pas de CTA d'abonnement.
+// Même esprit que AppDownload.tsx pour l'app pas encore publiée sur les stores.
+
+function ComingSoonState() {
+  const [notified, setNotified] = useState(false);
+
+  return (
+    <div className="max-w-sm mx-auto px-6 py-20 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-5">
+        <Sparkles size={22} className="text-neutral-400" strokeWidth={1.5} />
       </div>
+      <h1 className="text-xl font-black text-neutral-900 mb-2">Bientôt disponible</h1>
+      <p className="text-sm text-neutral-500 leading-relaxed mb-6">
+        CHAIR+ n&apos;est pas encore disponible. Stories, vidéos, badge et analytics avancées arrivent prochainement.
+      </p>
+      {!notified ? (
+        <button
+          onClick={() => setNotified(true)}
+          className="text-sm font-semibold text-neutral-900 underline underline-offset-4 decoration-neutral-300 hover:decoration-neutral-900 transition-colors"
+        >
+          Me prévenir de la sortie
+        </button>
+      ) : (
+        <p className="text-sm text-neutral-400">Merci — on vous tient au courant.</p>
+      )}
     </div>
   );
 }
@@ -425,9 +338,9 @@ function StateBanner({ state, sub, isPastDue }: {
   // ne saurait pas qu'une action de sa part est nécessaire.
   if (isPastDue) {
     return (
-      <div className={`${base} bg-amber-500/15 text-amber-200`}>
+      <div className={`${base} bg-white/10 text-white`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
-        Paiement refusé — mettez à jour votre moyen de paiement pour ne pas perdre l&apos;accès
+        Paiement refusé — mettez à jour votre moyen de paiement
       </div>
     );
   }
@@ -451,7 +364,7 @@ function StateBanner({ state, sub, isPastDue }: {
   }
   if (state === 'cancel_scheduled') {
     return (
-      <div className={`${base} bg-amber-500/15 text-amber-200`}>
+      <div className={`${base} bg-white/10 text-white`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Annulation programmée — accès conservé jusqu&apos;au {fmtDate(sub?.current_period_end ?? null)}
       </div>
