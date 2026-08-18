@@ -216,6 +216,10 @@ Route::get('/geo/departments', [GeoController::class, 'departments']);
 Route::get('/geo/search-city', [GeoController::class, 'searchCity'])->middleware('throttle:30,1');
 Route::get('/geo/search-address', [GeoController::class, 'searchAddress'])->middleware('throttle:30,1');
 Route::get('/geo/reverse-city', [GeoController::class, 'reverseCity'])->middleware('throttle:30,1');
+// Page publique /parrainage/{code} (visiteur non connecté qui ouvre un lien
+// de parrainage) — juste de quoi personnaliser l'accueil ("X vous invite"),
+// jamais de données sensibles. Throttle contre l'énumération de codes.
+Route::get('/referral-info/{code}', [ReferralController::class, 'info'])->middleware('throttle:20,1');
 Route::get('/search', [SearchController::class, 'search']);
 Route::get('/search/suggestions', [SearchController::class, 'suggestions']);
 Route::get('/explore', [App\Http\Controllers\Api\ExploreController::class, 'index']);

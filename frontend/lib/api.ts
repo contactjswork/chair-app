@@ -291,7 +291,7 @@ export const support = {
 
 // ── Programme ambassadeur ──────────────────────────────────────────────
 
-import type { ApiReferral, ShareActionType, ShareChannel } from './types';
+import type { ApiReferral, ApiReferralInfo, ShareActionType, ShareChannel } from './types';
 
 export const referral = {
   mine: () => api.get<ApiReferral>('/my-referral'),
@@ -302,6 +302,8 @@ export const referral = {
       target_id: opts?.targetId,
       channel: opts?.channel,
     }),
+  // Publique (sans auth) — page d'atterrissage /parrainage/{code}.
+  info: (code: string) => api.get<ApiReferralInfo>(`/referral-info/${encodeURIComponent(code)}`),
 };
 
 // ── Réputation par spécialité ──────────────────────────────────────────

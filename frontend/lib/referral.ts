@@ -11,6 +11,16 @@ export function captureReferralCode(): void {
   if (ref) localStorage.setItem(STORAGE_KEY, ref.trim());
 }
 
+/**
+ * Capture depuis un segment de chemin (/parrainage/{code}) plutôt qu'un
+ * ?ref= — utilisée par la page d'atterrissage publique, puisque le lien
+ * généré par ReferralController::mine() est un chemin, pas une query string.
+ */
+export function captureReferralCodeFromPath(code: string): void {
+  if (typeof window === 'undefined' || !code.trim()) return;
+  localStorage.setItem(STORAGE_KEY, code.trim());
+}
+
 export function getStoredReferralCode(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   return localStorage.getItem(STORAGE_KEY) ?? undefined;

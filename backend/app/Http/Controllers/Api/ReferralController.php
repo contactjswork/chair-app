@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ReferralReward;
 use App\Models\ShareEvent;
+use App\Models\User;
 use App\Services\ReferralService;
 use Illuminate\Http\Request;
 
@@ -49,6 +50,30 @@ class ReferralController extends Controller
             'milestones'      => array_keys(ReferralService::MILESTONES),
             'chair_plus_until'=> $profile?->chair_plus_until?->toIso8601String(),
             'boost_until'     => $profile?->featured_until?->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * GET /referral-info/{code} — PUBLIC, sans authentification : consultée
+     * par la page d'atterrissage /parrainage/{code} pour personnaliser
+     * l'accueil ("Julien vous invite sur CHAIR") avant même que le visiteur
+     * ne soit connecté. Ne renvoie que des infos déjà publiques par ailleurs
+     * (nom, avatar, rôle) — jamais l'email, jamais de quoi rejouer une
+     * attribution (ça reste le rôle exclusif d'attributeSignup() côté
+     * inscription réelle). 404 silencieux si le code n'existe pas, pour ne
+     * pas laisser deviner quels codes sont valides.
+     */
+    public function info(string $code)
+    {
+        $user = User::where('referral_code', $code)->first();
+        if (!$user) {
+            return response()->json(['message' => 'Code introuvable'], 404);
+        }
+
+        return response()->json([
+            'name'   => $user->name,
+            'avatar' => $user->avatar,
+            'role'   => $user->role,
         ]);
     }
 

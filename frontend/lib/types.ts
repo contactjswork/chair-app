@@ -240,6 +240,13 @@ export interface ApiReferral {
   boost_until: string | null;
 }
 
+/** Réponse publique de GET /referral-info/{code} — page /parrainage/[code]. */
+export interface ApiReferralInfo {
+  name: string;
+  avatar: string | null;
+  role: string;
+}
+
 // Purement télémétrique — ne crédite jamais de points (voir ReferralService::TELEMETRY_ACTIONS
 // côté backend). Les points de parrainage ne viennent que d'une inscription réelle via le lien.
 export type ShareActionType = 'share_profile' | 'share_post' | 'social_post';
