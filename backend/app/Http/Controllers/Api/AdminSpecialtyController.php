@@ -9,6 +9,7 @@ use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * CRUD admin des spécialités (table 'specialties', déjà utilisée en lecture
@@ -34,9 +35,21 @@ use Illuminate\Support\Str;
  * app_settings) — renommer un slug depuis l'admin casserait ce filtrage
  * homme/femme sans qu'aucune erreur ne remonte nulle part. Le nom affiché
  * (title), l'icône, la description restent librement éditables.
+ *
+ * `category` = genre de la spécialité ("Homme"/"Femme" uniquement, voir
+ * CATEGORY_OPTIONS) — retour de Julien : cette colonne ne servait jusqu'ici
+ * qu'à un affichage cosmétique dans l'admin (Style/Coupe/Texture/Couleur...),
+ * aucune logique métier ne la lisait. Elle pilote maintenant le filtre
+ * homme/femme du formulaire "Nouvelle réalisation" (frontend/app/pro/
+ * portfolio/page.tsx) — éditable sans build, contrairement aux listes
+ * HOMME_SPECIALTY_SLUGS/FEMME_SPECIALTY_SLUGS qui restent la répartition de
+ * référence pour les 14 spécialités actives (SpecialtyPicker onboarding).
  */
 class AdminSpecialtyController extends Controller
 {
+    /** Seules valeurs acceptées pour `category` — voir docblock de classe. */
+    private const CATEGORY_OPTIONS = ['Homme', 'Femme'];
+
     /** GET /admin/specialties — liste complète (actives + masquées), avec compteurs d'usage. */
     public function index()
     {
@@ -59,7 +72,7 @@ class AdminSpecialtyController extends Controller
             'name'        => ['required', 'string', 'max:100'],
             'slug'        => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9-]+$/', 'unique:specialties,slug'],
             'icon'        => ['nullable', 'string', 'max:100'],
-            'category'    => ['nullable', 'string', 'max:60'],
+            'category'    => ['required', Rule::in(self::CATEGORY_OPTIONS)],
             'description' => ['nullable', 'string', 'max:1000'],
             'is_active'   => ['sometimes', 'boolean'],
             'order'       => ['sometimes', 'integer', 'min:0'],
@@ -88,7 +101,7 @@ class AdminSpecialtyController extends Controller
         $data = $request->validate([
             'name'        => ['sometimes', 'required', 'string', 'max:100'],
             'icon'        => ['sometimes', 'nullable', 'string', 'max:100'],
-            'category'    => ['sometimes', 'nullable', 'string', 'max:60'],
+            'category'    => ['sometimes', Rule::in(self::CATEGORY_OPTIONS)],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'order'       => ['sometimes', 'integer', 'min:0'],
         ]);

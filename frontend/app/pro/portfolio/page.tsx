@@ -31,6 +31,18 @@ function isChairPlusFromAuth(profile: { is_chair_plus?: boolean; chair_plus_unti
   return !!profile.chair_plus_until && new Date(profile.chair_plus_until).getTime() > Date.now();
 }
 
+// Genre d'une spécialité — priorité à specialty.category (live, éditable
+// sans build depuis Configuration > Spécialités) ; repli sur la répartition
+// codée en dur (HOMME/FEMME_SPECIALTY_SLUGS) tant qu'une spécialité n'a pas
+// encore de catégorie renseignée. null = non classée, jamais cachée.
+function specialtyGender(s: ApiSpecialty): 'homme' | 'femme' | null {
+  if (s.category === 'Homme') return 'homme';
+  if (s.category === 'Femme') return 'femme';
+  if (HOMME_SPECIALTY_SLUGS.includes(s.slug)) return 'homme';
+  if (FEMME_SPECIALTY_SLUGS.includes(s.slug)) return 'femme';
+  return null;
+}
+
 interface PhotoFile { file: File; preview: string; }
 
 function PhotoGrid({ photos, onAdd, onRemove }: {
@@ -216,16 +228,16 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   const [error, setError] = useState('');
 
   // Retour de Julien : le filtre précédent n'excluait qu'1-2 slugs au lieu de
-  // vraiment filtrer par genre — on voyait "Boucles"/"Balayage" en mode Homme
-  // et "Barber & Dégradé"/"Dreads & Locks" en mode Femme. Utilise maintenant
-  // la répartition canonique (lib/specialties.ts) ; une spécialité non
-  // classée (ni homme ni femme dans cette répartition) reste toujours visible
-  // dans les deux sens, jamais cachée silencieusement.
-  const classifiedSlugs = new Set([...HOMME_SPECIALTY_SLUGS, ...FEMME_SPECIALTY_SLUGS]);
+  // vraiment filtrer par genre. Source vivante = specialty.category (Homme/
+  // Femme, éditable sans build depuis Configuration > Spécialités) ; les
+  // listes HOMME_SPECIALTY_SLUGS/FEMME_SPECIALTY_SLUGS ne servent plus que de
+  // repli si une spécialité n'a pas encore de catégorie renseignée. Une
+  // spécialité non classée nulle part reste toujours visible dans les deux
+  // sens, jamais cachée silencieusement.
   const suggestedSpecialties = gender === 'homme'
-    ? specialties.filter(s => HOMME_SPECIALTY_SLUGS.includes(s.slug) || !classifiedSlugs.has(s.slug))
+    ? specialties.filter(s => specialtyGender(s) !== 'femme')
     : gender === 'femme'
-    ? specialties.filter(s => FEMME_SPECIALTY_SLUGS.includes(s.slug) || !classifiedSlugs.has(s.slug))
+    ? specialties.filter(s => specialtyGender(s) !== 'homme')
     : specialties;
 
   function handleGenderChange(g: 'homme' | 'femme' | '') {

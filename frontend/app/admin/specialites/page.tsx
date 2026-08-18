@@ -132,12 +132,16 @@ export default function SpecialitesPage() {
       setSaveError('Le nom est obligatoire.');
       return;
     }
+    if (!form.category) {
+      setSaveError('La catégorie (Homme ou Femme) est obligatoire.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         name: form.name,
         icon: form.icon || null,
-        category: form.category || null,
+        category: form.category,
         description: form.description || null,
         ...(form.id ? {} : { slug: form.slug || undefined }),
       };
@@ -295,7 +299,14 @@ export default function SpecialitesPage() {
               </Field>
             )}
             <Field label="Catégorie">
-              <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls} />
+              {/* Homme/Femme uniquement — pilote le filtre genre du formulaire
+                  "Nouvelle réalisation" côté CHAIR PRO (retour de Julien : du
+                  texte libre laissait passer "Style"/"Coupe"/"Couleur"...). */}
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className={inputCls}>
+                <option value="">Choisir…</option>
+                <option value="Homme">Homme</option>
+                <option value="Femme">Femme</option>
+              </select>
             </Field>
             <Field label="Icône (nom lucide-react)">
               <input value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} className={inputCls} />
