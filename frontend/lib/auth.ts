@@ -18,6 +18,8 @@ export interface HairdresserProfile {
   /** Entitlement fusionné réel — voir HairdresserProfile::getIsChairPlusAttribute() côté backend. */
   is_chair_plus?: boolean;
   chair_plus_until?: string | null;
+  /** "Pourquoi as-tu installé CHAIR PRO ?" — collecté en fin d'onboarding indépendant, sert à mettre en avant les bons items de nav (voir useProNav.ts). */
+  pro_goals?: string[] | null;
 }
 
 export interface AuthSalon {

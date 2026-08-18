@@ -24,7 +24,7 @@ class HairdresserProfile extends Model
         'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
         'identity_verified', 'pro_active_badge', 'booking_window_days',
         'featured_until', 'chair_plus_until', 'chair_pick_until',
-        'siret', 'siret_verification_status',
+        'siret', 'siret_verification_status', 'pro_goals',
     ];
 
     protected $casts = [
@@ -36,6 +36,7 @@ class HairdresserProfile extends Model
         'featured_until'    => 'datetime',
         'chair_plus_until'  => 'datetime',
         'chair_pick_until'  => 'datetime',
+        'pro_goals'         => 'array',
     ];
 
     /** "Coup de cœur CHAIR" — sélection éditoriale manuelle, jamais liée à l'abonnement. */

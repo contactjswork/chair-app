@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, referral } from '@/lib/api';
 import { resolveMediaUrl, type ApiChairBadge, type ApiChairLevel, type ApiSpecialty, type ApiReferral } from '@/lib/types';
-import { Camera, Check, ImageIcon as ImageIconLucide, Share2, Sparkles } from 'lucide-react';
+import { Armchair, Briefcase, Camera, Check, ImageIcon as ImageIconLucide, Share2, Sparkles, Users } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
 import ShareSheet from '@/components/ui/ShareSheet';
@@ -22,13 +22,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 type Step =
   | 'photo' | 'banner' | 'tagline' | 'bio' | 'geo_location'
-  | 'specialties' | 'services' | 'schedule' | 'post' | 'discover';
+  | 'specialties' | 'services' | 'schedule' | 'post' | 'pro_goals' | 'discover';
 
 interface ProfileResponse {
   chair_points: number;
   chair_level: ApiChairLevel;
   chair_badges_all: ApiChairBadge[];
 }
+
+// "Pourquoi as-tu installé CHAIR PRO ?" — les 3 usages primaires distincts
+// d'un coiffeur indépendant sur l'app. Sert uniquement à mettre en avant les
+// bons items de la nav (useProNav.ts) — n'affecte rien d'autre.
+const PRO_GOALS: { id: string; label: string; hint: string; icon: typeof Users }[] = [
+  { id: 'find_clients', label: 'Trouver de nouveaux clients', hint: 'Développer ma clientèle grâce à mon profil', icon: Users },
+  { id: 'rent_chair', label: 'Louer un fauteuil', hint: 'Trouver un espace où exercer', icon: Armchair },
+  { id: 'find_job', label: 'Chercher un emploi', hint: 'Rejoindre un salon ou répondre à une offre', icon: Briefcase },
+];
 
 const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-[16px] text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 transition-all';
 
@@ -85,7 +94,9 @@ export default function OnboardingPage() {
     if (hadCity === false) s.push('geo_location');
     s.push('specialties', 'services');
     if (isIndependent) s.push('schedule');
-    s.push('post', 'discover');
+    s.push('post');
+    if (isIndependent) s.push('pro_goals');
+    s.push('discover');
     return s;
   }, [hadCity, isIndependent]);
 
@@ -148,6 +159,9 @@ export default function OnboardingPage() {
   const [postSpecialtyId, setPostSpecialtyId] = useState<number | null>(null);
   const [postSaving, setPostSaving] = useState(false);
   const [postSaved, setPostSaved] = useState(false);
+
+  // Pourquoi CHAIR PRO ? (indépendants uniquement)
+  const [proGoals, setProGoals] = useState<string[]>([]);
 
   // ── Garde d'accès + init ──────────────────────────────────────────────────
 
@@ -248,6 +262,18 @@ export default function OnboardingPage() {
     try { await api.put('/profile', { specialties: selectedSpecialties }); } catch { /* silencieux */ }
   }
 
+  async function saveProGoalsStep() {
+    if (proGoals.length === 0) return;
+    try {
+      await api.put('/profile', { pro_goals: proGoals });
+      // Merge manuel (pas un simple champ racine) — sinon useProNav ne verrait
+      // la mise en avant qu'après un rechargement de /me.
+      if (user?.hairdresser_profile) {
+        updateUser({ hairdresser_profile: { ...user.hairdresser_profile, pro_goals: proGoals } });
+      }
+    } catch { /* silencieux */ }
+  }
+
   async function saveService() {
     if (!serviceName.trim() || !serviceSpecialtyId) return;
     setServiceSaving(true);
@@ -320,6 +346,7 @@ export default function OnboardingPage() {
     if (current === 'tagline') await saveTaglineStep();
     if (current === 'bio' || current === 'geo_location') await saveBioAndCityStep();
     if (current === 'specialties') await saveSpecialtiesStep();
+    if (current === 'pro_goals') await saveProGoalsStep();
     goNext();
   }
 
@@ -738,6 +765,42 @@ export default function OnboardingPage() {
                 )}
               </div>
             )}
+          </QuestionScreen>
+        )}
+
+        {/* ── Pourquoi CHAIR PRO ? (indépendants uniquement) ── */}
+        {step === 'pro_goals' && (
+          <QuestionScreen
+            eyebrow="Pour finir"
+            title="Pourquoi CHAIR PRO ?"
+            hint="Un ou plusieurs choix — ça nous aide à te montrer les bons outils en priorité."
+            ctaLabel="Continuer"
+            onNext={handleNext}
+          >
+            <div className="space-y-2.5">
+              {PRO_GOALS.map(({ id, label, hint, icon: Icon }) => {
+                const active = proGoals.includes(id);
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setProGoals((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])}
+                    className={`w-full flex items-center gap-3.5 p-4 rounded-2xl border-2 text-left transition-all ${
+                      active ? 'border-neutral-900 bg-neutral-900' : 'border-neutral-200 bg-white hover:border-neutral-400'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? 'bg-white/15' : 'bg-neutral-100'}`}>
+                      <Icon size={18} className={active ? 'text-white' : 'text-neutral-600'} strokeWidth={1.5} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${active ? 'text-white' : 'text-neutral-900'}`}>{label}</p>
+                      <p className={`text-xs mt-0.5 ${active ? 'text-white/60' : 'text-neutral-400'}`}>{hint}</p>
+                    </div>
+                    {active && <Check size={16} className="text-white flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
           </QuestionScreen>
         )}
 

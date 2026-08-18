@@ -94,14 +94,18 @@ export default function ProPlusPage() {
         )}
 
         <div className="mt-2 bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 divide-y divide-neutral-50 px-4 overflow-hidden">
-          {secondary.map(({ href, label, icon: Icon }) => (
+          {secondary.map(({ href, label, icon: Icon, highlight }) => (
             <Link key={href} href={href}
               className="flex items-center gap-3.5 py-4 hover:bg-neutral-50 transition-colors -mx-4 px-4"
             >
-              <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                <Icon size={16} className="text-neutral-600" strokeWidth={1.5} />
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${highlight ? 'bg-neutral-900' : 'bg-neutral-100'}`}>
+                <Icon size={16} className={highlight ? 'text-white' : 'text-neutral-600'} strokeWidth={1.5} />
               </div>
               <span className="flex-1 text-sm font-medium text-neutral-900">{label}</span>
+              {/* Mis en avant selon la raison d'installation choisie à l'onboarding (pro_goals) */}
+              {highlight && (
+                <span className="text-[10px] font-bold tracking-wide uppercase text-neutral-400 flex-shrink-0">Pour vous</span>
+              )}
               <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
             </Link>
           ))}

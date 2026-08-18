@@ -8,6 +8,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: typeof Home;
+  /** Correspond à une raison sélectionnée dans pro_goals (onboarding) — mis en avant dans la nav. */
+  highlight?: boolean;
 }
 
 interface ProNavConfig {
@@ -90,6 +92,34 @@ function salonOwnerNav(): ProNavConfig {
   };
 }
 
+// Item(s) de nav concerné(s) par chaque raison d'installation (onboarding
+// "Pourquoi as-tu installé CHAIR PRO ?"). `find_clients` n'a pas d'item
+// dédié : c'est déjà tout le produit (portfolio, réservations, classement...).
+const GOAL_HREFS: Record<string, string[]> = {
+  rent_chair: ['/pro/fauteuils-a-louer'],
+  find_job: ['/pro/offres-emploi', '/pro/salon'],
+};
+
+/**
+ * Fait remonter en tête de la liste "Outils" les items correspondant aux
+ * raisons sélectionnées par le coiffeur à l'onboarding — mais seulement s'il
+ * n'en a coché qu'une partie (1 ou 2 sur 3) : s'il a tout coché ou n'a rien
+ * répondu, rien ne bouge (retour de Julien : "si il sélectionne les 3 bah
+ * rien ne change"). Purement cosmétique, ne cache ni ne retire aucun item.
+ */
+function applyGoalHighlight(nav: ProNavConfig, proGoals: string[] | null | undefined): ProNavConfig {
+  if (!proGoals || proGoals.length === 0 || proGoals.length >= 3) return nav;
+
+  const highlightedHrefs = new Set(proGoals.flatMap((g) => GOAL_HREFS[g] ?? []));
+  if (highlightedHrefs.size === 0) return nav;
+
+  const secondary = nav.secondary
+    .map((item) => ({ ...item, highlight: highlightedHrefs.has(item.href) }))
+    .sort((a, b) => Number(b.highlight) - Number(a.highlight)); // tri stable : les mis en avant remontent, l'ordre relatif du reste ne change pas
+
+  return { ...nav, secondary };
+}
+
 /**
  * Double identité gérant/coiffeur : un compte qui possède les deux capacités
  * (canManageSalon + hasHairdresserProfile) affiche la nav du mode ACTIF
@@ -103,5 +133,6 @@ export function useProNav(): ProNavConfig {
   const effectiveMode = user?.active_pro_mode ?? user?.role;
 
   if (effectiveMode === 'salon_owner') return salonOwnerNav();
-  return isIndependent ? independantNav(hasSalon) : salarieNav(hasSalon);
+  const nav = isIndependent ? independantNav(hasSalon) : salarieNav(hasSalon);
+  return applyGoalHighlight(nav, user?.hairdresser_profile?.pro_goals);
 }

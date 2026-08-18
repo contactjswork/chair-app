@@ -48,14 +48,16 @@ export default function ProSidebar() {
           <>
             <div className="border-t border-neutral-100 my-2" />
             <p className="px-3 pb-1 text-[10px] font-semibold tracking-[0.15em] uppercase text-neutral-400">Outils</p>
-            {secondary.map(({ href, label, icon: Icon }) => (
+            {secondary.map(({ href, label, icon: Icon, highlight }) => (
               <Link key={href} href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive(href) ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50'
                 }`}
               >
                 <Icon size={16} strokeWidth={isActive(href) ? 2.5 : 1.5} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {/* Mis en avant selon la raison d'installation choisie à l'onboarding (pro_goals) */}
+                {highlight && !isActive(href) && <span className="w-1.5 h-1.5 rounded-full bg-neutral-900" />}
               </Link>
             ))}
           </>

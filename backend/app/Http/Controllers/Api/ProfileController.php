@@ -88,6 +88,9 @@ class ProfileController extends Controller
             'work_availability' => 'nullable|in:employed,looking_salon,looking_gig,not_available',
             'specialties'       => 'nullable|array',
             'specialties.*'     => 'integer|exists:specialties,id',
+            // Pourquoi as-tu installé CHAIR PRO ? (onboarding indépendant, fin de parcours)
+            'pro_goals'         => 'nullable|array',
+            'pro_goals.*'       => 'string|in:find_clients,rent_chair,find_job',
         ]);
 
         $user->update([
@@ -113,6 +116,7 @@ class ProfileController extends Controller
             'booking_url'       => array_key_exists('booking_url',       $validated) ? $validated['booking_url']       : $profile->booking_url,
             'years_experience'  => array_key_exists('years_experience',  $validated) ? $validated['years_experience']  : $profile->years_experience,
             'work_availability' => array_key_exists('work_availability', $validated) ? $validated['work_availability'] : $profile->work_availability,
+            'pro_goals'         => array_key_exists('pro_goals',         $validated) ? $validated['pro_goals']         : $profile->pro_goals,
         ];
 
         // Mise à jour des coordonnées si géocodage réussi
