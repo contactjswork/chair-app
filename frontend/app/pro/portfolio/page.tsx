@@ -8,6 +8,7 @@ import type { ApiPost, ApiSpecialty } from '@/lib/types';
 import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
+import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
 import {
   Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
   Eye, Star, TrendingUp, Archive, ArchiveRestore, Award, Scissors,
@@ -77,6 +78,26 @@ function PhotoGrid({ photos, onAdd, onRemove }: {
   );
 }
 
+/**
+ * Pastille photo d'une spécialité — même chaîne de priorité que partout
+ * ailleurs dans l'app (vraie photo > illustration locale > rien) : retour de
+ * Julien, le portfolio ne montrait que des pastilles de texte nu pendant que
+ * le reste de CHAIR PRO utilise déjà de vraies photos pour les spécialités.
+ */
+function SpecialtyThumb({ specialty, size = 22 }: { specialty: ApiSpecialty; size?: number }) {
+  const photo = specialty.image_url;
+  const illustration = SPECIALTY_ILLUSTRATIONS[specialty.slug];
+  return (
+    <span className="relative rounded-full overflow-hidden bg-white flex-shrink-0" style={{ width: size, height: size }}>
+      {photo ? (
+        <Image src={photo} alt="" fill className="object-cover" sizes={`${size}px`} />
+      ) : illustration ? (
+        <Image src={illustration} alt="" fill className="object-contain mix-blend-multiply" sizes={`${size}px`} />
+      ) : null}
+    </span>
+  );
+}
+
 function TagSelector({ specialties, selectedIds, onChange, label = '', max = 6 }: {
   specialties: ApiSpecialty[]; selectedIds: number[];
   onChange: (ids: number[]) => void; label?: string; max?: number;
@@ -87,19 +108,20 @@ function TagSelector({ specialties, selectedIds, onChange, label = '', max = 6 }
   }
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2.5">
         {label && <label className="text-xs font-semibold text-neutral-600">{label}</label>}
         <span className={`text-[10px] text-neutral-400 ${!label ? 'ml-auto' : ''}`}>{selectedIds.length}/{max}</span>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {specialties.map((s) => {
           const active = selectedIds.includes(s.id);
           return (
             <button key={s.id} type="button" onClick={() => toggle(s.id)}
-              className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                active ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400 hover:text-neutral-900'
+              className={`flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 transition-all ${
+                active ? 'border-neutral-900 bg-neutral-900' : 'border-neutral-200 bg-white hover:border-neutral-400'
               }`}>
-              {s.name}
+              <SpecialtyThumb specialty={s} size={22} />
+              <span className={`text-[11px] font-semibold whitespace-nowrap ${active ? 'text-white' : 'text-neutral-700'}`}>{s.name}</span>
             </button>
           );
         })}
@@ -294,8 +316,8 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
             ))}
           </div>
         </div>
-        <div className={`rounded-xl p-3 -mx-1 ${tagIds.length === 0 ? 'bg-amber-50 border border-amber-100' : ''}`}>
-          <div className="flex items-center gap-1.5 mb-2">
+        <div>
+          <div className="flex items-center gap-1.5 mb-2.5">
             <label className="text-xs font-semibold text-neutral-700">Spécialité(s)</label>
             <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.5 rounded uppercase">Requis</span>
           </div>
@@ -303,17 +325,19 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
         </div>
         {tagIds.length > 1 && (
           <div>
-            <label className="block text-xs font-semibold text-neutral-600 mb-1.5">Tag principal</label>
-            <div className="flex flex-wrap gap-1.5">
+            <label className="block text-xs font-semibold text-neutral-600 mb-2">Spécialité principale</label>
+            <div className="flex flex-wrap gap-2">
               {tagIds.map((id) => {
                 const sp = specialties.find((s) => s.id === id);
                 if (!sp) return null;
+                const active = specialtyId === String(id);
                 return (
                   <button key={id} type="button" onClick={() => setSpecialtyId(String(id))}
-                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                      specialtyId === String(id) ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-neutral-50 text-neutral-600 border-neutral-200 hover:border-neutral-400'
+                    className={`flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border-2 transition-all ${
+                      active ? 'border-neutral-900 bg-neutral-900' : 'border-neutral-200 bg-neutral-50 hover:border-neutral-400'
                     }`}>
-                    {sp.name}
+                    <SpecialtyThumb specialty={sp} size={22} />
+                    <span className={`text-[11px] font-semibold whitespace-nowrap ${active ? 'text-white' : 'text-neutral-600'}`}>{sp.name}</span>
                   </button>
                 );
               })}
@@ -535,15 +559,16 @@ function PostCard({ post, specialties, reorderMode, onDelete, onUpdate, onToggle
 
       {/* Meta */}
       <div className="px-3 py-2.5">
-        <div className="flex flex-wrap gap-1 mb-1.5">
-          {post.gender && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-neutral-100 text-neutral-600">{post.gender}</span>
-          )}
-          {(post.tags ?? []).slice(0, 2).map((t) => (
-            <span key={t.id} className="text-[9px] font-semibold text-neutral-400 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded-full">
-              {t.name}
+        <div className="flex items-center gap-1 mb-1.5 min-w-0">
+          {(post.specialty ?? post.tags?.[0]) && (
+            <span className="flex items-center gap-1 min-w-0 bg-neutral-50 rounded-full pl-0.5 pr-2 py-0.5 flex-shrink">
+              <SpecialtyThumb specialty={(post.specialty ?? post.tags![0])} size={16} />
+              <span className="text-[9px] font-semibold text-neutral-500 truncate">{(post.specialty ?? post.tags![0]).name}</span>
             </span>
-          ))}
+          )}
+          {post.gender && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase bg-neutral-100 text-neutral-600 flex-shrink-0">{post.gender}</span>
+          )}
         </div>
         <div className="flex items-center gap-2.5 text-[10px] text-neutral-400">
           <span className="flex items-center gap-0.5"><Eye size={10} /> {post.views_count}</span>
