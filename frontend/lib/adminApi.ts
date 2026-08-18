@@ -118,13 +118,25 @@ function toQuery(params?: Record<string, string | number | boolean | undefined |
   return `?${qs.toString()}`;
 }
 
+// FormData (upload de fichier, ex. photo de spécialité) doit partir telle
+// quelle — JSON.stringify() dessus renverrait "{}" (FormData n'a aucune
+// propriété énumérable) et perdrait silencieusement le fichier. request()
+// détecte déjà `body instanceof FormData` pour ne pas poser de
+// Content-Type: application/json dessus (le navigateur fixe lui-même le
+// boundary multipart), encore fallait-il ne pas la sérialiser avant.
+function toRequestBody(body: unknown): BodyInit | undefined {
+  if (body === undefined) return undefined;
+  if (body instanceof FormData) return body;
+  return JSON.stringify(body);
+}
+
 export const adminApi = {
   get: <T>(path: string, params?: Record<string, string | number | boolean | undefined | null>) =>
     request<T>(`${path}${toQuery(params)}`),
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    request<T>(path, { method: 'POST', body: toRequestBody(body) }),
   patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PATCH', body: body !== undefined ? JSON.stringify(body) : undefined }),
+    request<T>(path, { method: 'PATCH', body: toRequestBody(body) }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
