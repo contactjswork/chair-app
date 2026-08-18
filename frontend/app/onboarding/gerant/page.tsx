@@ -56,6 +56,7 @@ export default function OwnerOnboardingPage() {
 
   // Description / localisation
   const [description, setDescription] = useState('');
+  const [country, setCountry] = useState('France');
   const [region, setRegion] = useState('');
   const [department, setDepartment] = useState('');
   const [city, setCity] = useState('');
@@ -177,7 +178,9 @@ export default function OwnerOnboardingPage() {
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   return (
-    <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
+    // min-h (pas h fixe) + pas d'overflow-hidden : évite que le CTA passe
+    // sous le clavier mobile ouvert (voir pro/inscription/page.tsx).
+    <div className="min-h-[100dvh] bg-white flex flex-col">
       <OnboardingHeader progress={progress} onBack={stepIndex > 0 ? goBack : undefined} onSkip={goNext} />
 
       <div className={`flex-1 flex flex-col min-h-0 transition-all duration-180 ease-out ${animClass}`}>
@@ -281,12 +284,13 @@ export default function OwnerOnboardingPage() {
             title="Où se trouve votre salon ?"
             hint="Pour être retrouvé sur la carte et dans les recherches locales."
             ctaLabel="Continuer"
-            ctaDisabled={!region || !department || city.trim().length < 2}
+            ctaDisabled={country === 'France' ? (!region || !department || city.trim().length < 2) : city.trim().length < 2}
             onNext={handleNext}
           >
             <LocationAccordion
-              value={{ region, department, city, street }}
+              value={{ country, region, department, city, street }}
               onChange={(patch) => {
+                if (patch.country !== undefined) setCountry(patch.country);
                 if (patch.region !== undefined) setRegion(patch.region);
                 if (patch.department !== undefined) setDepartment(patch.department);
                 if (patch.city !== undefined) setCity(patch.city);

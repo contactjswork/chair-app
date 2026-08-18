@@ -77,10 +77,10 @@ function SpecialtyGroup({ label, items, selected, onToggle, size }: { label: str
               key={s.id}
               type="button"
               onClick={() => onToggle(s.id)}
-              className={`relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-white transition-all ${
+              className={`relative flex flex-col items-center gap-2 p-3 rounded-2xl bg-white border-2 transition-all ${
                 active
-                  ? 'ring-2 ring-neutral-900 shadow-[0_6px_18px_-6px_rgba(10,10,10,0.2)]'
-                  : 'shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 hover:ring-neutral-200'
+                  ? 'border-neutral-900 shadow-[0_6px_18px_-6px_rgba(10,10,10,0.2)]'
+                  : 'border-transparent shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] hover:border-neutral-200'
               }`}
             >
               <div className={`relative ${boxSize} rounded-[16px] flex items-center justify-center overflow-hidden flex-shrink-0 bg-neutral-100`}>

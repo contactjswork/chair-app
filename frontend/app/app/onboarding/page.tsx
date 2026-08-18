@@ -112,7 +112,9 @@ export default function ClientOnboardingPage() {
   const options   = getOptions(gender, liveSpecialties);
 
   return (
-    <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
+    // min-h (pas h fixe) + pas d'overflow-hidden : évite que le CTA passe
+    // sous le clavier mobile ouvert (voir pro/inscription/page.tsx).
+    <div className="min-h-[100dvh] bg-white flex flex-col">
 
       <OnboardingHeader
         progress={progressForStep(step)}

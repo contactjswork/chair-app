@@ -6,13 +6,19 @@ import { geo } from '@/lib/api';
 import GeoListPicker from './GeoListPicker';
 
 export interface LocationValue {
+  country: string;
   region: string;
   department: string;
   city: string;
   street: string;
 }
 
-type Field = 'region' | 'department' | 'city' | 'street';
+type Field = 'country' | 'region' | 'department' | 'city' | 'street';
+
+// Marché francophone visé par CHAIR — région/département sont des notions
+// propres à la France (GeoController::regions/departments) : hors France, ce
+// découpage n'existe pas, on saute directement à Ville/Adresse en saisie libre.
+export const COUNTRIES = ['France', 'Belgique', 'Suisse', 'Luxembourg', 'Monaco', 'Canada'];
 
 interface Props {
   value: LocationValue;
@@ -50,9 +56,11 @@ export default function LocationAccordion({ value, onChange, theme = 'dark' }: P
   // champs. Sinon, dès que "Ville" devient valide (2 lettres) EN PLEINE
   // FRAPPE, le champ se replierait tout seul et sauterait au suivant.
   // Il n'avance que sur une action explicite (sélection, Enter, blur).
-  const [activeField, setActiveField] = useState<Field>(() =>
-    !value.region ? 'region' : !value.department ? 'department' : (value.city.trim().length < 2) ? 'city' : 'street'
-  );
+  const [activeField, setActiveField] = useState<Field>(() => {
+    if (!value.country) return 'country';
+    if (value.country !== 'France') return value.city.trim().length < 2 ? 'city' : 'street';
+    return !value.region ? 'region' : !value.department ? 'department' : (value.city.trim().length < 2) ? 'city' : 'street';
+  });
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -79,6 +87,12 @@ export default function LocationAccordion({ value, onChange, theme = 'dark' }: P
   const cityDone = value.city.trim().length >= 2;
   const active: Field = activeField;
 
+  function selectCountry(v: string) {
+    // Changer de pays invalide région/département (propres à la France) —
+    // jamais garder une région française sous un autre pays sélectionné.
+    onChange({ country: v, region: '', department: '' });
+    setActiveField(v === 'France' ? 'region' : 'city');
+  }
   function selectRegion(v: string) {
     onChange({ region: v, department: '' });
     setActiveField('department');
@@ -105,50 +119,61 @@ export default function LocationAccordion({ value, onChange, theme = 'dark' }: P
 
   return (
     <div className="space-y-2">
-      {/* Pays — une seule valeur possible pour l'instant, déjà confirmé */}
-      <div className={`flex items-center justify-between rounded-xl px-4 py-3 ${isDark ? 'bg-neutral-900/60' : 'bg-neutral-50'}`}>
-        <div>
-          <p className={summaryLabelCls}>Pays</p>
-          <p className={summaryValueCls(true)}>France</p>
-        </div>
-        <Check size={16} className={isDark ? 'text-neutral-600' : 'text-neutral-300'} strokeWidth={3} />
-      </div>
-
-      {/* Région */}
-      <div className={rowShell(active === 'region')}>
-        {active === 'region' ? (
+      {/* Pays */}
+      <div className={rowShell(active === 'country')}>
+        {active === 'country' ? (
           <>
-            <p className={eyebrowCls}>Région</p>
+            <p className={eyebrowCls}>Pays</p>
             <GeoListPicker
-              items={regionsList.map((r) => ({ value: r, label: r }))}
-              selected={value.region || null}
-              loading={regionsLoading}
-              onSelect={selectRegion}
+              items={COUNTRIES.map((c) => ({ value: c, label: c }))}
+              selected={value.country || null}
+              onSelect={selectCountry}
               theme={theme}
             />
           </>
         ) : (
-          <SummaryRow label="Région" value={value.region} done={!!value.region} isDark={isDark} onOpen={() => setActiveField('region')} />
+          <SummaryRow label="Pays" value={value.country} done={!!value.country} isDark={isDark} onOpen={() => setActiveField('country')} />
         )}
       </div>
 
-      {/* Département */}
-      <div className={rowShell(active === 'department')}>
-        {active === 'department' ? (
-          <>
-            <p className={eyebrowCls}>Département</p>
-            <GeoListPicker
-              items={departmentsList.map((d) => ({ value: d.name, label: d.name }))}
-              selected={value.department || null}
-              loading={departmentsLoading}
-              onSelect={selectDepartment}
-              theme={theme}
-            />
-          </>
-        ) : (
-          <SummaryRow label="Département" value={value.department} done={!!value.department} isDark={isDark} onOpen={() => setActiveField('department')} />
-        )}
-      </div>
+      {/* Région/Département — propres à la France, absents pour tout autre pays */}
+      {value.country === 'France' && (
+        <>
+          <div className={rowShell(active === 'region')}>
+            {active === 'region' ? (
+              <>
+                <p className={eyebrowCls}>Région</p>
+                <GeoListPicker
+                  items={regionsList.map((r) => ({ value: r, label: r }))}
+                  selected={value.region || null}
+                  loading={regionsLoading}
+                  onSelect={selectRegion}
+                  theme={theme}
+                />
+              </>
+            ) : (
+              <SummaryRow label="Région" value={value.region} done={!!value.region} isDark={isDark} onOpen={() => setActiveField('region')} />
+            )}
+          </div>
+
+          <div className={rowShell(active === 'department')}>
+            {active === 'department' ? (
+              <>
+                <p className={eyebrowCls}>Département</p>
+                <GeoListPicker
+                  items={departmentsList.map((d) => ({ value: d.name, label: d.name }))}
+                  selected={value.department || null}
+                  loading={departmentsLoading}
+                  onSelect={selectDepartment}
+                  theme={theme}
+                />
+              </>
+            ) : (
+              <SummaryRow label="Département" value={value.department} done={!!value.department} isDark={isDark} onOpen={() => setActiveField('department')} />
+            )}
+          </div>
+        </>
+      )}
 
       {/* Ville */}
       <div className={rowShell(active === 'city')}>

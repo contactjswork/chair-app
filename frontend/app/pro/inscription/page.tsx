@@ -66,6 +66,7 @@ export default function ProInscriptionPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [hairdresserType, setHairdresserType] = useState<HairdresserType>('independent');
+  const [country, setCountry] = useState('France');
   const [region, setRegion] = useState('');
   const [department, setDepartment] = useState('');
   const [city, setCity] = useState('');
@@ -79,6 +80,7 @@ export default function ProInscriptionPage() {
   const salonSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [managerSalonName, setManagerSalonName] = useState('');
+  const [managerCountry, setManagerCountry] = useState('France');
   const [managerRegion, setManagerRegion] = useState('');
   const [managerDepartment, setManagerDepartment] = useState('');
   const [managerCity, setManagerCity] = useState('');
@@ -185,7 +187,12 @@ export default function ProInscriptionPage() {
   }
 
   return (
-    <div className="h-[100svh] bg-neutral-950 flex flex-col overflow-hidden">
+    // min-h (pas h fixe) + pas d'overflow-hidden : sur clavier mobile ouvert,
+    // le viewport visuel se réduit sans que la mise en page ne se recalcule
+    // (h-[100svh] restait figé) — le CTA passait alors sous le clavier, hors
+    // d'atteinte. En laissant la page défiler naturellement, le focus d'un
+    // champ fait remonter nativement le CTA juste en dessous à l'écran.
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col">
       <OnboardingHeader
         progress={progress}
         onBack={stepIndex > 0 ? goBack : undefined}
@@ -331,12 +338,13 @@ export default function ProInscriptionPage() {
             hint="Pour être retrouvé sur la carte et dans les recherches et classements locaux."
             ctaLabel={isLoading ? 'Création...' : 'Créer mon profil'}
             ctaLoading={isLoading}
-            ctaDisabled={!region || !department || city.trim().length < 2}
+            ctaDisabled={country === 'France' ? (!region || !department || city.trim().length < 2) : city.trim().length < 2}
             onNext={goNext}
           >
             <LocationAccordion
-              value={{ region, department, city, street }}
+              value={{ country, region, department, city, street }}
               onChange={(patch) => {
+                if (patch.country !== undefined) setCountry(patch.country);
                 if (patch.region !== undefined) setRegion(patch.region);
                 if (patch.department !== undefined) setDepartment(patch.department);
                 if (patch.city !== undefined) setCity(patch.city);
@@ -426,12 +434,13 @@ export default function ProInscriptionPage() {
             title="Où est-il situé ?"
             hint="Pour être retrouvé sur la carte et dans les recherches et classements locaux."
             ctaLabel="Continuer"
-            ctaDisabled={!managerRegion || !managerDepartment || managerCity.trim().length < 2}
+            ctaDisabled={managerCountry === 'France' ? (!managerRegion || !managerDepartment || managerCity.trim().length < 2) : managerCity.trim().length < 2}
             onNext={goNext}
           >
             <LocationAccordion
-              value={{ region: managerRegion, department: managerDepartment, city: managerCity, street: managerStreet }}
+              value={{ country: managerCountry, region: managerRegion, department: managerDepartment, city: managerCity, street: managerStreet }}
               onChange={(patch) => {
+                if (patch.country !== undefined) setManagerCountry(patch.country);
                 if (patch.region !== undefined) setManagerRegion(patch.region);
                 if (patch.department !== undefined) setManagerDepartment(patch.department);
                 if (patch.city !== undefined) setManagerCity(patch.city);

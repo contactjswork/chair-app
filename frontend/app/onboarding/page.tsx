@@ -16,6 +16,7 @@ import LocationAccordion from '@/components/onboarding/LocationAccordion';
 import DiscoverCarousel from '@/components/onboarding/DiscoverCarousel';
 import BadgeUnlockToast from '@/components/onboarding/BadgeUnlockToast';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
+import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -30,6 +31,46 @@ interface ProfileResponse {
 }
 
 const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-[16px] text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 transition-all';
+
+/**
+ * Rangée de puces spécialité avec vraie photo (ou repli illustration) —
+ * réutilisée par l'étape Services et l'étape Réalisation, plutôt que des
+ * puces texte nues (retour de Julien : "la page premier service est moche").
+ */
+function SpecialtyChipRow({ specialties, selectedIds, activeId, onSelect }: {
+  specialties: ApiSpecialty[]; selectedIds: number[]; activeId: number | null; onSelect: (id: number) => void;
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+      {selectedIds.map((id) => {
+        const sp = specialties.find((s) => s.id === id);
+        if (!sp) return null;
+        const active = activeId === id;
+        const photo = sp.image_url;
+        const illustration = SPECIALTY_ILLUSTRATIONS[sp.slug];
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSelect(id)}
+            className={`flex-shrink-0 flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full border-2 transition-all ${
+              active ? 'border-neutral-900 bg-neutral-900' : 'border-neutral-200 bg-white hover:border-neutral-400'
+            }`}
+          >
+            <div className="relative w-7 h-7 rounded-full overflow-hidden bg-white flex-shrink-0">
+              {photo ? (
+                <Image src={photo} alt={sp.name} fill className="object-cover" sizes="28px" />
+              ) : illustration ? (
+                <Image src={illustration} alt={sp.name} fill className="object-contain mix-blend-multiply" sizes="28px" />
+              ) : null}
+            </div>
+            <span className={`text-xs font-semibold whitespace-nowrap ${active ? 'text-white' : 'text-neutral-700'}`}>{sp.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function OnboardingPage() {
   const { user, isLoading, updateUser, logout } = useAuth();
@@ -69,6 +110,7 @@ export default function OnboardingPage() {
   // Accroche / bio / ville
   const [tagline, setTagline] = useState('');
   const [bio, setBio] = useState('');
+  const [country, setCountry] = useState('France');
   const [city, setCity] = useState('');
   const [region, setRegion] = useState('');
   const [department, setDepartment] = useState('');
@@ -103,6 +145,7 @@ export default function OnboardingPage() {
   // Première réalisation
   const [postImage, setPostImage] = useState<string | null>(null);
   const [postDescription, setPostDescription] = useState('');
+  const [postSpecialtyId, setPostSpecialtyId] = useState<number | null>(null);
   const [postSaving, setPostSaving] = useState(false);
   const [postSaved, setPostSaved] = useState(false);
 
@@ -134,7 +177,10 @@ export default function OnboardingPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setServiceSpecialtyId(selectedSpecialties[0]);
     }
-  }, [stepIndex, steps, serviceSpecialtyId, selectedSpecialties]);
+    if (steps[stepIndex] === 'post' && postSpecialtyId === null && selectedSpecialties.length > 0) {
+      setPostSpecialtyId(selectedSpecialties[0]);
+    }
+  }, [stepIndex, steps, serviceSpecialtyId, postSpecialtyId, selectedSpecialties]);
 
   useEffect(() => {
     if (!showSharePrompt) return;
@@ -244,6 +290,7 @@ export default function OnboardingPage() {
       formData.append('images[]', file);
       formData.append('type', 'result');
       formData.append('description', postDescription);
+      if (postSpecialtyId) formData.append('specialty_id', String(postSpecialtyId));
       const token = localStorage.getItem('chair_token');
       const res = await fetch(`${API_BASE}/posts`, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: formData });
       if (!res.ok) throw new Error();
@@ -295,7 +342,7 @@ export default function OnboardingPage() {
 
     return (
       <div className="min-h-screen bg-white flex flex-col">
-        <div className="max-w-lg mx-auto px-6 py-10 w-full flex-1 flex flex-col items-center text-center">
+        <div className="max-w-lg mx-auto px-6 py-10 w-full flex-1 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 rounded-full bg-neutral-900 flex items-center justify-center mb-5 animate-pop-in">
             <Check size={28} className="text-white" strokeWidth={2.5} />
           </div>
@@ -354,7 +401,9 @@ export default function OnboardingPage() {
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   return (
-    <div className="h-[100svh] bg-white flex flex-col overflow-hidden">
+    // min-h (pas h fixe) + pas d'overflow-hidden : évite que le CTA passe
+    // sous le clavier mobile ouvert (voir pro/inscription/page.tsx).
+    <div className="min-h-[100dvh] bg-white flex flex-col">
       <OnboardingHeader
         progress={progress}
         onBack={stepIndex > 0 ? goBack : undefined}
@@ -471,10 +520,7 @@ export default function OnboardingPage() {
               maxLength={1000}
               className={`${inputCls} resize-none`}
             />
-            <div className="flex items-center justify-between mt-1.5">
-              <span className={`text-[11px] ${bio.length >= 100 ? 'text-green-600 font-medium' : 'text-neutral-400'}`}>
-                {bio.length >= 100 ? 'Bonne longueur' : `${100 - bio.length} caractères minimum recommandés`}
-              </span>
+            <div className="flex items-center justify-end mt-1.5">
               <span className="text-[11px] text-neutral-400">{bio.length}/1000</span>
             </div>
           </QuestionScreen>
@@ -487,12 +533,13 @@ export default function OnboardingPage() {
             title="Où exerces-tu ?"
             hint="Pour être retrouvé sur la carte et dans les recherches et classements locaux."
             ctaLabel="Continuer"
-            ctaDisabled={!region || !department || city.trim().length < 2}
+            ctaDisabled={country === 'France' ? (!region || !department || city.trim().length < 2) : city.trim().length < 2}
             onNext={handleNext}
           >
             <LocationAccordion
-              value={{ region, department, city, street }}
+              value={{ country, region, department, city, street }}
               onChange={(patch) => {
+                if (patch.country !== undefined) setCountry(patch.country);
                 if (patch.region !== undefined) setRegion(patch.region);
                 if (patch.department !== undefined) setDepartment(patch.department);
                 if (patch.city !== undefined) setCity(patch.city);
@@ -552,21 +599,12 @@ export default function OnboardingPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedSpecialties.map((id) => {
-                    const sp = allSpecialties.find((s) => s.id === id);
-                    if (!sp) return null;
-                    const active = serviceSpecialtyId === id;
-                    return (
-                      <button key={id} type="button" onClick={() => setServiceSpecialtyId(id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                          active ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400'
-                        }`}>
-                        {sp.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <SpecialtyChipRow
+                  specialties={allSpecialties}
+                  selectedIds={selectedSpecialties}
+                  activeId={serviceSpecialtyId}
+                  onSelect={setServiceSpecialtyId}
+                />
                 <input
                   autoFocus
                   type="text"
@@ -644,11 +682,24 @@ export default function OnboardingPage() {
                 </div>
                 <p className="text-sm font-semibold text-neutral-900">Réalisation publiée</p>
               </div>
+            ) : selectedSpecialties.length === 0 ? (
+              <p className="text-xs text-neutral-400 text-center py-4">
+                Aucune spécialité sélectionnée — tu pourras publier une réalisation depuis ton profil.
+              </p>
             ) : (
               <div className="space-y-3">
+                <p className="text-[11px] font-semibold tracking-[0.15em] uppercase text-neutral-400">Cette réalisation, c&apos;est quel univers ?</p>
+                <SpecialtyChipRow
+                  specialties={allSpecialties}
+                  selectedIds={selectedSpecialties}
+                  activeId={postSpecialtyId}
+                  onSelect={setPostSpecialtyId}
+                />
                 <div
-                  className="relative w-full h-44 rounded-2xl bg-neutral-100 overflow-hidden cursor-pointer group border-2 border-dashed border-neutral-300 hover:border-neutral-500 transition-colors flex items-center justify-center"
-                  onClick={() => triggerFileInput('post-input')}
+                  className={`relative w-full h-44 rounded-2xl bg-neutral-100 overflow-hidden group border-2 border-dashed transition-colors flex items-center justify-center ${
+                    postSpecialtyId ? 'cursor-pointer border-neutral-300 hover:border-neutral-500' : 'cursor-not-allowed border-neutral-200 opacity-50'
+                  }`}
+                  onClick={() => { if (postSpecialtyId) triggerFileInput('post-input'); }}
                 >
                   {postImage ? (
                     <>
@@ -660,14 +711,14 @@ export default function OnboardingPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-2">
                       <Camera size={26} className="text-neutral-400" />
-                      <span className="text-sm text-neutral-500">Sélectionner une photo</span>
+                      <span className="text-sm text-neutral-500">{postSpecialtyId ? 'Sélectionner une photo' : 'Choisis d\'abord une spécialité ci-dessus'}</span>
                     </div>
                   )}
                 </div>
-                <input id="post-input" type="file" accept="image/*" className="hidden"
+                <input id="post-input" type="file" accept="image/*" className="hidden" disabled={!postSpecialtyId}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (!file) return;
+                    if (!file || !postSpecialtyId) return;
                     setPostImage(URL.createObjectURL(file));
                     setPostSaving(true);
                     uploadPostImage(file).finally(() => setPostSaving(false));
