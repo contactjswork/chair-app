@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, ShieldCheck, ShieldOff, Eye, EyeOff, Sparkles, ExternalLink, Star, Building2 } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, ShieldOff, Eye, EyeOff, Sparkles, FlaskConical, ExternalLink, Star, Building2 } from 'lucide-react';
 import {
   adminApi,
   AdminApiError,
@@ -15,7 +15,7 @@ import {
 } from '@/lib/adminApi';
 import { Card, ConfirmModal, ErrorBanner, PermissionDenied, Skeleton, StatusPill, inputCls } from '../../_components/ui';
 
-type ConfirmType = 'verify' | 'unverify' | 'hide' | 'unhide' | 'chair_pick_set' | 'chair_pick_remove';
+type ConfirmType = 'verify' | 'unverify' | 'hide' | 'unhide' | 'chair_pick_set' | 'chair_pick_remove' | 'chair_plus_test_set' | 'chair_plus_test_remove';
 
 export default function HairdresserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +23,7 @@ export default function HairdresserDetailPage() {
   const canVerify = hasPermission(admin, PERMISSIONS.HAIRDRESSERS_VERIFY);
   const canVisibility = hasPermission(admin, PERMISSIONS.HAIRDRESSERS_VISIBILITY);
   const canChairPick = hasPermission(admin, PERMISSIONS.HAIRDRESSERS_CHAIR_PICK);
+  const canChairPlusTest = hasPermission(admin, PERMISSIONS.HAIRDRESSERS_CHAIR_PLUS_TEST);
 
   const [detail, setDetail] = useState<AdminHairdresserDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,8 @@ export default function HairdresserDetailPage() {
       else if (confirm === 'unhide') await adminApi.post(`/admin/hairdressers/${id}/unhide`);
       else if (confirm === 'chair_pick_set') await adminApi.post(`/admin/hairdressers/${id}/chair-pick`, { days: parseInt(chairPickDays, 10) || 14 });
       else if (confirm === 'chair_pick_remove') await adminApi.delete(`/admin/hairdressers/${id}/chair-pick`);
+      else if (confirm === 'chair_plus_test_set') await adminApi.post(`/admin/hairdressers/${id}/chair-plus-test`);
+      else if (confirm === 'chair_plus_test_remove') await adminApi.delete(`/admin/hairdressers/${id}/chair-plus-test`);
       load();
     } catch {
       setError('Action impossible');
@@ -112,6 +115,7 @@ export default function HairdresserDetailPage() {
               {profile.identity_verified && <StatusPill status="verified" labelOverride="Identité vérifiée" />}
               {profile.is_hidden && <StatusPill status="hidden" labelOverride="Masqué" />}
               {is_chair_plus && <StatusPill status="verified" labelOverride="CHAIR+" />}
+              {profile.chair_plus_test_mode && <StatusPill status="pending" labelOverride="CHAIR+ mode test" />}
               {chairPickActive && <StatusPill status="verified" labelOverride="Coup de cœur actif" />}
             </div>
             <p className="text-[13px] text-neutral-500 dark:text-neutral-400">{profile.user?.email}</p>
@@ -166,6 +170,14 @@ export default function HairdresserDetailPage() {
               icon={Sparkles}
               label={chairPickActive ? 'Retirer coup de cœur' : 'Mettre en Coup de cœur CHAIR'}
               onClick={() => setConfirm(chairPickActive ? 'chair_pick_remove' : 'chair_pick_set')}
+            />
+          )}
+          {canChairPlusTest && (
+            <ActionButton
+              tone="slate"
+              icon={FlaskConical}
+              label={profile.chair_plus_test_mode ? 'Désactiver CHAIR+ (test)' : 'Activer CHAIR+ (test)'}
+              onClick={() => setConfirm(profile.chair_plus_test_mode ? 'chair_plus_test_remove' : 'chair_plus_test_set')}
             />
           )}
         </div>
@@ -239,7 +251,7 @@ export default function HairdresserDetailPage() {
       <ConfirmModal
         open={!!confirm}
         title={confirmTitle(confirm)}
-        danger={confirm === 'hide' || confirm === 'unverify' || confirm === 'chair_pick_remove'}
+        danger={confirm === 'hide' || confirm === 'unverify' || confirm === 'chair_pick_remove' || confirm === 'chair_plus_test_remove'}
         message={
           confirm === 'hide' ? (
             <div className="flex flex-col gap-2">
@@ -288,6 +300,10 @@ function confirmTitle(c: ConfirmType | null): string {
       return 'Coup de cœur CHAIR';
     case 'chair_pick_remove':
       return 'Retirer le Coup de cœur';
+    case 'chair_plus_test_set':
+      return 'Activer CHAIR+ en mode test';
+    case 'chair_plus_test_remove':
+      return 'Désactiver le mode test CHAIR+';
     default:
       return '';
   }
@@ -303,6 +319,10 @@ function confirmMessage(c: ConfirmType | null): React.ReactNode {
       return 'Rendre ce profil à nouveau visible publiquement ?';
     case 'chair_pick_remove':
       return 'Retirer la mise en avant Coup de cœur CHAIR immédiatement ?';
+    case 'chair_plus_test_set':
+      return "Débloquer toutes les fonctionnalités CHAIR+ sur ce compte sans passer par Stripe — réservé aux tests. Aucun paiement réel, aucune facturation.";
+    case 'chair_plus_test_remove':
+      return 'Retirer immédiatement CHAIR+ (mode test) de ce compte ? Un abonnement Stripe réel ou une récompense de parrainage banquée resteraient inchangés.';
     default:
       return '';
   }
@@ -317,12 +337,16 @@ function ActionButton({
   icon: React.ElementType;
   label: string;
   onClick: () => void;
-  tone: 'blue' | 'amber' | 'violet';
+  tone: 'blue' | 'amber' | 'violet' | 'slate';
 }) {
   const tones: Record<string, string> = {
     blue: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400',
     amber: 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400',
     violet: 'bg-violet-50 text-violet-700 hover:bg-violet-100 dark:bg-violet-500/10 dark:text-violet-400',
+    // Mode test CHAIR+ — délibérément neutre/sobre, pas de couleur "excitante"
+    // comme violet (Coup de cœur) : ce n'est pas une récompense, c'est un
+    // outil de QA réservé admin.
+    slate: 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300',
   };
   return (
     <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors ${tones[tone]}`}>

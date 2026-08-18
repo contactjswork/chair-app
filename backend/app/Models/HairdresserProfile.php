@@ -23,20 +23,21 @@ class HairdresserProfile extends Model
         'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
         'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
         'identity_verified', 'pro_active_badge', 'booking_window_days',
-        'featured_until', 'chair_plus_until', 'chair_pick_until',
+        'featured_until', 'chair_plus_until', 'chair_pick_until', 'chair_plus_test_mode',
         'siret', 'siret_verification_status', 'pro_goals',
     ];
 
     protected $casts = [
-        'is_independent'    => 'boolean',
-        'is_verified'       => 'boolean',
-        'identity_verified' => 'boolean',
-        'pro_active_badge'  => 'boolean',
-        'avg_rating'        => 'decimal:2',
-        'featured_until'    => 'datetime',
-        'chair_plus_until'  => 'datetime',
-        'chair_pick_until'  => 'datetime',
-        'pro_goals'         => 'array',
+        'is_independent'       => 'boolean',
+        'is_verified'          => 'boolean',
+        'identity_verified'    => 'boolean',
+        'pro_active_badge'     => 'boolean',
+        'avg_rating'           => 'decimal:2',
+        'featured_until'       => 'datetime',
+        'chair_plus_until'     => 'datetime',
+        'chair_pick_until'     => 'datetime',
+        'chair_plus_test_mode' => 'boolean',
+        'pro_goals'            => 'array',
     ];
 
     /** "Coup de cœur CHAIR" — sélection éditoriale manuelle, jamais liée à l'abonnement. */
@@ -64,6 +65,10 @@ class HairdresserProfile extends Model
 
     /**
      * CHAIR+ actif — un SEUL point de vérité, quelle que soit la source :
+     *  0. mode test (chair_plus_test_mode, admin uniquement — voir
+     *     AdminHairdresserController::setChairPlusTest, aucun rapport avec un
+     *     vrai abonnement ni avec le parrainage, jamais accessible à un
+     *     utilisateur normal) ;
      *  1. banqué (récompense parrainage, chair_plus_until) ;
      *  2. abonnement payé individuel (subscriptions.plan = chair_plus) ;
      *  3. abonnement CHAIR BUSINESS du salon (couvre toute l'équipe).
@@ -71,6 +76,10 @@ class HairdresserProfile extends Model
      */
     public function hasChairPlus(): bool
     {
+        if ($this->chair_plus_test_mode) {
+            return true;
+        }
+
         if ($this->chair_plus_until !== null && now()->lt($this->chair_plus_until)) {
             return true;
         }

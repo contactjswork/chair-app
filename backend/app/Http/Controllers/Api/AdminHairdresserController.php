@@ -229,4 +229,35 @@ class AdminHairdresserController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    /**
+     * Mode test CHAIR+ (spec CHAIR+ §3) — active/désactive CHAIR+ manuellement
+     * sur un compte, sans Stripe, pour permettre de tester toutes les
+     * fonctionnalités premium avant le vrai lancement du paiement. Réservé
+     * admin (voir permission hairdressers.chair_plus_test) — jamais accessible
+     * à un utilisateur normal. Colonne dédiée (chair_plus_test_mode), séparée
+     * de chair_plus_until pour ne jamais toucher/écraser une vraie récompense
+     * de parrainage déjà banquée sur le même profil.
+     */
+    public function setChairPlusTest(Request $request, $id)
+    {
+        $profile = HairdresserProfile::findOrFail($id);
+        $old = $profile->chair_plus_test_mode;
+        $profile->update(['chair_plus_test_mode' => true]);
+
+        AdminAuditLogger::log($request->user(), 'hairdressers.chair_plus_test.set', 'hairdresser_profile', $profile->id, ['chair_plus_test_mode' => $old], ['chair_plus_test_mode' => true], $request);
+
+        return response()->json(['ok' => true, 'chair_plus_test_mode' => true]);
+    }
+
+    public function removeChairPlusTest(Request $request, $id)
+    {
+        $profile = HairdresserProfile::findOrFail($id);
+        $old = $profile->chair_plus_test_mode;
+        $profile->update(['chair_plus_test_mode' => false]);
+
+        AdminAuditLogger::log($request->user(), 'hairdressers.chair_plus_test.remove', 'hairdresser_profile', $profile->id, ['chair_plus_test_mode' => $old], ['chair_plus_test_mode' => false], $request);
+
+        return response()->json(['ok' => true, 'chair_plus_test_mode' => false]);
+    }
 }

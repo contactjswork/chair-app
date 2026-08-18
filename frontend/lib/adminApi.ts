@@ -151,6 +151,7 @@ export const PERMISSIONS = {
   HAIRDRESSERS_READ: 'hairdressers.read',
   HAIRDRESSERS_VERIFY: 'hairdressers.verify',
   HAIRDRESSERS_CHAIR_PICK: 'hairdressers.chair_pick',
+  HAIRDRESSERS_CHAIR_PLUS_TEST: 'hairdressers.chair_plus_test',
   HAIRDRESSERS_VISIBILITY: 'hairdressers.visibility',
   HAIRDRESSERS_BADGES_MANAGE: 'hairdressers.badges_manage',
   APPOINTMENTS_READ: 'appointments.read',
@@ -374,6 +375,7 @@ export interface AdminHairdresserDetail {
     is_hidden: boolean;
     hidden_reason?: string | null;
     chair_pick_until?: string | null;
+    chair_plus_test_mode?: boolean | null;
     user?: { id: number; name: string; email: string; phone?: string; city?: string; suspended_at?: string | null; created_at: string };
     salon?: { id: number; name: string; city: string; slug: string; is_verified: boolean; suspended_at?: string | null } | null;
     specialties: Array<{ id: number; name: string; slug: string }>;

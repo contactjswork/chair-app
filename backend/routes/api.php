@@ -116,6 +116,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(functi
     Route::get('/notifications/history',        [AdminController::class, 'notificationHistory'])->middleware('admin.permission:notifications.send');
     Route::post('/hairdressers/{id}/chair-pick',   [AdminHairdresserController::class, 'setChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
     Route::delete('/hairdressers/{id}/chair-pick', [AdminHairdresserController::class, 'removeChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
+    // Mode test CHAIR+ (spec CHAIR+ §3) — activer/désactiver sans Stripe, réservé admin.
+    Route::post('/hairdressers/{id}/chair-plus-test',   [AdminHairdresserController::class, 'setChairPlusTest'])->middleware('admin.permission:hairdressers.chair_plus_test');
+    Route::delete('/hairdressers/{id}/chair-plus-test', [AdminHairdresserController::class, 'removeChairPlusTest'])->middleware('admin.permission:hairdressers.chair_plus_test');
     Route::get('/support-requests',                [AdminController::class, 'supportRequests'])->middleware('admin.permission:support.manage');
     Route::post('/support-requests/{id}/resolve',  [AdminController::class, 'resolveSupportRequest'])->middleware('admin.permission:support.manage');
 
