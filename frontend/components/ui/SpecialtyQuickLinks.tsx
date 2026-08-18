@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { FEMME_SLUGS, HOMME_SLUGS, getUserPrefs, getUserSpecialtySlugs } from '@/lib/homeFilters';
-import { getLiveSpecialtyLabels } from '@/lib/specialties';
+import { getLiveSpecialtyLabels, getLiveSpecialtyImages } from '@/lib/specialties';
 import Reveal from './Reveal';
 
 // Toutes les spécialités CHAIR — la personnalisation ne fait que RÉORDONNER
@@ -40,10 +40,15 @@ export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) 
   // Libellés live (DB, administrables sans build) — repli sur le libellé codé
   // en dur de SPECIALTIES tant que le fetch n'a pas résolu / si l'API tombe.
   const [labels, setLabels] = useState<Record<string, string>>({});
+  // Idem pour les photos réelles (Cloudinary, uploadées depuis Configuration >
+  // Spécialités) — {} tant qu'aucune n'a de photo en base : l'icône statique
+  // ci-dessus (SPECIALTIES[].icon) reste alors le repli, jamais un carré vide.
+  const [images, setImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLabels(map); });
+    getLiveSpecialtyImages().then((map) => { if (!cancelled) setImages(map); });
     return () => { cancelled = true; };
   }, []);
 
@@ -102,14 +107,20 @@ export default function SpecialtyQuickLinks({ limit }: { limit?: number } = {}) 
               href={`/app/recherche?specialty=${s.slug}`}
               className="group flex flex-col items-center gap-2.5 w-[82px] active:scale-[0.94] transition-transform duration-200"
             >
-              <div className="w-[86px] h-[86px] rounded-[28px] flex items-center justify-center bg-white shadow-[0_3px_14px_-4px_rgba(10,10,10,0.14)] ring-1 ring-neutral-100 group-hover:shadow-[0_8px_22px_-6px_rgba(10,10,10,0.2)] group-hover:ring-neutral-200 group-hover:-translate-y-0.5 transition-all duration-300">
-                <Image
-                  src={s.icon}
-                  alt={labels[s.slug] ?? s.label}
-                  width={58}
-                  height={58}
-                  className="object-contain mix-blend-multiply"
-                />
+              <div className="relative w-[86px] h-[86px] rounded-[28px] overflow-hidden flex items-center justify-center bg-white shadow-[0_3px_14px_-4px_rgba(10,10,10,0.14)] ring-1 ring-neutral-100 group-hover:shadow-[0_8px_22px_-6px_rgba(10,10,10,0.2)] group-hover:ring-neutral-200 group-hover:-translate-y-0.5 transition-all duration-300">
+                {images[s.slug] ? (
+                  // Vraie photo (Cloudinary) : plein cadre, pas de blend —
+                  // réservé aux illustrations fond blanc ci-dessous.
+                  <Image src={images[s.slug]} alt={labels[s.slug] ?? s.label} fill sizes="86px" className="object-cover" />
+                ) : (
+                  <Image
+                    src={s.icon}
+                    alt={labels[s.slug] ?? s.label}
+                    width={58}
+                    height={58}
+                    className="object-contain mix-blend-multiply"
+                  />
+                )}
               </div>
               <p className="text-[11.5px] font-bold text-neutral-800 text-center leading-tight">{labels[s.slug] ?? s.label}</p>
             </Link>

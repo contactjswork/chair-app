@@ -10,6 +10,7 @@ import { Check, ArrowRight, Share2 } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { useStepTransition } from '@/hooks/useStepTransition';
+import { getLiveSpecialtyImages } from '@/lib/specialties';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -78,12 +79,22 @@ export default function ClientOnboardingPage() {
   const [saving,   setSaving]   = useState(false);
   const [myReferral, setMyReferral] = useState<ApiReferral | null>(null);
   const [shareOpen,  setShareOpen]  = useState(false);
+  // Photos réelles (Cloudinary, administrables sans build depuis
+  // Configuration > Spécialités) — {} tant qu'un slug n'a pas encore de photo
+  // en base : StyleOption.icon reste alors le repli, jamais un carré vide.
+  const [liveImages, setLiveImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (isLoading) return;
     if (!user) { router.replace('/connexion'); return; }
     if (user.role === 'hairdresser' || user.role === 'salon_owner') router.replace('/pro');
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (step !== 'done') return;
@@ -222,7 +233,15 @@ export default function ClientOnboardingPage() {
                       }`}
                     >
                       <div className="relative">
-                        <Image src={opt.icon} alt={opt.label} width={68} height={68} className="object-contain mix-blend-multiply" />
+                        {liveImages[opt.slug] ? (
+                          // Vraie photo (Cloudinary) : cadre plein, pas de
+                          // blend — réservé aux illustrations fond blanc ci-dessous.
+                          <div className="relative w-[68px] h-[68px] rounded-2xl overflow-hidden">
+                            <Image src={liveImages[opt.slug]} alt={opt.label} fill sizes="68px" className="object-cover" />
+                          </div>
+                        ) : (
+                          <Image src={opt.icon} alt={opt.label} width={68} height={68} className="object-contain mix-blend-multiply" />
+                        )}
                         {active && (
                           <span
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-900 flex items-center justify-center"

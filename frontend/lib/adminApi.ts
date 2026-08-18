@@ -519,6 +519,7 @@ export interface AdminSpecialty {
   name: string;
   slug: string;
   icon?: string | null;
+  image_url?: string | null;
   category?: string | null;
   description?: string | null;
   is_active: boolean;

@@ -5,12 +5,16 @@ import { Check, Scissors, UserRound, Wind, Paintbrush, Minus, CircleDot, Star, L
 import type { ApiSpecialty } from '@/lib/types';
 
 /**
- * Illustrations réelles — mêmes fichiers que côté client (SpecialtyQuickLinks
- * sur la home, compte/modifier, onboarding client) : retour direct de Julien,
- * la sélection de spécialités côté PRO doit ressembler à celle de CHAIR
- * normal, pas afficher des icônes vectorielles génériques différentes.
- * Priorité : illustration ci-dessous > s.icon (emoji en base) > icône
- * vectorielle de repli > Sparkles générique — jamais un carré vide.
+ * Priorité d'affichage, du meilleur au pire :
+ *   1. s.image_url — vraie photo en base (Cloudinary), administrable sans
+ *      déploiement depuis Configuration > Spécialités (voir
+ *      AdminSpecialtyController::uploadImage). C'est la source de vérité :
+ *      changer/ajouter une photo là-bas se répercute ici instantanément.
+ *   2. SPECIALTY_ILLUSTRATIONS ci-dessous — filet de sécurité local pour les
+ *      spécialités qui n'ont pas encore de photo en base (mêmes fichiers que
+ *      côté client : SpecialtyQuickLinks, compte/modifier, onboarding).
+ *   3. s.icon (emoji en base) > icône vectorielle de repli > Sparkles
+ *      générique — jamais un carré vide.
  */
 const SPECIALTY_ILLUSTRATIONS: Record<string, string> = {
   'couleur-balayage':     '/onboarding/balayage.png',
@@ -62,6 +66,7 @@ export default function SpecialtyPicker({ specialties, selected, onToggle, size 
     <div className="grid grid-cols-3 gap-2.5">
       {specialties.map((s) => {
         const active = selected.includes(s.id);
+        const photo = s.image_url;
         const illustration = SPECIALTY_ILLUSTRATIONS[s.slug];
         const Icon = SPECIALTY_ICONS[s.slug] ?? Sparkles;
         return (
@@ -74,7 +79,12 @@ export default function SpecialtyPicker({ specialties, selected, onToggle, size 
             }`}
           >
             <div className={`relative ${boxSize} rounded-[16px] flex items-center justify-center overflow-hidden flex-shrink-0 ${active ? 'bg-white/10' : 'bg-neutral-100'}`}>
-              {illustration ? (
+              {photo ? (
+                // Vraie photo (Cloudinary) : plein cadre, pas de blend — le
+                // traitement mix-blend-multiply ci-dessous est pensé pour les
+                // illustrations fond blanc, il assombrirait une photo réelle.
+                <Image src={photo} alt={s.name} fill sizes={`${illustrationPx}px`} className="object-cover" />
+              ) : illustration ? (
                 <Image
                   src={illustration}
                   alt={s.name}

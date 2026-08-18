@@ -14,6 +14,7 @@ export interface LiveSpecialty {
   slug: string;
   name: string;
   icon: string | null;
+  image_url: string | null;
   category: string | null;
   order: number;
 }
@@ -36,6 +37,7 @@ export const SPECIALTY_LABELS: Record<string, string> = {
 // bloquant, repli silencieux si l'API échoue.
 let cachedList: LiveSpecialty[] | null = null;
 let cachedLabels: Record<string, string> | null = null;
+let cachedImages: Record<string, string> | null = null;
 let cachedAt = 0;
 let inFlight: Promise<LiveSpecialty[]> | null = null;
 const DEDUPE_MS = 30_000;
@@ -52,7 +54,11 @@ async function fetchLiveList(): Promise<LiveSpecialty[]> {
       const data = (await res.json()) as LiveSpecialty[];
       cachedList = data;
       cachedLabels = { ...SPECIALTY_LABELS };
-      data.forEach((s) => { if (s.slug && s.name) cachedLabels![s.slug] = s.name; });
+      cachedImages = {};
+      data.forEach((s) => {
+        if (s.slug && s.name) cachedLabels![s.slug] = s.name;
+        if (s.slug && s.image_url) cachedImages![s.slug] = s.image_url;
+      });
       cachedAt = now;
       return data;
     } catch {
@@ -78,4 +84,14 @@ export async function getLiveSpecialties(): Promise<LiveSpecialty[]> {
 export async function getLiveSpecialtyLabels(): Promise<Record<string, string>> {
   await fetchLiveList();
   return cachedLabels ?? SPECIALTY_LABELS;
+}
+
+/** Photos live (slug → image_url) — uniquement les spécialités qui ont une
+ *  vraie photo en base (administrable sans build depuis Configuration >
+ *  Spécialités). Un slug absent de ce Record n'a pas encore de photo :
+ *  l'appelant doit retomber sur son illustration statique locale, jamais
+ *  afficher un carré vide. `{}` si l'API est indisponible. */
+export async function getLiveSpecialtyImages(): Promise<Record<string, string>> {
+  await fetchLiveList();
+  return cachedImages ?? {};
 }

@@ -134,6 +134,7 @@ export interface ApiSpecialty {
   slug: string;
   category: string | null;
   icon?: string | null;
+  image_url?: string | null;
 }
 
 export interface ApiSalon {

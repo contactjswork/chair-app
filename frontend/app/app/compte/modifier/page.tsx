@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { ChevronLeft, User, Camera, Check, Sparkles } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import CityAutocomplete from '@/components/ui/CityAutocomplete';
+import { getLiveSpecialtyImages } from '@/lib/specialties';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -90,9 +91,20 @@ export default function ModifierProfilPage() {
   const [success, setSuccess] = useState(false);
   const [error,   setError]   = useState('');
 
+  // Photos réelles (Cloudinary, administrables sans build depuis
+  // Configuration > Spécialités) — {} tant qu'un slug n'a pas encore de
+  // photo en base : STYLES_*[].icon reste alors le repli, jamais un carré vide.
+  const [liveImages, setLiveImages] = useState<Record<string, string>>({});
+
   useEffect(() => {
     if (!isLoading && !user) router.replace('/connexion');
   }, [user, isLoading, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -280,7 +292,15 @@ export default function ModifierProfilPage() {
                       active ? 'ring-2 ring-neutral-900 bg-white shadow-sm' : 'hover:bg-neutral-50'
                     }`}>
                     <div className="relative">
-                      <Image src={opt.icon} alt={opt.label} width={72} height={72} className="object-contain mix-blend-multiply" />
+                      {liveImages[opt.slug] ? (
+                        // Vraie photo (Cloudinary) : cadre rond plein, pas de
+                        // blend — réservé aux illustrations fond blanc ci-dessous.
+                        <div className="relative w-[72px] h-[72px] rounded-2xl overflow-hidden">
+                          <Image src={liveImages[opt.slug]} alt={opt.label} fill sizes="72px" className="object-cover" />
+                        </div>
+                      ) : (
+                        <Image src={opt.icon} alt={opt.label} width={72} height={72} className="object-contain mix-blend-multiply" />
+                      )}
                       {active && (
                         <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-neutral-900 flex items-center justify-center"
                           style={{ animation: 'popIn 0.18s cubic-bezier(0.34,1.56,0.64,1) both' }}>

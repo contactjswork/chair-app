@@ -173,6 +173,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(functi
     Route::get('/specialties',           [AdminSpecialtyController::class, 'index'])->middleware('admin.permission:specialties.manage');
     Route::post('/specialties',          [AdminSpecialtyController::class, 'store'])->middleware('admin.permission:specialties.manage');
     Route::patch('/specialties/{id}',    [AdminSpecialtyController::class, 'update'])->middleware('admin.permission:specialties.manage');
+    Route::post('/specialties/{id}/image',  [AdminSpecialtyController::class, 'uploadImage'])->middleware('admin.permission:specialties.manage');
+    Route::delete('/specialties/{id}/image',[AdminSpecialtyController::class, 'removeImage'])->middleware('admin.permission:specialties.manage');
     Route::post('/specialties/{id}/hide',   [AdminSpecialtyController::class, 'hide'])->middleware('admin.permission:specialties.manage');
     Route::post('/specialties/{id}/unhide', [AdminSpecialtyController::class, 'unhide'])->middleware('admin.permission:specialties.manage');
     Route::delete('/specialties/{id}',   [AdminSpecialtyController::class, 'destroy'])->middleware('admin.permission:specialties.manage');

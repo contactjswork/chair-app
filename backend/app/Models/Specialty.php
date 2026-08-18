@@ -9,7 +9,7 @@ class Specialty extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'icon', 'category', 'description', 'is_active', 'order'];
+    protected $fillable = ['name', 'slug', 'icon', 'image_url', 'category', 'description', 'is_active', 'order'];
 
     protected $casts = ['is_active' => 'boolean', 'order' => 'integer'];
 

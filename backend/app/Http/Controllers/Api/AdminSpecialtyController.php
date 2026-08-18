@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Specialty;
 use App\Services\AdminAuditLogger;
+use App\Services\CloudinaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -98,6 +99,49 @@ class AdminSpecialtyController extends Controller
         AdminAuditLogger::log($request->user(), 'specialties.update', 'specialty', $specialty->id, $old, $specialty->fresh()->toArray(), $request);
 
         return response()->json($specialty->fresh());
+    }
+
+    /**
+     * POST /admin/specialties/{id}/image — upload la photo réelle de la
+     * spécialité vers Cloudinary, même pattern que
+     * ProfileController::uploadAvatar / SalonController::uploadLogo.
+     * Remplace automatiquement l'ancienne image si présente.
+     */
+    public function uploadImage(Request $request, $id)
+    {
+        $specialty = Specialty::findOrFail($id);
+
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,webp|max:5120',
+        ]);
+
+        $cloudinary = new CloudinaryService();
+        $cloudinary->deleteOldMedia($specialty->image_url);
+
+        $url = $cloudinary->upload($request->file('image'), 'chair/specialty-images');
+
+        $old = $specialty->toArray();
+        $specialty->update(['image_url' => $url]);
+
+        AdminAuditLogger::log($request->user(), 'specialties.update', 'specialty', $specialty->id, $old, $specialty->fresh()->toArray(), $request);
+
+        return response()->json(['image_url' => $url]);
+    }
+
+    /** DELETE /admin/specialties/{id}/image — retire la photo, retombe sur les icônes de repli côté frontend. */
+    public function removeImage(Request $request, $id)
+    {
+        $specialty = Specialty::findOrFail($id);
+
+        $cloudinary = new CloudinaryService();
+        $cloudinary->deleteOldMedia($specialty->image_url);
+
+        $old = $specialty->toArray();
+        $specialty->update(['image_url' => null]);
+
+        AdminAuditLogger::log($request->user(), 'specialties.update', 'specialty', $specialty->id, $old, $specialty->fresh()->toArray(), $request);
+
+        return response()->json(['ok' => true]);
     }
 
     public function hide(Request $request, $id)
