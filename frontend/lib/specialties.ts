@@ -59,9 +59,12 @@ export const SPECIALTY_ILLUSTRATIONS: Record<string, string> = {
   'barbe':                '/onboarding/barbe.png',
   'couleur-homme':        '/onboarding/couleur.png',
   'afro-locks':           '/onboarding/dreads.png',
-  'soins-transformation': '/onboarding/couleur.png',
+  // Retour de Julien : ces deux-là pointaient par erreur vers des illustrations
+  // HOMME (couleur.png = "Couleur & Créatif" homme, cheveux-longs.png = "Cheveux
+  // Longs" homme) alors que ce sont des spécialités femme (FEMME_SPECIALTY_SLUGS).
+  'soins-transformation': '/onboarding/couleur-femme.png',
   'evenementiel':         '/onboarding/chignon.png',
-  'extensions':           '/onboarding/cheveux-longs.png',
+  'extensions':           '/onboarding/coiffure-femme.png',
 };
 
 // Cache mémoire court + dédoublonnage des requêtes concurrentes — même

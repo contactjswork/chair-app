@@ -18,10 +18,13 @@ const SPECIALTIES = [
   { slug: 'coupe-femme',          label: 'Coupe Femme',            icon: '/onboarding/coupe.png' },
   { slug: 'boucles-curly',        label: 'Boucles & Curly',        icon: '/onboarding/boucles.png' },
   { slug: 'texture-lissage',      label: 'Texture & Lissage',      icon: '/onboarding/lissage.png' },
-  { slug: 'soins-transformation', label: 'Soins & Transformation', icon: '/onboarding/couleur.png' },
+  // couleur.png/cheveux-longs.png sont des illustrations HOMME (Couleur &
+  // Créatif / Cheveux Longs) — mauvais repli pour ces deux spécialités femme
+  // (retour de Julien), corrigé pour matcher lib/specialties.ts.
+  { slug: 'soins-transformation', label: 'Soins & Transformation', icon: '/onboarding/couleur-femme.png' },
   { slug: 'evenementiel',         label: 'Événementiel',           icon: '/onboarding/chignon.png' },
   { slug: 'coupe-homme',          label: 'Coupe Homme',            icon: '/onboarding/classique.png' },
-  { slug: 'extensions',           label: 'Extensions',             icon: '/onboarding/cheveux-longs.png' },
+  { slug: 'extensions',           label: 'Extensions',             icon: '/onboarding/coiffure-femme.png' },
   { slug: 'barbe',                label: 'Barbe',                  icon: '/onboarding/barbe.png' },
   { slug: 'afro-locks',           label: 'Afro & Locks',           icon: '/onboarding/dreads.png' },
 ];
