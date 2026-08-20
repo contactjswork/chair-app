@@ -35,6 +35,13 @@ return [
         'rest_api_key'  => env('ONESIGNAL_REST_API_KEY'),
     ],
 
+    'mapkit' => [
+        'team_id'          => env('MAPKIT_TEAM_ID'),
+        'key_id'           => env('MAPKIT_KEY_ID'),
+        'private_key_path' => env('MAPKIT_PRIVATE_KEY_PATH'),
+        'restrict_origin'  => env('MAPKIT_RESTRICT_ORIGIN', false),
+    ],
+
     'stripe' => [
         'secret'                 => env('STRIPE_SECRET'),
         'webhook_secret'         => env('STRIPE_WEBHOOK_SECRET'),

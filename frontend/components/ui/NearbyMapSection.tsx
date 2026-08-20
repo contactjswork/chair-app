@@ -51,10 +51,9 @@ export default function NearbyMapSection({
     let cancelled = false;
 
     (async () => {
-      const { LeafletAdapter } = await import('@/components/search/leafletAdapter');
+      const { createAndInitMapAdapter } = await import('@/components/search/createMapAdapter');
       if (cancelled || !containerRef.current) return;
-      const adapter = new LeafletAdapter();
-      await adapter.init(containerRef.current, {
+      const adapter = await createAndInitMapAdapter(containerRef.current, {
         center: { lat: geo.lat, lng: geo.lng },
         zoom: 12,
         onSelect: () => {},

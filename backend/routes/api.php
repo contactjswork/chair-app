@@ -52,6 +52,7 @@ use App\Http\Controllers\Api\AdminSpecialtyController;
 use App\Http\Controllers\Api\AdminInsightController;
 use App\Http\Controllers\Api\FeatureFlagController;
 use App\Http\Controllers\Api\AppConfigController;
+use App\Http\Controllers\Api\MapKitTokenController;
 
 // Admin — authentification par compte Sanctum réel (role='admin' + un
 // admin_role granulaire), PLUS de jeton statique partagé. Voir
@@ -215,6 +216,7 @@ Route::get('/specialties', [SpecialtyController::class, 'index']);
 Route::get('/feature-flags', [FeatureFlagController::class, 'index']);
 Route::get('/app-config', [AppConfigController::class, 'index']);
 Route::get('/geocode', [GeocodingController::class, 'geocode']);
+Route::get('/mapkit-token', [MapKitTokenController::class, 'token'])->middleware('throttle:30,1');
 Route::get('/geo/regions', [GeoController::class, 'regions']);
 Route::get('/geo/departments', [GeoController::class, 'departments']);
 Route::get('/geo/search-city', [GeoController::class, 'searchCity'])->middleware('throttle:30,1');

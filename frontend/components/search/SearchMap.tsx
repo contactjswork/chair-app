@@ -55,11 +55,10 @@ const SearchMap = forwardRef<SearchMapHandle, Props>(function SearchMap(
     let cancelled = false;
 
     (async () => {
-      const { LeafletAdapter } = await import('./leafletAdapter');
+      const { createAndInitMapAdapter } = await import('./createMapAdapter');
       if (cancelled || !containerRef.current) return;
 
-      const adapter = new LeafletAdapter();
-      await adapter.init(containerRef.current, {
+      const adapter = await createAndInitMapAdapter(containerRef.current, {
         center: initialCenter,
         zoom: initialZoom,
         onSelect: (key) => onSelectRef.current(key),
