@@ -340,8 +340,7 @@ export class MapKitAdapter implements MapAdapter {
           this.setCenter({ lat: c.lat, lng: c.lng }, SPREAD_ZOOM);
         } else {
           this.fitBounds(
-            { sw_lat: Math.min(...lats), sw_lng: Math.min(...lngs), ne_lat: Math.max(...lats), ne_lng: Math.max(...lngs) },
-            70
+            { sw_lat: Math.min(...lats), sw_lng: Math.min(...lngs), ne_lat: Math.max(...lats), ne_lng: Math.max(...lngs) }
           );
         }
       }, 900));
