@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import CookieBanner from "@/components/ui/CookieBanner";
 import AppBanner from "@/components/ui/AppBanner";
+import PwaManifest from "@/components/ui/PwaManifest";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,6 +27,17 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "CHAIR — La plateforme des coiffeurs professionnels",
   description: "Découvrez les meilleurs coiffeurs près de chez vous. Portfolios, avis certifiés, spécialités.",
+  // Web app installable (plein écran, pas un raccourci Safari) — PwaManifest
+  // bascule ces valeurs vers CHAIR PRO sur /pro/*.
+  manifest: "/manifest-app.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "CHAIR",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/chair-touch.png",
+  },
 };
 
 export default function RootLayout({
@@ -36,6 +48,7 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-white text-neutral-900">
+        <PwaManifest />
         <AppBanner />
         <Providers>{children}</Providers>
         <CookieBanner />
