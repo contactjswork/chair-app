@@ -123,6 +123,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                   categories={serviceCategories}
                   isIndependent={hairdresser.is_independent}
                   bookingUrl={hairdresser.booking_url}
+                  specialtyHighlights={hairdresser.specialty_highlights ?? []}
                 />
               ),
             },

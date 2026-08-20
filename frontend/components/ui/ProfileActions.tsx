@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
 import { getSharePayload } from '@/lib/share';
 import { Heart, UserPlus, UserCheck, Edit2, Share2, Check } from 'lucide-react';
-import { SecondaryButton, IconButton } from './Button';
+import { PrimaryButton, SecondaryButton, IconButton } from './Button';
 
 function InstagramIcon({ size = 16 }: { size?: number }) {
   return (
@@ -177,17 +177,29 @@ export default function ProfileActions({
   return (
     <div className="flex items-center gap-2">
 
-      {/* S'abonner — le compte d'abonnés vit déjà dans la rangée de stats
-          juste au-dessus ; le répéter ici double l'info pour rien. */}
-      <SecondaryButton
-        fullWidth
-        onClick={handleFollow}
-        loading={loadingFollow || !statusLoaded}
-        icon={following ? <UserCheck size={15} strokeWidth={2} /> : <UserPlus size={15} strokeWidth={2} />}
-        className={following ? 'bg-neutral-100 border-neutral-100' : ''}
-      >
-        {following ? 'Abonné' : "S'abonner"}
-      </SecondaryButton>
+      {/* S'abonner = noir plein (l'action à faire) ; Abonné = gris neutre
+          (état acquis) — retour Julien : les deux états en blanc étaient
+          indistinguables. Même contraste que Instagram (Suivre/Suivi). */}
+      {following ? (
+        <SecondaryButton
+          fullWidth
+          onClick={handleFollow}
+          loading={loadingFollow || !statusLoaded}
+          icon={<UserCheck size={15} strokeWidth={2} />}
+          className="bg-neutral-100 border-neutral-100 text-neutral-600"
+        >
+          Abonné
+        </SecondaryButton>
+      ) : (
+        <PrimaryButton
+          fullWidth
+          onClick={handleFollow}
+          loading={loadingFollow || !statusLoaded}
+          icon={<UserPlus size={15} strokeWidth={2} />}
+        >
+          S&apos;abonner
+        </PrimaryButton>
+      )}
 
       {/* Sauvegarder / Partager / Instagram — un seul bloc groupé plutôt que
           trois cercles isolés au même poids visuel que le CTA principal. */}

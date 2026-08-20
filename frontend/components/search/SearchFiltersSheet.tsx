@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { Check, RotateCcw, Star, X } from 'lucide-react';
 import { SPECIALTY_LABELS } from '@/lib/explore';
 import type { ExploreSort, ExploreType } from '@/lib/explore';
-import { SPECIALTY_ILLUSTRATIONS, getLiveSpecialtyImages, getLiveSpecialtyLabels } from '@/lib/specialties';
+import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, getLiveSpecialtyImages, getLiveSpecialtyLabels, getLiveSpecialties } from '@/lib/specialties';
 import { getSpecialtyIcon } from './specialtyIcons';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/Button';
 import SwipeClosePanel from '@/components/ui/SwipeClosePanel';
@@ -72,9 +72,9 @@ function nearestStepIndex(steps: { value: number | null }[], value: number | nul
 function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-3">{title}</p>
+      <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400 mb-2">{title}</p>
       {children}
-      {hint && <p className="text-[11px] text-neutral-400 mt-2.5 leading-relaxed">{hint}</p>}
+      {hint && <p className="text-[11px] text-neutral-400 mt-2 leading-relaxed">{hint}</p>}
     </div>
   );
 }
@@ -138,29 +138,29 @@ function SpecialtyTile({ slug, label, imageUrl, active, onToggle }: {
       type="button"
       onClick={onToggle}
       aria-pressed={active}
-      className="flex flex-col items-center gap-1.5 min-w-0 pt-1 pb-0.5 active:scale-[0.94] transition-transform"
+      className="w-full flex flex-col items-center gap-1.5 min-w-0 pt-1 pb-0.5 active:scale-[0.94] transition-transform"
     >
       <span
-        className={`relative w-[54px] h-[54px] rounded-2xl overflow-hidden bg-neutral-50 flex items-center justify-center flex-shrink-0 transition-shadow ${
+        className={`relative w-[48px] h-[48px] rounded-2xl overflow-hidden bg-neutral-50 flex items-center justify-center flex-shrink-0 transition-shadow ${
           active
             ? 'ring-[2.5px] ring-neutral-900 ring-offset-2 ring-offset-white'
             : 'ring-1 ring-neutral-200'
         }`}
       >
         {imageUrl ? (
-          <Image src={imageUrl} alt="" fill sizes="54px" className="object-cover" />
+          <Image src={imageUrl} alt="" fill sizes="48px" className="object-cover" />
         ) : illustration ? (
-          <Image src={illustration} alt="" width={44} height={44} className="object-contain mix-blend-multiply" />
+          <Image src={illustration} alt="" width={40} height={40} className="object-contain mix-blend-multiply" />
         ) : (
-          <span className="text-neutral-400">{getSpecialtyIcon(slug, 20)}</span>
+          <span className="text-neutral-400">{getSpecialtyIcon(slug, 18)}</span>
         )}
         {active && (
-          <span className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-neutral-900 flex items-center justify-center shadow-sm">
-            <Check size={11} strokeWidth={3.5} className="text-white" />
+          <span className="absolute top-1 right-1 w-[17px] h-[17px] rounded-full bg-neutral-900 flex items-center justify-center shadow-sm">
+            <Check size={10} strokeWidth={3.5} className="text-white" />
           </span>
         )}
       </span>
-      <span className={`text-[10.5px] leading-tight text-center line-clamp-2 ${active ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-500'}`}>
+      <span className={`text-[10px] leading-tight text-center line-clamp-1 ${active ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-500'}`}>
         {label}
       </span>
     </button>
@@ -177,16 +177,33 @@ export default function SearchFiltersSheet({
 }: Props) {
   // Libellés live (DB, administrables sans build) — repli sur SPECIALTY_LABELS
   // tant que le fetch n'a pas résolu / si l'API tombe. Idem pour les vraies
-  // photos ({} tant qu'aucune spécialité n'a de photo en base).
+  // photos ({} tant qu'aucune spécialité n'a de photo en base) et pour la
+  // catégorie Homme/Femme (repli sur les listes de slugs locales).
   const [liveLabels, setLiveLabels] = useState<Record<string, string>>(SPECIALTY_LABELS);
   const [liveImages, setLiveImages] = useState<Record<string, string>>({});
+  const [liveCategories, setLiveCategories] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLiveLabels(map); });
     getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
+    getLiveSpecialties().then((list) => {
+      if (cancelled) return;
+      const map: Record<string, string> = {};
+      list.forEach((s) => { if (s.category) map[s.slug] = s.category; });
+      setLiveCategories(map);
+    }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // Genre d'une spécialité : catégorie live (Homme/Femme, administrable)
+  // en priorité, repli sur les listes de slugs locales.
+  function genderOf(slug: string): 'homme' | 'femme' {
+    const cat = liveCategories[slug]?.toLowerCase();
+    if (cat === 'homme') return 'homme';
+    if (cat === 'femme') return 'femme';
+    return HOMME_SPECIALTY_SLUGS.includes(slug) ? 'homme' : 'femme';
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -217,35 +234,51 @@ export default function SearchFiltersSheet({
       <SwipeClosePanel
         onClose={onClose}
         className="relative flex flex-col bg-white rounded-t-[32px] md:rounded-[32px] shadow-[0_-8px_40px_-8px_rgba(10,10,10,0.25)] md:shadow-[0_24px_60px_-12px_rgba(10,10,10,0.3)] max-h-[92vh] md:max-h-[85vh] md:w-full md:max-w-lg overflow-hidden">
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 flex-shrink-0">
           <h2 className="text-[20px] font-bold text-neutral-900 tracking-[-0.02em]">Filtres</h2>
           <IconButton onClick={onClose} aria-label="Fermer" size="sm">
             <X size={15} />
           </IconButton>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 space-y-7">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-5 space-y-5">
 
-          {/* Spécialités — le "quoi", premier réglage rencontré. Vignettes
-              photo compactes multi-sélection, état sélectionné marqué par un
-              ring noir épais + coche (jamais juste une opacité). */}
+          {/* Spécialités — le "quoi", premier réglage rencontré. Groupées
+              Homme / Femme (catégorie administrable en base), chaque groupe
+              sur UNE rangée horizontale défilable : la section reste basse
+              pour que Distance et Note soient visibles dès l'ouverture
+              (retour Julien : il fallait scroller pour les découvrir). */}
           <Section title="Spécialités">
-            <div className="grid grid-cols-3 gap-x-2 gap-y-3">
-              {Object.entries(liveLabels).map(([slug, label]) => {
-                const active = filters.specialties.includes(slug);
+            <div className="space-y-3">
+              {(['homme', 'femme'] as const).map((gender) => {
+                const slugs = Object.keys(liveLabels).filter((slug) => genderOf(slug) === gender);
+                if (!slugs.length) return null;
                 return (
-                  <SpecialtyTile
-                    key={slug}
-                    slug={slug}
-                    label={label}
-                    imageUrl={liveImages[slug]}
-                    active={active}
-                    onToggle={() => onChange({
-                      specialties: active
-                        ? filters.specialties.filter((s) => s !== slug)
-                        : [...filters.specialties, slug],
-                    })}
-                  />
+                  <div key={gender}>
+                    <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-300 mb-1.5">
+                      {gender === 'homme' ? 'Homme' : 'Femme'}
+                    </p>
+                    <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
+                      {slugs.map((slug) => {
+                        const active = filters.specialties.includes(slug);
+                        return (
+                          <div key={slug} className="w-[76px] flex-shrink-0">
+                            <SpecialtyTile
+                              slug={slug}
+                              label={liveLabels[slug]}
+                              imageUrl={liveImages[slug]}
+                              active={active}
+                              onToggle={() => onChange({
+                                specialties: active
+                                  ? filters.specialties.filter((s) => s !== slug)
+                                  : [...filters.specialties, slug],
+                              })}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -256,7 +289,7 @@ export default function SearchFiltersSheet({
             title="Distance"
             hint={hasLocation ? `Autour de ${locationLabel}` : 'Choisissez une ville ou activez la localisation pour filtrer par distance.'}
           >
-            <p className="text-[22px] font-bold text-neutral-900 tracking-[-0.02em] leading-none mb-1">
+            <p className="text-[19px] font-bold text-neutral-900 tracking-[-0.02em] leading-none mb-1">
               {filters.radius == null ? 'Partout' : `${filters.radius} km`}
             </p>
             <SnapSlider
@@ -270,7 +303,7 @@ export default function SearchFiltersSheet({
           {/* Note minimum — même rail, même curseur que Distance */}
           <Section title="Note minimum">
             <div className="flex items-center gap-1.5 mb-1">
-              <p className="text-[22px] font-bold text-neutral-900 tracking-[-0.02em] leading-none">
+              <p className="text-[19px] font-bold text-neutral-900 tracking-[-0.02em] leading-none">
                 {ratingStep.value === 0 ? 'Toutes' : ratingStep.label}
               </p>
               {ratingStep.value > 0 && <Star size={16} className="text-neutral-900 fill-neutral-900" />}

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, ExternalLink, ChevronRight, Scissors } from 'lucide-react';
-import type { ApiServiceCategory, ApiService } from '@/lib/types';
+import { Clock, ExternalLink, ChevronRight, Scissors, BadgeCheck } from 'lucide-react';
+import type { ApiServiceCategory, ApiService, ApiSpecialtyHighlight } from '@/lib/types';
 import BookingSheet from './BookingSheet';
 import EmptyState from './EmptyState';
 import { PrimaryButton } from './Button';
@@ -12,15 +12,29 @@ interface Props {
   categories: ApiServiceCategory[];
   isIndependent: boolean;
   bookingUrl: string | null;
+  /** Réputation par spécialité (specialty_highlights du profil) — sert à
+   *  afficher les visites certifiées réelles à côté de chaque groupe. */
+  specialtyHighlights?: ApiSpecialtyHighlight[];
 }
 
-export default function PublicProfileServices({ slug, categories, isIndependent, bookingUrl }: Props) {
+export default function PublicProfileServices({ slug, categories, isIndependent, bookingUrl, specialtyHighlights = [] }: Props) {
   const [preselect, setPreselect] = useState<ApiService | null>(null);
   const [open, setOpen] = useState(false);
 
   const visibleCategories = categories
     .map((cat) => ({ cat, active: (cat.services ?? []).filter((s) => s.is_active) }))
     .filter(({ active }) => active.length > 0);
+
+  // Visites certifiées de la spécialité du groupe (données réelles issues des
+  // QR de visite — hairdresser_specialty_progress.visits_count). Le groupe est
+  // relié à sa spécialité par le specialty_id de ses services ; affiché
+  // uniquement si > 0 — jamais un "0 visites" par défaut.
+  function certifiedVisitsFor(services: ApiService[]): number | null {
+    const specialtyId = services.find((s) => s.specialty_id != null)?.specialty_id;
+    if (specialtyId == null) return null;
+    const h = specialtyHighlights.find((x) => x.specialty_id === specialtyId);
+    return h && h.visits_count > 0 ? h.visits_count : null;
+  }
 
   function handleBook(svc: ApiService) {
     setPreselect(svc);
@@ -52,10 +66,20 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
       )}
 
       <div className="space-y-7">
-        {visibleCategories.map(({ cat, active }) => (
+        {visibleCategories.map(({ cat, active }) => {
+          const certifiedVisits = certifiedVisitsFor(active);
+          return (
           <div key={cat.id}>
             {cat.name && (
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2.5">{cat.name}</p>
+              <div className="flex items-baseline justify-between gap-2 mb-2.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400">{cat.name}</p>
+                {certifiedVisits != null && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-500 whitespace-nowrap">
+                    <BadgeCheck size={12} className="text-neutral-400" />
+                    {certifiedVisits} visite{certifiedVisits > 1 ? 's' : ''} certifiée{certifiedVisits > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             )}
 
             {/* Lignes à filets sur fond blanc, plutôt qu'un pavé gris arrondi.
@@ -108,7 +132,8 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {isIndependent && (

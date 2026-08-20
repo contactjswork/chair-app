@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { GraduationCap, ShieldCheck, MapPin, Clock, BadgeCheck } from 'lucide-react';
 import type { ApiHairdresserProfile } from '@/lib/types';
+import SpecialtyPhotoGrid from './SpecialtyPhotoGrid';
 
 function InstagramIcon({ size = 15 }: { size?: number }) {
   return (
@@ -134,21 +135,13 @@ export default function PublicProfileAbout({ hairdresser }: Props) {
         </div>
       )}
 
-      {/* Toutes les spécialités */}
+      {/* Toutes les spécialités — vignettes PHOTO, non cliquables (retour
+          Julien : une spécialité sur un profil ne doit mener nulle part,
+          comme les étiquettes des réalisations du portfolio). */}
       {hairdresser.specialties.length > 0 && (
         <div>
-          <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-2.5">Spécialités</p>
-          <div className="flex flex-wrap gap-1.5">
-            {hairdresser.specialties.map((s) => (
-              <Link
-                key={s.slug}
-                href={`/app/recherche?specialty=${s.slug}`}
-                className="text-[11px] font-semibold tracking-wide uppercase bg-neutral-900 text-white px-3 py-1.5 rounded-full hover:bg-neutral-700 transition-colors"
-              >
-                {s.name}
-              </Link>
-            ))}
-          </div>
+          <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-3">Spécialités</p>
+          <SpecialtyPhotoGrid specialties={hairdresser.specialties} />
         </div>
       )}
 
