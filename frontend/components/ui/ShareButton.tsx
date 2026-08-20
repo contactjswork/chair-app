@@ -1,13 +1,27 @@
 'use client';
 
 import { Share2 } from 'lucide-react';
+import { getSharePayload } from '@/lib/share';
 
-export default function ShareButton() {
+interface Props {
+  /** Nom du coiffeur — contexte pour le texte de partage de la réalisation. */
+  hairdresserName?: string;
+  /** Description de la réalisation. */
+  description?: string;
+}
+
+export default function ShareButton({ hairdresserName, description }: Props) {
   function handleShare() {
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      navigator.share({ url: window.location.href }).catch(() => {});
-    } else if (typeof navigator !== 'undefined') {
-      navigator.clipboard?.writeText(window.location.href);
+    if (typeof navigator === 'undefined') return;
+    const { title, text, url } = getSharePayload('post', {
+      url: window.location.href,
+      name: hairdresserName,
+      description,
+    });
+    if (navigator.share) {
+      navigator.share({ title, text, url }).catch(() => {});
+    } else {
+      navigator.clipboard?.writeText(`${text}\n${url}`);
     }
   }
 

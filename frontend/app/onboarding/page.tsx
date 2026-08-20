@@ -10,6 +10,7 @@ import { Armchair, Briefcase, Camera, Check, ImageIcon as ImageIconLucide, Share
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
 import ShareSheet from '@/components/ui/ShareSheet';
+import { getSharePayload } from '@/lib/share';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
 import LocationAccordion from '@/components/onboarding/LocationAccordion';
@@ -416,7 +417,7 @@ export default function OnboardingPage() {
             onClose={() => { setShareOpen(false); router.push('/pro'); }}
             title="Partager mon profil"
             shareUrl={myReferral.link}
-            shareText={`Retrouvez-moi sur CHAIR — ${tagline.trim() || `${user?.name}, coiffeur`}`}
+            shareText={getSharePayload('own-profile', { url: myReferral.link, name: user?.name, tagline }).text}
             actionType="share_profile"
           />
         )}

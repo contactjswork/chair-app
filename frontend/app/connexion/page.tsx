@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { safeInternalPath } from '@/lib/auth';
 
 
 function ConnexionContent() {
@@ -12,6 +13,11 @@ function ConnexionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Reprise de parcours (ex: réservation interrompue par l'auth) : on revient
+  // là d'où l'utilisateur a été interrompu plutôt que sur l'accueil de son
+  // rôle. Uniquement un chemin interne — une URL externe est ignorée.
+  const returnTo = safeInternalPath(searchParams.get('returnTo'));
 
   useEffect(() => {
     // Le flag survit même si une garde de page a remplacé l'URL avant
@@ -40,7 +46,7 @@ function ConnexionContent() {
     setError('');
     setIsLoading(true);
     try {
-      await login(email, password);
+      await login(email, password, { returnTo });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Identifiants invalides');
     } finally {
@@ -128,7 +134,12 @@ function ConnexionContent() {
         {/* Footer */}
         <p className="text-center text-[13px] text-neutral-400">
           Pas encore de compte ?{' '}
-          <Link href="/inscription" className="font-semibold text-neutral-900 hover:underline">
+          {/* Le returnTo suit vers l'inscription : celui qui découvre ici
+              qu'il n'a pas de compte ne doit pas perdre sa reprise de parcours. */}
+          <Link
+            href={returnTo ? `/inscription?returnTo=${encodeURIComponent(returnTo)}` : '/inscription'}
+            className="font-semibold text-neutral-900 hover:underline"
+          >
             Créer un compte
           </Link>
         </p>

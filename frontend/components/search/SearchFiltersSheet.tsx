@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapPin, RotateCcw, Star, X } from 'lucide-react';
+import Image from 'next/image';
+import { Check, RotateCcw, Star, X } from 'lucide-react';
 import { SPECIALTY_LABELS } from '@/lib/explore';
 import type { ExploreSort, ExploreType } from '@/lib/explore';
-import { getLiveSpecialtyLabels } from '@/lib/specialties';
+import { SPECIALTY_ILLUSTRATIONS, getLiveSpecialtyImages, getLiveSpecialtyLabels } from '@/lib/specialties';
 import { getSpecialtyIcon } from './specialtyIcons';
-import { FilterChip } from '@/components/ui/Badge';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/Button';
 
 export interface FiltersState {
@@ -29,19 +29,44 @@ interface Props {
   isLoading: boolean;
 }
 
-const RATING_STEPS = [
-  { label: 'Toutes', value: 0   },
-  { label: '4+',     value: 4   },
-  { label: '4,5+',   value: 4.5 },
+// Paliers des deux sliders — des valeurs RONDES uniquement (pas de continu,
+// "17 km" n'aide personne). Le contrat du hook est inchangé : radius en km
+// (null = pas de filtre distance), minRating en nombre envoyé tel quel en
+// min_rating (0 = pas de filtre).
+const DISTANCE_STEPS: { label: string; value: number | null; valueText: string }[] = [
+  { label: '5',       value: 5,    valueText: '5 km'   },
+  { label: '10',      value: 10,   valueText: '10 km'  },
+  { label: '25',      value: 25,   valueText: '25 km'  },
+  { label: '50',      value: 50,   valueText: '50 km'  },
+  { label: '100',     value: 100,  valueText: '100 km' },
+  { label: 'Partout', value: null, valueText: 'Partout' },
 ];
 
-const RADIUS_STEPS = [
-  { label: '5 km',  value: 5   },
-  { label: '10 km', value: 10  },
-  { label: '20 km', value: 20  },
-  { label: '50 km', value: 50  },
-  { label: 'France', value: null },
+const RATING_STEPS: { label: string; value: number; valueText: string }[] = [
+  { label: 'Toutes', value: 0,   valueText: 'Toutes les notes'    },
+  { label: '3+',     value: 3,   valueText: 'Au moins 3 étoiles'   },
+  { label: '4+',     value: 4,   valueText: 'Au moins 4 étoiles'   },
+  { label: '4,5+',   value: 4.5, valueText: 'Au moins 4,5 étoiles' },
 ];
+
+/** Index du palier le plus proche de la valeur courante — les valeurs
+ *  peuvent venir d'ailleurs que du slider (défaut radius=20, deep-link) :
+ *  on positionne alors le curseur sur le palier le plus proche sans
+ *  modifier la valeur tant que l'utilisateur n'a pas touché le slider. */
+function nearestStepIndex(steps: { value: number | null }[], value: number | null): number {
+  if (value == null) {
+    const i = steps.findIndex((s) => s.value == null);
+    return i >= 0 ? i : steps.length - 1;
+  }
+  let best = 0;
+  let bestDiff = Infinity;
+  steps.forEach((s, i) => {
+    if (s.value == null) return;
+    const d = Math.abs(s.value - value);
+    if (d < bestDiff) { bestDiff = d; best = i; }
+  });
+  return best;
+}
 
 function Section({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) {
   return (
@@ -53,15 +78,91 @@ function Section({ title, children, hint }: { title: string; children: React.Rea
   );
 }
 
-/** Chip de la sheet — délègue au FilterChip partagé pour que le tri et les
- *  spécialités aient exactement le même gabarit que les chips de la liste
- *  (avant : 4 styles de chip différents rien que dans l'écran Recherche). */
-function Chip({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon?: React.ReactNode; children: React.ReactNode }) {
+/** Slider à paliers commun à Distance et Note — même rail, même curseur,
+ *  même gabarit de libellés : un seul langage visuel pour les deux réglages.
+ *  <input type="range"> natif (focusable, flèches clavier, aria-valuetext),
+ *  stylé via .chair-range (globals.css), snap garanti par step={1} sur des
+ *  index entiers. */
+function SnapSlider({ steps, index, onIndexChange, ariaLabel }: {
+  steps: { label: string; valueText: string }[];
+  index: number;
+  onIndexChange: (i: number) => void;
+  ariaLabel: string;
+}) {
+  const max = steps.length - 1;
+  const pct = max > 0 ? (index / max) * 100 : 0;
   return (
-    <FilterChip active={active} onClick={onClick}>
-      {icon && <span className={active ? 'text-white' : 'text-neutral-400'}>{icon}</span>}
-      {children}
-    </FilterChip>
+    <div>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        step={1}
+        value={index}
+        onChange={(e) => onIndexChange(Number(e.target.value))}
+        className="chair-range"
+        aria-label={ariaLabel}
+        aria-valuetext={steps[index]?.valueText}
+        style={{ '--chair-range-track': `linear-gradient(to right, #171717 0%, #171717 ${pct}%, #e5e5e5 ${pct}%, #e5e5e5 100%)` } as React.CSSProperties}
+      />
+      {/* Libellés des paliers — tappables (raccourci), mais cachés des
+          lecteurs d'écran : le range ci-dessus est LE contrôle accessible. */}
+      <div className="flex justify-between" aria-hidden="true">
+        {steps.map((s, i) => (
+          <button
+            key={s.label}
+            type="button"
+            tabIndex={-1}
+            onClick={() => onIndexChange(i)}
+            className={`text-[11px] font-semibold px-1 pb-1 pt-0.5 transition-colors ${i === index ? 'text-neutral-900' : 'text-neutral-400'}`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Vignette spécialité — même chaîne de priorité photo que partout dans
+ *  l'app (vraie photo Cloudinary > illustration locale /onboarding >
+ *  icône vectorielle, jamais un carré vide) : voir SpecialtyThumb du
+ *  portfolio PRO et SpecialtyQuickLinks de la home. */
+function SpecialtyTile({ slug, label, imageUrl, active, onToggle }: {
+  slug: string; label: string; imageUrl?: string; active: boolean; onToggle: () => void;
+}) {
+  const illustration = SPECIALTY_ILLUSTRATIONS[slug];
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      className="flex flex-col items-center gap-1.5 min-w-0 pt-1 pb-0.5 active:scale-[0.94] transition-transform"
+    >
+      <span
+        className={`relative w-[54px] h-[54px] rounded-2xl overflow-hidden bg-neutral-50 flex items-center justify-center flex-shrink-0 transition-shadow ${
+          active
+            ? 'ring-[2.5px] ring-neutral-900 ring-offset-2 ring-offset-white'
+            : 'ring-1 ring-neutral-200'
+        }`}
+      >
+        {imageUrl ? (
+          <Image src={imageUrl} alt="" fill sizes="54px" className="object-cover" />
+        ) : illustration ? (
+          <Image src={illustration} alt="" width={44} height={44} className="object-contain mix-blend-multiply" />
+        ) : (
+          <span className="text-neutral-400">{getSpecialtyIcon(slug, 20)}</span>
+        )}
+        {active && (
+          <span className="absolute top-1 right-1 w-[18px] h-[18px] rounded-full bg-neutral-900 flex items-center justify-center shadow-sm">
+            <Check size={11} strokeWidth={3.5} className="text-white" />
+          </span>
+        )}
+      </span>
+      <span className={`text-[10.5px] leading-tight text-center line-clamp-2 ${active ? 'font-bold text-neutral-900' : 'font-semibold text-neutral-500'}`}>
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -74,12 +175,15 @@ export default function SearchFiltersSheet({
   open, onClose, filters, onChange, onReset, resultsCount, hasLocation, locationLabel, isLoading,
 }: Props) {
   // Libellés live (DB, administrables sans build) — repli sur SPECIALTY_LABELS
-  // tant que le fetch n'a pas résolu / si l'API tombe.
+  // tant que le fetch n'a pas résolu / si l'API tombe. Idem pour les vraies
+  // photos ({} tant qu'aucune spécialité n'a de photo en base).
   const [liveLabels, setLiveLabels] = useState<Record<string, string>>(SPECIALTY_LABELS);
+  const [liveImages, setLiveImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
     getLiveSpecialtyLabels().then((map) => { if (!cancelled) setLiveLabels(map); });
+    getLiveSpecialtyImages().then((map) => { if (!cancelled) setLiveImages(map); });
     return () => { cancelled = true; };
   }, []);
 
@@ -95,6 +199,10 @@ export default function SearchFiltersSheet({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const distanceIdx = nearestStepIndex(DISTANCE_STEPS, filters.radius);
+  const ratingIdx   = nearestStepIndex(RATING_STEPS, filters.minRating);
+  const ratingStep  = RATING_STEPS[ratingIdx];
 
   return (
     <div className="fixed inset-0 z-[85] flex flex-col justify-end md:items-center md:justify-center">
@@ -113,67 +221,69 @@ export default function SearchFiltersSheet({
 
         <div className="flex-1 overflow-y-auto overscroll-contain px-6 pb-6 space-y-7">
 
-          {/* Spécialités — le "quoi", premier réglage rencontré */}
+          {/* Spécialités — le "quoi", premier réglage rencontré. Vignettes
+              photo compactes multi-sélection, état sélectionné marqué par un
+              ring noir épais + coche (jamais juste une opacité). */}
           <Section title="Spécialités">
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 gap-x-2 gap-y-3">
               {Object.entries(liveLabels).map(([slug, label]) => {
                 const active = filters.specialties.includes(slug);
                 return (
-                  <Chip
+                  <SpecialtyTile
                     key={slug}
+                    slug={slug}
+                    label={label}
+                    imageUrl={liveImages[slug]}
                     active={active}
-                    icon={getSpecialtyIcon(slug, 13)}
-                    onClick={() => onChange({
+                    onToggle={() => onChange({
                       specialties: active
                         ? filters.specialties.filter((s) => s !== slug)
                         : [...filters.specialties, slug],
                     })}
-                  >
-                    {label}
-                  </Chip>
+                  />
                 );
               })}
             </div>
           </Section>
 
-          {/* Distance — le "où", chips simples plutôt qu'un diagramme à points */}
+          {/* Distance — le "où", slider à paliers ronds + position Partout */}
           <Section
             title="Distance"
             hint={hasLocation ? `Autour de ${locationLabel}` : 'Choisissez une ville ou activez la localisation pour filtrer par distance.'}
           >
-            <div className="flex flex-wrap gap-2">
-              {RADIUS_STEPS.map((opt) => (
-                <Chip
-                  key={String(opt.value)}
-                  active={filters.radius === opt.value}
-                  icon={opt.value === null ? undefined : <MapPin size={13} />}
-                  onClick={() => onChange({ radius: opt.value })}
-                >
-                  {opt.label}
-                </Chip>
-              ))}
-            </div>
+            <p className="text-[22px] font-bold text-neutral-900 tracking-[-0.02em] leading-none mb-1">
+              {filters.radius == null ? 'Partout' : `${filters.radius} km`}
+            </p>
+            <SnapSlider
+              steps={DISTANCE_STEPS}
+              index={distanceIdx}
+              onIndexChange={(i) => onChange({ radius: DISTANCE_STEPS[i].value })}
+              ariaLabel="Distance maximale"
+            />
           </Section>
 
-          {/* Note minimum — même gabarit de chips que Distance */}
+          {/* Note minimum — même rail, même curseur que Distance */}
           <Section title="Note minimum">
-            <div className="flex flex-wrap gap-2">
-              {RATING_STEPS.map((opt) => (
-                <Chip
-                  key={String(opt.value)}
-                  active={filters.minRating === opt.value}
-                  icon={opt.value > 0 ? <Star size={13} /> : undefined}
-                  onClick={() => onChange({ minRating: opt.value })}
-                >
-                  {opt.label}
-                </Chip>
-              ))}
+            <div className="flex items-center gap-1.5 mb-1">
+              <p className="text-[22px] font-bold text-neutral-900 tracking-[-0.02em] leading-none">
+                {ratingStep.value === 0 ? 'Toutes' : ratingStep.label}
+              </p>
+              {ratingStep.value > 0 && <Star size={16} className="text-neutral-900 fill-neutral-900" />}
             </div>
+            <SnapSlider
+              steps={RATING_STEPS}
+              index={ratingIdx}
+              onIndexChange={(i) => onChange({ minRating: RATING_STEPS[i].value })}
+              ariaLabel="Note minimum"
+            />
+            <p className="text-[11px] text-neutral-400 leading-relaxed">
+              {ratingStep.value === 0 ? 'Tous les profils, quelle que soit la note.' : `${ratingStep.valueText}.`}
+            </p>
           </Section>
         </div>
 
         {/* Actions — ombre plutôt que trait dur pour séparer du contenu qui scroll */}
-        <div className="flex-shrink-0 shadow-[0_-8px_20px_-12px_rgba(10,10,10,0.15)] px-6 py-5 pb-safe flex gap-2.5 bg-white">
+        <div className="flex-shrink-0 shadow-[0_-8px_20px_-12px_rgba(10,10,10,0.15)] px-6 pt-5 pb-safe-5 flex gap-2.5 bg-white">
           <SecondaryButton onClick={onReset} icon={<RotateCcw size={13} />}>
             Effacer
           </SecondaryButton>

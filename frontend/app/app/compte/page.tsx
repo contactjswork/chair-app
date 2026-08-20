@@ -11,11 +11,10 @@ import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, HelpCircle, Scissors, Trash2,
-  MapPin, Edit3, FileText, Shield, Heart,
+  MapPin, Edit3, FileText, Shield,
 } from 'lucide-react';
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
-import { useNotificationCount } from '@/contexts/NotificationContext';
 import { Skeleton, SkeletonCircle } from '@/components/ui/Skeleton';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -40,7 +39,6 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function ComptePage() {
   const { user, isLoading, logout } = useAuth();
-  const { unreadCount } = useNotificationCount();
   const [myAppointments, setMyAppointments] = useState<ApiAppointment[]>([]);
   const [followedHairdressers, setFollowedHairdressers] = useState<SavedHairdresser[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -272,24 +270,6 @@ export default function ComptePage() {
 
 
             {/* ══════════════════════════════════════
-                MES INSPIRATIONS (clients uniquement)
-            ══════════════════════════════════════ */}
-            {user.role === 'client' && (
-              <section className="mt-6 px-4">
-                <Link
-                  href="/app/inspirations"
-                  className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-neutral-100 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Heart size={17} className="text-neutral-400" />
-                    <span className="font-medium text-[14px] text-neutral-900">Mes inspirations</span>
-                  </div>
-                  <ChevronRight size={15} className="text-neutral-300" />
-                </Link>
-              </section>
-            )}
-
-            {/* ══════════════════════════════════════
                 MES RÉSERVATIONS (clients uniquement)
             ══════════════════════════════════════ */}
             {user.role === 'client' && (
@@ -372,19 +352,15 @@ export default function ComptePage() {
             <section className="mt-6 px-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Paramètres</p>
               <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
+                {/* Pas de badge non-lu ici : cette entrée mène aux PARAMÈTRES
+                    de notifications — le compteur vit sur la cloche du header
+                    qui ouvre le vrai centre /app/notifications. */}
                 <Link href="/app/notifications/preferences" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <Bell size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Notifications</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {unreadCount > 0 && (
-                      <span className="min-w-[18px] h-[18px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-1">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                    <ChevronRight size={15} className="text-neutral-300" />
-                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
                 </Link>
                 <Link href="/confidentialite" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">

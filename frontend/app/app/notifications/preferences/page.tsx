@@ -4,21 +4,12 @@ import { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import { Check } from 'lucide-react';
+import { notifications as notifApi } from '@/lib/api';
+import type { ApiNotificationPreferences } from '@/lib/types';
 
 const PREF_KEY = 'chair_notif_prefs';
 
-interface NotifPrefs {
-  reminder_24h: boolean;
-  reminder_1h: boolean;
-  booking_confirmed: boolean;
-  booking_cancelled: boolean;
-  review_request: boolean;
-  review_reply: boolean;
-  followed_post: boolean;
-  new_hairdresser_nearby: boolean;
-  promotions: boolean;
-  security: boolean;
-}
+type NotifPrefs = ApiNotificationPreferences;
 
 const DEFAULT: NotifPrefs = {
   reminder_24h: true,
@@ -79,17 +70,47 @@ export default function NotifPrefsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Valeurs héritées de l'ancien stockage localStorage (jamais respectées
+    // à l'envoi à l'époque) — servent d'affichage immédiat et de migration.
+    let localPrefs: NotifPrefs | null = null;
     try {
       const raw = localStorage.getItem(PREF_KEY);
-      if (raw) setPrefs({ ...DEFAULT, ...JSON.parse(raw) });
+      if (raw) localPrefs = { ...DEFAULT, ...JSON.parse(raw) };
     } catch { /* ignore */ }
+    if (localPrefs) setPrefs(localPrefs);
+
+    (async () => {
+      try {
+        if (localPrefs) {
+          // Migration douce : on pousse une fois les valeurs locales vers
+          // l'API, puis l'API devient la source de vérité (clé locale purgée).
+          const { preferences } = await notifApi.updatePreferences(localPrefs);
+          if (cancelled) return;
+          setPrefs({ ...DEFAULT, ...preferences });
+          localStorage.removeItem(PREF_KEY);
+        } else {
+          const { preferences } = await notifApi.getPreferences();
+          if (cancelled) return;
+          setPrefs({ ...DEFAULT, ...preferences });
+        }
+      } catch {
+        // API indisponible (hors-ligne, non connecté) → repli sur les
+        // valeurs locales/défauts déjà affichées.
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, []);
 
   function toggle(key: keyof NotifPrefs) {
-    setPrefs((p) => {
-      const next = { ...p, [key]: !p[key] };
-      localStorage.setItem(PREF_KEY, JSON.stringify(next));
-      return next;
+    const next = { ...prefs, [key]: !prefs[key] };
+    setPrefs(next);
+    // Source de vérité : l'API (respectée à l'envoi côté backend).
+    // Repli localStorage uniquement si la sauvegarde échoue.
+    notifApi.updatePreferences({ [key]: next[key] }).catch(() => {
+      try { localStorage.setItem(PREF_KEY, JSON.stringify(next)); } catch { /* ignore */ }
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);

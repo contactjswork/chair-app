@@ -8,6 +8,7 @@ import type { ApiReferral } from '@/lib/types';
 import Image from 'next/image';
 import { Check, ArrowRight, Share2 } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
+import { getSharePayload } from '@/lib/share';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import { useStepTransition } from '@/hooks/useStepTransition';
 import { getLiveSpecialties, SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS, type LiveSpecialty } from '@/lib/specialties';
@@ -314,7 +315,7 @@ export default function ClientOnboardingPage() {
             onClose={() => setShareOpen(false)}
             title="Inviter un ami"
             shareUrl={myReferral.link}
-            shareText="Découvre CHAIR, l'app pour trouver les meilleurs coiffeurs près de toi !"
+            shareText={getSharePayload('referral', { url: myReferral.link }, { audience: 'client' }).text}
             actionType="share_profile"
           />
         )}

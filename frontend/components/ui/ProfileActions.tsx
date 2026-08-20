@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
+import { getSharePayload } from '@/lib/share';
 import { Heart, UserPlus, UserCheck, Edit2, Share2, Check } from 'lucide-react';
 import { SecondaryButton, IconButton } from './Button';
 
@@ -21,6 +22,9 @@ interface Props {
   hairdresserId: number;
   hairdresserName?: string;
   instagramUrl?: string | null;
+  /** Tagline du coiffeur — personnalise le partage "own-profile" du propriétaire. */
+  tagline?: string | null;
+  city?: string | null;
 }
 
 // Rangée d'actions du profil public.
@@ -39,6 +43,8 @@ export default function ProfileActions({
   hairdresserId,
   hairdresserName = 'Ce coiffeur',
   instagramUrl,
+  tagline,
+  city,
 }: Props) {
   const { user }  = useAuth();
   const router    = useRouter();
@@ -88,13 +94,26 @@ export default function ProfileActions({
     setLoadingSave(false);
   }
 
+  // Profil propre → bouton édition + partage "own-profile" (ton pro)
+  const isOwnProfile = user?.hairdresser_profile?.id === hairdresserId;
+
   async function handleShare() {
-    const url = window.location.href;
+    // Le propriétaire partage SON profil (ton pro), un client recommande
+    // le coiffeur (incitation à découvrir/réserver).
+    const payload = getSharePayload(
+      isOwnProfile ? 'own-profile' : 'hairdresser-profile',
+      {
+        url: window.location.href,
+        name: hairdresserName,
+        tagline: tagline ?? undefined,
+        city: city ?? undefined,
+      },
+    );
     try {
       if (navigator.share) {
-        await navigator.share({ title: hairdresserName, url });
+        await navigator.share(payload);
       } else {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(`${payload.text}\n${payload.url}`);
         setShared(true);
         setTimeout(() => setShared(false), 2200);
       }
@@ -131,8 +150,6 @@ export default function ProfileActions({
     </a>
   ) : null;
 
-  // Profil propre → bouton édition
-  const isOwnProfile = user?.hairdresser_profile?.id === hairdresserId;
   if (isOwnProfile) {
     return (
       <div className="flex items-center gap-2">

@@ -10,6 +10,7 @@ import {
   getStoredToken,
   getStoredUser,
   redirectPathForRole,
+  safeInternalPath,
 } from '@/lib/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
@@ -18,8 +19,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
+  login: (email: string, password: string, options?: AuthRedirectOptions) => Promise<void>;
+  register: (data: RegisterData, options?: AuthRedirectOptions) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updates: Partial<AuthUser>) => void;
   /** Bascule Mode Gérant / Mode Coiffeur — sans déconnexion, redirige vers l'accueil du nouveau mode. */
@@ -54,6 +55,18 @@ interface RegisterData {
   salon_instagram?: string;
   siret?: string;
   ref?: string;
+}
+
+interface AuthRedirectOptions {
+  /**
+   * Chemin interne où revenir après l'auth (ex: fiche coiffeur d'où une
+   * réservation a été interrompue). Prioritaire sur redirectPathForRole,
+   * mais uniquement pour un compte client : un coiffeur / gérant qui se
+   * connecte part vers son espace pro comme avant (un returnTo vers un
+   * parcours de réservation client n'y a pas de sens). Passé au travers de
+   * safeInternalPath — une URL absolue ou protocol-relative est ignorée.
+   */
+  returnTo?: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -155,32 +168,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsLoading(false));
   }, [pathname]);
 
-  async function login(email: string, password: string): Promise<void> {
+  /**
+   * Cible post-auth, par priorité :
+   * 1. returnTo explicite (query ?returnTo= des pages connexion/inscription),
+   *    réservé aux comptes client — voir AuthRedirectOptions ;
+   * 2. chair_redirect en sessionStorage (session expirée, scan QR,
+   *    invitation — mécanisme historique conservé) ;
+   * 3. l'accueil du rôle (redirectPathForRole).
+   * Les deux premiers passent par safeInternalPath (anti open-redirect).
+   */
+  function resolvePostAuthPath(freshUser: AuthUser, isNewUser: boolean, options?: AuthRedirectOptions): string {
+    const returnTo = safeInternalPath(options?.returnTo);
+    if (returnTo && freshUser.role === 'client') return returnTo;
+    const pending = safeInternalPath(sessionStorage.getItem('chair_redirect'));
+    sessionStorage.removeItem('chair_redirect');
+    if (pending) return pending;
+    return redirectPathForRole(freshUser.role, isNewUser);
+  }
+
+  async function login(email: string, password: string, options?: AuthRedirectOptions): Promise<void> {
     const data = await api.post<AuthResponse>('/login', { email, password });
     saveSession(data.token, data.user);
     setUser(data.user);
-    const pending = sessionStorage.getItem('chair_redirect');
-    if (pending) {
-      sessionStorage.removeItem('chair_redirect');
-      router.push(pending);
-    } else {
-      router.push(redirectPathForRole(data.user.role));
-    }
+    router.push(resolvePostAuthPath(data.user, false, options));
   }
 
-  async function register(registerData: RegisterData): Promise<void> {
+  async function register(registerData: RegisterData, options?: AuthRedirectOptions): Promise<void> {
     const ref = registerData.ref ?? getStoredReferralCode();
     const data = await api.post<AuthResponse>('/register', { ...registerData, ref });
     clearStoredReferralCode();
     saveSession(data.token, data.user);
     setUser(data.user);
-    const pending = sessionStorage.getItem('chair_redirect');
-    if (pending) {
-      sessionStorage.removeItem('chair_redirect');
-      router.push(pending);
-    } else {
-      router.push(redirectPathForRole(data.user.role, true));
-    }
+    router.push(resolvePostAuthPath(data.user, true, options));
   }
 
   async function switchProMode(mode: 'salon_owner' | 'hairdresser'): Promise<void> {

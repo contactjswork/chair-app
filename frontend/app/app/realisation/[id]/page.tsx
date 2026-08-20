@@ -128,7 +128,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
         {/* ── Interactions ── */}
         <div className="px-4 py-3 flex items-center gap-5 border-t border-b border-neutral-100">
           <LikeButton postId={post.id} initialLikes={post.likes_count} initialLiked={post.liked_by_user} />
-          <ShareButton />
+          <ShareButton hairdresserName={hairdresser.user.name} description={post.description ?? undefined} />
         </div>
 
         {/* ── Spécialité + description ── */}

@@ -85,6 +85,20 @@ export function getStoredUser(): AuthUser | null {
   }
 }
 
+/**
+ * Anti open-redirect : ne laisse passer que des chemins internes relatifs.
+ * Accepte "/app/coiffeur/jean" ; rejette "https://evil.com", "//evil.com",
+ * "/\evil.com" (les navigateurs normalisent \ en /) et tout ce qui ne
+ * commence pas par un unique "/". Retourne null si le chemin est refusé.
+ */
+export function safeInternalPath(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (!path.startsWith('/')) return null;
+  const second = path.charAt(1);
+  if (second === '/' || second === '\\') return null;
+  return path;
+}
+
 // Fin de dev / démo pré-lancement : onboarding coiffeur désactivé temporairement
 // (voir AuthContext.tsx — même variable). L'onboarding client (/app/onboarding) reste actif.
 const SKIP_PRO_ONBOARDING = process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true';

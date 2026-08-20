@@ -450,7 +450,7 @@ export const visits = {
 
 // ── Notifications ─────────────────────────────────────────────────────
 
-import type { ApiNotificationsResponse, ApiSearchResponse, ApiSearchSuggestion } from './types';
+import type { ApiNotificationPreferences, ApiNotificationsResponse, ApiSearchResponse, ApiSearchSuggestion } from './types';
 
 export const notifications = {
   /** Badge polling — retourne { notifications, unread_count } pour les non lues */
@@ -466,6 +466,13 @@ export const notifications = {
 
   markAllRead: () =>
     api.post<{ ok: boolean }>('/notifications/read-all', {}),
+
+  /** Préférences — créées avec les défauts au premier accès (respectées à l'envoi côté backend). */
+  getPreferences: () =>
+    api.get<{ preferences: ApiNotificationPreferences }>('/notification-preferences'),
+
+  updatePreferences: (prefs: Partial<ApiNotificationPreferences>) =>
+    api.put<{ preferences: ApiNotificationPreferences }>('/notification-preferences', prefs),
 };
 
 // ── Services ─────────────────────────────────────────────────────────

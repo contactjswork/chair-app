@@ -595,6 +595,20 @@ export interface ApiNotificationsResponse {
   unread_count: number;
 }
 
+/** Préférences de notifications — mêmes 10 clés que la table notification_preferences. */
+export interface ApiNotificationPreferences {
+  reminder_24h: boolean;
+  reminder_1h: boolean;
+  booking_confirmed: boolean;
+  booking_cancelled: boolean;
+  review_request: boolean;
+  review_reply: boolean;
+  followed_post: boolean;
+  new_hairdresser_nearby: boolean;
+  promotions: boolean;
+  security: boolean;
+}
+
 /** Extrait "YYYY-MM-DD" depuis un champ date potentiellement ISO ("2026-06-03T00:00:00.000000Z") */
 export function apptDateStr(appt: ApiAppointment): string {
   return (appt.appointment_date || appt.desired_date || '').slice(0, 10);

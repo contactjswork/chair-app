@@ -463,10 +463,12 @@ function BlockCreateSheet({
     }
   }
 
+  // Bottom sheet partagée (poignée + drag-to-close + scroll interne + scroll
+  // lock) : collée au bas de l'écran, plus jamais coupée par le viewport ni
+  // masquée par le clavier — le contenu scrolle, le CTA reste atteignable.
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-5" onClick={e=>e.stopPropagation()}>
+    <BottomSheet onClose={onClose}>
+      <div className="px-5 pb-safe-5">
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400 mb-0.5">
           {new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
         </p>
@@ -477,30 +479,30 @@ function BlockCreateSheet({
           <div>
             <label className="text-[10px] text-neutral-400 font-medium block mb-1">Début</label>
             <input type="time" value={startTime} onChange={e=>setStartTime(e.target.value)}
-              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
+              className="w-full min-h-[44px] text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
           </div>
           <div>
             <label className="text-[10px] text-neutral-400 font-medium block mb-1">Fin</label>
             <input type="time" value={endTime} onChange={e=>setEndTime(e.target.value)}
-              className="w-full text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
+              className="w-full min-h-[44px] text-[13px] font-medium text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300" />
           </div>
         </div>
         <input
           type="text" value={reason} onChange={e=>setReason(e.target.value)}
           placeholder="Motif (optionnel)"
-          className="w-full text-[13px] text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 placeholder:text-neutral-300 mb-3"
+          className="w-full min-h-[44px] text-[13px] text-neutral-900 bg-neutral-50 rounded-xl px-3 py-2.5 ring-1 ring-neutral-100 focus:outline-none focus:ring-neutral-300 placeholder:text-neutral-300 mb-3"
         />
         {error && <p className="text-[12px] text-red-600 mb-2">{error}</p>}
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+          <button onClick={onClose} className="flex-1 min-h-[44px] py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
             Annuler
           </button>
-          <button onClick={handleCreate} disabled={saving} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
+          <button onClick={handleCreate} disabled={saving} className="flex-1 min-h-[44px] py-3 rounded-2xl text-[13px] font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
             {saving ? 'Création…' : (presetReason ? 'Marquer la pause' : 'Bloquer')}
           </button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -524,9 +526,8 @@ function UnavailabilityConfirmSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
-      <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-5" onClick={e2=>e2.stopPropagation()}>
+    <BottomSheet onClose={onClose}>
+      <div className="px-5 pb-safe-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
             <Ban size={18} className="text-neutral-400" />
@@ -539,15 +540,15 @@ function UnavailabilityConfirmSheet({
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
+          <button onClick={onClose} className="flex-1 min-h-[44px] py-3 rounded-2xl text-[13px] font-semibold text-neutral-400 bg-neutral-50 hover:bg-neutral-100 transition-colors">
             Fermer
           </button>
-          <button onClick={handleDelete} disabled={deleting} className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50">
+          <button onClick={handleDelete} disabled={deleting} className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-3 rounded-2xl text-[13px] font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50">
             <Trash2 size={13} /> {deleting ? 'Suppression…' : 'Débloquer'}
           </button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -1196,32 +1197,29 @@ function QuickCreatePopup({date,time,onClose,onBlock,onPause}:{
   onBlock:()=>void; onPause:()=>void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"/>
-      <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl" onClick={e=>e.stopPropagation()}>
-        <div className="px-5 pt-5 pb-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400 mb-0.5">
-            {new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
-          </p>
-          <p className="text-[22px] font-bold text-neutral-900">{fmtTime(time)}</p>
-        </div>
-        <div className="px-3 pb-4 space-y-1.5">
-          <Link href={`/pro/reservations/nouveau?date=${date}&time=${time}`}
-            className="flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-900 text-white hover:bg-neutral-700">
-            Nouveau rendez-vous<ChevronRight size={16} className="opacity-40"/>
-          </Link>
-          <button onClick={onBlock}
-            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
-            Bloquer un créneau<ChevronRight size={16} className="opacity-40"/>
-          </button>
-          <button onClick={onPause}
-            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
-            Marquer une pause<ChevronRight size={16} className="opacity-40"/>
-          </button>
-          <button onClick={onClose} className="w-full py-3 text-[13px] font-semibold text-neutral-400">Annuler</button>
-        </div>
+    <BottomSheet onClose={onClose}>
+      <div className="px-5 pb-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-neutral-400 mb-0.5">
+          {new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}
+        </p>
+        <p className="text-[22px] font-bold text-neutral-900">{fmtTime(time)}</p>
       </div>
-    </div>
+      <div className="px-3 pb-safe-5 space-y-1.5">
+        <Link href={`/pro/reservations/nouveau?date=${date}&time=${time}`}
+          className="flex items-center justify-between min-h-[48px] px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-900 text-white hover:bg-neutral-700">
+          Nouveau rendez-vous<ChevronRight size={16} className="opacity-40"/>
+        </Link>
+        <button onClick={onBlock}
+          className="w-full flex items-center justify-between min-h-[48px] px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
+          Bloquer un créneau<ChevronRight size={16} className="opacity-40"/>
+        </button>
+        <button onClick={onPause}
+          className="w-full flex items-center justify-between min-h-[48px] px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-colors bg-neutral-50 text-neutral-700 hover:bg-neutral-100">
+          Marquer une pause<ChevronRight size={16} className="opacity-40"/>
+        </button>
+        <button onClick={onClose} className="w-full min-h-[44px] py-3 text-[13px] font-semibold text-neutral-400">Annuler</button>
+      </div>
+    </BottomSheet>
   );
 }
 

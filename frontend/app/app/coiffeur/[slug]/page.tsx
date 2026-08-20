@@ -9,6 +9,7 @@ import PublicProfileAbout from '@/components/ui/PublicProfileAbout';
 import PublicProfileServices from '@/components/ui/PublicProfileServices';
 import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
 import PublicProfileStickyCTA from '@/components/ui/PublicProfileStickyCTA';
+import BookingResume from '@/components/ui/BookingResume';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 
@@ -71,6 +72,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
     <AppShell>
       <div className="max-w-2xl mx-auto pb-32">
 
+        {/* Reprise d'une réservation interrompue par la connexion — rouvre la
+            feuille de réservation si un intent frais existe pour ce coiffeur.
+            Réservé aux indépendants : les salons réservent via bookingUrl externe. */}
+        {hairdresser.is_independent && <BookingResume slug={hairdresser.slug} />}
+
         <PublicProfileHero
           hairdresserId={hairdresser.id}
           bannerUrl={bannerUrl}
@@ -83,6 +89,8 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             hairdresserId={hairdresser.id}
             hairdresserName={hairdresser.user.name}
             instagramUrl={hairdresser.instagram_url}
+            tagline={hairdresser.tagline}
+            city={hairdresser.city}
           />
         </div>
 

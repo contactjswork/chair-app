@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { Suspense, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { safeInternalPath } from '@/lib/auth';
 import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
@@ -20,9 +22,14 @@ function Screen(props: Omit<React.ComponentProps<typeof QuestionScreen>, 'theme'
 
 const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 rounded-2xl text-[16px] text-neutral-900 placeholder-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
 
-export default function InscriptionPage() {
+function InscriptionContent() {
   const { register } = useAuth();
   const { animClass, transition } = useStepTransition();
+  const searchParams = useSearchParams();
+
+  // Reprise de parcours : propagé depuis /connexion (ou posé directement par
+  // BookingSheet). Chemin interne uniquement — anti open-redirect.
+  const returnTo = safeInternalPath(searchParams.get('returnTo'));
 
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
@@ -75,7 +82,7 @@ export default function InscriptionPage() {
         password,
         password_confirmation: password,
         role: 'client',
-      } as Parameters<typeof register>[0]);
+      } as Parameters<typeof register>[0], { returnTo });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.');
       setIsLoading(false);
@@ -232,9 +239,22 @@ export default function InscriptionPage() {
       <div className="flex-shrink-0 text-center pb-safe pb-4">
         <p className="text-[13px] text-neutral-400">
           Déjà un compte ?{' '}
-          <Link href="/connexion" className="font-semibold text-neutral-900 hover:underline">Se connecter</Link>
+          <Link
+            href={returnTo ? `/connexion?returnTo=${encodeURIComponent(returnTo)}` : '/connexion'}
+            className="font-semibold text-neutral-900 hover:underline"
+          >Se connecter</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function InscriptionPage() {
+  // useSearchParams (returnTo) impose une frontière Suspense au-dessus du
+  // contenu — même montage que /connexion.
+  return (
+    <Suspense fallback={null}>
+      <InscriptionContent />
+    </Suspense>
   );
 }

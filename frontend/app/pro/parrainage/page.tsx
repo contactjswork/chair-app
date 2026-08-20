@@ -7,6 +7,7 @@ import { referral } from '@/lib/api';
 import type { ApiReferral } from '@/lib/types';
 import { ArrowLeft, Share2, Send, Users, Gift, Zap, Check, Copy } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
+import { getSharePayload } from '@/lib/share';
 import StatCard from '@/components/ui/StatCard';
 import { PrimaryButton } from '@/components/ui/Button';
 
@@ -173,7 +174,7 @@ export default function ParrainagePage() {
           onClose={() => setShareOpen(false)}
           title="Partager mon profil"
           shareUrl={data.link}
-          shareText={`Rejoignez-moi sur CHAIR, l'app qui met en avant les coiffeurs !`}
+          shareText={getSharePayload('referral', { url: data.link }, { audience: 'pro' }).text}
           actionType="share_profile"
         />
       )}

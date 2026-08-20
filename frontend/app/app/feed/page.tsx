@@ -13,6 +13,7 @@ import type { ApiPost, ApiHairdresserProfile, ApiUser, PaginatedResponse } from 
 import { resolveMediaUrl, getAllImagesRaw } from '@/lib/types';
 import { posts as postsApi, savedPosts as savedPostsApi } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth';
+import { getSharePayload } from '@/lib/share';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -167,14 +168,14 @@ function CardShareButton({
   async function share(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const url = `${window.location.origin}/realisation/${postId}`;
+    const { title, text, url } = getSharePayload('post', {
+      url: `${window.location.origin}/realisation/${postId}`,
+      name: hairdresserName,
+      description,
+    });
     try {
       if (navigator.share) {
-        await navigator.share({
-          title: `${hairdresserName} sur CHAIR`,
-          text:  description ?? 'Découvrez cette réalisation sur CHAIR',
-          url,
-        });
+        await navigator.share({ title, text, url });
       } else {
         await navigator.clipboard.writeText(url);
         setCopied(true);

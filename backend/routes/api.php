@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\NotificationPreferenceController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\SalonController;
@@ -325,6 +326,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/notifications',              [NotificationController::class, 'index']);
     Route::post('/notifications/read-all',   [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markRead']);
+
+    // Préférences de notifications (respectées à l'envoi — voir NotificationService::shouldSend)
+    Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);
+    Route::put('/notification-preferences', [NotificationPreferenceController::class, 'update']);
 
     // Catégories de services
     Route::get('/service-categories',          [ServiceController::class, 'indexCategories']);

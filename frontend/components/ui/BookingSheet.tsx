@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { saveBookingIntent } from '@/lib/bookingIntent';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import type { ApiServiceCategory, ApiService } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn, UserPlus } from 'lucide-react';
@@ -49,16 +51,31 @@ interface Props {
   /** Présélectionne une prestation (bouton "Réserver" depuis une ligne de service) — saute directement à l'étape date. */
   initialCategoryId?: number;
   initialServiceId?: number;
+  /**
+   * Reprise de parcours après connexion/inscription (voir lib/bookingIntent.ts) :
+   * restaure la date (YYYY-MM-DD) et le créneau (HH:MM) choisis avant
+   * l'interruption. Nécessite initialServiceId. Si le créneau n'est plus
+   * disponible au retour, on re-propose la sélection sans message d'erreur brutal.
+   */
+  initialDate?: string;
+  initialTime?: string;
 }
 
-export default function BookingSheet({ slug, open, onClose, initialCategoryId, initialServiceId }: Props) {
+export default function BookingSheet({ slug, open, onClose, initialCategoryId, initialServiceId, initialDate, initialTime }: Props) {
   const { user } = useAuth();
+  const pathname = usePathname();
 
   const [step, setStep] = useState<Step>('category');
   const [flowStart, setFlowStart] = useState<FlowStart>('category');
   const [categories, setCategories] = useState<ApiServiceCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Message doux (non bloquant, jamais rouge) — ex: créneau parti pendant
+  // la connexion. Se distingue de `error` qui signale un vrai échec.
+  const [notice, setNotice] = useState('');
+  // Créneau à re-sélectionner automatiquement quand les slots de la date
+  // restaurée seront chargés. `time: undefined` = date restaurée sans créneau.
+  const pendingRestore = useRef<{ time?: string } | null>(null);
 
   const [selectedCategory, setSelectedCategory] = useState<ApiServiceCategory | null>(null);
   const [selectedService, setSelectedService] = useState<ApiService | null>(null);
@@ -97,6 +114,8 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
     setSelectedDate('');
     setSelectedSlot('');
     setError('');
+    setNotice('');
+    pendingRestore.current = null;
     setDragY(0);
 
     setLoading(true);
@@ -112,7 +131,23 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
             setSelectedCategory(cat);
             setSelectedService(svc);
             setFlowStart('date');
-            setStep('date');
+
+            // Reprise de parcours : re-saute directement là où l'utilisateur
+            // s'était arrêté avant l'interruption d'auth. La date restaurée
+            // doit encore être future — un intent qui a traversé minuit
+            // repart sagement du calendrier.
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (initialDate && initialDate >= todayStr) {
+              const d = new Date(initialDate + 'T00:00:00');
+              setViewYear(d.getFullYear());
+              setViewMonth(d.getMonth());
+              setSelectedDate(initialDate);
+              pendingRestore.current = { time: initialTime };
+              setStep('slot');
+            } else {
+              if (initialDate) setNotice('Ta date de rendez-vous est passée entre-temps, choisis-en une nouvelle.');
+              setStep('date');
+            }
           }
         } else if (cats.length === 1) {
           // Une seule catégorie : la faire choisir est un écran pour rien.
@@ -126,7 +161,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
         setError('Impossible de charger les services de ce coiffeur.');
         setLoading(false);
       });
-  }, [open, slug, initialCategoryId, initialServiceId]);
+  }, [open, slug, initialCategoryId, initialServiceId, initialDate, initialTime]);
 
   useEffect(() => {
     if (user) {
@@ -157,12 +192,32 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
     setAvailableSlots([]);
     availabilityApi.slots(slug, selectedDate, selectedService.id)
       .then((data) => {
-        setAvailableSlots((data as { slots: string[] }).slots);
+        const slots = (data as { slots: string[] }).slots;
+        setAvailableSlots(slots);
         setLoadingSlots(false);
+
+        // Reprise de parcours : on re-sélectionne le créneau choisi avant la
+        // connexion s'il est toujours libre. Sinon, message doux et on laisse
+        // l'utilisateur rechoisir — jamais d'erreur brutale.
+        const restore = pendingRestore.current;
+        if (restore) {
+          pendingRestore.current = null;
+          if (restore.time && slots.includes(restore.time)) {
+            setSelectedSlot(restore.time);
+            setStep('info');
+          } else if (slots.length === 0) {
+            setSelectedDate('');
+            setStep('date');
+            setNotice('Cette journée s’est remplie entre-temps, choisis une autre date.');
+          } else if (restore.time) {
+            setNotice(`Le créneau de ${restore.time} vient d’être pris, choisis-en un autre.`);
+          }
+        }
       })
       .catch(() => {
         setAvailableSlots([]);
         setLoadingSlots(false);
+        pendingRestore.current = null;
       });
   }, [selectedService, selectedDate, slug]);
 
@@ -207,8 +262,22 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const flowSteps = FLOWS[flowStart];
   const stepIndex = flowSteps.indexOf(step);
 
-  function rememberRedirect() {
-    if (typeof window !== 'undefined') sessionStorage.setItem('chair_redirect', window.location.pathname);
+  // Interruption d'auth : on mémorise tout le parcours déjà accompli
+  // (prestation / date / créneau) pour le reprendre au retour sur la fiche
+  // coiffeur (voir lib/bookingIntent.ts + BookingResume). La redirection
+  // post-auth passe par ?returnTo= (remplace l'ancien chair_redirect qui ne
+  // gardait que l'URL et perdait toute la sélection).
+  const authReturnTo = encodeURIComponent(pathname || `/app/coiffeur/${slug}`);
+
+  function rememberBookingIntent() {
+    if (!selectedService) return;
+    saveBookingIntent({
+      hairdresserSlug: slug,
+      serviceId: selectedService.id,
+      categoryId: selectedCategory?.id,
+      date: selectedDate || undefined,
+      time: selectedSlot || undefined,
+    });
   }
 
   // ── Drag to dismiss (poignée uniquement, pour ne pas gêner le scroll interne) ──
@@ -343,6 +412,9 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
             <div className="px-4 py-5">
               {error && (
                 <div className="mb-4 bg-red-50 border border-red-100 text-red-600 text-[13px] px-4 py-3 rounded-xl">{error}</div>
+              )}
+              {notice && !error && (
+                <div className="mb-4 bg-neutral-50 border border-neutral-100 text-neutral-600 text-[13px] px-4 py-3 rounded-xl">{notice}</div>
               )}
 
               {/* Rappel de ce qui est déjà choisi */}
@@ -493,6 +565,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                                 if (isAvailable && !isPast) {
                                   setSelectedDate(dateStr);
                                   setSelectedSlot('');
+                                  setNotice('');
                                   setStep('slot');
                                 }
                               }}
@@ -560,7 +633,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       {availableSlots.map((slot) => (
                         <button
                           key={slot}
-                          onClick={() => { setSelectedSlot(slot); setStep('info'); }}
+                          onClick={() => { setSelectedSlot(slot); setNotice(''); setStep('info'); }}
                           className="h-12 rounded-xl text-[14px] font-semibold tabular-nums border border-neutral-200 text-neutral-900 transition-colors hover:border-neutral-900 active:bg-neutral-900 active:text-white"
                         >
                           {slot}
@@ -582,13 +655,16 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                     Connecte-toi ou crée un compte gratuit pour confirmer ton rendez-vous.
                   </p>
                   <div className="w-full space-y-2">
-                    <PrimaryButton fullWidth href="/connexion" onClick={rememberRedirect} icon={<LogIn size={15} />}>
+                    <PrimaryButton fullWidth href={`/connexion?returnTo=${authReturnTo}`} onClick={rememberBookingIntent} icon={<LogIn size={15} />}>
                       Se connecter
                     </PrimaryButton>
-                    <SecondaryButton fullWidth href="/inscription" onClick={rememberRedirect} icon={<UserPlus size={15} />}>
+                    <SecondaryButton fullWidth href={`/inscription?returnTo=${authReturnTo}`} onClick={rememberBookingIntent} icon={<UserPlus size={15} />}>
                       Créer un compte
                     </SecondaryButton>
                   </div>
+                  <p className="text-[12px] text-neutral-300 mt-4 max-w-xs">
+                    Ta sélection est gardée en mémoire, tu reprendras exactement où tu en étais.
+                  </p>
                 </div>
               )}
 

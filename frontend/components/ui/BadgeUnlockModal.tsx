@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Share2, ArrowRight, X } from 'lucide-react';
 import { BadgeMedallion } from './ChairBadges';
 import type { ApiChairBadge } from '@/lib/types';
+import { getSharePayload } from '@/lib/share';
 
 interface Props {
   badges: ApiChairBadge[];
@@ -30,10 +31,10 @@ export default function BadgeUnlockModal({ badges, onClose }: Props) {
   const hasMore = index < badges.length - 1;
 
   async function handleShare() {
-    const text = `Nouveau badge débloqué sur CHAIR : ${badge.name}`;
+    const { title, text } = getSharePayload('badge', { name: badge.name });
     try {
       if (navigator.share) {
-        await navigator.share({ title: text, text });
+        await navigator.share({ title, text });
       } else {
         await navigator.clipboard.writeText(text);
       }
