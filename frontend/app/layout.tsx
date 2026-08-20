@@ -47,6 +47,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <head>
+        {/* Carte Apple : DNS + TLS établis d'avance vers les hôtes MapKit —
+            la poignée de main réseau ne s'ajoute plus au temps d'affichage
+            de la carte quand l'utilisateur ouvre la recherche. */}
+        <link rel="preconnect" href="https://cdn.apple-mapkit.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.apple-mapkit.com/ma" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.apple-mapkit.com" />
+      </head>
       <body className="min-h-full bg-white text-neutral-900">
         <PwaManifest />
         <AppBanner />

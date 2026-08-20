@@ -26,13 +26,74 @@ const MAPKIT_SRC = 'https://cdn.apple-mapkit.com/mk/5.x.x/mapkit.js';
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 let loadPromise: Promise<any> | null = null;
+let scriptPromise: Promise<void> | null = null;
 
-async function fetchToken(): Promise<string> {
+/** Jeton mémorisé pour la session — évite un aller-retour serveur (~220 ms
+ *  sur l'hébergement mutualisé) à chaque carte ouverte. Marge de sécurité de
+ *  2 min avant l'expiration réelle annoncée par le backend. */
+const TOKEN_KEY = 'chair_mapkit_token';
+
+function readCachedToken(): string | null {
+  try {
+    const raw = sessionStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const { token, expiresAt } = JSON.parse(raw) as { token: string; expiresAt: number };
+    if (!token || Date.now() > expiresAt) { sessionStorage.removeItem(TOKEN_KEY); return null; }
+    return token;
+  } catch { return null; }
+}
+
+async function fetchToken(useCache = true): Promise<string> {
+  if (useCache) {
+    const cached = readCachedToken();
+    if (cached) return cached;
+  }
   const res = await fetch(`${API}/mapkit-token`, { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`mapkit-token ${res.status}`);
   const data = await res.json();
   if (!data?.token) throw new Error('mapkit-token vide');
+  try {
+    const ttl = Math.max(60, Number(data.expires_in ?? 1800) - 120) * 1000;
+    sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ token: data.token, expiresAt: Date.now() + ttl }));
+  } catch { /* stockage indisponible : on continue sans cache */ }
   return data.token;
+}
+
+/** Injecte le script Apple (idempotent). Séparé du jeton pour pouvoir lancer
+ *  les deux EN PARALLÈLE — avant, le script n'était demandé qu'une fois le
+ *  jeton reçu, soit ~400 ms d'attente pure ajoutés au premier affichage. */
+function loadScript(): Promise<void> {
+  if (window.mapkit) return Promise.resolve();
+  if (scriptPromise) return scriptPromise;
+  scriptPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${MAPKIT_SRC}"]`) as HTMLScriptElement | null;
+    if (existing) {
+      if (window.mapkit) { resolve(); return; }
+      existing.addEventListener('load', () => resolve());
+      existing.addEventListener('error', () => reject(new Error('mapkit.js introuvable')));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = MAPKIT_SRC;
+    s.crossOrigin = 'anonymous';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('mapkit.js introuvable'));
+    document.head.appendChild(s);
+  });
+  scriptPromise.catch(() => { scriptPromise = null; });
+  return scriptPromise;
+}
+
+/**
+ * Démarre le téléchargement du script + du jeton SANS attendre que la carte
+ * soit montée. Appelé depuis la page de recherche dès son affichage : quand
+ * l'utilisateur arrive réellement sur la carte, tout est déjà en mémoire.
+ */
+export function warmUpMapKit(): void {
+  if (typeof window === 'undefined') return;
+  loadScript().catch(() => {});
+  fetchToken().catch(() => {});
 }
 
 /**
@@ -45,19 +106,9 @@ export async function loadMapKit(): Promise<any> {
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
-    // Valider les identifiants AVANT de charger le script : échec propre → repli.
-    const firstToken = await fetchToken();
-
-    await new Promise<void>((resolve, reject) => {
-      const existing = document.querySelector(`script[src="${MAPKIT_SRC}"]`);
-      if (existing && window.mapkit) { resolve(); return; }
-      const s = document.createElement('script');
-      s.src = MAPKIT_SRC;
-      s.crossOrigin = 'anonymous';
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('mapkit.js introuvable'));
-      document.head.appendChild(s);
-    });
+    // Script et jeton en parallèle : le plus lent des deux donne le temps
+    // total, au lieu de la somme des deux.
+    const [firstToken] = await Promise.all([fetchToken(), loadScript()]);
 
     const mapkit = window.mapkit;
     if (!mapkit) throw new Error('mapkit global absent');
@@ -71,7 +122,8 @@ export async function loadMapKit(): Promise<any> {
           done(firstTokenBox.value);
           firstTokenBox.value = null;
         } else {
-          fetchToken().then(done).catch(() => done(''));
+          // Renouvellement : jamais depuis le cache (c'est justement qu'il a expiré).
+          fetchToken(false).then(done).catch(() => done(''));
         }
       },
       language: 'fr',

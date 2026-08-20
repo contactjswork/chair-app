@@ -79,6 +79,16 @@ function RechercheContent() {
     return () => { cancelled = true; };
   }, []);
 
+  // Préchauffage carte Apple : lance le script + le jeton dès l'affichage de
+  // la page, sans attendre que le composant carte soit monté (celui-ci charge
+  // son adaptateur en import dynamique, donc plus tard). Import dynamique
+  // aussi ici pour ne rien ajouter au bundle initial.
+  useEffect(() => {
+    import('@/components/search/mapkitAdapter')
+      .then((m) => m.warmUpMapKit())
+      .catch(() => { /* MapKit indisponible : repli Leaflet, rien à faire */ });
+  }, []);
+
   const mapRef      = useRef<SearchMapHandle>(null);
   const viewportRef = useRef<MapViewport | null>(null);
   const autoFitRef  = useRef(true);
