@@ -11,6 +11,7 @@ import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
 import PublicProfileBadges from '@/components/ui/PublicProfileBadges';
 import PublicProfileStickyCTA from '@/components/ui/PublicProfileStickyCTA';
 import BookingResume from '@/components/ui/BookingResume';
+import ScrollToTopOnMount from '@/components/ui/ScrollToTopOnMount';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 
@@ -77,6 +78,8 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
           garanti à la source : break-words + overflow-wrap:anywhere sur tout
           contenu saisi par l'utilisateur (nom, accroche, bio). */}
       <div className="max-w-2xl mx-auto pb-32">
+
+        <ScrollToTopOnMount />
 
         {/* Reprise d'une réservation interrompue par la connexion — rouvre la
             feuille de réservation si un intent frais existe pour ce coiffeur.
