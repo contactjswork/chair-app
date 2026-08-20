@@ -48,7 +48,11 @@ export function proxy(request: NextRequest) {
     pathname.endsWith('.png') ||
     pathname.endsWith('.jpg') ||
     pathname.endsWith('.svg') ||
-    pathname.endsWith('.ico')
+    pathname.endsWith('.ico') ||
+    // Manifests PWA — iOS/Android les récupèrent SANS cookie au moment de
+    // "Ajouter à l'écran d'accueil" : bloqués par le gate bêta, l'installation
+    // retombait sur un simple raccourci Safari (bug constaté par Julien).
+    pathname.endsWith('.webmanifest')
   ) {
     return NextResponse.next();
   }
