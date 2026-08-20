@@ -1,21 +1,23 @@
 'use client';
 
 import Link from 'next/link';
-import { Lock, Sparkles } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 /**
  * Petit badge "CHAIR+" réutilisé partout où une fonctionnalité/un profil
  * doit signaler le statut premium (recherche, portfolio, profil public).
  * Un seul style pour rester cohérent — noir plein, jamais doré/criard,
  * conforme à la DA CHAIR (monochrome, pas d'Instagram-gradient).
+ * Plaque typographique sobre : capitales très espacées, fin liseré
+ * intérieur, sans icône — le pictogramme "étincelles" faisait gadget
+ * (retour Julien : "le badge est dégueulasse").
  */
 export function PremiumBadge({ size = 'sm' }: { size?: 'sm' | 'md' }) {
   const cls = size === 'md'
-    ? 'text-[10px] px-2 py-1 gap-1'
-    : 'text-[9px] px-1.5 py-0.5 gap-0.5';
+    ? 'text-[9px] px-2.5 py-[5px] rounded-lg'
+    : 'text-[8px] px-2 py-[3.5px] rounded-md';
   return (
-    <span className={`inline-flex items-center ${cls} font-bold uppercase tracking-wide bg-neutral-900 text-white rounded-full`}>
-      <Sparkles size={size === 'md' ? 11 : 9} />
+    <span className={`inline-flex items-center ${cls} font-bold uppercase tracking-[0.16em] leading-none bg-neutral-900 text-white ring-1 ring-inset ring-white/20 select-none`}>
       CHAIR+
     </span>
   );

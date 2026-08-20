@@ -101,23 +101,32 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
         </div>
 
         <div className="flex-1 min-w-0 pb-1.5">
-          <div className="flex items-center gap-1.5">
-            <h1 className="text-[21px] font-bold text-neutral-900 leading-tight truncate">{hairdresser.user.name}</h1>
-            {hairdresser.is_verified && <BadgeCheck size={18} className="text-neutral-900 flex-shrink-0" />}
-            {hasChairPlus(hairdresser) && <PremiumBadge size="md" />}
-          </div>
+          {/* Nom TOUJOURS entier (retour Julien : le badge CHAIR+ tronquait le
+              nom) — jusqu'à 2 lignes, la coche vérifiée reste collée au dernier
+              mot, le badge CHAIR+ descend sur sa propre ligne de distinctions. */}
+          <h1 className="text-[20px] font-bold text-neutral-900 leading-tight break-words [overflow-wrap:anywhere] line-clamp-2">
+            {hairdresser.user.name}
+            {hairdresser.is_verified && (
+              <BadgeCheck size={17} className="inline-block ml-1.5 -mt-0.5 text-neutral-900" />
+            )}
+          </h1>
           {metaLine && (
-            <p className="text-[13px] text-neutral-500 mt-1 leading-snug flex items-center gap-1 truncate">
+            <p className="text-[13px] text-neutral-500 mt-1 leading-snug flex items-center gap-1 min-w-0">
               {hairdresser.city && <MapPin size={11} className="flex-shrink-0" />}
               <span className="truncate">{metaLine}</span>
             </p>
+          )}
+          {hasChairPlus(hairdresser) && (
+            <div className="mt-1.5">
+              <PremiumBadge size="md" />
+            </div>
           )}
         </div>
       </div>
 
       {/* ── 2. Spécialité / accroche ── */}
       {accroche && (
-        <p className="text-[14px] text-neutral-700 leading-relaxed line-clamp-2">{accroche}</p>
+        <p className="text-[14px] text-neutral-700 leading-relaxed line-clamp-2 break-words [overflow-wrap:anywhere]">{accroche}</p>
       )}
 
       {/* ── 3. Note + avis (+ abonnés) ── */}

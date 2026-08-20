@@ -44,7 +44,9 @@ export default function PublicProfileAbout({ hairdresser }: Props) {
       {bio && (
         <div>
           <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-neutral-400 mb-2.5">À propos</p>
-          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-line">{bio}</p>
+          {/* [overflow-wrap:anywhere] : une bio sans espaces (spam de touches,
+              très long mot) forçait un scroll horizontal de TOUTE la page. */}
+          <p className="text-[14px] text-neutral-600 leading-relaxed whitespace-pre-line break-words [overflow-wrap:anywhere]">{bio}</p>
         </div>
       )}
 
@@ -53,7 +55,7 @@ export default function PublicProfileAbout({ hairdresser }: Props) {
         <div className="flex items-center gap-2.5">
           <Clock size={15} className="text-neutral-400 flex-shrink-0" />
           <p className="text-[13px] text-neutral-600">
-            <span className="font-semibold text-neutral-900">{hairdresser.years_experience} an{hairdresser.years_experience > 1 ? 's' : ''}</span> d&apos;expérience
+            <span className="font-semibold text-neutral-900">{hairdresser.years_experience} an{hairdresser.years_experience > 1 ? 's' : ''}</span>{' '}d&apos;expérience
           </p>
         </div>
       )}

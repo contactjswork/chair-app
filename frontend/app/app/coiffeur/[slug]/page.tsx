@@ -8,6 +8,7 @@ import PublicProfilePortfolio from '@/components/ui/PublicProfilePortfolio';
 import PublicProfileAbout from '@/components/ui/PublicProfileAbout';
 import PublicProfileServices from '@/components/ui/PublicProfileServices';
 import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
+import PublicProfileBadges from '@/components/ui/PublicProfileBadges';
 import PublicProfileStickyCTA from '@/components/ui/PublicProfileStickyCTA';
 import BookingResume from '@/components/ui/BookingResume';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
@@ -70,7 +71,10 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
   return (
     <AppShell>
-      <div className="max-w-2xl mx-auto pb-32">
+      {/* overflow-x-clip (PAS hidden : hidden casserait la barre d'onglets
+          sticky) — garde-fou : aucun contenu utilisateur (bio/nom sans
+          espaces) ne doit jamais faire défiler la page horizontalement. */}
+      <div className="max-w-2xl mx-auto pb-32 overflow-x-clip">
 
         {/* Reprise d'une réservation interrompue par la connexion — rouvre la
             feuille de réservation si un intent frais existe pour ce coiffeur.
@@ -136,6 +140,18 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                   reviews={reviews}
                   avgRating={hairdresser.avg_rating}
                   reviewsCount={hairdresser.reviews_count}
+                />
+              ),
+            },
+            {
+              key: 'badges',
+              label: 'Badges',
+              count: hairdresser.chair_badges_all?.length ?? 0,
+              content: (
+                <PublicProfileBadges
+                  badges={hairdresser.chair_badges_all ?? []}
+                  level={hairdresser.chair_level}
+                  coiffeurName={hairdresser.user.name}
                 />
               ),
             },
