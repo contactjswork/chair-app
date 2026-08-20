@@ -8,6 +8,7 @@ import type { ExploreSort, ExploreType } from '@/lib/explore';
 import { SPECIALTY_ILLUSTRATIONS, getLiveSpecialtyImages, getLiveSpecialtyLabels } from '@/lib/specialties';
 import { getSpecialtyIcon } from './specialtyIcons';
 import { PrimaryButton, SecondaryButton, IconButton } from '@/components/ui/Button';
+import SwipeClosePanel from '@/components/ui/SwipeClosePanel';
 
 export interface FiltersState {
   type: ExploreType;
@@ -210,8 +211,12 @@ export default function SearchFiltersSheet({
 
       {/* Retour Julien : le trait de poignée en haut faisait "moche" — retiré.
           Coins très arrondis + ombre plutôt qu'un bord dur, même langage que
-          le reste de la home (RecommendationCard, pastilles spécialités). */}
-      <div className="relative flex flex-col bg-white rounded-t-[32px] md:rounded-[32px] shadow-[0_-8px_40px_-8px_rgba(10,10,10,0.25)] md:shadow-[0_24px_60px_-12px_rgba(10,10,10,0.3)] max-h-[92vh] md:max-h-[85vh] md:w-full md:max-w-lg overflow-hidden">
+          le reste de la home (RecommendationCard, pastilles spécialités).
+          Le glisser-fermer, lui, reste ("comme sur toutes les apps") : tirer
+          la fenêtre vers le bas la ferme — SwipeClosePanel, sans trait. */}
+      <SwipeClosePanel
+        onClose={onClose}
+        className="relative flex flex-col bg-white rounded-t-[32px] md:rounded-[32px] shadow-[0_-8px_40px_-8px_rgba(10,10,10,0.25)] md:shadow-[0_24px_60px_-12px_rgba(10,10,10,0.3)] max-h-[92vh] md:max-h-[85vh] md:w-full md:max-w-lg overflow-hidden">
         <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
           <h2 className="text-[20px] font-bold text-neutral-900 tracking-[-0.02em]">Filtres</h2>
           <IconButton onClick={onClose} aria-label="Fermer" size="sm">
@@ -291,7 +296,7 @@ export default function SearchFiltersSheet({
             {isLoading ? 'Recherche…' : `Afficher ${resultsCount} résultat${resultsCount > 1 ? 's' : ''}`}
           </PrimaryButton>
         </div>
-      </div>
+      </SwipeClosePanel>
     </div>
   );
 }

@@ -71,12 +71,20 @@ export default function ProfileActions({
       if (following) {
         await interactions.unfollow(hairdresserId);
         setFollowing(false);
+        emitFollowChange(-1);
       } else {
         await interactions.follow(hairdresserId);
         setFollowing(true);
+        emitFollowChange(+1);
       }
     } catch { /* silently ignore */ }
     setLoadingFollow(false);
+  }
+
+  // Prévient le bandeau de stats du profil (PublicProfileIdentity) — le
+  // compteur d'abonnés se met à jour en direct, sans rechargement.
+  function emitFollowChange(delta: number) {
+    window.dispatchEvent(new CustomEvent('chair:follow-change', { detail: { hairdresserId, delta } }));
   }
 
   async function handleSave() {

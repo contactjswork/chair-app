@@ -44,10 +44,11 @@ export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideSti
     <div className="mt-1">
       <div ref={anchorRef} className="scroll-mt-[calc(3.5rem+env(safe-area-inset-top,0px)+4px)]" />
       <div className="sticky top-content-mobile md:top-[60px] z-40 bg-white border-b border-neutral-100">
-        {/* overflow-x-auto : à 5 onglets sur petit écran, la barre défile au
-            lieu d'écraser les libellés — chaque onglet garde sa largeur utile
-            (min-w-fit) et s'étire (flex-1) quand la place suffit. */}
-        <div role="tablist" className="flex px-2 md:px-0 max-w-2xl mx-auto overflow-x-auto no-scrollbar">
+        {/* Barre FIXE, jamais défilable au doigt (retour Julien : une barre
+            d'onglets qui bouge latéralement paraît cassée) — à 5 onglets sur
+            petit écran, ce sont les compteurs qui s'effacent (min-[400px])
+            pour que tout tienne, pas la barre qui scrolle. */}
+        <div role="tablist" className="flex px-1 md:px-0 max-w-2xl mx-auto">
           {tabs.map((tab) => {
             const isActive = tab.key === active;
             return (
@@ -56,13 +57,13 @@ export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideSti
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => selectTab(tab.key)}
-                className={`relative flex-1 min-w-fit px-3 flex items-center justify-center gap-1.5 h-12 text-[13px] font-semibold whitespace-nowrap transition-colors ${
+                className={`relative flex-1 min-w-0 px-0.5 flex items-center justify-center gap-1 h-12 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${
                   isActive ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-600'
                 }`}
               >
                 {tab.label}
                 {tab.count != null && tab.count > 0 && (
-                  <span className={`text-[11px] font-normal tabular-nums ${isActive ? 'text-neutral-400' : 'text-neutral-300'}`}>
+                  <span className={`hidden min-[400px]:inline text-[11px] font-normal tabular-nums ${isActive ? 'text-neutral-400' : 'text-neutral-300'}`}>
                     {tab.count}
                   </span>
                 )}

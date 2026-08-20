@@ -71,10 +71,12 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
   return (
     <AppShell>
-      {/* overflow-x-clip (PAS hidden : hidden casserait la barre d'onglets
-          sticky) — garde-fou : aucun contenu utilisateur (bio/nom sans
-          espaces) ne doit jamais faire défiler la page horizontalement. */}
-      <div className="max-w-2xl mx-auto pb-32 overflow-x-clip">
+      {/* PAS d'overflow-x-clip/hidden ici : sur Safari iOS, un overflow-x
+          non-visible sur un ancêtre casse la barre d'onglets sticky (bug
+          constaté en réel par Julien). L'anti-débordement horizontal est
+          garanti à la source : break-words + overflow-wrap:anywhere sur tout
+          contenu saisi par l'utilisateur (nom, accroche, bio). */}
+      <div className="max-w-2xl mx-auto pb-32">
 
         {/* Reprise d'une réservation interrompue par la connexion — rouvre la
             feuille de réservation si un intent frais existe pour ce coiffeur.

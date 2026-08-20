@@ -1,12 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, BadgeCheck, Star } from 'lucide-react';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
-import { hasChairPlus } from '@/lib/types';
 import { useAuth } from '@/contexts/AuthContext';
-import { PremiumBadge } from './PremiumLock';
 import StreakFlameBadge from './StreakFlameBadge';
 import SpecialtyHighlights from './SpecialtyHighlights';
 import PublicProfileOwnerActions from './PublicProfileOwnerActions';
@@ -39,6 +38,20 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
   const { user } = useAuth();
   const isOwnProfile = user?.hairdresser_profile?.id === hairdresser.id;
   const hasRating    = hairdresser.reviews_count > 0;
+
+  // Compteur d'abonnés vivant : ProfileActions (composant frère) émet un
+  // événement à chaque follow/unfollow réussi — le bandeau de stats se met à
+  // jour immédiatement au lieu d'attendre un rechargement de page.
+  const [followerDelta, setFollowerDelta] = useState(0);
+  useEffect(() => {
+    function onFollowChange(e: Event) {
+      const detail = (e as CustomEvent<{ hairdresserId: number; delta: number }>).detail;
+      if (detail?.hairdresserId === hairdresser.id) setFollowerDelta((v) => v + detail.delta);
+    }
+    window.addEventListener('chair:follow-change', onFollowChange);
+    return () => window.removeEventListener('chair:follow-change', onFollowChange);
+  }, [hairdresser.id]);
+  const followersLive = Math.max(0, hairdresser.followers_count + followerDelta);
   const levelColor   = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
   const ring         = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   const streakDays   = hairdresser.chair_streak?.current_streak ?? 0;
@@ -65,7 +78,7 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
           { value: String(hairdresser.reviews_count), label: 'Avis' },
         ]
       : []),
-    { value: String(hairdresser.followers_count), label: hairdresser.followers_count > 1 ? 'Abonnés' : 'Abonné' },
+    { value: String(followersLive), label: followersLive > 1 ? 'Abonnés' : 'Abonné' },
   ];
 
   return (
@@ -101,13 +114,18 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
         </div>
 
         <div className="flex-1 min-w-0 pb-1.5">
-          {/* Nom TOUJOURS entier (retour Julien : le badge CHAIR+ tronquait le
-              nom) — jusqu'à 2 lignes, la coche vérifiée reste collée au dernier
-              mot, le badge CHAIR+ descend sur sa propre ligne de distinctions. */}
+          {/* Nom TOUJOURS entier — jusqu'à 2 lignes. Vérification en sceau
+              plein façon Twitter/Instagram (retour Julien : plus de pastille
+              CHAIR+ ici, un seul beau badge de vérification) : BadgeCheck
+              rempli noir, coche blanche — le rendu "sceau officiel". */}
           <h1 className="text-[20px] font-bold text-neutral-900 leading-tight break-words [overflow-wrap:anywhere] line-clamp-2">
             {hairdresser.user.name}
             {hairdresser.is_verified && (
-              <BadgeCheck size={17} className="inline-block ml-1.5 -mt-0.5 text-neutral-900" />
+              <BadgeCheck
+                size={19}
+                className="inline-block ml-1.5 -mt-0.5 fill-neutral-900 text-white"
+                aria-label="Profil vérifié"
+              />
             )}
           </h1>
           {metaLine && (
@@ -115,11 +133,6 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
               {hairdresser.city && <MapPin size={11} className="flex-shrink-0" />}
               <span className="truncate">{metaLine}</span>
             </p>
-          )}
-          {hasChairPlus(hairdresser) && (
-            <div className="mt-1.5">
-              <PremiumBadge size="md" />
-            </div>
           )}
         </div>
       </div>
