@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Suspense, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeInternalPath } from '@/lib/auth';
 import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
@@ -25,6 +25,7 @@ const inputCls = 'w-full px-4 py-4 bg-neutral-50 border border-neutral-200 round
 function InscriptionContent() {
   const { register } = useAuth();
   const { animClass, transition } = useStepTransition();
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Reprise de parcours : propagé depuis /connexion (ou posé directement par
@@ -58,9 +59,16 @@ function InscriptionContent() {
   }
 
   function goBack() {
-    if (stepIndex === 0) return;
     tapFeedback();
     setError('');
+    // Première étape : on QUITTE l'inscription au lieu de ne rien faire.
+    // Sans ça, quelqu'un qui arrive ici depuis les slides d'accueil est
+    // piégé — pas de retour possible, il faut tuer l'app (retour Julien).
+    if (stepIndex === 0) {
+      if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+      else router.push('/app');
+      return;
+    }
     transition(() => setStepIndex((i) => i - 1));
   }
 
@@ -93,7 +101,7 @@ function InscriptionContent() {
     // min-h (pas h fixe) + pas d'overflow-hidden : évite que le CTA passe
     // sous le clavier mobile ouvert (voir pro/inscription/page.tsx).
     <div className="min-h-[100dvh] bg-white flex flex-col">
-      <OnboardingHeader progress={progress} onBack={stepIndex > 0 ? goBack : undefined} />
+      <OnboardingHeader progress={progress} onBack={goBack} />
 
       {error && (
         <div className="flex-shrink-0 mx-6 mb-3 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600 flex items-start gap-2">
