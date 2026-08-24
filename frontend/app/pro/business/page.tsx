@@ -379,7 +379,7 @@ export default function PerformancePage() {
                         <p className="text-[13px] font-bold text-neutral-900 mb-3">Réalisations les plus performantes</p>
                         <div className="flex gap-2 overflow-x-auto -mx-1 px-1">
                           {analyticsData.premium!.top_posts.map((p) => (
-                            <Link key={p.id} href="/pro/realisations" className="flex-shrink-0 w-[72px]">
+                            <Link key={p.id} href="/pro/portfolio" className="flex-shrink-0 w-[72px]">
                               <div className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-neutral-100">
                                 {p.cover_image && (
                                   <Image src={resolveMediaUrl(p.cover_image)!} alt="" fill className="object-cover" sizes="72px" />
@@ -567,7 +567,7 @@ export default function PerformancePage() {
             {/* ── Classements ── */}
             <section>
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Classements</p>
-              <Link href="/app/classements" target="_blank" rel="noopener noreferrer"
+              <Link href="/pro/classements"
                 className="flex items-center gap-4 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
                 <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                   <Medal size={17} className="text-neutral-600" strokeWidth={1.5} />

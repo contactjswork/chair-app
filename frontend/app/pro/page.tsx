@@ -239,8 +239,7 @@ export default function CockpitPage() {
             <StreakWidget row />
             {showRankRow && (
               <ProGroupRow
-                href="/app/classements"
-                external
+                href="/pro/classements"
                 icon={Trophy}
                 label="Classement"
                 value={bestRanked ? `#${bestRanked.local_rank}` : '—'}
