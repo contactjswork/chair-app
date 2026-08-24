@@ -14,7 +14,7 @@ import {
   apptDateStr,
 } from '@/lib/types';
 import {
-  ChevronRight, Clock, Gift, Pencil, CalendarDays, Crown, Trophy, UserCheck, Sparkles,
+  ChevronRight, Clock, Gift, Pencil, Crown, Trophy, UserCheck, Sparkles, Eye,
 } from 'lucide-react';
 import CockpitHero from '@/components/ui/CockpitHero';
 import NextStepCard from '@/components/ui/NextStepCard';
@@ -23,8 +23,7 @@ import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
 import StoryCreateCard from '@/components/ui/StoryCreateCard';
 import StreakWidget from '@/components/ui/StreakWidget';
 import ProSection from '@/components/pro/ProSection';
-import ProStatTile from '@/components/pro/ProStatTile';
-import ProLinkRow from '@/components/pro/ProLinkRow';
+import { ProGroup, ProGroupRow } from '@/components/pro/ProGroup';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
 export default function CockpitPage() {
@@ -123,83 +122,24 @@ export default function CockpitPage() {
   const todayDow = new Date().getDay();
   const todaySchedule = schedule.find((d) => d.day_of_week === todayDow && d.is_open);
 
-  // ── Tuiles de la section "Ma progression". Construites en liste : la
-  //    grille reste pleine quoi qu'il arrive, y compris pour un coiffeur sans
-  //    ville renseignée (donc sans classement local possible).
   const bestRanked = specialties
     .filter((s) => s.local_rank != null && (s.local_total ?? 0) >= 2)
     .sort((a, b) => (a.local_rank ?? 999) - (b.local_rank ?? 999))[0] ?? null;
   const hasSpecialtyActivity = specialties.some((s) => s.score > 0);
-
-  const progressTiles: React.ReactNode[] = [];
-
-  if (chairLevel) {
-    progressTiles.push(
-      <ProStatTile
-        key="level"
-        href="/pro/badges"
-        icon={Crown}
-        label="Niveau CHAIR"
-        value={chairLevel.name}
-        progress={chairLevel.next ? chairLevel.progress : null}
-        hint={chairLevel.next ? `${chairLevel.progress}% vers ${chairLevel.next.name}` : 'Niveau maximum'}
-      />,
-    );
-  }
-
-  progressTiles.push(<StreakWidget key="streak" tile />);
-
-  if (profile?.city && (bestRanked || hasSpecialtyActivity)) {
-    progressTiles.push(
-      <ProStatTile
-        key="rank"
-        href="/app/classements"
-        icon={Trophy}
-        label="Classement"
-        value={bestRanked ? `#${bestRanked.local_rank} · ${profile.city}` : 'Non classé'}
-        hint={
-          bestRanked
-            ? bestRanked.points_to_next
-              ? `${bestRanked.points_to_next} pt${bestRanked.points_to_next > 1 ? 's' : ''} avant la ${(bestRanked.local_rank ?? 1) - 1}e place`
-              : `${bestRanked.specialty_name} à ${profile.city}`
-            : `Publiez et récoltez des avis pour entrer au classement de ${profile.city}`
-        }
-      />,
-    );
-  }
-
-  progressTiles.push(
-    <ProStatTile
-      key="profile"
-      href="/pro/profil"
-      icon={UserCheck}
-      label="Profil"
-      value={`${score}% complété`}
-      progress={score}
-      hint={
-        missingItems.length > 0
-          ? `Il manque : ${missingItems.slice(0, 2).map((i) => i.short).join(', ')}`
-          : isIndependent ? 'Prêt pour les réservations' : 'Profil complet'
-      }
-    />,
-  );
-
-  // Nombre impair de tuiles : la dernière prend toute la largeur plutôt que
-  // de laisser une demi-ligne vide.
-  const oddTail = progressTiles.length % 2 === 1;
+  const showRankRow = !!profile?.city && (bestRanked || hasSpecialtyActivity);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-6 space-y-4">
+    <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 md:pt-10 pb-12">
 
       {/* ── Double identité : Mode Gérant / Mode Coiffeur (mobile — la
           sidebar desktop a la sienne) ── */}
       {(user.can_manage_salon && user.has_hairdresser_profile) && (
-        <div className="md:hidden">
+        <div className="md:hidden mb-5">
           <ProModeSwitcher />
         </div>
       )}
 
-      {/* ══════════ 1 — Qui je suis. Seul bloc sombre de la page ══════════ */}
+      {/* ══════════ Qui je suis ══════════ */}
       {!dataLoading ? (
         <CockpitHero
           firstName={firstName}
@@ -210,137 +150,160 @@ export default function CockpitPage() {
           city={profile?.city ?? null}
         />
       ) : (
-        <div className="h-44 bg-neutral-100 rounded-[26px] animate-pulse" />
+        <div className="h-40 bg-neutral-50 rounded-[24px] animate-pulse" />
       )}
 
-      {/* ══════════ 2 — Ce qui se passe maintenant ══════════ */}
-      <ProSection label="Aujourd'hui" action={isIndependent ? { href: '/pro/agenda', label: 'Agenda' } : undefined}>
-        {isIndependent && !dataLoading && pending.length > 0 && (
-          <Link href="/pro/agenda"
-            className="flex items-center gap-3 bg-amber-50 rounded-2xl px-4 py-3.5 shadow-[0_2px_10px_-4px_rgba(217,119,6,0.12)] ring-1 ring-amber-100 hover:bg-amber-100 transition-colors"
-          >
-            <div className="w-8 h-8 bg-amber-400 rounded-xl flex items-center justify-center flex-shrink-0">
-              <CalendarDays size={15} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-amber-900">
-                {pending.length} demande{pending.length > 1 ? 's' : ''} en attente
-              </p>
-              <p className="text-xs text-amber-600">Répondez pour ne pas perdre ces clients</p>
-            </div>
-            <ChevronRight size={16} className="text-amber-500 flex-shrink-0" />
-          </Link>
-        )}
-
-        <div className="bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 overflow-hidden">
-          {dataLoading ? (
-            <div className="p-5"><div className="h-10 bg-neutral-100 rounded-xl animate-pulse" /></div>
-          ) : (
-            <>
-              {!isIndependent && (
-                <div className="px-5 pt-4 pb-3 flex items-center gap-3 text-sm">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-50 flex items-center justify-center flex-shrink-0">
-                    <Clock size={15} className="text-neutral-400" />
-                  </div>
-                  <p className="text-neutral-600">
-                    {todaySchedule
-                      ? <>Horaires : <span className="font-semibold text-neutral-900">{todaySchedule.start_time?.slice(0, 5)} – {todaySchedule.end_time?.slice(0, 5)}</span></>
-                      : "Pas d'horaires renseignés aujourd'hui"}
+      {/* ══════════ Ce qui se passe maintenant ══════════ */}
+      <ProSection title="Aujourd'hui" href={isIndependent ? '/pro/agenda' : undefined}>
+        {dataLoading ? (
+          <div className="h-16 bg-neutral-50 rounded-[20px] animate-pulse" />
+        ) : (
+          <div className="space-y-3">
+            {isIndependent && pending.length > 0 && (
+              <Link href="/pro/agenda" className="flex items-center gap-3.5 bg-amber-50 rounded-[20px] px-5 py-4 hover:bg-amber-100/70 transition-colors">
+                <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold text-amber-900">
+                    {pending.length} demande{pending.length > 1 ? 's' : ''} en attente
                   </p>
+                  <p className="text-[13px] text-amber-700/70 mt-0.5">Répondez pour ne pas perdre ces clients</p>
                 </div>
-              )}
+                <ChevronRight size={16} className="text-amber-400 flex-shrink-0" />
+              </Link>
+            )}
 
-              {todayApts.length === 0 ? (
-                <div className="px-5 py-5 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-50 flex items-center justify-center flex-shrink-0">
-                    <Clock size={16} className="text-neutral-300" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-neutral-500 font-medium">Aucun RDV aujourd&apos;hui</p>
-                    {isIndependent && tomorrowApts.length > 0 && (
-                      <p className="text-xs text-neutral-400">{tomorrowApts.length} RDV demain</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="divide-y divide-neutral-50">
-                  {todayApts.slice(0, 3).map((apt) => (
-                    <Link key={apt.id} href="/pro/agenda"
-                      className="flex items-center gap-3 px-5 py-3.5 hover:bg-neutral-50 transition-colors"
-                    >
-                      <div className="w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center text-xs font-bold text-neutral-600 flex-shrink-0">
-                        {apt.client_name?.charAt(0).toUpperCase() ?? '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-900 truncate">{apt.client_name}</p>
-                        <p className="text-xs text-neutral-400 truncate">{apt.service}</p>
-                      </div>
-                      <span className="text-sm font-bold text-neutral-700 flex-shrink-0">
-                        {apt.appointment_time?.slice(0, 5) ?? ''}
-                      </span>
-                    </Link>
-                  ))}
-                  {todayApts.length > 3 && (
-                    <Link href="/pro/agenda" className="block px-5 py-3 text-xs font-semibold text-neutral-400 text-center hover:text-neutral-900 transition-colors">
-                      +{todayApts.length - 3} autre{todayApts.length - 3 > 1 ? 's' : ''} RDV
-                    </Link>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            {todayApts.length === 0 && !(!isIndependent && todaySchedule) ? (
+              <div className="bg-neutral-50 rounded-[20px] px-5 py-5">
+                <p className="text-[15px] text-neutral-500">Aucun rendez-vous aujourd&apos;hui</p>
+                {isIndependent && tomorrowApts.length > 0 && (
+                  <p className="text-[13px] text-neutral-400 mt-1">{tomorrowApts.length} RDV demain</p>
+                )}
+              </div>
+            ) : (
+              <ProGroup>
+                {!isIndependent && todaySchedule && (
+                  <ProGroupRow
+                    icon={Clock}
+                    label="Horaires"
+                    value={`${todaySchedule.start_time?.slice(0, 5)} – ${todaySchedule.end_time?.slice(0, 5)}`}
+                  />
+                )}
+                {todayApts.length === 0 ? (
+                  <ProGroupRow
+                    icon={Clock}
+                    label="Aucun rendez-vous aujourd'hui"
+                    hint={isIndependent && tomorrowApts.length > 0 ? `${tomorrowApts.length} RDV demain` : undefined}
+                  />
+                ) : (
+                  todayApts.slice(0, 4).map((apt) => (
+                    <ProGroupRow
+                      key={apt.id}
+                      href="/pro/agenda"
+                      label={apt.client_name ?? 'Client'}
+                      hint={apt.service ?? undefined}
+                      value={apt.appointment_time?.slice(0, 5) ?? ''}
+                    />
+                  ))
+                )}
+                {todayApts.length > 4 && (
+                  <ProGroupRow href="/pro/agenda" label={`+ ${todayApts.length - 4} autres rendez-vous`} />
+                )}
+              </ProGroup>
+            )}
+          </div>
+        )}
       </ProSection>
 
-      {/* ══════════ 3 — LA seule chose à faire ensuite ══════════ */}
-      <ProSection label="Prochaine étape">
+      {/* ══════════ LA seule chose à faire ensuite ══════════ */}
+      <ProSection title="À faire maintenant">
         {!dataLoading ? (
           <NextStepCard profileScore={score} topProfileItem={missingItems[0] ?? null} bestSpecialty={bestSpecialty} />
         ) : (
-          <div className="h-24 bg-neutral-100 rounded-[22px] animate-pulse" />
+          <div className="h-24 bg-neutral-50 rounded-[20px] animate-pulse" />
         )}
       </ProSection>
 
-      {/* ══════════ 4 — Où j'en suis : quatre chiffres, pas quatre écrans ══════════ */}
+      {/* ══════════ Où j'en suis — une liste, pas quatre cartes ══════════ */}
       {!dataLoading && (
-        <ProSection label="Ma progression" action={{ href: '/pro/badges', label: 'Badges' }}>
-          <div className="grid grid-cols-2 gap-2">
-            {progressTiles.map((tile, i) => (
-              <div key={i} className={oddTail && i === progressTiles.length - 1 ? 'col-span-2' : ''}>
-                {tile}
-              </div>
-            ))}
-          </div>
+        <ProSection title="Ma progression" href="/pro/badges">
+          <ProGroup>
+            {chairLevel && (
+              <ProGroupRow
+                href="/pro/badges"
+                icon={Crown}
+                label="Niveau CHAIR"
+                value={chairLevel.name}
+                hint={chairLevel.next ? `${chairLevel.progress}% vers ${chairLevel.next.name}` : 'Niveau maximum'}
+              />
+            )}
+            <StreakWidget row />
+            {showRankRow && (
+              <ProGroupRow
+                href="/app/classements"
+                external
+                icon={Trophy}
+                label="Classement"
+                value={bestRanked ? `#${bestRanked.local_rank}` : '—'}
+                hint={
+                  bestRanked
+                    ? bestRanked.points_to_next
+                      ? `${bestRanked.points_to_next} pt${bestRanked.points_to_next > 1 ? 's' : ''} avant la ${(bestRanked.local_rank ?? 1) - 1}e place`
+                      : `${bestRanked.specialty_name} à ${profile?.city}`
+                    : `Pas encore classé à ${profile?.city}`
+                }
+              />
+            )}
+            <ProGroupRow
+              href="/pro/profil"
+              icon={UserCheck}
+              label="Profil"
+              value={`${score} %`}
+              hint={
+                missingItems.length > 0
+                  ? `Il manque ${missingItems[0].short}${missingItems.length > 1 ? ` et ${missingItems.length - 1} autre${missingItems.length > 2 ? 's' : ''}` : ''}`
+                  : isIndependent ? 'Prêt pour les réservations' : 'Profil complet'
+              }
+            />
+          </ProGroup>
         </ProSection>
       )}
 
-      {/* ══════════ 5 — Ce que je montre ══════════ */}
+      {/* ══════════ Ce que je montre ══════════ */}
       {!dataLoading && (
-        <ProSection label="Ma vitrine" action={{ href: '/pro/portfolio', label: 'Tout voir' }}>
+        <ProSection title="Ma vitrine" href="/pro/portfolio">
           <PortfolioSnapshotCard posts={posts} />
           {/* Stories : la carte "verrouillée CHAIR+" disait exactement la même
-              chose que la ligne CHAIR+ d'"Aller plus loin" — un seul upsell. */}
-          {hasChairPlus(fullProfile) && <StoryCreateCard profile={fullProfile} />}
+              chose que la ligne CHAIR+ plus bas — un seul upsell sur la page. */}
+          {hasChairPlus(fullProfile) && (
+            <div className="mt-4"><StoryCreateCard profile={fullProfile} /></div>
+          )}
+          {profile?.slug && (
+            <div className="mt-4">
+              <ProGroup>
+                <ProGroupRow href={`/app/coiffeur/${profile.slug}`} external icon={Eye} label="Voir mon profil public" />
+              </ProGroup>
+            </div>
+          )}
         </ProSection>
       )}
 
-      {/* ══════════ 6 — Ce que ça rapporte (indépendant uniquement) ══════════ */}
+      {/* ══════════ Ce que ça rapporte (indépendant uniquement) ══════════ */}
       {!dataLoading && isIndependent && stats && (
-        <ProSection label="Mon activité" action={{ href: '/pro/business', label: 'Performance' }}>
+        <ProSection title="Mon activité" href="/pro/business">
           <BusinessSnapshotCard stats={stats} />
         </ProSection>
       )}
 
-      {/* ══════════ 7 — Le reste, groupé en une carte au lieu de quatre ══════════ */}
+      {/* ══════════ Le reste, groupé ══════════ */}
       {!dataLoading && (
-        <ProSection label="Aller plus loin">
-          <div className="bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 overflow-hidden divide-y divide-neutral-50">
+        <ProSection title="Aller plus loin">
+          <ProGroup>
             {!hasChairPlus(fullProfile) && (
-              <ProLinkRow href="/pro/chair-plus" icon={Sparkles} title="Passer à CHAIR+" subtitle="Stories, boost, analytics — essai gratuit 30 jours" />
+              <ProGroupRow href="/pro/chair-plus" icon={Sparkles} label="CHAIR+" hint="Stories, boost et analytics" />
             )}
-            <ProLinkRow href="/pro/parrainage" icon={Gift} title="Parrainer un coiffeur" subtitle="Points, badges et CHAIR+ offert" />
-            <ProLinkRow href="/pro/profil" icon={Pencil} title="Modifier mon profil" />
-          </div>
+            <ProGroupRow href="/pro/parrainage" icon={Gift} label="Parrainer un coiffeur" hint="Points, badges et CHAIR+ offert" />
+            <ProGroupRow href="/pro/profil" icon={Pencil} label="Modifier mon profil" />
+          </ProGroup>
         </ProSection>
       )}
 

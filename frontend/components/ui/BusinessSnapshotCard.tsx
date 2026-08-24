@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, Euro, CalendarCheck, Clock } from 'lucide-react';
 import type { ApiStats } from '@/lib/types';
 
 // Réservé à l'activité commerciale — n'a de sens que pour un indépendant qui
@@ -9,29 +8,20 @@ import type { ApiStats } from '@/lib/types';
 export default function BusinessSnapshotCard({ stats }: { stats: ApiStats | null }) {
   if (!stats) return null;
 
+  const cells = [
+    { value: String(stats.appointments_this_month), label: 'Ce mois' },
+    { value: String(stats.appointments_pending),    label: 'En attente' },
+    { value: `${Math.round(stats.revenue_estimate)} €`, label: 'Estimé' },
+  ];
+
   return (
-    <Link href="/pro/business" className="block bg-white rounded-[22px] p-5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-neutral-900">Activité commerciale</p>
-        <ChevronRight size={14} className="text-neutral-300" />
-      </div>
-      <div className="grid grid-cols-3 gap-2.5">
-        <div className="bg-neutral-50 rounded-xl p-3 text-center">
-          <CalendarCheck size={14} className="text-neutral-300 mx-auto mb-1" strokeWidth={1.5} />
-          <p className="text-base font-bold text-neutral-900 leading-none">{stats.appointments_this_month}</p>
-          <p className="text-[8px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Ce mois</p>
+    <Link href="/pro/business" className="grid grid-cols-3 bg-neutral-50 rounded-[20px] divide-x divide-neutral-200/60 hover:bg-neutral-100/80 transition-colors">
+      {cells.map((c) => (
+        <div key={c.label} className="px-4 py-5 text-center">
+          <p className="text-[22px] font-bold text-neutral-900 tracking-[-0.02em] leading-none tabular-nums">{c.value}</p>
+          <p className="text-[12px] text-neutral-400 mt-2">{c.label}</p>
         </div>
-        <div className="bg-neutral-50 rounded-xl p-3 text-center">
-          <Clock size={14} className="text-neutral-300 mx-auto mb-1" strokeWidth={1.5} />
-          <p className="text-base font-bold text-neutral-900 leading-none">{stats.appointments_pending}</p>
-          <p className="text-[8px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">En attente</p>
-        </div>
-        <div className="bg-neutral-50 rounded-xl p-3 text-center">
-          <Euro size={14} className="text-neutral-300 mx-auto mb-1" strokeWidth={1.5} />
-          <p className="text-base font-bold text-neutral-900 leading-none">{Math.round(stats.revenue_estimate)}€</p>
-          <p className="text-[8px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Estimé</p>
-        </div>
-      </div>
+      ))}
     </Link>
   );
 }

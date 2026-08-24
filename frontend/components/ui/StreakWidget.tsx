@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { streak as streakApi } from '@/lib/api';
 import type { ApiStreak } from '@/lib/types';
 import { Flame, Zap } from 'lucide-react';
-import ProStatTile from '@/components/pro/ProStatTile';
+import { ProGroupRow } from '@/components/pro/ProGroup';
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
@@ -15,12 +15,12 @@ function nextMilestone(current: number): number {
 interface Props {
   /** Puce inline, à côté d'un titre. */
   compact?: boolean;
-  /** Tuile de la grille "progression" du cockpit — même donnée que la carte
-   *  pleine largeur, en quatre lignes au lieu d'un demi-écran de scroll. */
-  tile?: boolean;
+  /** Ligne de la liste groupée "Ma progression" du cockpit — même donnée que
+   *  la carte pleine largeur, en une ligne au lieu d'un demi-écran de scroll. */
+  row?: boolean;
 }
 
-export default function StreakWidget({ compact = false, tile = false }: Props) {
+export default function StreakWidget({ compact = false, row = false }: Props) {
   const [data, setData] = useState<ApiStreak | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -31,16 +31,11 @@ export default function StreakWidget({ compact = false, tile = false }: Props) {
   }, []);
 
   if (!data) {
-    // En tuile, la case garde toujours sa place : squelette pendant le
-    // chargement, valeur neutre si l'appel échoue — sinon la grille
-    // "progression" se réorganise sous le doigt, ou garde un trou.
-    if (!tile) return null;
-    if (failed) {
-      return (
-        <ProStatTile href="/pro/badges" icon={Flame} label="Streak" value="—" hint="Donnée indisponible" />
-      );
-    }
-    return <div className="h-[104px] bg-neutral-100 rounded-[20px] animate-pulse" />;
+    // En ligne de liste, la place est toujours tenue : la liste ne doit pas
+    // se réorganiser sous le doigt à l'arrivée (ou à l'échec) de l'appel.
+    if (!row) return null;
+    if (failed) return <ProGroupRow href="/pro/badges" icon={Flame} label="Streak" value="—" />;
+    return <div className="h-[52px] flex items-center px-4"><div className="h-3 w-24 bg-neutral-200 rounded-full animate-pulse" /></div>;
   }
 
   const current = data.current_streak;
@@ -49,22 +44,14 @@ export default function StreakWidget({ compact = false, tile = false }: Props) {
   const next = nextMilestone(current);
   const progress = Math.min(100, Math.round((current / next) * 100));
 
-  if (tile) {
+  if (row) {
     return (
-      <ProStatTile
+      <ProGroupRow
         href="/pro/badges"
         icon={Flame}
-        accent={isActive}
         label="Streak"
-        value={current > 0 ? `${current} jour${current > 1 ? 's' : ''}` : 'À démarrer'}
-        progress={current > 0 ? progress : null}
-        hint={
-          isActive
-            ? "Actif aujourd'hui"
-            : current > 0
-              ? `Palier ${next}j — publiez aujourd'hui`
-              : 'Publiez pour démarrer'
-        }
+        value={current > 0 ? `${current} j` : '—'}
+        hint={isActive ? "Actif aujourd'hui" : current > 0 ? `Prochain palier : ${next} jours` : 'Publiez pour démarrer'}
       />
     );
   }

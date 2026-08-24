@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { METIER_LEVEL_ICONS } from '@/components/ui/ChairBadges';
-import { Scissors, ArrowRight, Eye } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import type { ApiSpecialtyProgress } from '@/lib/types';
 
 interface Props {
@@ -16,88 +15,85 @@ interface Props {
 }
 
 /**
- * En-tête du cockpit — absorbe la ligne d'identité (avatar + date + accès au
- * profil public) qui flottait juste au-dessus : deux surfaces disaient "qui
- * tu es" avant même le premier contenu utile.
+ * En-tête du cockpit : un grand titre posé sur le blanc, puis un seul aplat
+ * sombre pour la réputation métier. Avant, l'identité était éclatée entre une
+ * ligne avatar/date et une carte noire chargée d'icônes ; ici la typographie
+ * porte la hiérarchie et le noir ne sert plus qu'à une chose.
  */
 export default function CockpitHero({ firstName, avatarUrl, dateStr, publicSlug, bestSpecialty, city }: Props) {
+  const avatar = (
+    <div className="relative w-12 h-12 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
+      {avatarUrl
+        ? <Image src={avatarUrl} alt={firstName} fill className="object-cover" sizes="48px" />
+        : <div className="w-full h-full flex items-center justify-center text-base font-semibold text-neutral-400">{firstName[0]}</div>
+      }
+    </div>
+  );
+
   return (
-    <div className="bg-neutral-900 rounded-[26px] p-5 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
-      <div className="flex items-center gap-3">
-        <div className="relative w-11 h-11 rounded-full overflow-hidden bg-white/10 flex-shrink-0 ring-1 ring-white/15">
-          {avatarUrl
-            ? <Image src={avatarUrl} alt={firstName} fill className="object-cover" sizes="44px" />
-            : <div className="w-full h-full flex items-center justify-center text-sm font-bold text-white/60">{firstName[0]}</div>
-          }
-        </div>
+    <header>
+      <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] text-white/40 capitalize truncate">{dateStr}</p>
-          <h1 className="text-lg font-bold text-white leading-tight truncate">Bonjour, {firstName}</h1>
+          <p className="text-[13px] text-neutral-400 first-letter:uppercase">{dateStr}</p>
+          <h1 className="text-[28px] font-bold text-neutral-900 tracking-[-0.02em] leading-tight mt-0.5 truncate">
+            Bonjour, {firstName}
+          </h1>
         </div>
-        {publicSlug && (
-          <Link
-            href={`/app/coiffeur/${publicSlug}`} target="_blank" rel="noopener noreferrer"
-            className="ml-auto flex items-center gap-1.5 text-[11px] font-semibold text-white/70 bg-white/10 px-3 py-2 rounded-xl hover:bg-white/20 hover:text-white transition-colors flex-shrink-0"
-          >
-            <Eye size={12} />Mon profil
-          </Link>
-        )}
+        {publicSlug
+          ? <Link href={`/app/coiffeur/${publicSlug}`} target="_blank" rel="noopener noreferrer" aria-label="Voir mon profil public">{avatar}</Link>
+          : avatar}
       </div>
 
       {!bestSpecialty ? (
-        <div className="mt-5 pt-4 border-t border-white/10">
-          <p className="text-sm text-neutral-400">Choisissez vos spécialités pour construire votre réputation CHAIR.</p>
-          <Link href="/pro/profil" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold bg-white text-neutral-900 px-4 py-2.5 rounded-xl">
-            Choisir mes spécialités <ArrowRight size={12} />
-          </Link>
-        </div>
+        <Link href="/pro/profil" className="mt-6 flex items-center gap-4 bg-neutral-900 rounded-[24px] p-6 hover:bg-neutral-800 transition-colors">
+          <div className="flex-1 min-w-0">
+            <p className="text-[17px] font-semibold text-white leading-snug">Choisissez vos spécialités</p>
+            <p className="text-[13px] text-white/40 mt-1">C&apos;est ce qui construit votre réputation CHAIR.</p>
+          </div>
+          <ArrowRight size={18} className="text-white/40 flex-shrink-0" />
+        </Link>
       ) : (
-        <SpecialtyBlock bestSpecialty={bestSpecialty} city={city} />
+        <div className="mt-6 bg-neutral-900 rounded-[24px] px-6 py-7">
+          <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-white/40">
+            {bestSpecialty.specialty_name}
+          </p>
+
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <p className="text-[30px] font-bold text-white tracking-[-0.02em] leading-none">
+              {bestSpecialty.is_reference ? 'Légende' : bestSpecialty.level_name}
+            </p>
+            {bestSpecialty.local_rank && city && (bestSpecialty.local_total ?? 0) >= 2 && (
+              <p className="text-[13px] text-white/40 flex-shrink-0 pb-1">
+                <span className="font-semibold text-white/80">#{bestSpecialty.local_rank}</span> à {city}
+              </p>
+            )}
+          </div>
+
+          <Progress bestSpecialty={bestSpecialty} />
+        </div>
       )}
-    </div>
+    </header>
   );
 }
 
-function SpecialtyBlock({ bestSpecialty, city }: { bestSpecialty: ApiSpecialtyProgress; city: string | null }) {
-  const Icon = METIER_LEVEL_ICONS[bestSpecialty.level] ?? Scissors;
+function Progress({ bestSpecialty }: { bestSpecialty: ApiSpecialtyProgress }) {
   // Seuil réel du prochain niveau (renvoyé par le backend) — niveau max déjà
   // atteint : pas de barre à afficher, juste le score.
-  const target = bestSpecialty.next_step?.next_level_min ?? bestSpecialty.score;
-  const pct = bestSpecialty.next_step ? Math.min(100, Math.round((bestSpecialty.score / target) * 100)) : 100;
+  const step = bestSpecialty.next_step;
+  const target = step?.next_level_min ?? bestSpecialty.score;
+  const pct = step ? Math.min(100, Math.round((bestSpecialty.score / target) * 100)) : 100;
 
   return (
-    <div className="mt-5 pt-4 border-t border-white/10">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-          <Icon size={20} className="text-white" strokeWidth={2} />
-        </div>
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 truncate">{bestSpecialty.specialty_name}</p>
-          <p className="text-lg font-black text-white leading-none mt-0.5">
-            {bestSpecialty.is_reference ? 'Légende' : bestSpecialty.level_name}
-          </p>
-        </div>
-        {bestSpecialty.local_rank && city && (bestSpecialty.local_total ?? 0) >= 2 && (
-          <div className="ml-auto text-right flex-shrink-0">
-            <p className="text-lg font-black text-white leading-none">#{bestSpecialty.local_rank}</p>
-            <p className="text-[10px] text-white/40 mt-0.5">{city}</p>
-          </div>
-        )}
-      </div>
-
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden mb-2">
+    <>
+      <div className="mt-6 h-[3px] bg-white/15 rounded-full overflow-hidden">
         <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
       </div>
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold text-white/50">
-          {bestSpecialty.next_step ? `${bestSpecialty.score} / ${target} points` : `${bestSpecialty.score} points`}
+      <div className="mt-3 flex items-center justify-between gap-3 text-[12px]">
+        <p className="text-white/40 tabular-nums">
+          {step ? `${bestSpecialty.score} / ${target} points` : `${bestSpecialty.score} points`}
         </p>
-        {bestSpecialty.next_step && (
-          <p className="text-[11px] font-semibold text-white/50">
-            Objectif : <span className="text-white/80">{bestSpecialty.next_step.next_level_name}</span>
-          </p>
-        )}
+        {step && <p className="text-white/40 truncate">Objectif <span className="text-white/80">{step.next_level_name}</span></p>}
       </div>
-    </div>
+    </>
   );
 }

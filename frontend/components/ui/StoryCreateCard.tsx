@@ -143,7 +143,7 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
 
   if (!eligible) {
     return (
-      <Link href="/pro/chair-plus" className="flex items-center gap-3 bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] transition-all">
+      <Link href="/pro/chair-plus" className="flex items-center gap-3 bg-neutral-50 rounded-[20px] p-4 hover:bg-neutral-100/80 transition-colors">
         <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
           <Lock size={15} className="text-neutral-400" strokeWidth={1.5} />
         </div>
@@ -156,7 +156,7 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
   }
 
   return (
-    <div className="bg-white rounded-[22px] p-4 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100">
+    <div className="bg-neutral-50 rounded-[20px] p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-bold text-neutral-900">Stories</p>
         <button

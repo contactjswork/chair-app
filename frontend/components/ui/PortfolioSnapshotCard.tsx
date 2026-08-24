@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronRight, Camera, ImageIcon, Plus, Heart, Star } from 'lucide-react';
+import { ArrowRight, ImageIcon, Plus } from 'lucide-react';
 import { getAfterImage } from '@/lib/types';
 import type { ApiPost } from '@/lib/types';
 
@@ -18,26 +18,26 @@ function resolvePostImage(post: ApiPost): string | null {
   return img.startsWith('/storage/') ? `${BASE}${img}` : img;
 }
 
+/**
+ * Le portfolio du cockpit : les images d'abord, les chiffres en une ligne
+ * dessous. Avant, deux pavés gris de statistiques passaient devant les photos
+ * et la grille 3 colonnes mangeait un demi-écran — c'était la section la plus
+ * lourde du scroll, pour le contenu le plus visuel du produit.
+ */
 export default function PortfolioSnapshotCard({ posts }: Props) {
   if (posts.length === 0) {
     return (
-      <Link href="/pro/portfolio"
-        className="flex items-center gap-4 bg-white rounded-[22px] p-5 ring-1 ring-dashed ring-neutral-200 hover:ring-neutral-400 transition-colors"
-      >
-        <div className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center flex-shrink-0">
-          <Camera size={20} className="text-neutral-300" />
-        </div>
+      <Link href="/pro/portfolio" className="flex items-center gap-4 bg-neutral-50 rounded-[20px] px-5 py-5 hover:bg-neutral-100/80 transition-colors">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-neutral-900">Aucune réalisation</p>
-          <p className="text-xs text-neutral-400 mt-0.5">Publiez des photos pour construire votre portfolio</p>
+          <p className="text-[17px] font-semibold text-neutral-900 leading-snug">Aucune réalisation</p>
+          <p className="text-[13px] text-neutral-400 mt-1">Vos photos sont ce que les clients regardent en premier.</p>
         </div>
-        <ChevronRight size={16} className="text-neutral-300" />
+        <ArrowRight size={18} className="text-neutral-300 flex-shrink-0" />
       </Link>
     );
   }
 
   const totalLikes = posts.reduce((acc, p) => acc + (p.likes_count ?? 0), 0);
-  const bestPost = posts.reduce((best, p) => (p.likes_count ?? 0) > (best?.likes_count ?? -1) ? p : best, null as ApiPost | null);
 
   // Spécialité dominante — celle qui revient le plus souvent parmi les
   // réalisations publiées, pas une donnée séparée à maintenir.
@@ -47,62 +47,35 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
   }
   const dominantSpecialty = [...specialtyCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  // Spécialité dominante + meilleure réalisation fusionnées en une seule
-  // ligne de repère (au lieu d'un texte + un bandeau ambre séparés) — même
-  // donnée réelle, une seule surface à lire.
-  const bestLikes = bestPost && (bestPost.likes_count ?? 0) > 0 ? bestPost.likes_count : null;
-  const hasHighlight = dominantSpecialty || bestLikes;
-
   return (
-    <div className="bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 overflow-hidden">
-      <div className="px-5 py-4 flex items-center justify-between border-b border-neutral-50">
-        <p className="text-sm font-bold text-neutral-900">Portfolio</p>
-        <Link href="/pro/portfolio" className="text-neutral-300 hover:text-neutral-600 transition-colors">
-          <ChevronRight size={16} />
-        </Link>
-      </div>
-
-      {/* Deux chiffres en une ligne (au lieu de deux pavés) et les vignettes
-          en bande horizontale : même contenu, un tiers de la hauteur — c'est
-          la section qui pesait le plus lourd dans le scroll du cockpit. */}
-      <div className="px-5 pt-3 flex items-center gap-2 text-xs text-neutral-500">
-        <span><span className="font-bold text-neutral-900">{posts.length}</span> réalisation{posts.length > 1 ? 's' : ''}</span>
-        <span className="text-neutral-200">·</span>
-        <span className="flex items-center gap-1">
-          <Heart size={12} className="text-red-400" />
-          <span className="font-bold text-neutral-900">{totalLikes}</span> j&apos;aime
-        </span>
-      </div>
-
-      {hasHighlight && (
-        <p className="px-5 mt-1.5 text-xs text-neutral-400 flex items-center gap-1.5">
-          {bestLikes && <Star size={12} className="text-amber-500 flex-shrink-0" />}
-          {dominantSpecialty && <span className="font-semibold text-neutral-600">{dominantSpecialty}</span>}
-          {dominantSpecialty && bestLikes && <span className="text-neutral-300">·</span>}
-          {bestLikes && <span>meilleure pub <span className="font-semibold text-neutral-600">{bestLikes} j&apos;aime</span></span>}
-        </p>
-      )}
-
-      <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 py-4">
-        {posts.slice(0, 8).map((post) => {
+    <div>
+      <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 md:-mx-6 md:px-6">
+        {posts.slice(0, 10).map((post) => {
           const imgUrl = resolvePostImage(post);
           return (
             <Link key={post.id} href="/pro/portfolio" className="flex-shrink-0">
-              <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-neutral-100">
+              <div className="relative w-[104px] h-[104px] rounded-[16px] overflow-hidden bg-neutral-100">
                 {imgUrl
-                  ? <Image src={imgUrl} alt="" fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="80px" />
-                  : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={14} className="text-neutral-300" /></div>
+                  ? <Image src={imgUrl} alt="" fill className="object-cover" sizes="104px" />
+                  : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={16} className="text-neutral-300" /></div>
                 }
               </div>
             </Link>
           );
         })}
         <Link href="/pro/portfolio" className="flex-shrink-0">
-          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center hover:border-neutral-400 transition-colors">
-            <Plus size={18} className="text-neutral-300" />
+          <div className="w-[104px] h-[104px] rounded-[16px] bg-neutral-50 flex items-center justify-center hover:bg-neutral-100 transition-colors">
+            <Plus size={20} className="text-neutral-300" strokeWidth={1.75} />
           </div>
         </Link>
       </div>
+
+      <p className="mt-3 text-[13px] text-neutral-400">
+        <span className="text-neutral-900 font-medium tabular-nums">{posts.length}</span>{' '}réalisation{posts.length > 1 ? 's' : ''}
+        <span className="mx-2 text-neutral-200">·</span>
+        <span className="text-neutral-900 font-medium tabular-nums">{totalLikes}</span>{' '}j&apos;aime
+        {dominantSpecialty && <><span className="mx-2 text-neutral-200">·</span>{dominantSpecialty}</>}
+      </p>
     </div>
   );
 }
