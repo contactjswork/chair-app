@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { streak as streakApi } from '@/lib/api';
 import type { ApiStreak } from '@/lib/types';
 import { Flame, Zap } from 'lucide-react';
+import ProStatTile from '@/components/pro/ProStatTile';
 
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100];
 
@@ -12,25 +13,61 @@ function nextMilestone(current: number): number {
 }
 
 interface Props {
+  /** Puce inline, à côté d'un titre. */
   compact?: boolean;
+  /** Tuile de la grille "progression" du cockpit — même donnée que la carte
+   *  pleine largeur, en quatre lignes au lieu d'un demi-écran de scroll. */
+  tile?: boolean;
 }
 
-export default function StreakWidget({ compact = false }: Props) {
+export default function StreakWidget({ compact = false, tile = false }: Props) {
   const [data, setData] = useState<ApiStreak | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     streakApi.get()
       .then((d) => setData(d as ApiStreak))
-      .catch(() => {});
+      .catch(() => setFailed(true));
   }, []);
 
-  if (!data) return null;
+  if (!data) {
+    // En tuile, la case garde toujours sa place : squelette pendant le
+    // chargement, valeur neutre si l'appel échoue — sinon la grille
+    // "progression" se réorganise sous le doigt, ou garde un trou.
+    if (!tile) return null;
+    if (failed) {
+      return (
+        <ProStatTile href="/pro/badges" icon={Flame} label="Streak" value="—" hint="Donnée indisponible" />
+      );
+    }
+    return <div className="h-[104px] bg-neutral-100 rounded-[20px] animate-pulse" />;
+  }
 
   const current = data.current_streak;
   const longest = data.longest_streak;
   const isActive = data.is_active_today;
   const next = nextMilestone(current);
   const progress = Math.min(100, Math.round((current / next) * 100));
+
+  if (tile) {
+    return (
+      <ProStatTile
+        href="/pro/badges"
+        icon={Flame}
+        accent={isActive}
+        label="Streak"
+        value={current > 0 ? `${current} jour${current > 1 ? 's' : ''}` : 'À démarrer'}
+        progress={current > 0 ? progress : null}
+        hint={
+          isActive
+            ? "Actif aujourd'hui"
+            : current > 0
+              ? `Palier ${next}j — publiez aujourd'hui`
+              : 'Publiez pour démarrer'
+        }
+      />
+    );
+  }
 
   if (compact) {
     return (

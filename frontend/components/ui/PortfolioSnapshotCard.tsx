@@ -62,21 +62,20 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 gap-2.5 px-4 pt-4">
-        <div className="bg-neutral-50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-neutral-900 leading-none">{posts.length}</p>
-          <p className="text-[9px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">Réalisations</p>
-        </div>
-        <div className="bg-neutral-50 rounded-xl p-3 text-center">
-          <p className="text-lg font-bold text-neutral-900 leading-none flex items-center justify-center gap-1">
-            <Heart size={13} className="text-red-400" />{totalLikes}
-          </p>
-          <p className="text-[9px] text-neutral-400 font-medium mt-1.5 uppercase tracking-wide">J&apos;aime reçus</p>
-        </div>
+      {/* Deux chiffres en une ligne (au lieu de deux pavés) et les vignettes
+          en bande horizontale : même contenu, un tiers de la hauteur — c'est
+          la section qui pesait le plus lourd dans le scroll du cockpit. */}
+      <div className="px-5 pt-3 flex items-center gap-2 text-xs text-neutral-500">
+        <span><span className="font-bold text-neutral-900">{posts.length}</span> réalisation{posts.length > 1 ? 's' : ''}</span>
+        <span className="text-neutral-200">·</span>
+        <span className="flex items-center gap-1">
+          <Heart size={12} className="text-red-400" />
+          <span className="font-bold text-neutral-900">{totalLikes}</span> j&apos;aime
+        </span>
       </div>
 
       {hasHighlight && (
-        <p className="mx-4 mt-3 text-xs text-neutral-400 flex items-center gap-1.5">
+        <p className="px-5 mt-1.5 text-xs text-neutral-400 flex items-center gap-1.5">
           {bestLikes && <Star size={12} className="text-amber-500 flex-shrink-0" />}
           {dominantSpecialty && <span className="font-semibold text-neutral-600">{dominantSpecialty}</span>}
           {dominantSpecialty && bestLikes && <span className="text-neutral-300">·</span>}
@@ -84,12 +83,12 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
         </p>
       )}
 
-      <div className="p-3 grid grid-cols-3 gap-2 mt-1">
-        {posts.slice(0, 5).map((post) => {
+      <div className="flex gap-2 overflow-x-auto no-scrollbar px-5 py-4">
+        {posts.slice(0, 8).map((post) => {
           const imgUrl = resolvePostImage(post);
           return (
-            <Link key={post.id} href="/pro/portfolio">
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-neutral-100">
+            <Link key={post.id} href="/pro/portfolio" className="flex-shrink-0">
+              <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-neutral-100">
                 {imgUrl
                   ? <Image src={imgUrl} alt="" fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="80px" />
                   : <div className="w-full h-full flex items-center justify-center"><ImageIcon size={14} className="text-neutral-300" /></div>
@@ -98,8 +97,8 @@ export default function PortfolioSnapshotCard({ posts }: Props) {
             </Link>
           );
         })}
-        <Link href="/pro/portfolio">
-          <div className="aspect-square rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center hover:border-neutral-400 transition-colors">
+        <Link href="/pro/portfolio" className="flex-shrink-0">
+          <div className="w-20 h-20 rounded-xl border-2 border-dashed border-neutral-200 flex items-center justify-center hover:border-neutral-400 transition-colors">
             <Plus size={18} className="text-neutral-300" />
           </div>
         </Link>
