@@ -3,16 +3,13 @@ import Image from 'next/image';
 import LandingNav from '@/components/landing/LandingNav';
 import LandingFooter from '@/components/landing/LandingFooter';
 import FaqAccordion from '@/components/landing/FaqAccordion';
-import PhoneStack from '@/components/landing/PhoneStack';
-import MockupPhone, { FloatingBadge } from '@/components/landing/MockupPhone';
-import AppDownload from '@/components/ui/AppDownload';
+import MockupPhone from '@/components/landing/MockupPhone';
 import Reveal from '@/components/ui/Reveal';
 import HeroSearch from '@/components/ui/HeroSearch';
-import { ArrowRight, Check, Star, BadgeCheck, Heart, Calendar, QrCode, BarChart2, Users, Scissors } from 'lucide-react';
+import { ArrowRight, Star } from 'lucide-react';
 import type { ApiLeaderboardEntry, ApiPost, ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
 import { SPECIALTY_LABELS } from '@/lib/explore';
-import { MapPin, ShieldCheck } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -31,7 +28,7 @@ async function getTopRanked(): Promise<ApiLeaderboardEntry[]> {
 
 async function getFeaturedHairdressers(): Promise<ApiHairdresserProfile[]> {
   try {
-    const res = await fetch(`${API}/hairdressers?sort=featured&per_page=6`);
+    const res = await fetch(`${API}/hairdressers?sort=featured&per_page=8`);
     if (!res.ok) return [];
     const data: PaginatedResponse<ApiHairdresserProfile> = await res.json();
     return data.data;
@@ -40,7 +37,7 @@ async function getFeaturedHairdressers(): Promise<ApiHairdresserProfile[]> {
 
 async function getRealisations(): Promise<ApiPost[]> {
   try {
-    const res = await fetch(`${API}/feed?sort=trending&per_page=6`);
+    const res = await fetch(`${API}/feed?sort=trending&per_page=14`);
     if (!res.ok) return [];
     const data: PaginatedResponse<ApiPost> = await res.json();
     return data.data.filter((p) => getAfterImage(p));
@@ -62,59 +59,66 @@ async function getSpecialtyLabels(): Promise<Record<string, string>> {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   FEATURE SECTION — texte + mockup, alternés, mobile-first
-───────────────────────────────────────────────────────────── */
-function FeatureSection({
-  tag,
-  title,
-  body,
-  checks,
-  cta,
-  mockup,
-  reverse = false,
-  dark = false,
-}: {
-  tag: string;
-  title: React.ReactNode;
-  body: string;
-  checks?: string[];
-  cta?: React.ReactNode;
-  mockup: React.ReactNode;
-  reverse?: boolean;
-  dark?: boolean;
-}) {
-  const text = dark ? 'text-white' : 'text-neutral-900';
-  const sub = dark ? 'text-white/35' : 'text-neutral-500';
-  const tagCls = dark ? 'text-white/20' : 'text-neutral-300';
-  const checkCls = dark ? 'text-emerald-400' : 'text-neutral-400';
-  const checkText = dark ? 'text-white/55' : 'text-neutral-600';
+   Primitives de la vitrine.
 
+   Un seul geste graphique pour toute la page : du blanc, de la
+   typographie, et un aplat sombre réservé aux deux moments qui portent
+   le récit (la confiance, le côté pro). Pas de carte cerclée d'un
+   liseré gris — sur du blanc, un contour fabrique un formulaire, et
+   l'ancienne page en avait sur presque chaque bloc.
+───────────────────────────────────────────────────────────── */
+
+const SHELL = 'max-w-5xl mx-auto px-6';
+
+function Chapter({ children, dark = false, tight = false }: { children: React.ReactNode; dark?: boolean; tight?: boolean }) {
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center ${reverse ? 'lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1' : ''}`}>
-      {/* Texte */}
-      <div className="text-center lg:text-left">
-        <p className={`text-[10px] font-bold tracking-[0.28em] uppercase ${tagCls} mb-5`}>{tag}</p>
-        <h2 className={`text-[38px] md:text-[44px] lg:text-[48px] font-bold ${text} leading-[1.0] tracking-[-0.02em] mb-5`}>{title}</h2>
-        <p className={`text-[15px] ${sub} leading-relaxed mb-7 max-w-md mx-auto lg:mx-0`}>{body}</p>
-        {checks && (
-          <div className="space-y-3 mb-7 inline-flex flex-col items-start">
-            {checks.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <Check size={12} className={`${checkCls} flex-shrink-0 mt-0.5`} strokeWidth={2.5} />
-                <span className={`text-[13px] ${checkText} leading-snug text-left`}>{item}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex justify-center lg:justify-start">{cta}</div>
-      </div>
-      {/* Mockup — centré sur mobile avec padding pour les badges, aligné sur lg */}
-      <div className={`flex justify-center ${reverse ? 'lg:justify-end' : 'lg:justify-start'} items-center`}>
-        <div className="relative px-14 lg:px-0">
-          {mockup}
-        </div>
-      </div>
-    </div>
+    <section className={`${tight ? 'py-16 md:py-24' : 'py-24 md:py-36'} ${dark ? 'bg-neutral-950' : ''}`}>
+      {children}
+    </section>
+  );
+}
+
+function Title({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+  return (
+    <h2 className={`text-[36px] md:text-[52px] font-bold tracking-[-0.03em] leading-[1.05] ${dark ? 'text-white' : 'text-neutral-900'}`}>
+      {children}
+    </h2>
+  );
+}
+
+function Lead({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
+  return (
+    <p className={`text-[17px] md:text-[19px] leading-relaxed max-w-xl ${dark ? 'text-white/45' : 'text-neutral-500'}`}>
+      {children}
+    </p>
+  );
+}
+
+function PillLink({ href, children, tone = 'dark' }: { href: string; children: React.ReactNode; tone?: 'dark' | 'light' }) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-2 rounded-full px-7 py-4 text-[15px] font-semibold transition-colors ${
+        tone === 'dark'
+          ? 'bg-neutral-900 text-white hover:bg-neutral-700'
+          : 'bg-white text-neutral-900 hover:bg-neutral-200'
+      }`}
+    >
+      {children}<ArrowRight size={15} strokeWidth={2.5} />
+    </Link>
+  );
+}
+
+function TextLink({ href, children, dark = false }: { href: string; children: React.ReactNode; dark?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-1.5 text-[15px] font-medium transition-colors ${
+        dark ? 'text-white/50 hover:text-white' : 'text-neutral-500 hover:text-neutral-900'
+      }`}
+    >
+      {children}<ArrowRight size={14} strokeWidth={2.5} />
+    </Link>
   );
 }
 
@@ -128,951 +132,429 @@ export default async function HomePage() {
     getFeaturedHairdressers(),
     getSpecialtyLabels(),
   ]);
+
+  const heroStrip = realisations.slice(0, 10);
+  const gridPosts = realisations.slice(0, 6);
+
   return (
-    <div className="min-h-screen bg-white text-neutral-900 font-sans overflow-x-hidden [&_section]:overflow-x-hidden">
-      <LandingNav dark />
+    <div className="min-h-screen bg-white text-neutral-900 font-sans overflow-x-hidden">
+      <LandingNav />
 
-      {/* ══════════════════════════════════════════════════════
-          HERO
-      ══════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[100svh] flex items-center overflow-hidden bg-[#0a0a0a]">
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        }} />
-        <div className="absolute top-1/2 left-1/4 w-[700px] h-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.025] blur-[150px] pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)',
-          backgroundSize: '80px 80px',
-        }} />
+      {/* ══════════ HÉRO — une phrase, un champ de recherche ══════════ */}
+      <section className="pt-36 md:pt-44 pb-16 md:pb-20">
+        <div className={`${SHELL} text-center`}>
+          <h1 className="text-[42px] sm:text-[56px] md:text-[72px] font-bold tracking-[-0.035em] leading-[1.02] text-neutral-900">
+            Choisissez la personne,
+            <br />
+            <span className="text-neutral-300">pas l&apos;adresse.</span>
+          </h1>
 
-        <div className="relative max-w-6xl mx-auto px-5 w-full min-w-0 pt-24 pb-12 lg:pt-0 lg:py-0">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-center w-full">
-            <div className="text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 border border-white/10 text-white/40 text-[10px] font-semibold tracking-[0.14em] uppercase px-3.5 py-2 rounded-full mb-10 bg-white/[0.04]">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                Premier écosystème dédié à la coiffure
-              </div>
-              <h1 className="text-[46px] sm:text-[58px] lg:text-[64px] font-bold text-white leading-[0.96] tracking-[-0.03em] mb-6">
-                Ne cherchez plus un salon.<br />
-                <span className="text-white/20">Trouvez le coiffeur fait pour vous.</span>
-              </h1>
-              <p className="text-[16px] md:text-[18px] text-white/40 leading-relaxed mb-8 max-w-[440px] font-light mx-auto lg:mx-0">
-                Découvrez les talents autour de vous, comparez leurs réalisations et réservez selon votre style — sur le web ou dans l&apos;app.
-              </p>
+          <p className="mt-7 text-[17px] md:text-[20px] text-neutral-500 leading-relaxed max-w-xl mx-auto">
+            CHAIR met le coiffeur au centre. Voyez son travail, ses spécialités et ses avis
+            certifiés, puis réservez directement — dans votre navigateur comme dans l&apos;app.
+          </p>
 
-              <div className="mb-6">
-                <HeroSearch />
-              </div>
+          <div className="mt-10 max-w-xl mx-auto">
+            <HeroSearch />
+          </div>
 
-              <div className="flex flex-wrap justify-center lg:justify-start items-center gap-x-6 gap-y-3 mb-12 text-[13px]">
-                <Link href="/download" className="inline-flex items-center gap-1.5 text-white/50 hover:text-white font-medium transition-colors">
-                  Télécharger l&apos;application <ArrowRight size={13} strokeWidth={2.5} />
-                </Link>
-                <span className="hidden sm:inline text-white/15">·</span>
-                <Link href="/pro/inscription" className="inline-flex items-center gap-1.5 text-white/50 hover:text-white font-medium transition-colors">
-                  Je suis professionnel →
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 gap-5 border-t border-white/[0.07] pt-8 text-center lg:text-left max-w-[320px] lg:max-w-none">
-                {[
-                  { v: '100%', l: 'Avis certifiés' },
-                  { v: '0€', l: 'Pour les clients' },
-                ].map((s, i) => (
-                  <div key={i}>
-                    <p className="text-[24px] font-bold text-white mb-0.5 tracking-tight">{s.v}</p>
-                    <p className="text-[11px] text-white/30">{s.l}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="hidden lg:flex justify-end items-center pr-4">
-              <PhoneStack />
-            </div>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
+            <TextLink href="/app/recherche">Voir les coiffeurs près de moi</TextLink>
+            <span className="hidden sm:inline text-neutral-200">·</span>
+            <TextLink href="/pro/inscription">Je suis coiffeur</TextLink>
           </div>
         </div>
       </section>
 
-      {/* ══════════════════════════════════════════════════════
-          MEILLEURS COIFFEURS — vraies cartes, vraies données
-      ══════════════════════════════════════════════════════ */}
-      {featuredHairdressers.length > 0 && (
-        <section className="py-16 lg:py-20 bg-white border-t border-neutral-100 overflow-hidden">
-          <div className="max-w-6xl mx-auto px-5">
-            <Reveal>
-              <div className="flex items-end justify-between gap-4 mb-8">
-                <div>
-                  <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-3">La communauté</p>
-                  <h2 className="text-[26px] sm:text-[32px] font-bold text-neutral-900 tracking-tight leading-tight">
-                    Les coiffeurs les mieux notés, près de chez vous.
-                  </h2>
+      {/* Bande de vraies réalisations, pleine largeur — la preuve avant
+          l'argumentaire. Aucune image inventée : si le feed est vide, la
+          bande n'existe pas. */}
+      {heroStrip.length > 0 && (
+        <div className="pb-8 md:pb-16 overflow-hidden">
+          <div className="flex gap-3 overflow-x-auto no-scrollbar px-6">
+            {heroStrip.map((post) => {
+              const url = resolveMediaUrl(getAfterImage(post));
+              if (!url) return null;
+              return (
+                <div key={post.id} className="relative flex-shrink-0 w-[200px] md:w-[260px] aspect-[3/4] rounded-[20px] overflow-hidden bg-neutral-100">
+                  <Image src={url} alt="Réalisation publiée sur CHAIR" fill className="object-cover" sizes="260px" />
                 </div>
-                <Link href="/app/recherche" className="hidden sm:inline-flex flex-shrink-0 items-center gap-1.5 text-[13px] font-semibold text-neutral-600 hover:text-neutral-900 transition-colors">
-                  Tout voir <ArrowRight size={13} strokeWidth={2.5} />
-                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ 1 — Le problème ══════════ */}
+      <Chapter>
+        <div className={SHELL}>
+          <Reveal>
+            <Title>
+              Vous avez déjà réservé sans savoir
+              <br className="hidden md:block" /> qui allait vous coiffer.
+            </Title>
+            <div className="mt-7">
+              <Lead>
+                Le talent est caché derrière une adresse. Ses spécialités, son style, son travail
+                restent invisibles jusqu&apos;au fauteuil. C&apos;est à peu près le seul métier où
+                l&apos;on confie son apparence à quelqu&apos;un qu&apos;on n&apos;a jamais vu travailler.
+              </Lead>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16">
+              <div>
+                <p className="text-[13px] font-semibold text-neutral-300 mb-6">Aujourd&apos;hui</p>
+                <ul className="space-y-4">
+                  {[
+                    'Vous réservez dans un salon, pas avec un coiffeur',
+                    'Vous découvrez la personne en arrivant',
+                    'Vous ne voyez pas son travail avant le rendez-vous',
+                    'Les avis en ligne sont invérifiables',
+                  ].map((t) => (
+                    <li key={t} className="text-[16px] text-neutral-400 leading-snug">{t}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="md:border-l md:border-neutral-100 md:pl-16">
+                <p className="text-[13px] font-semibold text-neutral-900 mb-6">Sur CHAIR</p>
+                <ul className="space-y-4">
+                  {[
+                    'Vous choisissez un professionnel, avec un nom',
+                    'Vous voyez ses réalisations avant de réserver',
+                    'Vous connaissez ses spécialités et son style',
+                    'Chaque avis est lié à une visite réelle',
+                  ].map((t) => (
+                    <li key={t} className="text-[16px] text-neutral-900 leading-snug">{t}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </Chapter>
+
+      {/* ══════════ 2 — Comment ça marche ══════════ */}
+      <Chapter tight>
+        <div className={SHELL} id="comment-ca-marche">
+          <Reveal>
+            <Title>Trois étapes.</Title>
+          </Reveal>
+
+          <div className="mt-14 divide-y divide-neutral-100 border-t border-neutral-100">
+            {[
+              { n: '01', t: 'Découvrez', d: "Parcourez les coiffeurs par spécialité, par ville ou par style. Chaque profil montre un univers de travail, pas une vitrine de salon." },
+              { n: '02', t: 'Réservez', d: "Choisissez votre créneau directement sur le profil du coiffeur. Confirmation en direct, aucun appel, aucune attente." },
+              { n: '03', t: 'Vérifiez', d: "Après la prestation, un QR code unique débloque l'avis. Chaque note publiée vient d'une visite qui a réellement eu lieu." },
+            ].map((step, i) => (
+              <Reveal key={step.n} delay={i * 100}>
+                <div className="py-8 md:py-10 grid grid-cols-1 md:grid-cols-[64px_200px_1fr] gap-2 md:gap-8 md:items-baseline">
+                  <p className="text-[15px] font-semibold text-neutral-300 tabular-nums">{step.n}</p>
+                  <h3 className="text-[22px] md:text-[26px] font-bold tracking-tight text-neutral-900">{step.t}</h3>
+                  <p className="text-[16px] text-neutral-500 leading-relaxed max-w-lg">{step.d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </Chapter>
+
+      {/* ══════════ 3 — Le travail parle ══════════ */}
+      {gridPosts.length > 0 && (
+        <Chapter>
+          <div className={SHELL}>
+            <Reveal>
+              <Title>Le travail parle<br />avant tout.</Title>
+              <div className="mt-7">
+                <Lead>
+                  Chaque coiffeur construit sa vitrine de réalisations. Vous voyez ce qu&apos;il
+                  fait — pas ce qu&apos;il promet. Ces photos ont été publiées par de vrais
+                  professionnels sur CHAIR.
+                </Lead>
               </div>
             </Reveal>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {featuredHairdressers.slice(0, 6).map((hd, i) => {
+
+            <div className="mt-14 grid grid-cols-2 md:grid-cols-3 gap-3">
+              {gridPosts.map((post, i) => {
+                const url = resolveMediaUrl(getAfterImage(post));
+                const hdName = (post.hairdresser as { user?: { name?: string } } | undefined)?.user?.name;
+                return (
+                  <Reveal key={post.id} delay={(i % 3) * 90}>
+                    <div className="relative aspect-square overflow-hidden rounded-[20px] bg-neutral-100">
+                      {url && <Image src={url} alt={post.description ?? 'Réalisation CHAIR'} fill className="object-cover" sizes="33vw" />}
+                      {hdName && (
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-4 py-3">
+                          <p className="text-white text-[12px] font-medium truncate">{hdName}</p>
+                        </div>
+                      )}
+                    </div>
+                  </Reveal>
+                );
+              })}
+            </div>
+          </div>
+        </Chapter>
+      )}
+
+      {/* ══════════ 4 — La confiance (premier aplat sombre) ══════════ */}
+      <Chapter dark>
+        <div className={SHELL}>
+          <Reveal>
+            <Title dark>Un avis, une visite.<br /><span className="text-white/25">Sans exception.</span></Title>
+            <div className="mt-7">
+              <Lead dark>
+                Sur CHAIR, un avis ne peut pas être écrit par quelqu&apos;un qui n&apos;est jamais
+                venu. À la fin de la prestation, le coiffeur génère un QR code unique. Le client le
+                scanne, l&apos;avis se débloque — une seule fois.
+              </Lead>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-10 sm:gap-8">
+              {[
+                { t: 'QR unique', d: "Généré après la prestation, valable une fois." },
+                { t: 'Visite vérifiée', d: "L'avis reste attaché au rendez-vous qui a eu lieu." },
+                { t: 'Aucun avis anonyme', d: 'Pas de compte fantôme, pas de note achetée.' },
+              ].map((p) => (
+                <div key={p.t}>
+                  <p className="text-[17px] font-semibold text-white">{p.t}</p>
+                  <p className="mt-2 text-[15px] text-white/40 leading-relaxed">{p.d}</p>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+        </div>
+      </Chapter>
+
+      {/* ══════════ 5 — Les coiffeurs (vraies fiches) ══════════ */}
+      {featuredHairdressers.length > 0 && (
+        <Chapter>
+          <div className={SHELL}>
+            <Reveal>
+              <div className="flex items-end justify-between gap-6">
+                <Title>Ils sont déjà<br />sur CHAIR.</Title>
+                <div className="hidden sm:block flex-shrink-0 pb-2">
+                  <TextLink href="/app/recherche">Tout voir</TextLink>
+                </div>
+              </div>
+            </Reveal>
+
+            <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8">
+              {featuredHairdressers.slice(0, 8).map((hd, i) => {
                 const photo = resolveMediaUrl(hd.banner_image ?? hd.user.avatar);
                 const specialty = hd.specialties?.[0]?.name;
                 const rating = parseFloat(hd.avg_rating);
                 return (
-                  <Reveal key={hd.id} delay={(i % 3) * 90}>
-                    <Link
-                      href={`/app/coiffeur/${hd.slug}`}
-                      className="group block rounded-3xl overflow-hidden border border-neutral-100 hover:border-neutral-300 hover:shadow-xl hover:shadow-neutral-100 transition-all duration-300"
-                    >
-                      <div className="relative aspect-[4/3] bg-neutral-100">
+                  <Reveal key={hd.id} delay={(i % 4) * 80}>
+                    <Link href={`/app/coiffeur/${hd.slug}`} className="group block">
+                      <div className="relative aspect-[4/5] rounded-[20px] overflow-hidden bg-neutral-100">
                         {photo && (
                           <Image
                             src={photo}
                             alt={hd.user.name}
                             fill
-                            className="object-cover group-hover:scale-[1.04] transition-transform duration-500"
-                            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                            className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                            sizes="(min-width: 768px) 25vw, 50vw"
                           />
                         )}
-                        {hd.is_verified && (
-                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-full px-2.5 py-1 flex items-center gap-1">
-                            <ShieldCheck size={11} className="text-neutral-900" />
-                            <span className="text-[10px] font-bold text-neutral-900">Vérifié</span>
-                          </div>
-                        )}
                       </div>
-                      <div className="p-4">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-[15px] font-bold text-neutral-900 truncate">{hd.user.name}</p>
-                          {rating > 0 && (
-                            <span className="flex-shrink-0 flex items-center gap-1 text-[12px] font-semibold text-neutral-700">
-                              <Star size={11} className="fill-amber-400 stroke-none" />
-                              {rating.toFixed(1)}
-                              <span className="text-neutral-400 font-normal">({hd.reviews_count})</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[12.5px] text-neutral-400">
-                          {hd.city && (
-                            <span className="flex items-center gap-1"><MapPin size={11} />{hd.city}</span>
-                          )}
-                          {specialty && <span>· {specialty}</span>}
-                        </div>
-                      </div>
+                      <p className="mt-3 text-[15px] font-semibold text-neutral-900 truncate">{hd.user.name}</p>
+                      <p className="mt-0.5 text-[13px] text-neutral-400 truncate">
+                        {specialty ?? 'Coiffeur'}{hd.city ? ` · ${hd.city}` : ''}
+                      </p>
+                      {rating > 0 && (
+                        <p className="mt-1 flex items-center gap-1 text-[13px] text-neutral-500">
+                          <Star size={11} className="fill-neutral-900 stroke-none" />
+                          <span className="font-semibold text-neutral-900">{rating.toFixed(1)}</span>
+                          <span className="text-neutral-400">({hd.reviews_count})</span>
+                        </p>
+                      )}
                     </Link>
                   </Reveal>
                 );
               })}
             </div>
           </div>
-        </section>
+        </Chapter>
       )}
 
-      {/* ══════════════════════════════════════════════════════
-          LE PROBLÈME
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-32 bg-white overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="max-w-3xl mb-14">
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Pourquoi CHAIR existe</p>
-            <h2 className="text-[38px] sm:text-[46px] lg:text-[54px] font-bold text-neutral-900 leading-[1.0] tracking-[-0.02em] mb-6">
-              Vous avez déjà réservé dans un salon sans savoir qui allait vous coiffer.
-            </h2>
-            <p className="text-[15px] lg:text-[17px] text-neutral-400 leading-relaxed">
-              Le talent est caché derrière une adresse. Le professionnel n&apos;existe pas en tant que personne.
-              Son savoir-faire, ses spécialités, son univers — invisibles. CHAIR change ça, entièrement.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-6 lg:p-8 rounded-3xl bg-neutral-50 border border-neutral-100">
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-neutral-300 mb-6">Sans CHAIR</p>
-              <div className="space-y-4">
-                {[
-                  "Vous réservez dans un salon, pas avec un coiffeur",
-                  "Vous ne connaissez pas la personne qui va vous coiffer",
-                  "Vous ne voyez pas son travail avant le rendez-vous",
-                  "Les avis en ligne sont invérifiables",
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <span className="text-neutral-200 text-[16px] leading-none mt-0.5 flex-shrink-0">—</span>
-                    <p className="text-[14px] text-neutral-400 leading-snug">{t}</p>
-                  </div>
-                ))}
-              </div>
+      {/* ══════════ 6 — Le classement ══════════ */}
+      <Chapter tight>
+        <div className={SHELL}>
+          <Reveal>
+            <Title>La réputation se mérite.<br /><span className="text-neutral-300">Elle ne s&apos;achète pas.</span></Title>
+            <div className="mt-7">
+              <Lead>
+                Aucune place ne s&apos;achète sur CHAIR. Un coiffeur monte grâce à ses avis
+                certifiés, à sa régularité et à la confiance réelle de ses clients — dans sa ville
+                et dans sa spécialité.
+              </Lead>
             </div>
-            <div className="p-6 lg:p-8 rounded-3xl bg-neutral-900">
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/20 mb-6">Avec CHAIR</p>
-              <div className="space-y-4">
-                {[
-                  "Vous choisissez un professionnel, pas une adresse",
-                  "Vous voyez ses réalisations avant de réserver",
-                  "Vous connaissez ses spécialités, son style, son univers",
-                  "Chaque avis est certifié et lié à une vraie visite",
-                ].map((t, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <Check size={13} className="text-emerald-400 flex-shrink-0 mt-0.5" strokeWidth={2.5} />
-                    <p className="text-[14px] text-white/65 leading-snug">{t}</p>
-                  </div>
-                ))}
+          </Reveal>
+
+          {topRanked.length > 0 && (
+            <Reveal delay={120}>
+              <div className="mt-12 divide-y divide-neutral-100 border-y border-neutral-100">
+                {topRanked.slice(0, 3).map((e) => {
+                  const avatar = resolveMediaUrl(e.avatar);
+                  return (
+                    <Link key={e.id} href={`/app/coiffeur/${e.slug}`} className="flex items-center gap-4 py-4 group">
+                      <span className="w-6 text-[15px] font-bold text-neutral-900 tabular-nums">{e.rank}</span>
+                      <div className="relative w-11 h-11 rounded-full overflow-hidden bg-neutral-100 flex-shrink-0">
+                        {avatar && <Image src={avatar} alt={e.name} fill className="object-cover" sizes="44px" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[16px] text-neutral-900 truncate group-hover:underline">{e.name}</p>
+                        <p className="text-[13px] text-neutral-400 truncate">
+                          {e.specialty ?? 'Coiffeur'}{e.city ? ` · ${e.city}` : ''}
+                        </p>
+                      </div>
+                      {e.avg_rating > 0 && (
+                        <p className="flex items-center gap-1 text-[14px] flex-shrink-0">
+                          <Star size={11} className="fill-neutral-900 stroke-none" />
+                          <span className="font-semibold text-neutral-900">{e.avg_rating.toFixed(1)}</span>
+                        </p>
+                      )}
+                    </Link>
+                  );
+                })}
               </div>
-            </div>
+            </Reveal>
+          )}
+
+          <div className="mt-10">
+            <TextLink href="/app/classements">Voir le classement complet</TextLink>
           </div>
         </div>
-      </section>
+      </Chapter>
 
-      {/* ══════════════════════════════════════════════════════
-          COMMENT ÇA MARCHE
-      ══════════════════════════════════════════════════════ */}
-      <section id="comment-ca-marche" className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <Reveal>
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6 text-center">Comment ça marche</p>
-            <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em] mb-16 text-center max-w-2xl mx-auto">
-              Trois étapes. Aucune adresse à deviner.
-            </h2>
-          </Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-6">
-            {[
-              { n: '01', t: 'Découvrez', d: "Parcourez les profils par spécialité, ville ou style. Chaque professionnel montre son univers, pas juste une adresse." },
-              { n: '02', t: 'Réservez', d: "Choisissez votre créneau directement sur le profil du coiffeur. Confirmation immédiate, aucun appel nécessaire." },
-              { n: '03', t: 'Faites confiance', d: "Après la prestation, un QR code unique débloque l'avis. Chaque note vient d'une visite réelle, vérifiée." },
-            ].map((step, i) => (
-              <Reveal key={step.n} delay={i * 120}>
-                <div className="text-center sm:text-left">
-                  <p className="text-[13px] font-bold text-neutral-200 mb-4">{step.n}</p>
-                  <h3 className="text-[19px] font-bold text-neutral-900 mb-2.5">{step.t}</h3>
-                  <p className="text-[14px] text-neutral-500 leading-relaxed max-w-xs mx-auto sm:mx-0">{step.d}</p>
+      {/* ══════════ 7 — Tout marche sur le web ══════════ */}
+      <Chapter>
+        <div className={SHELL}>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-16 lg:gap-20 items-center">
+            <div>
+              <Reveal>
+                <Title>Tout CHAIR,<br />dans votre navigateur.</Title>
+                <div className="mt-7">
+                  <Lead>
+                    Rien à installer pour chercher un coiffeur, ouvrir son portfolio, lire ses avis
+                    et réserver : le site fait tout. L&apos;application ajoute les notifications, la
+                    caméra pour les avis certifiés, et l&apos;accès en un geste depuis votre écran
+                    d&apos;accueil.
+                  </Lead>
                 </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* ══════════════════════════════════════════════════════
-          QUE CHERCHEZ-VOUS AUJOURD'HUI ?
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-24 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <Reveal>
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-4 text-center">Catégories</p>
-            <h2 className="text-[30px] sm:text-[36px] font-bold text-neutral-900 leading-[1.05] tracking-[-0.02em] mb-10 text-center">
-              Que cherchez-vous aujourd&apos;hui ?
-            </h2>
-          </Reveal>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-            {Object.entries(specialtyLabels).map(([slug, label], i) => (
-              <Reveal key={slug} delay={(i % 5) * 60}>
-                <Link
-                  href={`/app/recherche?specialty=${slug}`}
-                  className="group flex flex-col items-center justify-center gap-3 aspect-square rounded-2xl bg-white border border-neutral-100 hover:border-neutral-900 hover:bg-neutral-900 transition-all p-4 text-center"
-                >
-                  <Scissors size={18} className="text-neutral-400 group-hover:text-white transition-colors" strokeWidth={1.75} />
-                  <span className="text-[12.5px] font-semibold text-neutral-700 group-hover:text-white leading-tight transition-colors">{label}</span>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+                <div className="mt-9 flex flex-wrap items-center gap-4">
+                  <PillLink href="/app/recherche">Rechercher un coiffeur</PillLink>
+                  <TextLink href="/download">Télécharger l&apos;application</TextLink>
+                </div>
 
-      {/* ══════════════════════════════════════════════════════
-          F1 — Découverte
-      ══════════════════════════════════════════════════════ */}
-      <section id="clients" className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            tag="Découverte"
-            title={<>Explorez des centaines<br />de professionnels.</>}
-            body="CHAIR vous donne accès à un catalogue de professionnels classés par spécialité, ville et style. Trouvez l'expert qui correspond exactement à ce que vous cherchez."
-            checks={[
-              'Coupe homme, couleur, afro, mariage, extensions...',
-              'Résultats par ville ou géolocalisation',
-              'Filtres par spécialité et note minimale',
-              'Coiffeurs salariés et indépendants',
-            ]}
-            cta={
-              <Link href="/app/recherche" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
-                Rechercher un coiffeur <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            }
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Recherche"
-                placeholderBg="#f5f5f5"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge className="-right-10 top-16">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Scissors size={11} className="text-neutral-500" />
-                        <span className="text-[11px] font-bold text-neutral-900">Coupe Homme</span>
-                      </div>
-                      <p className="text-[10px] text-neutral-400">32 coiffeurs près de vous</p>
-                    </FloatingBadge>
-                    <FloatingBadge className="-left-10 bottom-28">
-                      <div className="flex items-center gap-1 mb-1">
-                        {[1,2,3,4,5].map(i => <Star key={i} size={9} className="fill-amber-400 stroke-none" />)}
-                      </div>
-                      <p className="text-[11px] font-bold text-neutral-900">4.9 · Antoine B.</p>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">Haguenau · 2.3 km</p>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F2 — Portfolio
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            reverse
-            tag="Portfolio"
-            title={<>Le travail<br />parle avant tout.</>}
-            body="Chaque professionnel construit sa vitrine de réalisations. Avant de réserver, vous voyez son travail — pas une promesse marketing. De vraies photos, de vraies coiffures."
-            checks={[
-              'Photos avant / après pour chaque réalisation',
-              'Classées par spécialité',
-              'Directement sur le profil du coiffeur',
-              'Mis à jour à chaque nouvelle création',
-            ]}
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Profil coiffeur"
-                placeholderBg="#0f0f0f"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge dark className="-left-12 top-20">
-                      <p className="text-[10px] text-white/40 mb-1 uppercase tracking-wide font-semibold">Portfolio</p>
-                      <p className="text-[15px] font-bold text-white">47 réalisations</p>
-                    </FloatingBadge>
-                    <FloatingBadge className="-right-12 bottom-32">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <BadgeCheck size={12} className="text-neutral-900" />
-                        <span className="text-[11px] font-bold text-neutral-900">Profil vérifié</span>
-                      </div>
-                      <p className="text-[10px] text-neutral-400">Coloriste · Haguenau</p>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          RÉALISATIONS — vraies photos publiées par les coiffeurs
-      ══════════════════════════════════════════════════════ */}
-      {realisations.length > 0 && (
-        <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-          <div className="max-w-6xl mx-auto px-5">
-            <Reveal>
-              <div className="max-w-2xl mb-12">
-                <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Réalisations</p>
-                <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em]">
-                  Publiées par de vrais professionnels, cette semaine.
-                </h2>
-              </div>
-            </Reveal>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {realisations.map((post, i) => {
-                const url = resolveMediaUrl(getAfterImage(post));
-                const hdName = (post.hairdresser as { user?: { name?: string } } | undefined)?.user?.name;
-                return (
-                  <Reveal key={post.id} delay={(i % 3) * 90}>
-                    <div className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-200">
-                      {url && (
-                        <Image src={url} alt={post.description ?? 'Réalisation CHAIR'} fill className="object-cover" sizes="33vw" />
-                      )}
-                      {hdName && (
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-2.5">
-                          <p className="text-white text-[11px] font-semibold truncate">{hdName}</p>
-                        </div>
-                      )}
-                    </div>
-                  </Reveal>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ══════════════════════════════════════════════════════
-          F3 — Abonnements
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            tag="Abonnements"
-            title={<>Suivez les professionnels<br />qui vous inspirent.</>}
-            body="Abonnez-vous à vos coiffeurs favoris. Recevez leurs nouvelles réalisations directement dans votre fil. Construisez une relation avec votre expert, dans la durée."
-            checks={[
-              'Fil personnalisé selon vos abonnements',
-              'Notifications à chaque nouvelle publication',
-              'Likez et partagez les réalisations',
-              'Retrouvez vos coiffeurs favoris en un clic',
-            ]}
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Feed"
-                placeholderBg="#0a0a0a"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge dark className="-right-10 top-24">
-                      <div className="flex items-center gap-2">
-                        <Heart size={12} className="fill-white stroke-none" />
-                        <span className="text-[12px] font-bold text-white">284</span>
-                      </div>
-                    </FloatingBadge>
-                    <FloatingBadge className="-left-10 bottom-36">
-                      <p className="text-[10px] text-neutral-400 mb-1">Nouveau post</p>
-                      <p className="text-[12px] font-bold text-neutral-900">Marina S. · Coloriste</p>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F4 — Avis certifiés
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            reverse
-            tag="Avis certifiés"
-            title={<>Chaque avis est réel.<br /><span className="text-neutral-300">Sans exception.</span></>}
-            body="Un avis sur CHAIR ne peut être déposé que par un client ayant réellement effectué une visite. À la fin de chaque prestation, le professionnel génère un QR code unique. Impossible de tricher."
-            checks={[
-              'QR code unique généré après chaque prestation',
-              'Avis liés à une visite vérifiée',
-              'Aucun avis anonyme non contrôlé',
-              'Signalement et modération actifs',
-            ]}
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Dépôt d'avis"
-                placeholderBg="#f9f9f9"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge dark className="-left-12 top-20">
-                      <p className="text-[10px] text-white/40 mb-1.5 font-semibold uppercase tracking-wide">Avis certifié</p>
-                      <div className="flex gap-0.5 mb-1">
-                        {[1,2,3,4,5].map(i => <Star key={i} size={11} className="fill-amber-400 stroke-none" />)}
-                      </div>
-                      <p className="text-[12px] font-bold text-white">5.0 · Visite vérifiée</p>
-                    </FloatingBadge>
-                    <FloatingBadge className="-right-10 bottom-24">
-                      <div className="flex items-center gap-1.5">
-                        <QrCode size={13} className="text-neutral-600" />
-                        <span className="text-[11px] font-bold text-neutral-900">QR scanné</span>
-                      </div>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F5 — Réservation
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            tag="Réservation"
-            title={<>Réservez directement.<br /><span className="text-neutral-300">En deux clics.</span></>}
-            body="Directement sur le profil du professionnel. Choisissez votre prestation, votre créneau, confirmez. Pas d'appel, pas d'intermédiaire, pas d'attente."
-            checks={[
-              'Agenda disponible en temps réel',
-              'Catalogue de prestations avec tarifs et durées',
-              'Confirmation immédiate par notification',
-              'Rappel automatique 24h et 1h avant',
-            ]}
-            cta={
-              <Link href="/app/recherche" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-700 transition-all">
-                Trouver un coiffeur <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            }
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Réservation"
-                placeholderBg="#fafafa"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge dark className="-right-12 top-20">
-                      <p className="text-[10px] text-white/40 mb-1">RDV confirmé</p>
-                      <p className="text-[13px] font-bold text-white">Lundi · 10h00</p>
-                      <p className="text-[10px] text-white/40 mt-0.5">Coupe + coloration</p>
-                    </FloatingBadge>
-                    <FloatingBadge className="-left-10 bottom-28">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={11} className="text-neutral-600" />
-                        <span className="text-[11px] font-bold text-neutral-900">45 min · 55 €</span>
-                      </div>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          CLASSEMENTS — preuve de confiance, non-interactif
-      ══════════════════════════════════════════════════════ */}
-      {topRanked.length > 0 && (
-        <section id="classements" className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
-          <div className="max-w-6xl mx-auto px-5">
-            <Reveal>
-              <div className="max-w-2xl mx-auto text-center mb-14">
-                <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Classements</p>
-                <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em] mb-5">
-                  La réputation se mérite,<br />elle ne s&apos;achète pas.
-                </h2>
-                <p className="text-[15px] text-neutral-500 leading-relaxed">
-                  Chaque professionnel progresse selon des avis certifiés, sa régularité et la confiance réelle de ses clients.
-                  Le classement complet, avec filtres par ville et spécialité, se consulte sur le web comme dans l&apos;application.
+                {/* Pas de badge App Store tant que l'app n'est pas publiée :
+                    AppDownload est écrit pour un fond sombre (texte blanc) et
+                    disparaissait purement et simplement sur ce fond clair. */}
+                <p className="mt-8 text-[14px] text-neutral-400">
+                  L&apos;application arrive bientôt sur l&apos;App Store et Google Play.
                 </p>
+              </Reveal>
+            </div>
+
+            <Reveal delay={140}>
+              <div className="hidden lg:block">
+                <MockupPhone src="/mockups/mockup-profil.png" label="CHAIR" placeholderBg="#f5f5f5" />
               </div>
             </Reveal>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-              {topRanked.map((entry, i) => (
-                <Reveal key={entry.id} delay={i * 100}>
-                  <div className={`rounded-3xl border p-6 text-center ${i === 0 ? 'bg-neutral-900 border-neutral-900' : 'bg-neutral-50 border-neutral-100'}`}>
-                    <p className={`text-[11px] font-bold uppercase tracking-[0.2em] mb-4 ${i === 0 ? 'text-white/30' : 'text-neutral-300'}`}>#{entry.rank}</p>
-                    <div className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center ${i === 0 ? 'bg-white/10' : 'bg-white border border-neutral-100'}`}>
-                      <span className={`text-[18px] font-black ${i === 0 ? 'text-white' : 'text-neutral-900'}`}>{entry.name.charAt(0)}</span>
-                    </div>
-                    <p className={`text-[15px] font-bold mb-0.5 ${i === 0 ? 'text-white' : 'text-neutral-900'}`}>{entry.name}</p>
-                    <p className={`text-[12px] mb-3 ${i === 0 ? 'text-white/35' : 'text-neutral-400'}`}>{[entry.specialty, entry.city].filter(Boolean).join(' · ')}</p>
-                    {entry.reviews_count > 0 && (
-                      <div className="flex items-center justify-center gap-1">
-                        {[1,2,3,4,5].map((s) => <Star key={s} size={9} className={`fill-amber-400 stroke-none ${s > Math.round(entry.avg_rating) ? 'opacity-20' : ''}`} />)}
-                        <span className={`text-[11px] ml-1 ${i === 0 ? 'text-white/40' : 'text-neutral-400'}`}>{entry.avg_rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
-                </Reveal>
+          </div>
+
+          {/* Spécialités — points d'entrée réels de la recherche web */}
+          <Reveal delay={80}>
+            <div className="mt-20 pt-12 border-t border-neutral-100">
+              <p className="text-[16px] text-neutral-500 mb-6">Commencez par ce que vous cherchez :</p>
+              <div className="flex flex-wrap gap-2.5">
+                {Object.entries(specialtyLabels).map(([slug, label]) => (
+                  <Link
+                    key={slug}
+                    href={`/app/recherche?specialty=${slug}`}
+                    className="rounded-full bg-neutral-50 px-5 py-3 text-[15px] text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900 transition-colors"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </Chapter>
+
+      {/* ══════════ 8 — CHAIR PRO (second aplat sombre) ══════════ */}
+      <Chapter dark>
+        <div className={SHELL} id="coiffeurs">
+          <Reveal>
+            <p className="text-[13px] font-semibold text-white/30 mb-6">CHAIR PRO</p>
+            <Title dark>De l&apos;autre côté<br />du fauteuil.</Title>
+            <div className="mt-7">
+              <Lead dark>
+                Un coiffeur change de salon, sa clientèle reste au salon. CHAIR PRO lui donne une
+                marque à son nom : un profil, un portfolio, des avis certifiés et un classement qui
+                le suivent partout, qu&apos;il soit salarié ou indépendant.
+              </Lead>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 gap-x-16 gap-y-10">
+              {[
+                { t: 'Un profil qui vous appartient', d: "Portfolio, spécialités, abonnés et avis restent attachés à votre nom, pas à une adresse." },
+                { t: 'Agenda et réservations', d: "Prestations, tarifs, créneaux : les clients réservent directement depuis votre profil." },
+                { t: 'Des avis impossibles à truquer', d: "Le QR code de fin de prestation protège votre réputation autant que celle du client." },
+                { t: 'Classement et progression', d: "Niveaux par spécialité, badges, classement local : votre travail devient visible et mesurable." },
+              ].map((f) => (
+                <div key={f.t}>
+                  <p className="text-[17px] font-semibold text-white">{f.t}</p>
+                  <p className="mt-2 text-[15px] text-white/40 leading-relaxed max-w-sm">{f.d}</p>
+                </div>
               ))}
             </div>
-            <div className="flex justify-center mt-10">
-              <Link href="/app/classements" className="inline-flex items-center gap-2 text-neutral-900 font-semibold text-[14px] hover:gap-3 transition-all">
-                Voir le classement complet <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
+          </Reveal>
 
-      {/* ══════════════════════════════════════════════════════
-          PREUVES & CONFIANCE
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <Reveal>
-            <div className="max-w-2xl mb-14">
-              <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Preuves &amp; confiance</p>
-              <h2 className="text-[34px] sm:text-[42px] lg:text-[48px] font-bold text-neutral-900 leading-[1.02] tracking-[-0.02em]">
-                CHAIR est encore jeune. Sa méthode ne l&apos;est pas.
-              </h2>
+          <Reveal delay={200}>
+            <div className="mt-14 flex flex-wrap items-center gap-5">
+              <PillLink href="/pro/inscription" tone="light">Rejoindre CHAIR PRO</PillLink>
+              <TextLink href="/pro/connexion" dark>J&apos;ai déjà un compte</TextLink>
             </div>
           </Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            {[
-              { t: 'Aucun faux avis possible', d: "Chaque avis nécessite un QR code généré après une visite réelle. Pas de formulaire ouvert, pas d'avis acheté." },
-              { t: 'Des profils vérifiés', d: "L'identité de chaque professionnel est contrôlée avant publication. Ce que vous voyez correspond à une vraie personne." },
-              { t: 'Une plateforme qui démarre', d: "CHAIR est en déploiement progressif. Chaque nouveau coiffeur et chaque nouvel avis sont réels — nous préférons la qualité au chiffre." },
-            ].map((item, i) => (
-              <Reveal key={item.t} delay={i * 100}>
-                <div className="p-6 lg:p-7 rounded-3xl bg-white border border-neutral-100 h-full">
-                  <h3 className="text-[16px] font-bold text-neutral-900 mb-2.5">{item.t}</h3>
-                  <p className="text-[13.5px] text-neutral-500 leading-relaxed">{item.d}</p>
-                </div>
-              </Reveal>
-            ))}
+        </div>
+      </Chapter>
+
+      {/* ══════════ 9 — Questions ══════════ */}
+      <Chapter tight>
+        <div className={SHELL}>
+          <Reveal>
+            <Title>Questions fréquentes</Title>
+          </Reveal>
+          <div className="mt-10">
+            <FaqAccordion />
           </div>
         </div>
-      </section>
+      </Chapter>
 
-      {/* ══════════════════════════════════════════════════════
-          TÉMOIGNAGES — état vide honnête, aucun faux témoignage
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-white border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-3xl mx-auto px-5 text-center">
+      {/* ══════════ 10 — Dernier mot ══════════ */}
+      <Chapter>
+        <div className={`${SHELL} text-center`}>
           <Reveal>
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Témoignages</p>
-            <h2 className="text-[30px] sm:text-[36px] font-bold text-neutral-900 leading-[1.1] tracking-[-0.02em] mb-5">
-              Les premiers témoignages arrivent bientôt.
+            <h2 className="text-[36px] md:text-[56px] font-bold tracking-[-0.03em] leading-[1.05] text-neutral-900">
+              Votre prochain coiffeur
+              <br />
+              <span className="text-neutral-300">est déjà sur CHAIR.</span>
             </h2>
-            <p className="text-[14.5px] text-neutral-500 leading-relaxed max-w-md mx-auto">
-              CHAIR est en phase de lancement. Plutôt que d&apos;inventer des avis, nous préférons attendre que les premiers utilisateurs
-              partagent la leur — et l&apos;afficher ici, sans retouche.
-            </p>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-5">
+              <PillLink href="/app/recherche">Trouver mon coiffeur</PillLink>
+              <TextLink href="/pro/inscription">Je suis professionnel</TextLink>
+            </div>
           </Reveal>
         </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          APPLICATION MOBILE
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-24 bg-neutral-50 border-t border-neutral-100 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="rounded-[32px] bg-[#0a0a0a] px-8 py-14 lg:px-16 lg:py-16 text-center">
-            <Reveal>
-              <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/20 mb-6">Application mobile</p>
-              <h2 className="text-[32px] sm:text-[40px] font-bold text-white leading-[1.05] tracking-[-0.02em] mb-4">
-                CHAIR, partout avec vous.
-              </h2>
-              <p className="text-[14.5px] text-white/40 max-w-md mx-auto mb-10 leading-relaxed">
-                Web ou mobile, c&apos;est la même expérience. L&apos;application ajoute simplement les notifications,
-                la caméra et l&apos;accès en un geste depuis votre écran d&apos;accueil.
-              </p>
-              <div className="flex justify-center">
-                <AppDownload variant="full" className="justify-center" qrSize={92} />
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          CHAIR PRO — INTRO
-      ══════════════════════════════════════════════════════ */}
-      <section id="coiffeurs" className="py-20 lg:py-28 bg-[#0a0a0a] text-white border-t border-white/[0.04] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="max-w-3xl">
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/20 mb-6">CHAIR PRO</p>
-            <h2 className="text-[40px] sm:text-[48px] lg:text-[56px] font-bold text-white leading-[1.0] tracking-[-0.02em] mb-6">
-              {"L'outil que la profession attendait."}
-            </h2>
-            <p className="text-[15px] lg:text-[17px] text-white/35 leading-relaxed">
-              Coiffeur salarié, indépendant ou gérant de salon — chaque profil a ses propres outils,
-              pensés pour sa réalité. Un seul objectif : vous donner les moyens de développer votre activité.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F6 — Salarié
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#0a0a0a] border-t border-white/[0.04] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            dark
-            tag="Coiffeur salarié"
-            title={<>{"Votre identité,"}<br />{"au-delà du salon."}</>}
-            body="Vous travaillez dans un salon mais votre talent vous appartient. CHAIR PRO vous donne un profil personnel, un portfolio, des abonnés. Votre réputation se construit réalisation après réalisation."
-            checks={[
-              'Profil professionnel entièrement personnel',
-              'Portfolio de réalisations visible par tous',
-              'Abonnés et avis certifiés sur votre nom',
-              'Visibilité dans les résultats de recherche',
-            ]}
-            cta={
-              <Link href="/pro/inscription" className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-100 transition-all">
-                Créer mon profil <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            }
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Profil pro"
-                placeholderBg="#111"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge className="-right-12 top-16">
-                      <p className="text-[10px] text-neutral-400 mb-1">Abonnés</p>
-                      <p className="text-[18px] font-bold text-neutral-900">1 284</p>
-                    </FloatingBadge>
-                    <FloatingBadge dark className="-left-10 bottom-32">
-                      <div className="flex items-center gap-1.5">
-                        <BadgeCheck size={11} className="text-white" />
-                        <span className="text-[11px] font-bold text-white">Profil vérifié</span>
-                      </div>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F7 — Indépendant
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#0a0a0a] border-t border-white/[0.04] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            dark
-            reverse
-            tag="Coiffeur indépendant"
-            title={<>Tout ce dont vous<br />avez besoin.<br /><span className="text-white/20">En un seul endroit.</span></>}
-            body="Profil, portfolio, agenda, prestations, réservations, avis, statistiques. CHAIR PRO réunit tout ce qu'un indépendant doit gérer au quotidien."
-            checks={[
-              'Agenda et gestion des rendez-vous',
-              'Catalogue de prestations avec tarifs',
-              'Réservations directes depuis votre profil',
-              'Statistiques : vues, abonnés, conversions',
-              'Score CHAIR pour progresser dans les classements',
-            ]}
-            cta={
-              <Link href="/pro/inscription" className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-100 transition-all">
-                Créer mon compte <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            }
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Dashboard PRO"
-                placeholderBg="#0d0d0d"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge className="-left-12 top-20">
-                      <p className="text-[10px] text-neutral-400 mb-1">Ce mois</p>
-                      <p className="text-[17px] font-bold text-neutral-900">34 RDV</p>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">+12 vs mois dernier</p>
-                    </FloatingBadge>
-                    <FloatingBadge dark className="-right-10 bottom-28">
-                      <div className="flex items-center gap-1.5">
-                        <BarChart2 size={11} className="text-white/60" />
-                        <span className="text-[11px] font-bold text-white">Score CHAIR</span>
-                      </div>
-                      <p className="text-[16px] font-bold text-white mt-1">847 pts</p>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F8 — Gérant de salon
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#0a0a0a] border-t border-white/[0.04] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <FeatureSection
-            dark
-            tag="Gérant de salon"
-            title={<>Gérez, recrutez,<br />développez.</>}
-            body="Créez le profil de votre établissement. Gérez votre équipe. Publiez des offres d'emploi. Louez vos fauteuils inutilisés. CHAIR PRO devient le centre de votre développement."
-            checks={[
-              "Profil salon avec équipe et réalisations",
-              "Offres de recrutement visibles par toute la profession",
-              "Location de fauteuils aux coiffeurs indépendants",
-              "Visibilité de votre établissement dans les recherches",
-            ]}
-            cta={
-              <Link href="/pro/inscription" className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold text-[14px] px-6 py-3.5 rounded-2xl hover:bg-neutral-100 transition-all">
-                Créer mon salon <ArrowRight size={14} strokeWidth={2.5} />
-              </Link>
-            }
-            mockup={
-              <MockupPhone
-                src="/mockups/mockup-profil.png"
-                label="Dashboard salon"
-                placeholderBg="#0f0f0f"
-                glow
-                badges={
-                  <>
-                    <FloatingBadge className="-right-12 top-20">
-                      <p className="text-[10px] text-neutral-400 mb-1">Équipe</p>
-                      <p className="text-[17px] font-bold text-neutral-900">6 coiffeurs</p>
-                    </FloatingBadge>
-                    <FloatingBadge dark className="-left-10 bottom-32">
-                      <div className="flex items-center gap-1.5">
-                        <Users size={11} className="text-white/60" />
-                        <span className="text-[11px] font-bold text-white">2 candidatures</span>
-                      </div>
-                    </FloatingBadge>
-                  </>
-                }
-              />
-            }
-          />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          F9 — Recrutement + Location fauteuils
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-28 bg-[#0a0a0a] border-t border-white/[0.04] overflow-hidden">
-        <div className="max-w-6xl mx-auto px-5">
-          <div className="mb-14">
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/20 mb-6">Nouveaux marchés</p>
-            <h2 className="text-[38px] sm:text-[46px] lg:text-[54px] font-bold text-white leading-[1.0] tracking-[-0.02em] max-w-2xl">
-              La profession se retrouve sur CHAIR.
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12">
-
-            {/* Recrutement */}
-            <div>
-              <div className="flex justify-center mb-8">
-                <div className="scale-[0.82] sm:scale-90 lg:scale-100 origin-top">
-                  <MockupPhone
-                    src="/mockups/mockup-profil.png"
-                    label="Recrutement"
-                    placeholderBg="#111"
-                    size="sm"
-                    badges={
-                      <FloatingBadge className="-right-8 bottom-16">
-                        <p className="text-[10px] text-neutral-400 mb-0.5">Nouvelle offre</p>
-                        <p className="text-[12px] font-bold text-neutral-900">Coloriste · Paris</p>
-                      </FloatingBadge>
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/20 mb-4">Recrutement</p>
-                <h3 className="text-[22px] lg:text-[26px] font-bold text-white leading-tight mb-4">
-                  Les salons recrutent.<br />Les coiffeurs postulent.
-                </h3>
-                <p className="text-[14px] text-white/35 leading-relaxed mb-5">
-                  Publiez vos offres directement sur CHAIR PRO. Les coiffeurs découvrent les opportunités et postulent avec leur profil complet en appui.
-                </p>
-                <div className="space-y-2.5">
-                  {["Publication d'offres en quelques minutes", "Candidatures avec portfolio intégré", "Coiffeurs en recherche active identifiés"].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <Check size={12} className="text-emerald-400 flex-shrink-0" strokeWidth={2.5} />
-                      <span className="text-[13px] text-white/40">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Location fauteuils */}
-            <div>
-              <div className="flex justify-center mb-8">
-                <div className="scale-[0.82] sm:scale-90 lg:scale-100 origin-top">
-                  <MockupPhone
-                    src="/mockups/mockup-profil.png"
-                    label="Location fauteuil"
-                    placeholderBg="#111"
-                    size="sm"
-                    badges={
-                      <FloatingBadge dark className="-right-8 top-16">
-                        <p className="text-[10px] text-white/40 mb-0.5">Disponible</p>
-                        <p className="text-[12px] font-bold text-white">Mardi · Jeudi</p>
-                      </FloatingBadge>
-                    }
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/20 mb-4">Location de fauteuils</p>
-                <h3 className="text-[22px] lg:text-[26px] font-bold text-white leading-tight mb-4">
-                  Un fauteuil vide est une opportunité manquée.
-                </h3>
-                <p className="text-[14px] text-white/35 leading-relaxed mb-5">
-                  Un salon met à disposition ses fauteuils inutilisés. Un indépendant réserve un espace pour une journée ou une semaine. CHAIR crée ce marché.
-                </p>
-                <div className="space-y-2.5">
-                  {["Salons : rentabilisez vos fauteuils inoccupés", "Indépendants : travaillez en salon sans contrainte", "Flexible : à la journée, à la semaine"].map((item, i) => (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <Check size={12} className="text-emerald-400 flex-shrink-0" strokeWidth={2.5} />
-                      <span className="text-[13px] text-white/40">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          CTA FINAL
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-28 lg:py-40 bg-[#0a0a0a] text-white relative overflow-hidden border-t border-white/[0.04]">
-        <div className="absolute inset-0 opacity-[0.04]" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-        }} />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-white/[0.02] blur-[120px] rounded-full pointer-events-none" />
-        <div className="relative max-w-4xl mx-auto px-5 text-center">
-          <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/20 mb-8">Le premier écosystème de la coiffure</p>
-          <h2 className="text-[42px] sm:text-[54px] lg:text-[66px] font-bold text-white leading-[0.96] tracking-[-0.03em] mb-8">
-            Les clients découvrent<br />
-            les meilleurs talents.<br />
-            <span className="text-white/20">Les professionnels grandissent.</span>
-          </h2>
-          <p className="text-[15px] lg:text-[16px] text-white/30 max-w-xl mx-auto mb-12 leading-relaxed">
-            {"CHAIR n'est pas une application de réservation. C'est le premier endroit où toute la profession se retrouve — autour d'une seule conviction : le talent mérite d'être visible."}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-            <Link href="/app/recherche" className="inline-flex items-center justify-center gap-2.5 bg-white text-neutral-900 font-bold text-[15px] px-8 py-4 rounded-2xl hover:bg-neutral-100 transition-all shadow-2xl shadow-white/10">
-              Rechercher un coiffeur <ArrowRight size={16} strokeWidth={2.5} />
-            </Link>
-            <Link href="/pro/inscription" className="inline-flex items-center justify-center gap-2 text-white/35 font-medium text-[15px] px-8 py-4 rounded-2xl border border-white/10 hover:border-white/20 hover:text-white/60 transition-all">
-              Créer un compte professionnel →
-            </Link>
-          </div>
-          <div className="mb-12">
-            <Link href="/download" className="text-white/30 hover:text-white/60 text-[13px] font-medium transition-colors">
-              Ou téléchargez l&apos;application →
-            </Link>
-          </div>
-          <div className="flex flex-wrap justify-center gap-5">
-            {['Utilisable sur web et mobile', 'Salariés et indépendants', 'Gérants de salon', 'Avis 100% certifiés'].map((item, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span className="text-[11px] text-white/25">{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          FAQ
-      ══════════════════════════════════════════════════════ */}
-      <section className="py-20 lg:py-32 bg-white overflow-hidden">
-        <div className="max-w-3xl mx-auto px-5">
-          <div className="mb-12">
-            <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-neutral-300 mb-6">Questions fréquentes</p>
-            <h2 className="text-[38px] lg:text-[40px] font-bold text-neutral-900 leading-[1.04] tracking-[-0.02em]">
-              Tout ce que vous<br />devez savoir.
-            </h2>
-          </div>
-          <FaqAccordion />
-          <div className="mt-10 pt-8 border-t border-neutral-100">
-            <p className="text-[14px] text-neutral-500">
-              Une autre question ?{' '}
-              <Link href="/contact" className="text-neutral-900 font-semibold hover:underline">Contactez-nous</Link>
-            </p>
-          </div>
-        </div>
-      </section>
+      </Chapter>
 
       <LandingFooter />
     </div>

@@ -62,10 +62,10 @@ export default function LandingNav({ dark = false }: { dark?: boolean }) {
               Connexion
             </Link>
             <Link
-              href="/download"
-              className={`text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors ${!scrolled && dark ? 'bg-white text-neutral-900 hover:bg-neutral-100' : 'bg-neutral-900 text-white hover:bg-neutral-700'}`}
+              href="/app/recherche"
+              className={`text-[13px] font-semibold px-5 py-2.5 rounded-full transition-colors ${!scrolled && dark ? 'bg-white text-neutral-900 hover:bg-neutral-100' : 'bg-neutral-900 text-white hover:bg-neutral-700'}`}
             >
-              Télécharger CHAIR
+              Rechercher un coiffeur
             </Link>
           </div>
 
@@ -99,14 +99,14 @@ export default function LandingNav({ dark = false }: { dark?: boolean }) {
             <Link
               href="/app/recherche"
               onClick={() => setOpen(false)}
-              className="w-full text-center text-[15px] font-semibold bg-neutral-900 text-white py-4 rounded-2xl hover:bg-neutral-700 transition-colors"
+              className="w-full text-center text-[15px] font-semibold bg-neutral-900 text-white py-4 rounded-full hover:bg-neutral-700 transition-colors"
             >
               Rechercher un coiffeur
             </Link>
             <Link
               href="/download"
               onClick={() => setOpen(false)}
-              className="w-full text-center text-[15px] font-medium text-neutral-700 py-4 rounded-2xl border border-neutral-200 hover:border-neutral-400 transition-colors"
+              className="w-full text-center text-[15px] font-medium text-neutral-700 py-4 rounded-full bg-neutral-50 hover:bg-neutral-100 transition-colors"
             >
               Télécharger l&apos;application
             </Link>
