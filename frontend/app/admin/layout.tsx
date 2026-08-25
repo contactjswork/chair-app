@@ -16,6 +16,7 @@ import {
   BarChart2,
   ScrollText,
   UserCog,
+  Wrench,
   LogOut,
   Menu,
   X,
@@ -128,6 +129,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/configuration', label: 'Configuration', icon: SlidersHorizontal, permission: PERMISSIONS.SETTINGS_UPDATE },
   { href: '/admin/statistiques', label: 'Analytics', icon: BarChart2, permission: PERMISSIONS.ANALYTICS_READ },
   { href: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, permission: PERMISSIONS.AUDIT_LOGS_READ },
+  // Purge des données de démonstration — même permission que la suppression
+  // de comptes (users.delete), c'est une suppression de comptes en masse.
+  { href: '/admin/maintenance', label: 'Maintenance', icon: Wrench, permission: PERMISSIONS.USERS_DELETE },
   { href: '/admin/admins', label: 'Admins', icon: UserCog, permission: PERMISSIONS.ADMINS_MANAGE },
 ];
 

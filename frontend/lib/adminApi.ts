@@ -564,6 +564,99 @@ export interface AdminAppSetting {
   updated_by?: number | null;
 }
 
+// ─── Actions de masse (POST /admin/users/bulk) ──────────────────────────────
+
+export type BulkAction = 'suspend' | 'unsuspend' | 'hide' | 'unhide' | 'delete' | 'export_csv';
+
+/** Filtres de sélection "tous les filtrés" — même contrat que GET /admin/users. */
+export interface BulkFilters {
+  search?: string;
+  role?: string;
+  status?: string;
+}
+
+/** Réponse de POST /admin/users/bulk avec dry_run:true — aperçu chiffré sans modification. */
+export interface BulkPreview {
+  dry_run: true;
+  action: BulkAction;
+  requested: number;
+  eligible_count: number;
+  eligible_ids: number[];
+  excluded: { admin_ids: number[]; current_admin: boolean; already_deleted: number };
+  impact: {
+    users: number;
+    hairdresser_profiles: number;
+    appointments: number;
+    reviews: number;
+    posts: number;
+    salons_owned: number;
+  };
+  modes: { purge: number; anonymize: number } | null;
+  confirm_phrase_expected: string | null;
+}
+
+/** Réponse d'exécution de POST /admin/users/bulk (un lot de ≤100 ids). */
+export interface BulkResult {
+  action: BulkAction;
+  requested: number;
+  succeeded: number;
+  succeeded_ids: number[];
+  skipped: Array<{ id: number; reason: string }>;
+  failed: Array<{ id: number; reason: string }>;
+  excluded: { admin_ids: number[]; current_admin: boolean };
+  remaining: number;
+  modes: { purged: number; anonymized: number } | null;
+}
+
+export interface BulkExportResponse {
+  action: 'export_csv';
+  rows: Array<{
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    city: string | null;
+    created_at: string;
+    suspended_at: string | null;
+  }>;
+  total: number;
+}
+
+// ─── Maintenance — données de démonstration ─────────────────────────────────
+
+export interface DemoDataAnalysis {
+  suffix: string;
+  counts: {
+    users: number;
+    users_by_role: Record<string, number>;
+    hairdresser_profiles: number;
+    salons_owned: number;
+    appointments: number;
+    reviews_by_demo_clients: number;
+    reviews_on_demo_hairdressers: number;
+    posts: number;
+    job_offers: number;
+    chair_rentals: number;
+  };
+  cross_links: {
+    real_reviews_on_demo_hairdressers: number;
+    real_appointments_with_demo_hairdressers: number;
+    real_hairdressers_in_demo_salons: number;
+    real_users_referred_by_demo: number;
+  };
+  admin_in_scope_ids: number[];
+  purgeable_count: number;
+  confirm_phrase_expected: string;
+  sample: Array<{ id: number; name: string; email: string; role: string }>;
+  generated_at: string;
+}
+
+export interface DemoPurgeResult {
+  succeeded: number;
+  failed: Array<{ id: number; reason: string }>;
+  remaining: number;
+}
+
 // ─── Audit logs ─────────────────────────────────────────────────────────────
 
 export interface AdminAuditLogRow {

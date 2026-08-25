@@ -12,15 +12,19 @@ import {
   getStoredAdminUser,
   PERMISSIONS,
   type AdminUserRow,
+  type BulkAction,
+  type BulkExportResponse,
   type Paginated,
 } from '@/lib/adminApi';
 import { Card, ConfirmModal, ErrorBanner, PermissionDenied, RolePill, SearchInput, Skeleton, StatusPill, Th, Pagination, selectCls, EmptyState } from '../_components/ui';
+import { BulkActionModal, BulkSelectionBar, downloadUsersCsv, type BulkSelection } from '@/components/admin/BulkActions';
 
 export default function UtilisateursPage() {
   const params = useSearchParams();
   const admin = getStoredAdminUser();
   const canSuspend = hasPermission(admin, PERMISSIONS.USERS_SUSPEND);
   const canDelete = hasPermission(admin, PERMISSIONS.USERS_DELETE);
+  const canHide = hasPermission(admin, PERMISSIONS.HAIRDRESSERS_VISIBILITY);
 
   const [data, setData] = useState<Paginated<AdminUserRow> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,6 +36,16 @@ export default function UtilisateursPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [forbidden, setForbidden] = useState(false);
+
+  // ─── Sélection multiple (motif Gmail) ────────────────────────────────────
+  // `selected` = ids cochés explicitement ; `allFiltered` = mode « tous les
+  // utilisateurs correspondant à cette recherche » — le backend reçoit alors
+  // les FILTRES (jamais 5000 ids dans une requête), résout le lot côté
+  // serveur au dry run, puis le front exécute les ids résolus lot par lot.
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [allFiltered, setAllFiltered] = useState(false);
+  const [bulkAction, setBulkAction] = useState<Exclude<BulkAction, 'export_csv'> | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchUsers = useCallback(async (q: string, r: string, s: string, p: number) => {
     setLoading(true);
@@ -50,6 +64,52 @@ export default function UtilisateursPage() {
     const t = setTimeout(() => fetchUsers(search, role, status, page), search ? 300 : 0);
     return () => clearTimeout(t);
   }, [search, role, status, page, fetchUsers]);
+
+  const clearSelection = () => {
+    setSelected(new Set());
+    setAllFiltered(false);
+  };
+
+  const pageIds = (data?.data ?? []).map((u) => u.id);
+  const pageAllSelected = pageIds.length > 0 && pageIds.every((id) => selected.has(id));
+  const selectionCount = allFiltered ? data?.total ?? 0 : selected.size;
+
+  const toggleRow = (id: number) => {
+    setAllFiltered(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePage = () => {
+    setAllFiltered(false);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (pageAllSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const bulkSelection: BulkSelection = allFiltered
+    ? { filters: { search: search || undefined, role: role || undefined, status: status || undefined } }
+    : { ids: Array.from(selected) };
+
+  async function exportSelection(selection: BulkSelection) {
+    setExporting(true);
+    setError('');
+    try {
+      const res = await adminApi.post<BulkExportResponse>('/admin/users/bulk', { action: 'export_csv', ...selection });
+      downloadUsersCsv(res.rows);
+    } catch {
+      setError('Export impossible');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function handleSuspend(row: AdminUserRow) {
     setActionLoading(true);
@@ -78,20 +138,10 @@ export default function UtilisateursPage() {
     }
   }
 
-  function exportCSV() {
-    const rows = data?.data ?? [];
-    const header = 'ID,Nom,Email,Rôle,Ville,Inscrit le,Statut';
-    const lines = rows.map(
-      (u) => `${u.id},"${u.name}","${u.email}",${u.role},${u.city ?? ''},"${u.created_at}",${u.suspended_at ? 'suspendu' : 'actif'}`
-    );
-    const blob = new Blob([[header, ...lines].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `utilisateurs_${Date.now()}.csv`;
-    a.click();
-  }
-
   if (forbidden) return <PermissionDenied />;
+
+  const checkboxCls =
+    'w-4 h-4 rounded border-neutral-300 dark:border-neutral-600 text-neutral-900 accent-neutral-900 dark:accent-white cursor-pointer';
 
   return (
     <div className="flex flex-col gap-5">
@@ -101,21 +151,59 @@ export default function UtilisateursPage() {
           {data && <p className="text-[13px] text-neutral-400 mt-0.5">{data.total.toLocaleString('fr')} utilisateurs</p>}
         </div>
         <button
-          onClick={exportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl text-[13px] font-semibold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors"
+          onClick={() => exportSelection({ filters: { search: search || undefined, role: role || undefined, status: status || undefined } })}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-xl text-[13px] font-semibold hover:bg-neutral-700 dark:hover:bg-neutral-200 transition-colors disabled:opacity-50"
         >
-          <Download size={14} /> Export CSV (page actuelle)
+          <Download size={14} /> {exporting ? 'Export…' : 'Export CSV (recherche actuelle)'}
         </button>
       </div>
 
       {error && <ErrorBanner message={error} />}
 
+      {selectionCount > 0 && (
+        <BulkSelectionBar
+          count={selectionCount}
+          canSuspend={canSuspend}
+          canHide={canHide}
+          canDelete={canDelete}
+          onAction={(a) => setBulkAction(a)}
+          onExport={() => exportSelection(bulkSelection)}
+          onClear={clearSelection}
+          exporting={exporting}
+        />
+      )}
+
+      {/* Motif Gmail : la page est cochée, mais la recherche matche plus large */}
+      {pageAllSelected && !allFiltered && data && data.total > data.data.length && (
+        <div className="px-4 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl text-[13px] text-neutral-600 dark:text-neutral-300 flex items-center gap-2 flex-wrap">
+          <span>Les {data.data.length} utilisateurs de cette page sont sélectionnés.</span>
+          <button onClick={() => setAllFiltered(true)} className="font-semibold underline underline-offset-2 hover:text-neutral-900 dark:hover:text-neutral-50 transition-colors min-h-[32px]">
+            Sélectionner les {data.total.toLocaleString('fr')} utilisateurs correspondant à cette recherche
+          </button>
+        </div>
+      )}
+      {allFiltered && data && (
+        <div className="px-4 py-2.5 bg-neutral-900 dark:bg-neutral-800 rounded-xl text-[13px] text-white flex items-center gap-2 flex-wrap">
+          <span>
+            Les <strong>{data.total.toLocaleString('fr')}</strong> utilisateurs correspondant à cette recherche sont sélectionnés.
+          </span>
+          <button onClick={clearSelection} className="font-semibold underline underline-offset-2 hover:text-neutral-300 transition-colors min-h-[32px]">
+            Effacer la sélection
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3">
+        {/* Tout changement de recherche/filtre invalide la sélection en cours —
+            sinon un « tous les filtrés » confirmé sur d'anciens filtres
+            agirait sur un lot que l'admin ne voit plus à l'écran. */}
         <SearchInput
           value={search}
           onChange={(v) => {
             setSearch(v);
             setPage(1);
+            clearSelection();
           }}
           placeholder="Rechercher par nom ou email…"
           className="flex-1 min-w-[220px]"
@@ -125,6 +213,7 @@ export default function UtilisateursPage() {
           onChange={(e) => {
             setRole(e.target.value);
             setPage(1);
+            clearSelection();
           }}
           className={selectCls}
         >
@@ -139,6 +228,7 @@ export default function UtilisateursPage() {
           onChange={(e) => {
             setStatus(e.target.value);
             setPage(1);
+            clearSelection();
           }}
           className={selectCls}
         >
@@ -150,9 +240,18 @@ export default function UtilisateursPage() {
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px]">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={pageAllSelected}
+                    onChange={togglePage}
+                    className={checkboxCls}
+                    aria-label="Sélectionner la page"
+                  />
+                </th>
                 <Th>ID</Th>
                 <Th>Utilisateur</Th>
                 <Th>Email</Th>
@@ -167,7 +266,7 @@ export default function UtilisateursPage() {
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => (
                     <tr key={i} className={i % 2 === 1 ? 'bg-neutral-50/30 dark:bg-neutral-900/30' : ''}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
                           <Skeleton className="h-5 w-full" />
                         </td>
@@ -177,13 +276,27 @@ export default function UtilisateursPage() {
                 : data?.data?.length === 0
                 ? (
                   <tr>
-                    <td colSpan={8}>
+                    <td colSpan={9}>
                       <EmptyState text="Aucun utilisateur trouvé" />
                     </td>
                   </tr>
                 )
                 : data?.data?.map((u, i) => (
-                    <tr key={u.id} className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors ${i % 2 === 1 ? 'bg-neutral-50/30 dark:bg-neutral-900/30' : ''}`}>
+                    <tr
+                      key={u.id}
+                      className={`hover:bg-neutral-50 dark:hover:bg-neutral-800/40 transition-colors ${
+                        selected.has(u.id) || allFiltered ? 'bg-neutral-100/60 dark:bg-neutral-800/60' : i % 2 === 1 ? 'bg-neutral-50/30 dark:bg-neutral-900/30' : ''
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={allFiltered || selected.has(u.id)}
+                          onChange={() => toggleRow(u.id)}
+                          className={checkboxCls}
+                          aria-label={`Sélectionner ${u.name}`}
+                        />
+                      </td>
                       <td className="px-4 py-3 text-[12px] text-neutral-400">#{u.id}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
@@ -248,6 +361,19 @@ export default function UtilisateursPage() {
           </div>
         )}
       </Card>
+
+      {bulkAction && (
+        <BulkActionModal
+          action={bulkAction}
+          selection={bulkSelection}
+          onClose={() => setBulkAction(null)}
+          onDone={() => {
+            setBulkAction(null);
+            clearSelection();
+            fetchUsers(search, role, status, page);
+          }}
+        />
+      )}
 
       <ConfirmModal
         open={!!confirm}
