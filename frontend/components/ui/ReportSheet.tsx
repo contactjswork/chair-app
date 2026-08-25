@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '@/lib/contact';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Check, Flag, Loader2, MoreHorizontal, ShieldOff, X } from 'lucide-react';
@@ -141,7 +142,7 @@ export default function ReportSheet({ type, contentId, onClose }: ReportSheetPro
             {!isAuthed && (
               <p className="mt-4 text-[12px] text-neutral-500 bg-neutral-50 rounded-xl px-3 py-2.5 leading-relaxed">
                 Connecte-toi pour envoyer un signalement. Tu peux aussi nous écrire à{' '}
-                <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>.
+                <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a>.
               </p>
             )}
 

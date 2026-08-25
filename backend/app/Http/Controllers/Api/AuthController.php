@@ -280,7 +280,7 @@ class AuthController extends Controller
             ]);
 
             return response()->json([
-                'message' => "L'envoi d'emails est momentanément indisponible. Réessaie dans quelques minutes, ou écris-nous à contact@getchair.app.",
+                'message' => "L'envoi d'emails est momentanément indisponible. Réessaie dans quelques minutes, ou écris-nous à " . config('mail.support_address') . ".",
             ], 503);
         }
 

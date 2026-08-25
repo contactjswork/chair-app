@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '@/lib/contact';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,7 +40,7 @@ export default function SupprimerComptePage() {
         router.replace('/');
       }, 3000);
     } catch {
-      setError('Une erreur est survenue. Réessaie ou contacte contact@getchair.app.');
+      setError('Une erreur est survenue. Réessaie ou contacte ${SUPPORT_EMAIL}.');
     } finally {
       setLoading(false);
     }
@@ -191,7 +192,7 @@ export default function SupprimerComptePage() {
             elle sert aussi de contact publié au sens de la guideline 1.2. */}
         <p className="text-center text-[11px] text-neutral-300 mt-6 px-4 leading-relaxed">
           Une question avant de te décider ? Écris-nous à{' '}
-          <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>
+          <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a>
         </p>
       </div>
     </AppShell>

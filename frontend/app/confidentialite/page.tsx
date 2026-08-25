@@ -21,19 +21,23 @@ const CONTROLLER: {
   registration: string | null;
   dpo: string | null;
 } = {
-  legalName:    null, // ex. « CHAIR SAS »
-  legalForm:    null, // ex. « SAS au capital de X € »
-  address:      null, // siège social complet
-  registration: null, // SIREN / SIRET / RCS
-  dpo:          null, // DPO désigné, ou point de contact vie privée
+  // Source : compte Apple Developer Program (Organisation) — l'identité de
+  // l'éditeur doit être cohérente entre la fiche App Store, les mentions
+  // légales et cette politique.
+  legalName:    'Société d’exploitation du salon de coiffure Koehler',
+  legalForm:    'SARL au capital de 7 623 €',
+  address:      '25C rue de la Sablière, 67590 Schweighouse-sur-Moder, France',
+  registration: 'SIREN 323 781 880 — R.C.S. Strasbourg',
+  dpo:          null, // Aucun DPO désigné à ce jour : le contact vie privée
+                      // est l'adresse de contact ci-dessous, ce qui satisfait
+                      // le RGPD tant qu'une désignation n'est pas obligatoire.
 };
 
 // Adresse unique de contact, importée de la source de vérité partagée
 // (lib/contact.ts) : Apple 1.2 exige une « published contact information »
 // qui répond réellement, et plusieurs adresses concurrentes dans l'app
 // garantissent qu'au moins l'une d'elles ne sera pas relevée.
-// contact@getchair.app est la seule réellement câblée côté serveur — c'est
-// la destination du formulaire de contact (ContactController).
+// C'est aussi la destination du formulaire de contact (ContactController).
 const CONTACT_EMAIL = SUPPORT_EMAIL;
 
 const LAST_UPDATE = '24 août 2026';

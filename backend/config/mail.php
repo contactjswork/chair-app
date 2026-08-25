@@ -115,4 +115,21 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Adresse de contact publiée
+    |--------------------------------------------------------------------------
+    |
+    | Boîte qui reçoit le formulaire de contact de l'app, et adresse publiée
+    | dans les mentions légales, la politique de confidentialité et les
+    | parcours de signalement. App Store Review Guideline 1.2 exige une
+    | « published contact information » relevée par un humain — cette boîte
+    | doit donc réellement être consultée.
+    |
+    | Elle doit rester identique à SUPPORT_EMAIL dans frontend/lib/contact.ts.
+    |
+    */
+
+    'support_address' => env('SUPPORT_ADDRESS', 'hello@getchair.app'),
+
 ];

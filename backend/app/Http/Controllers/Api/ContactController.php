@@ -26,7 +26,10 @@ class ContactController extends Controller
         Mail::raw(
             "De : {$validated['name']} <{$validated['email']}>\nSujet : {$validated['subject']}\n\n{$validated['message']}",
             function ($mail) use ($validated) {
-                $mail->to('contact@getchair.app')
+                // Adresse de contact publiée (App Store Review Guideline 1.2 :
+                // « published contact information »). Pilotée par une variable
+                // d'environnement pour pouvoir changer de boîte sans redéployer.
+                $mail->to(config('mail.support_address'))
                     ->subject('[Contact CHAIR] ' . $validated['subject'])
                     ->replyTo($validated['email'], $validated['name']);
             }

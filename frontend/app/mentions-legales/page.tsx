@@ -36,27 +36,51 @@ const PUBLISHER: {
   publicationDirector: string | null;
   phone: string | null;
 } = {
-  legalName:           null, // ex. « CHAIR SAS »
-  legalForm:           null, // ex. « Société par actions simplifiée »
-  capital:             null, // ex. « Capital social : 10 000 € »
-  address:             null, // siège social complet (rue, code postal, ville, pays)
-  registration:        null, // ex. « RCS Strasbourg 000 000 000 » / SIREN
-  vatNumber:           null, // ex. « FR00000000000 »
-  publicationDirector: null, // nom et prénom du directeur de la publication
-  phone:               null, // numéro réellement joignable, sinon null
+  // Source : compte Apple Developer Program (Organisation). Ce nom est aussi
+  // celui qui apparaîtra publiquement comme vendeur sur la fiche App Store —
+  // les deux doivent rester identiques.
+  legalName:           'Société d’exploitation du salon de coiffure Koehler',
+  legalForm:           'SARL — société à responsabilité limitée',
+  capital:             'Capital social : 7 623 €',
+  address:             '25C rue de la Sablière, 67590 Schweighouse-sur-Moder, France',
+  registration:        '323 781 880 R.C.S. Strasbourg',
+  vatNumber:           'FR68323781880',
+  publicationDirector: 'Philippe Koehler',
+  phone:               '+33 9 63 57 01 08',
 };
 
-const HOST: {
-  legalName: string | null;
-  address: string | null;
+/**
+ * Hébergeurs — la LCEN (art. 6-III) impose de publier la dénomination,
+ * l'adresse et le téléphone de l'hébergeur. CHAIR en a DEUX, il faut donc
+ * citer les deux : le site et les applications web sont servis par Vercel,
+ * l'API et la base de données sont chez Infomaniak.
+ *
+ * Coordonnées relevées le 25/08/2026 sur les publications officielles de
+ * chaque prestataire (mentions légales / politique de confidentialité), pas
+ * de mémoire. À revérifier si l'un d'eux change de siège.
+ */
+const HOSTS: Array<{
+  role: string;
+  legalName: string;
+  address: string;
   phone: string | null;
-  website: string | null;
-} = {
-  legalName: null, // raison sociale de l'hébergeur du site
-  address:   null, // adresse postale complète de l'hébergeur
-  phone:     null, // téléphone de l'hébergeur
-  website:   null, // ex. « https://... »
-};
+  website: string;
+}> = [
+  {
+    role:      'Site web et applications',
+    legalName: 'Vercel Inc.',
+    address:   '440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis',
+    phone:     null, // Vercel ne publie pas de numéro de téléphone de contact
+    website:   'https://vercel.com',
+  },
+  {
+    role:      'API et hébergement des données',
+    legalName: 'Infomaniak Network SA',
+    address:   'Rue Eugène-Marziano 25, 1227 Genève, Suisse',
+    phone:     null, // À COMPLÉTER si besoin — non vérifié à la source
+    website:   'https://www.infomaniak.com',
+  },
+];
 
 const MEDIATOR: {
   name: string | null;
@@ -80,7 +104,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function MentionsLegalesPage() {
-  const hasHost = !!(HOST.legalName || HOST.address);
+  const hasHost = HOSTS.length > 0;
   const hasMediator = !!(MEDIATOR.name || MEDIATOR.website);
 
   return (
@@ -133,18 +157,22 @@ export default function MentionsLegalesPage() {
         {hasHost && (
           <Section title="Hébergement">
             <p>Le site et les applications CHAIR sont hébergés par :</p>
-            <div className="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100 mt-2 space-y-1">
-              {HOST.legalName && <p className="font-semibold text-neutral-800">{HOST.legalName}</p>}
-              {HOST.address && <p className="text-neutral-500">{HOST.address}</p>}
-              {HOST.phone && <p className="text-neutral-500">Téléphone : {HOST.phone}</p>}
-              {HOST.website && (
+            {HOSTS.map((host) => (
+              <div
+                key={host.legalName}
+                className="bg-neutral-50 rounded-xl px-4 py-3 border border-neutral-100 mt-2 space-y-1"
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-neutral-400">{host.role}</p>
+                <p className="font-semibold text-neutral-800">{host.legalName}</p>
+                <p className="text-neutral-500">{host.address}</p>
+                {host.phone && <p className="text-neutral-500">Téléphone : {host.phone}</p>}
                 <p className="text-neutral-500">
-                  <a href={HOST.website} target="_blank" rel="noopener noreferrer" className="underline">
-                    {HOST.website}
+                  <a href={host.website} target="_blank" rel="noopener noreferrer" className="underline">
+                    {host.website}
                   </a>
                 </p>
-              )}
-            </div>
+              </div>
+            ))}
           </Section>
         )}
 

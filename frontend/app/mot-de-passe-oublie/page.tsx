@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '@/lib/contact';
 import { useState } from 'react';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
 
@@ -99,7 +100,7 @@ export default function MotDePasseOubliePage() {
               </p>
               <p className="text-[12px] text-neutral-400 mt-2 leading-relaxed">
                 Pense à vérifier tes spams. Rien reçu au bout de quelques minutes ?
-                Écris-nous à <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>.
+                Écris-nous à <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a>.
               </p>
             </div>
             <Link

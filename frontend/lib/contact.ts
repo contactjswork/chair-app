@@ -8,8 +8,11 @@
 //
 // L'adresse retenue est celle qui est réellement câblée côté serveur :
 // backend/app/Http/Controllers/Api/ContactController.php envoie le formulaire
-// de contact à contact@getchair.app. Elle DOIT donc être relevée par un humain.
-export const SUPPORT_EMAIL = 'contact@getchair.app';
+// de contact à cette adresse. Elle DOIT donc être relevée par un humain :
+// App Store Review Guideline 1.2 exige une « published contact information »
+// qui répond réellement, et c'est aussi le contact publié dans les mentions
+// légales et la politique de confidentialité (LCEN / RGPD art. 13).
+export const SUPPORT_EMAIL = 'hello@getchair.app';
 export const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}`;
 
 // Plage d'ouverture annoncée publiquement (aide in-app, page contact).

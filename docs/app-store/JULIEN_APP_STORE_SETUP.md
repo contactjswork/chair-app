@@ -13,11 +13,10 @@ Règles du guide :
 - Les libellés de menus changent parfois d'une version d'interface à l'autre :
   quand un libellé est incertain, le guide donne le libellé probable **et** un
   repère fonctionnel (« le menu qui liste vos domaines »).
-- Les commandes serveur utilisent le binaire PHP de production
-  `/opt/php8.3/bin/php`. Si ce chemin ne répond pas, liste les versions
-  installées avec `ls /opt/ | grep php` et prends la plus proche de la version
-  PHP affichée dans le Manager Infomaniak (Hébergement → la rubrique qui montre
-  la version PHP du site).
+- Les commandes serveur utilisent `php artisan` : sur ce serveur, `php` en
+  ligne de commande résout déjà vers le bon binaire (`which php` →
+  `/opt/php8.4/bin/php`, voir `docs/DEPLOY.md`). En cas d'erreur de version,
+  liste les binaires avec `ls /opt/ | grep php` et préfixe avec le chemin complet.
 
 Récapitulatif à cocher tout en bas du document.
 
@@ -39,7 +38,7 @@ soumission ne doit pas partir sans elle.
 | SIREN (ou RCS complet) | Kbis | `________________` |
 | N° TVA intracommunautaire (si tu en as un) | Avis de situation SIRENE / comptable | `________________` |
 | Adresse du siège social complète | Kbis | `________________` |
-| Email légal (contact publié) | Décision à toi — `contact@getchair.app` est déjà câblé partout | `________________` |
+| Email légal (contact publié) | Décision à toi — `hello@getchair.app` est déjà câblé partout | `________________` |
 | Directeur de la publication (nom, prénom) | Le représentant légal (toi ou ton associé) | `________________` |
 | DPO ou contact vie privée (facultatif si pas de DPO désigné) | Décision à toi | `________________` |
 | Médiateur de la consommation (organisme + adresse + site) | Ton contrat d'adhésion à un médiateur — **adhésion obligatoire** pour un pro vendant à des consommateurs | `________________` |
@@ -157,9 +156,9 @@ mot de passe perd son compte, et Apple teste ce parcours. Le code est prêt
 ### 2.1 Choisis et crée l'adresse d'expédition
 
 Recommandation : une adresse **dédiée aux envois automatiques**, par exemple
-`notifications@getchair.app`, avec une redirection vers `contact@getchair.app`
+`notifications@getchair.app`, avec une redirection vers `hello@getchair.app`
 pour ne perdre aucune réponse. Pourquoi une adresse dédiée : si un jour un envoi
-automatique est marqué comme spam, la réputation de `contact@` (ton adresse de
+automatique est marqué comme spam, la réputation de `hello@getchair.app` (ton adresse de
 support publiée, câblée dans l'app) n'est pas entraînée avec. **Décision à figer
 une bonne fois** : changer d'expéditeur en cours de route abîme la délivrabilité.
 
@@ -226,16 +225,21 @@ Toujours en SSH :
 
 ```bash
 cd ~/sites/api.getchair.app/backend
-/opt/php8.3/bin/php artisan config:clear
-/opt/php8.3/bin/php artisan chair:test-mail
+php artisan config:clear
+php artisan chair:test-mail
 ```
+
+> Sur ce serveur, `php` en ligne de commande résout déjà vers le bon binaire
+> (`which php` → `/opt/php8.4/bin/php`, voir `docs/DEPLOY.md`). Si jamais
+> `php artisan` renvoie une erreur de version, liste les binaires disponibles
+> avec `ls /opt/ | grep php` et préfixe avec le chemin complet.
 
 La deuxième commande **n'envoie rien** : elle relit la configuration, ouvre une
 vraie connexion SMTP et te dit exactement ce qui manque si quelque chose cloche.
 Quand elle sort sans erreur, envoie les vrais emails de test vers ta boîte perso :
 
 ```bash
-/opt/php8.3/bin/php artisan chair:test-mail ton-adresse@perso.fr
+php artisan chair:test-mail ton-adresse@perso.fr
 ```
 
 **✓ Vérification :** dans ta boîte perso, les 6 emails de test sont arrivés
@@ -296,14 +300,14 @@ préconfigure très souvent SPF et DKIM automatiquement.
   ```
 
   `p=none` = mode observation, aucun email n'est bloqué. L'adresse des rapports
-  est ton choix (par exemple `contact@getchair.app`) ; les rapports sont des
+  est ton choix (par exemple `hello@getchair.app`) ; les rapports sont des
   XML automatiques quotidiens, peu digestes mais inoffensifs.
 
 Les modifications DNS mettent de quelques minutes à quelques heures à se
 propager.
 
 **✓ Vérification :** envoie un email de test vers une adresse **Gmail** :
-`/opt/php8.3/bin/php artisan chair:test-mail ton-adresse@gmail.com`. Dans
+`php artisan chair:test-mail ton-adresse@gmail.com`. Dans
 Gmail, ouvre le message → menu ⋮ → **« Afficher l'original »** : la page doit
 afficher `SPF : PASS` et `DKIM : PASS` (et `DMARC : PASS` si configuré), et le
 détail du message doit indiquer un chiffrement standard (TLS). Si l'email est
@@ -442,12 +446,12 @@ Puis, en SSH :
 
 ```bash
 cd ~/sites/api.getchair.app/backend
-/opt/php8.3/bin/php artisan config:clear
-/opt/php8.3/bin/php artisan chair:test-push <ton user_id ou ton email>
+php artisan config:clear
+php artisan chair:test-push <ton user_id ou ton email>
 ```
 
 (La forme exacte de l'argument est affichée par
-`/opt/php8.3/bin/php artisan help chair:test-push` — la commande te guide si tu
+`php artisan help chair:test-push` — la commande te guide si tu
 te trompes.)
 
 **✓ Vérification :** la notification arrive sur ton iPhone, écran verrouillé
@@ -585,9 +589,9 @@ git pull origin main
 #   correctif de structure décrit dans docs/DEPLOY.md (cp -a backend/. . ...)
 composer install --no-dev --optimize-autoloader
 # ⚠ puis le correctif platform_check décrit dans docs/DEPLOY.md si besoin
-/opt/php8.3/bin/php artisan migrate --force
-/opt/php8.3/bin/php artisan config:clear
-/opt/php8.3/bin/php artisan route:cache
+php artisan migrate --force
+php artisan config:clear
+php artisan route:cache
 ```
 
 - [ ] `https://api.getchair.app/api/...` répond (pas de 500) — en cas de 500,

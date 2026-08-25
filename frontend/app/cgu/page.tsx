@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from '@/lib/contact';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -48,7 +49,7 @@ export default function CGUPage() {
           <ul className="space-y-1.5 list-none mt-2">
             <Li>Site web : <a href="https://getchair.app" className="underline">getchair.app</a></Li>
             <Li>Application mobile : CHAIR (disponible sur l'App Store)</Li>
-            <Li>Contact : <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a></Li>
+            <Li>Contact : <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a></Li>
           </ul>
         </Section>
 
@@ -166,7 +167,7 @@ export default function CGUPage() {
           <p>
             Vous pouvez supprimer votre compte à tout moment depuis les paramètres de l'application
             (<em>Compte → Paramètres → Supprimer mon compte</em>) ou en envoyant un email à{' '}
-            <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>.
+            <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a>.
           </p>
           <p>
             La suppression est immédiate et irréversible : elle s&apos;exécute dès la confirmation, sans délai de grâce
@@ -221,7 +222,7 @@ export default function CGUPage() {
             Pour toute question relative aux présentes CGU ou pour exercer vos droits :
           </p>
           <ul className="space-y-1.5 list-none">
-            <Li>Email : <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a></Li>
+            <Li>Email : <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a></Li>
             <Li>Réponse garantie sous 72 heures ouvrées</Li>
           </ul>
         </Section>
