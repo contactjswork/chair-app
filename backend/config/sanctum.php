@@ -42,9 +42,31 @@ return [
     | considered expired. If this value is null, personal access tokens do
     | not expire. This won't tweak the lifetime of first-party sessions.
     |
+    | ── CHAIR ────────────────────────────────────────────────────────────
+    | Cette valeur était à `null`, donc des jetons ÉTERNELS. Or ils vivent
+    | dans le localStorage d'une WebView iOS : un téléphone perdu, revendu ou
+    | prêté conservait un accès complet au compte pour toujours, et une
+    | déconnexion à distance était impossible.
+    |
+    | Défaut : 43200 minutes = 30 jours. Prudent des deux côtés — assez long
+    | pour qu'un usage normal (ouvrir l'app une fois par semaine) ne bute
+    | jamais dessus, assez court pour qu'un jeton volé se périme seul.
+    |
+    | ATTENTION : Sanctum compare `created_at`, PAS `last_used_at` (voir
+    | vendor/laravel/sanctum/src/Guard.php). L'expiration est donc absolue :
+    | l'utilisateur se reconnecte tous les 30 jours même s'il est actif tous
+    | les jours. Il n'y a pas de renouvellement glissant dans Sanctum 2.x.
+    |
+    | Le front gère proprement le 401 qui en résulte : lib/api.ts purge le
+    | localStorage et émet `chair:session-expired`, AuthContext vide l'état
+    | React et redirige vers /connexion?expired=1 avec un message explicite.
+    |
+    | SANCTUM_TOKEN_EXPIRATION=0 (ou vide) rétablit des jetons sans
+    | expiration — à n'utiliser qu'en dépannage.
+    |
     */
 
-    'expiration' => null,
+    'expiration' => (int) env('SANCTUM_TOKEN_EXPIRATION', 43200) ?: null,
 
     /*
     |--------------------------------------------------------------------------

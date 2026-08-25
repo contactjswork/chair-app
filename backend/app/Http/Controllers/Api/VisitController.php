@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContentFilter;
 use App\Models\HairdresserProfile;
 use App\Models\Review;
 use App\Models\Service;
@@ -215,6 +216,13 @@ class VisitController extends Controller
             'rating'   => 'required|integer|min:1|max:5',
             'comment'  => 'required|string|min:10|max:1000',
         ]);
+
+        // Filtrage au dépôt (App Store Review Guideline 1.2 — « a method for
+        // filtering objectionable material from being posted to the app »).
+        // Complémentaire du signalement, qui n'agit qu'après publication.
+        if ($reason = ContentFilter::check($request->input('comment'))) {
+            return response()->json(['message' => ContentFilter::message($reason)], 422);
+        }
 
         $visit = VerifiedVisit::with('hairdresser')->find($request->visit_id);
         if (!$visit) {

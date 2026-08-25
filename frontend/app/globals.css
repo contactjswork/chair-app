@@ -23,25 +23,70 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Comportement "app native", pas "site web" dans la WebView Capacitor :
-   pas de sélection de texte ni de menu copier/partager au appui long,
-   pas de flash gris au tap, pas de drag d'image. Les champs de formulaire
-   restent sélectionnables pour permettre la saisie/le collage normal. */
-html, body {
+/* ── Comportement "app native, pas site web dans une WebView" ─────────────
+   Deux niveaux :
+   1. Règles inoffensives partout (web inclus) : appliquées globalement.
+   2. Règles qui dégraderaient le site web (interdire la sélection de texte,
+      supprimer le rebond du document) : scopées sous html.chair-native, la
+      classe posée AVANT le premier paint par le script de lib/native.ts
+      uniquement dans un shell Capacitor (CHAIR / CHAIR PRO). */
+
+/* Niveau 1 — partout. Le flash gris bleuté au tap est le signal webview
+   n°1 ; -webkit-tap-highlight-color n'étant pas hérité de façon fiable, on
+   l'éteint sur tous les éléments (aucun effet sur desktop). */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Niveau 2 — shell natif seulement : pas de sélection de texte ni de menu
+   copier/partager au appui long sur l'UI (user-select/touch-callout sont
+   hérités, la racine suffit), pas de rebond "rubber-band" du document (sans
+   ça toute la page bounce comme une page web ; les feuilles/modales qui
+   veulent leur propre rebond contenu utilisent déjà overscroll-contain
+   localement — BookingSheet, SearchModal...). */
+html.chair-native {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-  /* Empêche le rebond ("rubber-band") du document entier au scroll — sans
-     ça toute la page bounce comme une page web, pas une app. Les feuilles/
-     modales qui veulent leur propre rebond contenu utilisent déjà
-     overscroll-contain localement (BookingSheet, SearchModal...). */
+}
+html.chair-native,
+html.chair-native body {
   overscroll-behavior: none;
 }
+/* …mais un utilisateur DOIT pouvoir copier un texte de contenu (paragraphe
+   légal, avis, description, adresse) : la sélection est réactivée sur les
+   éléments porteurs de contenu rédigé. .selectable sert de dérogation
+   explicite pour tout autre bloc. */
+html.chair-native :is(p, li, blockquote, dd, td, figcaption, .selectable) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* …sauf quand ce texte vit DANS un contrôle interactif (carte cliquable,
+   bouton, item de nav) : là, l'appui long ne doit pas déclencher une
+   sélection à la place du tap. */
+html.chair-native :is(a, button, nav, label, summary, [role="button"]) :is(p, li, blockquote, dd, td, figcaption),
+html.chair-native :is(a, button, [role="button"]) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Champs de formulaire : saisie/collage normaux, partout. */
 input, textarea {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
+}
+/* Une app native n'affiche pas de scrollbar dans son contenu : on masque
+   les scrollbars CSS des zones scrollables internes (le document principal
+   garde l'indicateur iOS natif, dessiné par UIScrollView, pas par CSS). */
+html.chair-native ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+/* Chrome web (footer de site, header desktop, footer vitrine…) : jamais
+   rendu dans un binaire natif, sans JS ni mismatch d'hydratation. */
+html.chair-native .web-only {
+  display: none !important;
 }
 img {
   -webkit-user-drag: none;

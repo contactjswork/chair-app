@@ -8,6 +8,7 @@ import { useNotificationCount } from '@/contexts/NotificationContext';
 import { LogOut, User, Bell } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/types';
 import ChairLogo from '@/components/ui/ChairLogo';
+import { useAppContext } from '@/lib/appContext';
 
 const navItems = [
   { href: '/app',           label: 'Découvrir' },
@@ -19,8 +20,14 @@ export default function TopNav() {
   const pathname  = usePathname();
   const { user, isLoading, logout } = useAuth();
   const { unreadCount } = useNotificationCount();
+  const { context } = useAppContext();
 
-  const avatarUrl = resolveMediaUrl(user?.avatar ?? null);
+  // Dans un binaire natif (ou indéterminé — vieux build sans marqueur UA),
+  // le logo ne doit jamais renvoyer vers la vitrine marketing : une app dont
+  // le logo ouvre un site web signe la webview (Guideline 4.2). 'unknown'
+  // couvre aussi le rendu serveur : la cible /app est alors remplacée par /
+  // après hydratation côté web, sans mismatch (useSyncExternalStore).
+  const logoHref = context === 'web' ? '/' : '/app';
 
   return (
     <>
@@ -40,11 +47,15 @@ export default function TopNav() {
         </div>
       </header>
 
-      {/* ── Header desktop ── */}
+      {/* ── Header desktop ── Invisible sous 768px, donc jamais vu sur
+          iPhone. PAS masqué en natif (contrairement au footer d'AppShell) :
+          sur une tablette Android ≥768px c'est la seule navigation
+          disponible (header mobile et BottomNav sont md:hidden). Seul le
+          logo change de cible en natif : /app au lieu de la vitrine. */}
       <header className="hidden md:flex fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-100/80 transition-all duration-300">
         <div className="w-full max-w-6xl mx-auto px-8 flex items-center justify-between h-[60px]">
 
-          <ChairLogo href="/" size="md" />
+          <ChairLogo href={logoHref} size="md" />
 
           <nav className="flex items-center gap-6">
             {navItems.map(({ href, label }) => {

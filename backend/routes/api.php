@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ScheduleController;
 use App\Http\Controllers\Api\AvailabilityController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\NotificationPreferenceController;
+use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\GeocodingController;
 use App\Http\Controllers\Api\SalonController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Api\JobApplicationController;
 use App\Http\Controllers\Api\SalonInvitationController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\AdminBulkController;
 use App\Http\Controllers\Api\AdminHairdresserController;
 use App\Http\Controllers\Api\AdminSalonController;
 use App\Http\Controllers\Api\SpecialtyProgressController;
@@ -53,6 +55,8 @@ use App\Http\Controllers\Api\AdminInsightController;
 use App\Http\Controllers\Api\FeatureFlagController;
 use App\Http\Controllers\Api\AppConfigController;
 use App\Http\Controllers\Api\MapKitTokenController;
+use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\UserBlockController;
 
 // Admin — authentification par compte Sanctum réel (role='admin' + un
 // admin_role granulaire), PLUS de jeton statique partagé. Voir
@@ -76,6 +80,16 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(functi
     Route::get('/top-hairdressers',             [AdminController::class, 'topHairdressers'])->middleware('admin.permission:dashboard.view');
     Route::get('/activity',                     [AdminController::class, 'recentActivity'])->middleware('admin.permission:dashboard.view');
     Route::get('/users',                        [AdminUserController::class, 'index'])->middleware('admin.permission:users.read');
+    // Actions de masse (sélection multiple / "tous les filtrés") — la
+    // permission fine par action (users.suspend, users.delete,
+    // hairdressers.visibility...) est vérifiée DANS le contrôleur selon
+    // le champ `action` ; la route ne porte que le socle users.read.
+    // Déclarée AVANT /users/{id} pour ne jamais matcher 'bulk' comme un id.
+    Route::post('/users/bulk',                  [AdminBulkController::class, 'bulkUsers'])->middleware('admin.permission:users.read');
+    // Maintenance — données de démonstration (@demo.getchair.app) : analyse
+    // chiffrée puis purge physique à confirmation forte. Réservé users.delete.
+    Route::get('/demo-data/analyze',            [AdminBulkController::class, 'analyzeDemoData'])->middleware('admin.permission:users.delete');
+    Route::post('/demo-data/purge',             [AdminBulkController::class, 'purgeDemoData'])->middleware('admin.permission:users.delete');
     Route::get('/users/{id}',                   [AdminUserController::class, 'show'])->middleware('admin.permission:users.read');
     Route::post('/users/{id}/suspend',          [AdminUserController::class, 'suspendUser'])->middleware('admin.permission:users.suspend');
     Route::post('/users/{id}/unsuspend',        [AdminUserController::class, 'unsuspendUser'])->middleware('admin.permission:users.suspend');
@@ -319,6 +333,11 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
 
     // Rendez-vous (client)
     Route::get('/my-appointments',                      [AppointmentController::class, 'clientAppointments']);
+    // Sortie côté client : PUT /appointments/{id}/status au-dessus est réservé
+    // au coiffeur (il exige un hairdresserProfile). Sans cette route, l'app
+    // cliente laissait réserver sans jamais permettre d'annuler.
+    // L'autorisation est faite dans clientCancel() sur le client_id de la ligne.
+    Route::put('/appointments/{id}/cancel',             [AppointmentController::class, 'clientCancel'])->middleware('throttle:20,1');
     Route::post('/appointments/{id}/review',            [AppointmentController::class, 'submitReview']);
 
     // Réponses aux avis (coiffeur)
@@ -332,6 +351,11 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Préférences de notifications (respectées à l'envoi — voir NotificationService::shouldSend)
     Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);
     Route::put('/notification-preferences', [NotificationPreferenceController::class, 'update']);
+
+    // Tokens push APNs des appareils (enregistrés au démarrage de l'app native,
+    // désinscrits à la déconnexion) — voir PushTokenController
+    Route::post('/push/register',   [PushTokenController::class, 'register']);
+    Route::delete('/push/register', [PushTokenController::class, 'unregister']);
 
     // Catégories de services
     Route::get('/service-categories',          [ServiceController::class, 'indexCategories']);
@@ -477,4 +501,16 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Support prioritaire CHAIR+ (voir docs/CHAIR_PLUS.md)
     Route::post('/support-requests', [SupportController::class, 'store']);
     Route::get('/support-requests/mine', [SupportController::class, 'mine']);
+
+    // ── Modération communautaire (App Store Review Guideline 1.2 — UGC) ──
+    // Signalement de contenu : alimente enfin la table 'reports' déjà lue par
+    // la file de modération admin (GET /admin/reports). Throttlé pour qu'un
+    // compte ne puisse pas noyer la file.
+    Route::post('/reports', [ReportController::class, 'store'])->middleware('throttle:15,60');
+
+    // Blocage d'utilisateur — effet réel : le contenu du compte bloqué
+    // disparaît du feed du bloqueur (filtrage dans HairdresserController::feed).
+    Route::post('/users/{id}/block',   [UserBlockController::class, 'store'])->middleware('throttle:30,60');
+    Route::delete('/users/{id}/block', [UserBlockController::class, 'destroy']);
+    Route::get('/my-blocks',           [UserBlockController::class, 'index']);
 });

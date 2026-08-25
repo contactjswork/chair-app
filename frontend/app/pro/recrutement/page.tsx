@@ -1,16 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { jobOffers, api } from '@/lib/api';
-import type { ApiJobOffer } from '@/lib/types';
+import { resolveMediaUrl, type ApiJobOffer } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
 import OwnerOfferCard from '@/components/owner/OwnerOfferCard';
 import OwnerApplicantCard, { type ApplicantStatus, APPLICANT_STATUS_LABELS } from '@/components/owner/OwnerApplicantCard';
 import OwnerWizardShell from '@/components/owner/OwnerWizardShell';
-import { Plus, ExternalLink, Briefcase } from 'lucide-react';
+import { Plus, Briefcase } from 'lucide-react';
 
 const JOB_TYPE_OPTIONS = [
   { value: 'hairdresser', label: 'Coiffeur(se)' },
@@ -59,7 +58,12 @@ interface JobApplication {
   status: ApplicantStatus;
   message?: string;
   created_at: string;
-  hairdresser?: { user?: { name?: string } };
+  hairdresser?: {
+    slug?: string | null;
+    // Le candidat a postulé de lui-même ici : l'API partage ses coordonnées
+    // avec CE gérant (JobApplicationController::shapeForOwner).
+    user?: { name?: string; avatar?: string | null; email?: string | null; phone?: string | null };
+  };
   job_offer?: { title?: string; id?: number };
 }
 
@@ -209,10 +213,11 @@ export default function RecrutementPage() {
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-neutral-500">{offers.filter((o) => o.status === 'open').length} active(s)</p>
               <div className="flex items-center gap-2">
-                <Link href="/recrutement" target="_blank"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 border border-neutral-200 px-3 py-2 rounded-xl hover:bg-neutral-50 transition-colors">
-                  <ExternalLink size={12} />Page publique
-                </Link>
+                {/* Le bouton "Page publique" pointait vers /recrutement, une route
+                    qui n'existe pas dans l'app : il renvoyait un 404, et
+                    target="_blank" éjectait au passage vers Safari (déconnexion
+                    dans l'app Capacitor). Retiré tant qu'aucune page publique
+                    d'offres n'existe. */}
                 <button onClick={openCreate}
                   className="flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors">
                   <Plus size={13} />Nouvelle offre
@@ -266,12 +271,16 @@ export default function RecrutementPage() {
                     <OwnerApplicantCard
                       key={app.id}
                       name={app.hairdresser?.user?.name ?? 'Coiffeur'}
+                      avatarUrl={resolveMediaUrl(app.hairdresser?.user?.avatar)}
                       status={app.status}
                       subtitle={app.job_offer?.title ? `Pour : ${app.job_offer.title}` : undefined}
                       date={new Date(app.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                       message={app.message}
+                      profileHref={app.hairdresser?.slug ? `/app/coiffeur/${app.hairdresser.slug}` : undefined}
+                      email={app.hairdresser?.user?.email}
+                      phone={app.hairdresser?.user?.phone}
                       expanded={expandedApp === app.id}
-                      onToggleExpand={app.message ? () => setExpandedApp((v) => v === app.id ? null : app.id) : undefined}
+                      onToggleExpand={() => setExpandedApp((v) => v === app.id ? null : app.id)}
                       onAdvance={next ? () => handleAppStatus(app.id, next) : undefined}
                       advanceLabel={next ? ADVANCE_LABELS[app.status] : undefined}
                       onDecline={app.status !== 'accepted' && app.status !== 'declined' ? () => handleAppStatus(app.id, 'declined') : undefined}

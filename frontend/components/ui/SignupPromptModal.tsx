@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { X } from 'lucide-react';
 import BottomSheet from '@/components/ui/BottomSheet';
 
@@ -11,7 +12,11 @@ interface Props {
 }
 
 export default function SignupPromptModal({ open, onClose, message }: Props) {
+  // Reprise de parcours : après connexion/inscription, on revient sur la page
+  // où l'action a été tentée (feed, réalisation…) au lieu de l'accueil.
+  const pathname = usePathname();
   if (!open) return null;
+  const returnTo = `?returnTo=${encodeURIComponent(pathname)}`;
 
   return (
     <BottomSheet onClose={onClose} zIndexClassName="z-[201]">
@@ -35,14 +40,14 @@ export default function SignupPromptModal({ open, onClose, message }: Props) {
 
           <div className="space-y-3">
             <Link
-              href="/inscription"
+              href={`/inscription${returnTo}`}
               onClick={onClose}
               className="block w-full text-center bg-neutral-900 text-white font-bold py-4 rounded-2xl text-[14px] hover:bg-neutral-800 transition-colors"
             >
               Créer un compte gratuit
             </Link>
             <Link
-              href="/connexion"
+              href={`/connexion${returnTo}`}
               onClick={onClose}
               className="block w-full text-center border border-neutral-200 text-neutral-700 font-semibold py-4 rounded-2xl text-[14px] hover:border-neutral-400 transition-colors"
             >

@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn
 import { PrimaryButton, SecondaryButton } from './Button';
 import EmptyState from './EmptyState';
 import { Skeleton } from './Skeleton';
+import PushOptInCard from './PushOptInCard';
 
 type Step = 'category' | 'service' | 'date' | 'slot' | 'info' | 'confirm' | 'success';
 
@@ -43,6 +44,19 @@ const FLOWS: Record<FlowStart, Step[]> = {
 };
 
 const INPUT_CLS = 'w-full border border-neutral-200 rounded-xl px-4 h-12 text-[14px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors';
+
+/**
+ * Date du device au format YYYY-MM-DD, en heure LOCALE.
+ *
+ * L'ancien `new Date().toISOString().split('T')[0]` renvoyait la date UTC :
+ * entre minuit et 2h du matin (heure française), « aujourd'hui » était encore
+ * la veille, donc une date passée franchissait le garde de reprise de parcours
+ * et la veille restait non grisée dans le calendrier. Le serveur (Europe/Paris)
+ * refusait de toute façon, mais la frontière visuelle était fausse.
+ */
+function toLocalYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 interface Props {
   slug: string;
@@ -136,7 +150,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
             // s'était arrêté avant l'interruption d'auth. La date restaurée
             // doit encore être future — un intent qui a traversé minuit
             // repart sagement du calendrier.
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = toLocalYMD(new Date());
             if (initialDate && initialDate >= todayStr) {
               const d = new Date(initialDate + 'T00:00:00');
               setViewYear(d.getFullYear());
@@ -316,6 +330,9 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
         onClick={onClose}
       />
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Réservation d'un rendez-vous"
         className="fixed bottom-0 left-0 right-0 z-[201] bg-white rounded-t-3xl flex flex-col overflow-hidden"
         style={{
           height: '90dvh',
@@ -338,11 +355,11 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
         <div className="flex-shrink-0">
           <div className="flex items-center gap-1 px-2 pb-2.5">
             {stepIndex > 0 && step !== 'success' ? (
-              <button onClick={handleBack} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors flex-shrink-0" aria-label="Étape précédente">
+              <button onClick={handleBack} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors flex-shrink-0" aria-label="Étape précédente">
                 <ChevronLeft size={20} className="text-neutral-700" />
               </button>
             ) : (
-              <div className="w-10 flex-shrink-0" />
+              <div className="w-11 flex-shrink-0" />
             )}
 
             <div className="flex-1 min-w-0 text-center">
@@ -358,7 +375,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
               )}
             </div>
 
-            <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors flex-shrink-0" aria-label="Fermer">
+            <button onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors flex-shrink-0" aria-label="Fermer">
               <X size={18} className="text-neutral-500" />
             </button>
           </div>
@@ -389,7 +406,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                 Une confirmation vient d&apos;être envoyée à {clientEmail}.
               </p>
 
-              <div className="w-full border-y border-neutral-100 divide-y divide-neutral-100 mb-8 text-left">
+              <div className="w-full border-y border-neutral-100 divide-y divide-neutral-100 mb-3 text-left">
                 {selectedService && (
                   <div className="flex items-center justify-between py-3.5">
                     <span className="text-[13px] text-neutral-400">Prestation</span>
@@ -404,7 +421,25 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                   <span className="text-[13px] text-neutral-400">Heure</span>
                   <span className="text-[14px] font-semibold text-neutral-900 tabular-nums">{selectedSlot}</span>
                 </div>
+                {/* L'écran de succès ne disait rien du paiement : après un bouton
+                    "Confirmer le rendez-vous", le silence pouvait se lire comme
+                    "c'est payé". Il ne l'est pas — et ne peut pas l'être ici. */}
+                <div className="flex items-center justify-between py-3.5">
+                  <span className="text-[13px] text-neutral-400">Paiement</span>
+                  <span className="text-[14px] font-semibold text-neutral-900">Sur place, au salon</span>
+                </div>
               </div>
+
+              <p className="text-[12px] text-neutral-400 mb-7">
+                Aucun montant n&apos;a été débité.
+              </p>
+
+              {/* Opt-in push contextualisé : le moment idéal — l'utilisateur
+                  vient de réserver, la valeur (« être prévenu d'un changement
+                  de RDV ») est évidente. Rend null sur le web et les binaires
+                  sans le plugin. Purement additif, aucune logique du sheet
+                  n'est touchée. */}
+              <PushOptInCard className="w-full mb-4 text-left" />
 
               <PrimaryButton fullWidth onClick={onClose}>Terminé</PrimaryButton>
             </div>
@@ -500,6 +535,11 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       </button>
                     ))}
                   </div>
+                  {/* Un prix nu en tête de parcours de réservation peut se lire
+                      comme un montant que l'app va prélever. Il ne l'est jamais. */}
+                  <p className="text-[12px] text-neutral-400 mt-3">
+                    Tarifs fixés par le coiffeur, réglés sur place le jour du rendez-vous.
+                  </p>
                 </div>
               )}
 
@@ -514,7 +554,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       }}
                       disabled={viewYear === today.getFullYear() && viewMonth === today.getMonth()}
                       aria-label="Mois précédent"
-                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 disabled:opacity-25 transition-colors"
+                      className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 disabled:opacity-25 transition-colors"
                     >
                       <ChevronLeft size={18} />
                     </button>
@@ -525,7 +565,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                         else setViewMonth((m) => m + 1);
                       }}
                       aria-label="Mois suivant"
-                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors"
+                      className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors"
                     >
                       <ChevronRight size={18} />
                     </button>
@@ -544,7 +584,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                   {loadingDates ? (
                     <div className="grid grid-cols-7 gap-1">
                       {Array.from({ length: 35 }).map((_, i) => (
-                        <Skeleton key={i} className="h-10 rounded-xl" />
+                        <Skeleton key={i} className="h-11 rounded-xl" />
                       ))}
                     </div>
                   ) : (
@@ -556,7 +596,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                           const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
                           const isAvailable = availableDates.includes(dateStr);
                           const isSelected = dateStr === selectedDate;
-                          const todayStr = today.toISOString().split('T')[0];
+                          const todayStr = toLocalYMD(today);
                           const isPast = dateStr < todayStr;
                           return (
                             <button
@@ -570,7 +610,9 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                                 }
                               }}
                               disabled={!isAvailable || isPast}
-                              className={`h-10 text-[14px] rounded-xl font-medium tabular-nums transition-colors ${
+                              aria-label={new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                              aria-pressed={isSelected}
+                              className={`h-11 text-[14px] rounded-xl font-medium tabular-nums transition-colors ${
                                 isSelected
                                   ? 'bg-neutral-900 text-white'
                                   : isAvailable && !isPast
@@ -751,15 +793,26 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       <p className="text-[12px] text-neutral-400 mt-0.5">{clientEmail}</p>
                       {clientPhone && <p className="text-[12px] text-neutral-400">{clientPhone}</p>}
                     </div>
-                    <div className="py-4 flex items-center justify-between">
-                      <span className="text-[14px] font-semibold text-neutral-900">Montant total</span>
+                    {/* "Montant total" + un prix en 22px juste au-dessus d'un bouton
+                        "Confirmer" reproduisait la grammaire visuelle d'un tunnel de
+                        paiement, alors qu'aucun débit n'a lieu ici : le prix est celui
+                        que le coiffeur encaissera sur place. Le libellé le dit. */}
+                    <div className="py-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[14px] font-semibold text-neutral-900">Prix de la prestation</p>
+                        <p className="text-[12px] text-neutral-400 mt-0.5">À régler sur place, au salon</p>
+                      </div>
                       <span className="text-[22px] font-bold text-neutral-900 tabular-nums">{priceOf(selectedService)} €</span>
                     </div>
                   </div>
 
-                  <p className="text-[12px] text-neutral-400 mt-3 mb-6">
-                    Paiement sur place, directement au salon. Aucune carte n&apos;est demandée maintenant.
-                  </p>
+                  <div className="mt-4 mb-6 border border-neutral-200 rounded-xl px-4 py-3">
+                    <p className="text-[13px] font-semibold text-neutral-900">Aucun paiement dans l&apos;application</p>
+                    <p className="text-[12px] text-neutral-500 mt-1 leading-relaxed">
+                      Tu régleras les {priceOf(selectedService)} € directement à ton coiffeur, le jour du
+                      rendez-vous. Aucune carte n&apos;est demandée maintenant, rien ne sera débité.
+                    </p>
+                  </div>
 
                   <PrimaryButton fullWidth onClick={handleSubmit} loading={submitting}>
                     {submitting ? 'Confirmation…' : 'Confirmer le rendez-vous'}

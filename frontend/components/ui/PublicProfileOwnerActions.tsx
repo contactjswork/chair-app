@@ -16,8 +16,12 @@ interface Props {
 export default function PublicProfileOwnerActions({ variant, className }: Props) {
   const size = variant === 'banner' ? 13 : 11;
   return (
+    // target="_blank" : voir ProfileActions.tsx — ouvrir CHAIR PRO dans l'app
+    // client exposerait la page d'abonnement CHAIR+ (Guideline 3.1.1(a)).
     <Link
       href="/pro/profil"
+      target="_blank"
+      rel="noopener noreferrer"
       title="Modifier depuis mon profil pro"
       aria-label="Modifier"
       className={

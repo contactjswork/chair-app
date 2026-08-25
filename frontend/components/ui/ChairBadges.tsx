@@ -168,7 +168,7 @@ const BADGE_STORY: Record<string, string> = {
   veteran_1y:     '{name} est sur CHAIR depuis 1 an.',
   veteran_3y:     '{name} est sur CHAIR depuis 3 ans.',
   veteran_7y:     '{name} est sur CHAIR depuis 7 ans — un pilier de la plateforme.',
-  verified:       '{name} est abonné CHAIR+.',
+  verified:       '{name} bénéficie du statut Certifié CHAIR.',
   new_talent:     '{name} vient de rejoindre CHAIR et a publié sa première réalisation.',
   top_10_local:   '{name} fait partie des 10 coiffeurs les mieux classés d’une spécialité, dans sa ville.',
   top_1_percent:  '{name} fait partie du 1% des coiffeurs les mieux classés sur toute la plateforme CHAIR.',

@@ -55,6 +55,43 @@ export function markGeoAsked(): void {
 }
 
 /**
+ * État de l'autorisation de localisation, SANS jamais la demander.
+ *
+ * Sert à ne pas afficher l'explication maison quand la réponse est déjà
+ * connue : autorisation accordée (inutile), ou refusée (la popup système ne
+ * se rouvrira pas — réinsister serait exactement ce que la guideline 5.1.1
+ * reproche ; l'app se rabat alors sur la saisie de ville).
+ *
+ * `unknown` = indéterminable (navigateur sans Permissions API, services de
+ * localisation coupés) : traité comme « jamais demandé ».
+ */
+export type GeoPermissionState = 'granted' | 'denied' | 'prompt' | 'unknown';
+
+export async function getGeoPermissionState(): Promise<GeoPermissionState> {
+  if (isNativeApp()) {
+    try {
+      const status = await Geolocation.checkPermissions();
+      if (status.location === 'granted') return 'granted';
+      if (status.location === 'denied') return 'denied';
+      return 'prompt';
+    } catch {
+      // checkPermissions() lève si les services de localisation de l'appareil
+      // sont désactivés — il n'y a rien à demander dans ce cas.
+      return 'unknown';
+    }
+  }
+  try {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return 'unknown';
+    const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    if (status.state === 'granted') return 'granted';
+    if (status.state === 'denied') return 'denied';
+    return 'prompt';
+  } catch {
+    return 'unknown';
+  }
+}
+
+/**
  * Demande la position GPS. Sur l'app native, passe par le plugin Capacitor
  * (bridge natif direct) plutôt que navigator.geolocation — sinon WKWebView
  * déclenche EN PLUS sa propre popup "ce site veut votre position" après la

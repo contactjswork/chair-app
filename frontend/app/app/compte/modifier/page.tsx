@@ -71,7 +71,7 @@ export default function ModifierProfilPage() {
   const [liveSpecialties, setLiveSpecialties] = useState<LiveSpecialty[]>([]);
 
   useEffect(() => {
-    if (!isLoading && !user) router.replace('/connexion');
+    if (!isLoading && !user) router.replace('/connexion?returnTo=%2Fapp%2Fcompte%2Fmodifier');
   }, [user, isLoading, router]);
 
   useEffect(() => {

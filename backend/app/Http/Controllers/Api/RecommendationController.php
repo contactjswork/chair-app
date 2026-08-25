@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
+use App\Models\UserBlock;
 use App\Services\BadgeService;
 use App\Services\RecommendationService;
 use Illuminate\Http\Request;
@@ -45,6 +46,18 @@ class RecommendationController extends Controller
         $context = RecommendationService::resolveContext($user, $params);
 
         $query = HairdresserProfile::with(['user', 'specialties', 'salon']);
+
+        // ── BLOCAGE UTILISATEUR (App Store Review Guideline 1.2) ────────────
+        // Même motif que HairdresserController::feed() : une seule requête
+        // pour les ids bloqués, filtre posé sur la requête de base AVANT le
+        // clone() ci-dessous — il vaut donc aussi bien pour la passe "avec
+        // spécialité" que pour le repli sans spécialité. Un compte bloqué ne
+        // doit pas revenir par la porte des recommandations. Visiteur non
+        // connecté : liste vide, aucune clause ajoutée.
+        $blockedUserIds = UserBlock::blockedIdsFor($user?->id);
+        if (!empty($blockedUserIds)) {
+            $query->whereNotIn('user_id', $blockedUserIds);
+        }
 
         if (!empty($context['min_rating'])) {
             $query->where('reviews_count', '>', 0)->where('avg_rating', '>=', $context['min_rating']);

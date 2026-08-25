@@ -5,6 +5,7 @@ import AppShell from '@/components/layout/AppShell';
 import PostCarousel from '@/components/ui/PostCarousel';
 import LikeButton from '@/components/ui/LikeButton';
 import ShareButton from '@/components/ui/ShareButton';
+import { ContentMenu } from '@/components/ui/ReportSheet';
 import type { ApiPost, ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAllImagesRaw, formatDate } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Tag, MapPin } from 'lucide-react';
@@ -129,6 +130,17 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
         <div className="px-4 py-3 flex items-center gap-5 border-t border-b border-neutral-100">
           <LikeButton postId={post.id} initialLikes={post.likes_count} initialLiked={post.liked_by_user} />
           <ShareButton hairdresserName={hairdresser.user.name} description={post.description ?? undefined} />
+          {/* Signalement / blocage (App Store Review Guideline 1.2 — UGC) —
+              posé dans la rangée d'actions, au même niveau que "j'aime" et
+              "partager", pour rester trouvable sans chercher. */}
+          <ContentMenu
+            type="post"
+            contentId={post.id}
+            authorUserId={hairdresser.user.id}
+            authorName={hairdresser.user.name}
+            className="ml-auto -mr-3"
+            label="Signaler ou bloquer"
+          />
         </div>
 
         {/* ── Spécialité + description ── */}

@@ -6,6 +6,7 @@ import { Camera, Lock, Trash2, Eye } from 'lucide-react';
 import { getStoredToken } from '@/lib/auth';
 import { stories as storiesApi } from '@/lib/api';
 import { hasChairPlus, resolveMediaUrl } from '@/lib/types';
+import { allowsDigitalSubscriptionUI, useAppContext } from '@/lib/appContext';
 import type { ApiHairdresserProfile, ApiStory } from '@/lib/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -84,6 +85,10 @@ function getVideoDuration(file: File): Promise<number> {
 // (Stripe pas encore branché).
 export default function StoryCreateCard({ profile }: { profile: ApiHairdresserProfile | null }) {
   const eligible = hasChairPlus(profile);
+  // Binaire CHAIR CLIENT (ou natif non identifié) : pas de mention d'essai
+  // gratuit d'un abonnement numérique (App Store 3.1.1(a)) — on n'évoque que
+  // le parrainage. Identique pour tous les utilisateurs du même binaire.
+  const { context: appContext } = useAppContext();
   const [mine, setMine] = useState<ApiStory[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -149,7 +154,11 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-neutral-900">Stories — réservé CHAIR+</p>
-          <p className="text-xs text-neutral-400 mt-0.5">Essai gratuit 30 jours, ou débloquez via le parrainage</p>
+          <p className="text-xs text-neutral-400 mt-0.5">
+            {allowsDigitalSubscriptionUI(appContext)
+              ? 'Essai gratuit 30 jours, ou débloquez via le parrainage'
+              : 'Débloquez les stories via le parrainage'}
+          </p>
         </div>
       </Link>
     );

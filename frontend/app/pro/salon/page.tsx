@@ -374,7 +374,11 @@ export default function DashboardSalonPage() {
   const [coverCropSrc, setCoverCropSrc] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
-  const isSalonOwner = user?.role === 'salon_owner';
+  // Capacité réelle, pas le rôle d'inscription : un coiffeur qui a activé son
+  // mode gérant (enableSalonOwnerMode) garde role='hairdresser' tout en
+  // possédant un salon — il doit pouvoir l'éditer. Même règle que
+  // useRequireAuth::hasAccess() pour 'salon_owner'.
+  const isSalonOwner = user?.role === 'salon_owner' || !!user?.can_manage_salon || !!user?.salon;
 
   useEffect(() => {
     if (!user) return;

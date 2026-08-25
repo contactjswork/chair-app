@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { appointments as apptApi } from '@/lib/api';
@@ -18,7 +19,7 @@ export default function AvisTokenPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (rating === 0) { setError('Veuillez sélectionner une note.'); return; }
+    if (rating === 0) { setError('Sélectionne une note.'); return; }
     setError('');
     setIsLoading(true);
     try {
@@ -38,11 +39,11 @@ export default function AvisTokenPage() {
           <CheckCircle2 size={48} className="text-neutral-900 mx-auto mb-5" strokeWidth={1.5} />
           <h1 className="text-xl font-bold text-neutral-900 mb-2">Avis publié</h1>
           <p className="text-sm text-neutral-500 leading-relaxed mb-8">
-            Merci pour votre avis certifié. Il est maintenant visible sur le profil du coiffeur.
+            Merci pour ton avis certifié. Il est maintenant visible sur le profil du coiffeur.
           </p>
-          <a href="/" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-semibold px-6 py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors">
+          <Link href="/app" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-semibold px-6 py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors">
             Retour à l'accueil
-          </a>
+          </Link>
         </div>
       </AppShell>
     );
@@ -53,9 +54,9 @@ export default function AvisTokenPage() {
       <div className="max-w-sm mx-auto px-4 py-12">
         <div className="text-center mb-8">
           <p className="text-[11px] font-semibold tracking-[0.25em] uppercase text-neutral-400 mb-2">Avis certifié</p>
-          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Votre expérience</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Ton expérience</h1>
           <p className="text-sm text-neutral-500 leading-relaxed">
-            Partagez votre avis suite à votre rendez-vous. Il sera publié comme avis vérifié.
+            Partage ton avis suite à ton rendez-vous. Il sera publié comme avis vérifié.
           </p>
         </div>
 
@@ -66,7 +67,7 @@ export default function AvisTokenPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Étoiles */}
           <div className="text-center">
-            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-4">Votre note</p>
+            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-4">Ta note</p>
             <div className="flex items-center justify-center gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
@@ -106,7 +107,7 @@ export default function AvisTokenPage() {
               onChange={(e) => setComment(e.target.value)}
               rows={4}
               maxLength={1000}
-              placeholder="Décrivez votre expérience, la qualité du travail, l'accueil..."
+              placeholder="Décris ton expérience, la qualité du travail, l'accueil..."
               className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all resize-none"
             />
           </div>
@@ -120,7 +121,7 @@ export default function AvisTokenPage() {
           </button>
 
           <p className="text-[11px] text-neutral-400 text-center">
-            Cet avis est lié à votre rendez-vous et sera marqué comme "Vérifié".
+            Cet avis est lié à ton rendez-vous et sera marqué comme "Vérifié".
           </p>
         </form>
       </div>

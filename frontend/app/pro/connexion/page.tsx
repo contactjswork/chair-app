@@ -96,6 +96,16 @@ export default function ProConnexionPage() {
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
                 className="w-full px-4 py-3 bg-neutral-800 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 transition-all" />
             </div>
+
+            {/* Même placement que la connexion client (/connexion) : sous le champ
+                mot de passe, aligné à droite. Son absence ici rendait toute
+                récupération de compte pro impossible. */}
+            <div className="text-right -mt-1">
+              <Link href="/mot-de-passe-oublie" className="inline-flex items-center min-h-[44px] text-[12px] text-neutral-500 hover:text-neutral-300 transition-colors">
+                Mot de passe oublié ?
+              </Link>
+            </div>
+
             <button type="submit" disabled={isLoading}
               className="w-full bg-white text-neutral-900 font-bold py-3.5 rounded-2xl hover:bg-neutral-100 active:scale-[0.98] transition-all text-sm mt-2 disabled:opacity-50">
               {isLoading ? 'Connexion...' : 'Se connecter'}

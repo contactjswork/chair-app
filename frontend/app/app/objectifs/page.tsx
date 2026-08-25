@@ -30,7 +30,7 @@ export default function ObjectifsPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) { router.replace('/connexion'); return; }
+    if (!user) { router.replace('/connexion?returnTo=%2Fapp%2Fobjectifs'); return; }
     if (user.role !== 'client') { router.replace('/app'); return; }
     setLoading(true);
     Promise.all([

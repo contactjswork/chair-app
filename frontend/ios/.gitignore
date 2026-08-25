@@ -1,7 +1,11 @@
 App/build
 App/Pods
 App/output
-App/App/public
+# Contenu de public/ généré par cap sync — SAUF error.html, page d'erreur
+# hors-ligne committée, référencée par server.errorPath des deux configs
+# Capacitor (elle doit exister dans le bundle de chaque clone/CI).
+App/App/public/*
+!App/App/public/error.html
 DerivedData
 xcuserdata
 

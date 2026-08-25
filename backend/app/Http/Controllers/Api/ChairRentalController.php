@@ -10,6 +10,7 @@ use App\Models\Salon;
 use App\Services\CloudinaryService;
 use App\Services\GeocodingService;
 use App\Services\NotificationService;
+use App\Support\PublicScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -210,7 +211,13 @@ class ChairRentalController extends Controller
     public function showRequest(Request $request, int $id)
     {
         $rentalReq = ChairRentalRequest::with(['chairRental.salon', 'hairdresser.user', 'messages'])->findOrFail($id);
-        $this->authorizeRequestAccess($request, $rentalReq);
+        $senderType = $this->authorizeRequestAccess($request, $rentalReq);
+
+        // Le coiffeur consulte le fil d'un salon qui n'est pas le sien : il n'a
+        // pas à recevoir le SIRET du salon ni son statut de vérification.
+        if ($senderType === 'hairdresser') {
+            PublicScope::salon($rentalReq->chairRental->salon);
+        }
 
         return response()->json($rentalReq);
     }
@@ -373,6 +380,10 @@ class ChairRentalController extends Controller
             $rentals = $rentals->sortBy([fn ($a, $b) => ($a->distance_km ?? INF) <=> ($b->distance_km ?? INF)])->values();
         }
 
+        // Liste PUBLIQUE : le salon ne doit pas partir avec son SIRET, son
+        // statut de vérification ni son motif de suspension (voir PublicScope).
+        $rentals->each(fn ($r) => PublicScope::salon($r->salon));
+
         return response()->json($rentals);
     }
 
@@ -397,6 +408,11 @@ class ChairRentalController extends Controller
         }
 
         $rental->setAttribute('estimated_monthly_revenue', $rental->estimatedMonthlyRevenue());
+
+        // Fiche PUBLIQUE : masque le SIRET du salon et, pour chaque membre de
+        // l'équipe affichée, l'email/téléphone/code de parrainage (voir
+        // PublicScope — la fiche exposait tout le compte de chaque coiffeur).
+        PublicScope::salon($rental->salon);
 
         return response()->json($rental);
     }

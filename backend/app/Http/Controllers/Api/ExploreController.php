@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
 use App\Models\Salon;
 use App\Models\Service;
+use App\Models\UserBlock;
 use App\Services\BadgeService;
 use App\Services\Geo;
 use App\Services\RecommendationService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 /**
  * GET /api/explore — moteur de découverte unifié de la page Recherche client.
@@ -33,6 +35,18 @@ use Illuminate\Http\Request;
  */
 class ExploreController extends Controller
 {
+    /**
+     * Ids des utilisateurs bloqués par l'appelant — App Store Review
+     * Guideline 1.2. Résolu UNE seule fois par requête HTTP dans index() et
+     * relu par hairdresserResults()/salonResults(), qui sont rappelés
+     * jusqu'à 8 fois par la cascade de repli (fallbackSearch) : recalculer
+     * la liste à chaque passe ferait 8 requêtes pour rien. Vide pour un
+     * visiteur non connecté → aucune clause SQL ajoutée nulle part.
+     *
+     * @var array<int>
+     */
+    private array $blockedUserIds = [];
+
     public function index(Request $request)
     {
         $q         = trim((string) $request->get('q', ''));
@@ -55,6 +69,12 @@ class ExploreController extends Controller
                 'ne_lat' => (float) $request->ne_lat, 'ne_lng' => (float) $request->ne_lng,
             ];
         }
+
+        // ── BLOCAGE UTILISATEUR (App Store Review Guideline 1.2) ────────────
+        // Même motif que HairdresserController::feed(). La route /explore est
+        // publique : l'auth est résolue à la main via le guard sanctum, comme
+        // dans RecommendationController::index().
+        $this->blockedUserIds = UserBlock::blockedIdsFor(Auth::guard('sanctum')->user()?->id);
 
         // Recherche avec repli honnête en cascade : rayon exact demandé d'abord,
         // puis élargissement progressif (mêmes paliers que la home, voir
@@ -283,6 +303,12 @@ class ExploreController extends Controller
     {
         $query = HairdresserProfile::with(['user', 'specialties', 'services', 'salon']);
 
+        // Blocage : la fiche d'un compte bloqué ne remonte plus dans la
+        // recherche du bloqueur (voir $blockedUserIds, résolu dans index()).
+        if (!empty($this->blockedUserIds)) {
+            $query->whereNotIn('user_id', $this->blockedUserIds);
+        }
+
         if (!empty($specialty)) {
             $query->whereHas('specialties', fn ($s) => $s->whereIn('slug', $specialty));
         }
@@ -389,7 +415,13 @@ class ExploreController extends Controller
         $priceFrom  = $this->priceFromMap($allTeamIds);
         $tokens     = $this->tokenize($q);
 
-        $results = $salons->map(function ($salon) use ($priceFrom, $tokens, $q) {
+        // Le salon reste un établissement, pas un compte : bloquer une
+        // personne ne fait pas disparaître son salon de la recherche. En
+        // revanche les puces "matched_pros" affichent nom et photo de
+        // PERSONNES — un compte bloqué n'a rien à y faire.
+        $blockedUserIds = array_map('intval', $this->blockedUserIds);
+
+        $results = $salons->map(function ($salon) use ($priceFrom, $tokens, $q, $blockedUserIds) {
             $team = $salon->hairdressers;
 
             // Note agrégée de l'équipe, pondérée par le nombre d'avis
@@ -412,7 +444,9 @@ class ExploreController extends Controller
 
             $matchedPros = [];
             if ($q !== '') {
-                $matchedPros = $team->filter(fn ($h) => stripos($h->user->name ?? '', $q) !== false)
+                $matchedPros = $team
+                    ->filter(fn ($h) => stripos($h->user->name ?? '', $q) !== false)
+                    ->reject(fn ($h) => in_array((int) $h->user_id, $blockedUserIds, true))
                     ->map(fn ($h) => [
                         'name'   => $h->user->name ?? '',
                         'slug'   => $h->slug,

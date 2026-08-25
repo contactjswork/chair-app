@@ -21,6 +21,29 @@ function handleUnauthenticated(): void {
   window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
 }
 
+/** Réseau injoignable (serveur éteint, mode avion) : fetch lève un TypeError
+ *  anglais ("Failed to fetch") — jamais montrable tel quel à l'utilisateur. */
+const NETWORK_ERROR_MESSAGE = 'Connexion impossible. Vérifie ta connexion internet et réessaie.';
+
+/**
+ * Traduit en français humain les messages techniques que Laravel renvoie en
+ * anglais ("Unauthenticated.", "Too Many Attempts.", "Server Error") — les
+ * messages métier du backend sont déjà en français et passent tels quels.
+ */
+function humanizeErrorMessage(status: number, serverMsg?: string | null): string {
+  const msg = (serverMsg ?? '').trim();
+  const looksEnglishTechnical =
+    !msg ||
+    /unauthenticated|unauthorized|forbidden|too many attempts|server error|not found|no query results|sqlstate|exception|stack trace|call to|undefined/i.test(msg);
+  if (!looksEnglishTechnical) return msg;
+  if (status === 401) return 'Ta session a expiré. Reconnecte-toi pour continuer.';
+  if (status === 403) return 'Tu n’as pas accès à cette action.';
+  if (status === 404) return 'Ce contenu n’existe plus ou a été retiré.';
+  if (status === 429) return 'Trop de tentatives. Patiente quelques instants puis réessaie.';
+  if (status >= 500)  return 'Une erreur est survenue de notre côté. Réessaie dans un instant.';
+  return 'Une erreur est survenue. Réessaie dans un instant.';
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
@@ -37,21 +60,26 @@ async function request<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
 
   if (!res.ok) {
     if (res.status === 401 && token) handleUnauthenticated();
-    const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
+    const error = await res.json().catch(() => ({ message: null }));
     // Expose first field error for 422 validation failures
     if (res.status === 422 && error.errors) {
       const firstField = Object.keys(error.errors)[0];
       const firstMsg   = error.errors[firstField]?.[0];
       throw new Error(firstMsg ?? error.message ?? 'Données invalides');
     }
-    throw new Error(error.message || `Erreur ${res.status}`);
+    throw new Error(humanizeErrorMessage(res.status, error.message));
   }
 
   // 204 No Content (et tout body vide) n'a rien à parser — res.json() lève
@@ -68,21 +96,35 @@ export const api = {
     request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   put: <T>(path: string, body: unknown) =>
     request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  // Body optionnel : Laravel lit sans problème un JSON sur un DELETE
+  // (utilisé par push.unregister pour cibler le token de CET appareil,
+  // pas toutes les souscriptions de l'utilisateur).
+  delete: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: 'DELETE', ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }),
 };
 
 /** Upload multipart — jamais de Content-Type manuel (casserait la frontière générée par le navigateur). */
 async function requestMultipart<T>(path: string, formData: FormData): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+  } catch {
+    throw new Error(NETWORK_ERROR_MESSAGE);
+  }
   if (!res.ok) {
     if (res.status === 401 && token) handleUnauthenticated();
-    const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
-    throw new Error(error.message || `Erreur ${res.status}`);
+    const error = await res.json().catch(() => ({ message: null }));
+    if (res.status === 422 && error.errors) {
+      const firstField = Object.keys(error.errors)[0];
+      const firstMsg   = error.errors[firstField]?.[0];
+      throw new Error(firstMsg ?? error.message ?? 'Données invalides');
+    }
+    throw new Error(humanizeErrorMessage(res.status, error.message));
   }
   return res.json();
 }
@@ -410,6 +452,17 @@ export const appointments = {
 
   myList: () =>
     api.get('/my-appointments'),
+
+  /**
+   * Client : annule SON rendez-vous à venir.
+   * `updateStatus` juste au-dessus est la route COIFFEUR (elle exige un profil
+   * coiffeur côté serveur) — un client n'a jamais eu de sortie avant celle-ci.
+   * Aucune règle n'est décidée ici : le serveur revérifie la propriété du
+   * rendez-vous (client_id de la ligne, pas un paramètre) et son statut, et
+   * renvoie le rendez-vous à jour pour rafraîchir la liste sans rechargement.
+   */
+  cancelMine: (id: number) =>
+    api.put<import('./types').ApiAppointment>(`/appointments/${id}/cancel`, {}),
 };
 
 // ── Visites vérifiées (QR) ────────────────────────────────────────────
@@ -473,6 +526,25 @@ export const notifications = {
 
   updatePreferences: (prefs: Partial<ApiNotificationPreferences>) =>
     api.put<{ preferences: ApiNotificationPreferences }>('/notification-preferences', prefs),
+};
+
+// ── Push (appareils natifs uniquement — voir lib/push.ts) ─────────────
+
+export const push = {
+  /**
+   * Enregistre le token APNs de CET appareil (table push_subscriptions,
+   * upsert par token — voir PushTokenController::register). `app` identifie
+   * le binaire : un token APNs n'est valable QUE pour le bundle qui l'a
+   * obtenu, le backend en déduit le topic d'envoi. Seul 'ios' est accepté
+   * aujourd'hui (l'envoi backend est APNs uniquement) — Android rejoindra le
+   * contrat avec FCM.
+   */
+  register: (data: { token: string; platform: 'ios'; app?: 'client' | 'pro' }) =>
+    api.post<{ message: string }>('/push/register', data),
+
+  /** Retire le token de CET appareil (au logout) — les autres appareils restent abonnés. Idempotent. */
+  unregister: (token: string) =>
+    api.delete<{ message: string }>('/push/register', { token }),
 };
 
 // ── Services ─────────────────────────────────────────────────────────
@@ -712,4 +784,51 @@ export const chairRentals = {
   sendRequest: (id: number, message?: string) => api.post<ApiChairRentalRequest>(`/chair-rentals/${id}/request`, { message }),
   myRequestsSent: () => api.get<ApiChairRentalRequest[]>('/my-chair-requests'),
   cancelRequest: (id: number) => api.post<{ ok: boolean }>(`/my-chair-requests/${id}/cancel`, {}),
+};
+
+// ── Modération communautaire (App Store Review Guideline 1.2 — UGC) ──
+// Signalement de contenu + blocage d'utilisateur. Le blocage a un effet réel
+// côté serveur : le contenu du compte bloqué disparaît du feed du bloqueur
+// (filtrage dans HairdresserController::feed).
+
+/** Motifs de signalement — slugs acceptés par POST /reports. */
+export type ReportReason =
+  | 'inappropriate'
+  | 'harassment'
+  | 'spam'
+  | 'misleading'
+  | 'intellectual_property'
+  | 'other';
+
+/**
+ * Type de contenu signalé.
+ * - 'post'    → content_id = id de la réalisation
+ * - 'review'  → content_id = id de l'avis
+ * - 'profile' → content_id = id du PROFIL coiffeur (hairdresser.id)
+ */
+export type ReportTargetType = 'post' | 'review' | 'profile';
+
+export interface BlockedAccount {
+  user_id: number;
+  name: string;
+  avatar: string | null;
+  slug: string | null;
+  blocked_at: string;
+}
+
+export const moderation = {
+  report: (payload: {
+    type: ReportTargetType;
+    content_id: number;
+    reason: ReportReason;
+    details?: string;
+  }) => api.post<{ message: string; report_id: number }>('/reports', payload),
+
+  block: (userId: number) =>
+    api.post<{ blocked: boolean; message: string }>(`/users/${userId}/block`, {}),
+
+  unblock: (userId: number) =>
+    api.delete<{ blocked: boolean; message: string }>(`/users/${userId}/block`),
+
+  blockedList: () => api.get<BlockedAccount[]>('/my-blocks'),
 };

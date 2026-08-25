@@ -11,9 +11,11 @@ import {
   getStoredUser,
   redirectPathForRole,
   safeInternalPath,
+  canRoleVisit,
 } from '@/lib/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
+import { unregister as unregisterPush, getStoredPushToken } from '@/lib/push';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -61,25 +63,22 @@ interface AuthRedirectOptions {
   /**
    * Chemin interne où revenir après l'auth (ex: fiche coiffeur d'où une
    * réservation a été interrompue). Prioritaire sur redirectPathForRole,
-   * mais uniquement pour un compte client : un coiffeur / gérant qui se
-   * connecte part vers son espace pro comme avant (un returnTo vers un
-   * parcours de réservation client n'y a pas de sens). Passé au travers de
-   * safeInternalPath — une URL absolue ou protocol-relative est ignorée.
+   * à condition que le rôle ait le droit d'aller à cette adresse (voir
+   * canRoleVisit) : un client renvoyé vers une route /pro atterrissait sur
+   * un refus de garde de rôle juste après s'être connecté. Passé au travers
+   * de safeInternalPath — une URL absolue ou protocol-relative est ignorée.
    */
   returnTo?: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// ── Bypass login temporaire (fin de dev / démo pré-lancement) ────────────
-// Activé via NEXT_PUBLIC_AUTH_BYPASS=true. Remettre à false (ou retirer la
-// variable) avant soumission App Store / Play Store pour restaurer le login
-// normal — rien n'est supprimé, juste désactivé.
-const AUTH_BYPASS = process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true';
-const BYPASS_ACCOUNTS = {
-  pro:    { email: 'test_new_coiffeur@test.com', password: 'chairdemo2026' },
-  client: { email: 'client@gmail.com',           password: 'chairdemo2026' },
-};
+// Le bypass de login de fin de développement (NEXT_PUBLIC_AUTH_BYPASS) a été
+// retiré avant soumission App Store : il embarquait deux couples
+// e-mail/mot de passe de comptes réels en clair dans le bundle JavaScript
+// public, lisible par n'importe qui. Pour tester un compte sans passer par le
+// formulaire, minter un jeton côté serveur (php artisan tinker) plutôt que de
+// réintroduire des identifiants dans le code.
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -89,8 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     captureReferralCode();
-
-    if (AUTH_BYPASS) return; // géré par l'effet dédié ci-dessous
 
     const token = getStoredToken();
     const storedUser = getStoredUser();
@@ -137,52 +134,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
   }, [pathname, router]);
 
-  // ── Bypass login : reconnecte avec le bon compte démo selon la section
-  // visitée (pro vs client), y compris quand on bascule de l'une à l'autre
-  // sans rechargement complet de page.
-  useEffect(() => {
-    if (!AUTH_BYPASS) return;
-
-    const token = getStoredToken();
-    const storedUser = getStoredUser();
-    const isPro = pathname.startsWith('/pro');
-    const expectedRole = isPro ? 'hairdresser' : 'client';
-
-    if (token && storedUser && storedUser.role === expectedRole) {
-      setUser(storedUser);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    const creds = isPro ? BYPASS_ACCOUNTS.pro : BYPASS_ACCOUNTS.client;
-    api.post<AuthResponse>('/login', creds)
-      .then((data) => {
-        saveSession(data.token, data.user);
-        setUser(data.user);
-      })
-      .catch(() => {
-        // Backend injoignable — on garde la session existante si elle existe, sinon rien
-        if (token && storedUser) setUser(storedUser);
-      })
-      .finally(() => setIsLoading(false));
-  }, [pathname]);
-
   /**
    * Cible post-auth, par priorité :
-   * 1. returnTo explicite (query ?returnTo= des pages connexion/inscription),
-   *    réservé aux comptes client — voir AuthRedirectOptions ;
+   * 1. returnTo explicite (query ?returnTo= des pages connexion/inscription) ;
    * 2. chair_redirect en sessionStorage (session expirée, scan QR,
    *    invitation — mécanisme historique conservé) ;
    * 3. l'accueil du rôle (redirectPathForRole).
-   * Les deux premiers passent par safeInternalPath (anti open-redirect).
+   * Les deux premiers passent par safeInternalPath (anti open-redirect) puis
+   * par canRoleVisit (anti cul-de-sac sur garde de rôle).
    */
   function resolvePostAuthPath(freshUser: AuthUser, isNewUser: boolean, options?: AuthRedirectOptions): string {
     const returnTo = safeInternalPath(options?.returnTo);
-    if (returnTo && freshUser.role === 'client') return returnTo;
+    if (returnTo && canRoleVisit(freshUser.role, returnTo)) return returnTo;
     const pending = safeInternalPath(sessionStorage.getItem('chair_redirect'));
     sessionStorage.removeItem('chair_redirect');
-    if (pending) return pending;
+    if (pending && canRoleVisit(freshUser.role, pending)) return pending;
     return redirectPathForRole(freshUser.role, isNewUser);
   }
 
@@ -244,8 +210,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout(): Promise<void> {
+    // Désenregistre le token push de CET appareil AVANT /logout : l'appel
+    // DELETE est authentifié, après la révocation du jeton API il prendrait
+    // un 401. Best-effort et no-op hors natif — ne bloque jamais le logout.
+    // Le token est lu AVANT unregisterPush() (qui purge le localStorage) pour
+    // servir de filet de sécurité : /logout le détache aussi côté backend si
+    // le DELETE a échoué (les deux chemins sont idempotents).
+    const pushToken = getStoredPushToken();
     try {
-      await api.post('/logout', {});
+      await unregisterPush();
+    } catch {
+      // L'appareil recevra d'éventuelles push jusqu'à expiration du token
+      // APNs — acceptable, /logout ci-dessous retente le détachement.
+    }
+    try {
+      await api.post('/logout', pushToken ? { push_token: pushToken } : {});
     } catch {
       // Token may already be invalid — proceed with local cleanup
     }

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { isAppPublished, APP_STORE_URL, PLAY_STORE_URL } from '@/lib/appDownload';
+import { isNativeApp } from '@/hooks/useGeolocation';
 
 function AppleBadge() {
   return (
@@ -42,8 +43,20 @@ interface AppDownloadProps {
 
 export default function AppDownload({ variant = 'badges', className = '', qrSize = 108 }: AppDownloadProps) {
   const [notified, setNotified] = useState(false);
+  const [inApp, setInApp] = useState(false);
   const published = isAppPublished();
   const qrValue = typeof window !== 'undefined' ? `${window.location.origin}/download` : 'https://getchair.app/download';
+
+  // On ne propose pas de télécharger l'app à quelqu'un qui est déjà dedans —
+  // et surtout, on ne lui annonce pas "Bientôt sur l'App Store" alors qu'il
+  // l'utilise (App Store Review Guideline 2.1 : une app ne peut pas se
+  // présenter comme non terminée). Détection après montage : `isNativeApp()`
+  // lit `window.Capacitor`, indisponible au rendu serveur.
+  useEffect(() => {
+    if (isNativeApp()) setInApp(true);
+  }, []);
+
+  if (inApp) return null;
 
   if (!published) {
     // App pas encore publiée sur les stores — pas de lien mort, état honnête.

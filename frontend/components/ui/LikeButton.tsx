@@ -19,7 +19,10 @@ export default function LikeButton({ postId, initialLikes, initialLiked = false,
 
   async function toggle() {
     if (!getStoredToken()) {
-      window.location.href = '/connexion';
+      // Reprise de parcours : après connexion, on revient sur la page où le
+      // like a été tenté (fiche réalisation, feed) au lieu de l'accueil.
+      const here = window.location.pathname + window.location.search;
+      window.location.href = `/connexion?returnTo=${encodeURIComponent(here)}`;
       return;
     }
     if (pending) return;

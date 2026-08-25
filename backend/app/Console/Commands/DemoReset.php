@@ -93,16 +93,84 @@ class DemoReset extends Command
         'On adore ce rendu lumineux.',
     ];
 
-    private const REVIEW_COMMENTS = [
-        'Très satisfaite du résultat, je recommande vivement !',
-        'Accueil parfait et coupe impeccable.',
-        'Enfin quelqu\'un qui comprend ce que je veux. Merci !',
-        'Super moment, résultat au top.',
-        'Travail soigné, à l\'écoute. J\'y retourne.',
-        'Le meilleur salon où je sois allé.',
-        'Très pro, très sympa. Rien à redire.',
-        'Résultat conforme à mes attentes, merci encore.',
-        'Petit bémol sur l\'attente mais le résultat est là.',
+    /**
+     * Avis positifs (notes 4-5). Longueurs très variées (du « Très bien. »
+     * au récit détaillé), ton naturel, pas de superlatif uniforme. Tous les
+     * textes DOIVENT passer ContentFilter::check() (ni coordonnées, ni
+     * termes bloqués) — vérifié via tinker le 25/08/2026.
+     */
+    private const REVIEW_COMMENTS_POSITIVE = [
+        'Très bien.',
+        'Parfait, comme toujours.',
+        'Nickel. Je reviendrai.',
+        'Rien à redire.',
+        'Super coupe, merci !',
+        'Au top.',
+        'Très contente du résultat.',
+        'Efficace et sympathique.',
+        'Coupe impeccable, salon propre, accueil agréable.',
+        'Je suis fidèle depuis plusieurs mois, jamais déçue.',
+        'Bonne écoute, le résultat correspond exactement à ce que je voulais.',
+        'Premier rendez-vous et certainement pas le dernier.',
+        'Enfin un coiffeur qui écoute avant de couper. Merci !',
+        'Prise de rendez-vous facile, aucune attente, résultat très propre.',
+        'Mon balayage est magnifique, exactement la couleur demandée.',
+        'Très pro et de bon conseil sur l\'entretien des boucles.',
+        'On m\'a proposé une coupe qui change de d\'habitude, j\'adore.',
+        'Barbe et cheveux impeccables, le rasage à l\'ancienne vaut le détour.',
+        'Ma fille de six ans a été super bien accueillie, coupe rapide et réussie.',
+        'Toujours ponctuel, toujours soigné. C\'est devenu mon adresse.',
+        'Le dégradé est net, fidèle à la photo que j\'avais montrée.',
+        'Accueil chaleureux, café offert, et surtout une vraie maîtrise technique.',
+        'Des années que je cherchais quelqu\'un qui comprenne mes cheveux épais. C\'est trouvé.',
+        'Très satisfaite de ma coloration, les reflets sont subtils et naturels.',
+        'Bon rapport qualité-prix pour le quartier.',
+        'Salon agréable, équipe souriante, je recommande.',
+        'Coiffeuse adorable et très minutieuse.',
+        'Résultat naturel, exactement ce que je demandais.',
+        'Il a rattrapé une couleur ratée faite ailleurs. Chapeau.',
+        'Rendez-vous pris le matin pour l\'après-midi, service rapide et efficace.',
+        'Le chignon pour le mariage de ma sœur a tenu toute la soirée. Merci encore !',
+        'Explications claires sur les soins, sans pousser à la consommation.',
+        'Je stresse toujours chez le coiffeur, mais là je me suis sentie en confiance.',
+        'Coupe homme classique bien exécutée, tarif correct.',
+        'Très bon moment, massage du cuir chevelu compris. Je recommande.',
+        'Mes boucles n\'ont jamais été aussi bien définies.',
+        'Franchement bluffée par le lissage, mes cheveux restent souples.',
+        'Un vrai travail de précision sur ma frange, ça change tout.',
+        'Ambiance détendue, musique sympa, et une coupe qui tient la semaine.',
+        'Deuxième visite, toujours aussi sérieux.',
+        'Personnel à l\'écoute, résultat conforme aux photos du profil.',
+        'Mon mari est ravi de sa coupe, il a déjà repris rendez-vous.',
+        'Patine parfaite, mes cheveux ne sont plus jaunes du tout.',
+        'Elle a pris le temps de comprendre ma routine avant de proposer une coupe. Rare.',
+        'Très bonne expérience pour mes locks, entretien soigné.',
+        'Simple, rapide, efficace. Ce que je demande.',
+        'Les extensions sont posées proprement, on ne voit aucune démarcation.',
+        'Je viens d\'emménager dans le quartier, je pense avoir trouvé mon salon.',
+        'Conseils honnêtes : on m\'a déconseillé une couleur qui aurait abîmé mes cheveux.',
+    ];
+
+    /**
+     * Avis nuancés (note 3) : des réserves crédibles, jamais d'insulte.
+     * Piochés uniquement quand la note tirée est ≤ 3, pour que le texte
+     * reste cohérent avec la note affichée.
+     */
+    private const REVIEW_COMMENTS_NUANCED = [
+        'Correct sans plus.',
+        'La coupe est bien mais beaucoup de retard sur l\'horaire.',
+        'Bon coiffeur, mais le salon était bruyant et l\'attente un peu longue.',
+        'Résultat correct, un peu plus court que demandé.',
+        'Prestation sérieuse mais je trouve les prix un peu élevés.',
+        'Mitigée : la couleur est belle, la coupe moins convaincante.',
+        'Bien, sans être exceptionnel. Je retesterai peut-être.',
+        'Le brushing n\'a pas tenu longtemps, dommage car l\'accueil était très bon.',
+        'Coupe réussie mais j\'aurais aimé plus de conseils pour l\'entretien.',
+        'Pas mal, même si je m\'attendais à mieux vu les avis.',
+        'Service rapide, peut-être un peu trop : la finition manque de précision.',
+        'Correct pour un dépannage, mais je garde mon coiffeur habituel.',
+        'L\'ensemble est bien, juste un souci de communication sur la longueur.',
+        'Déçue par l\'attente, contente du résultat. Ça s\'équilibre.',
     ];
 
     private const SERVICES_BY_SPECIALTY = [
@@ -443,16 +511,32 @@ class DemoReset extends Command
                 }
                 DB::table('posts')->where('id', $pid)->update(['likes_count' => $likers->count()]);
             }
-            // Avis réels
+            // Avis réels — chaque coiffeur reçoit un « tempérament » de
+            // notation : les moyennes deviennent hétérogènes (≈3.7 à ≈4.9)
+            // au lieu d'une distribution identique partout. Une place de
+            // marché où tout le monde frôle 5.0 n'est pas crédible.
+            $ratingPools = [
+                [3, 3, 4, 4, 4, 4, 5],    // correct — des points à améliorer
+                [3, 4, 4, 4, 5, 5, 4],    // bon — quelques réserves
+                [4, 4, 5, 5, 5, 4, 5],    // très bon
+                [4, 5, 5, 5, 5, 5, 5],    // excellent (rare)
+            ];
+            $temperament = [0, 1, 1, 2, 2, 2, 2, 3][mt_rand(0, 7)];
+            $pool = $ratingPools[$temperament];
+
             $nReviews = mt_rand(0, 8);
             $reviewers = collect($clientIds)->shuffle()->take($nReviews);
             foreach ($reviewers as $cid) {
                 $s = $specs[array_rand($specs->all())];
+                $rating = $pool[array_rand($pool)];
+                $comment = $rating <= 3
+                    ? self::REVIEW_COMMENTS_NUANCED[array_rand(self::REVIEW_COMMENTS_NUANCED)]
+                    : self::REVIEW_COMMENTS_POSITIVE[array_rand(self::REVIEW_COMMENTS_POSITIVE)];
                 DB::table('reviews')->insert([
                     'hairdresser_id' => $profileId, 'client_id' => $cid,
-                    'rating' => mt_rand(0, 6) === 0 ? mt_rand(3, 4) : mt_rand(4, 5),
+                    'rating' => $rating,
                     'status' => 'approved',
-                    'comment' => self::REVIEW_COMMENTS[array_rand(self::REVIEW_COMMENTS)],
+                    'comment' => $comment,
                     'is_certified' => mt_rand(0, 1) === 1,
                     'specialty_id' => $s->id,
                     'created_at' => $now->copy()->subDays(mt_rand(1, 250)), 'updated_at' => $now,

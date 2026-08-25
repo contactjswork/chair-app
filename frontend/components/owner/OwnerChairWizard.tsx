@@ -196,9 +196,10 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
           {published.title} est désormais visible par les coiffeurs indépendants à la recherche d’un espace.
         </p>
         <div className="w-full max-w-xs space-y-2">
+          {/* Navigation interne : target="_blank" éjecterait vers Safari dans
+              l'app Capacitor, où le gérant n'est pas connecté. */}
           <Link
             href={`/fauteuil/${published.slug}`}
-            target="_blank"
             className="block w-full py-3 bg-white text-neutral-900 font-semibold rounded-2xl hover:bg-neutral-100 transition-colors text-sm text-center"
           >
             Voir mon annonce

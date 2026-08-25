@@ -55,7 +55,7 @@ export default function ClientOnboardingPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) { router.replace('/connexion'); return; }
+    if (!user) { router.replace('/connexion?returnTo=%2Fapp%2Fonboarding'); return; }
     if (user.role === 'hairdresser' || user.role === 'salon_owner') router.replace('/pro');
   }, [user, isLoading, router]);
 

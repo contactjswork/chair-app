@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Privacy manifest de CHAIR (client) — app.getchair.client
+
+  Requis par Apple : son absence déclenche un refus automatisé à l'upload
+  (ITMS-91053, "Missing API declaration"). Le contenu ci-dessous décrit
+  l'app telle qu'elle est réellement :
+
+  - NSPrivacyTracking = false : CHAIR ne suit pas l'utilisateur entre des
+    apps ou sites tiers. Aucun SDK publicitaire, analytics, attribution ou
+    fingerprinting n'est embarqué (audit du 24/08/2026 : le seul plugin
+    natif est @capacitor/geolocation). Par conséquent l'app ne doit PAS
+    demander l'autorisation App Tracking Transparency.
+  - NSPrivacyTrackingDomains vide : aucun domaine de tracking contacté.
+  - NSPrivacyCollectedDataTypes vide : la collecte de données décrite dans
+    App Store Connect est le fait du service web (compte, réservations,
+    avis), pas de code embarqué dans le binaire. Ce tableau ne décrit que
+    ce que le binaire collecte lui-même.
+  - Required Reason API : UserDefaults est utilisé par Capacitor core.
+    Raison CA92.1 — accès limité aux données de l'app elle-même.
+
+  IMPORTANT — ce fichier doit être membre de la cible "App" dans Xcode
+  (Build Phases > Copy Bundle Resources), sinon il n'est pas embarqué dans
+  l'IPA et le refus ITMS-91053 tombe quand même. Sur le Mac : glisser le
+  fichier dans le navigateur de projet Xcode, cocher la cible "App".
+  Vérifier ensuite sa présence dans l'archive avant upload.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

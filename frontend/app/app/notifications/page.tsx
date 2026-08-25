@@ -156,10 +156,10 @@ export default function NotificationsPage() {
             subtitle="Connecte-toi pour voir tes notifications : réservations, avis et nouveaux abonnés."
             action={
               <div className="flex flex-col items-center gap-3">
-                <PrimaryButton href="/connexion" icon={<LogIn size={15} />}>
+                <PrimaryButton href="/connexion?returnTo=%2Fapp%2Fnotifications" icon={<LogIn size={15} />}>
                   Se connecter
                 </PrimaryButton>
-                <GhostButton href="/inscription" size="sm">
+                <GhostButton href="/inscription?returnTo=%2Fapp%2Fnotifications" size="sm">
                   Créer un compte
                 </GhostButton>
               </div>

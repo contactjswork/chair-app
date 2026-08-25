@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<!--
+  Page d'erreur hors-ligne des binaires natifs CHAIR / CHAIR PRO.
+
+  Affichée par Capacitor (server.errorPath) quand le chargement de
+  https://www.getchair.app/app (ou /pro) échoue au niveau réseau : pas de
+  connexion, DNS, timeout, TLS. Elle est servie DEPUIS LE BUNDLE de l'app
+  (capacitor://localhost/error.html) : elle doit rester 100 % autonome —
+  aucune ressource distante, aucune dépendance.
+
+  Les DEUX binaires partagent ce fichier. Le binaire est identifié par le
+  marqueur User-Agent (CHAIRClient / CHAIRPro, voir lib/appContext.ts) :
+  PRO passe la page en thème sombre + vouvoiement ; par défaut (client ou
+  binaire ancien sans marqueur) : thème clair + tutoiement.
+
+  « Réessayer » ne fait PAS window.location.reload() : après l'échec, la
+  WebView est sur capacitor://localhost/error.html — un reload rechargerait
+  la page d'erreur elle-même, pas le site. On renavigue explicitement vers
+  l'URL distante ; si le réseau est toujours coupé, Capacitor ré-affiche
+  cette page (didFailProvisionalNavigation → errorPath), la boucle est saine.
+
+  Ce fichier est committé (exception dans ios/.gitignore) : `npx cap sync`
+  ne le copie pas depuis webDir (out/ n'existe pas — architecture server.url
+  sans bundle web) et le laisse en place tant que out/ n'existe pas.
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CHAIR</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #0a0a0a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+  }
+  .theme-pro {
+    --bg: #0a0a0a;
+    --fg: #ffffff;
+    --muted: #9ca3af;
+    --border: #262626;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px)
+             calc(env(safe-area-inset-right, 0px) + 24px)
+             calc(env(safe-area-inset-bottom, 0px) + 24px)
+             calc(env(safe-area-inset-left, 0px) + 24px);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  main { max-width: 320px; width: 100%; }
+  .logo {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.35em;
+    margin-right: -0.35em; /* compense la lettre finale pour un vrai centrage */
+    margin-bottom: 40px;
+  }
+  h1 {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  p {
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+  button {
+    display: block;
+    width: 100%;
+    min-height: 52px; /* cible tactile >= 44px */
+    border: none;
+    border-radius: 9999px;
+    background: var(--fg);
+    color: var(--bg);
+    font-size: 16px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:active { opacity: 0.85; }
+  button:disabled { opacity: 0.5; }
+</style>
+<script>
+  // Avant le premier rendu : identifier le binaire via le marqueur UA.
+  (function () {
+    var isPro = /CHAIRPro/.test(navigator.userAgent);
+    if (isPro) { document.documentElement.className = 'theme-pro'; }
+    window.__CHAIR_TARGET__ = isPro
+      ? 'https://www.getchair.app/pro'
+      : 'https://www.getchair.app/app';
+    window.__CHAIR_IS_PRO__ = isPro;
+  })();
+</script>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">CHAIR</div>
+    <h1 id="msg-title">Impossible de charger CHAIR.</h1>
+    <p id="msg-body">V&eacute;rifie ta connexion et r&eacute;essaie.</p>
+    <button id="retry" type="button">R&eacute;essayer</button>
+  </main>
+  <script>
+    (function () {
+      if (window.__CHAIR_IS_PRO__) {
+        document.getElementById('msg-title').textContent = 'Impossible de charger CHAIR PRO.';
+        document.getElementById('msg-body').textContent = 'Vérifiez votre connexion et réessayez.';
+      }
+      var btn = document.getElementById('retry');
+      var busy = false; // anti double-tap
+      btn.addEventListener('click', function () {
+        if (busy) { return; }
+        busy = true;
+        btn.disabled = true;
+        btn.textContent = 'Nouvelle tentative…';
+        // Renavigation explicite vers le site distant (voir commentaire en tête).
+        window.location.href = window.__CHAIR_TARGET__ || 'https://www.getchair.app/app';
+        // Si la navigation échoue, Capacitor recharge error.html : état repart à neuf.
+        // Si elle ne se déclenche pas (cas limite), on réarme le bouton.
+        setTimeout(function () {
+          busy = false;
+          btn.disabled = false;
+          btn.textContent = 'Réessayer';
+        }, 6000);
+      });
+    })();
+  </script>
+</body>
+</html>

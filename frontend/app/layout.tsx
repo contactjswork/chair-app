@@ -4,6 +4,7 @@ import { Providers } from "@/components/Providers";
 import CookieBanner from "@/components/ui/CookieBanner";
 import AppBanner from "@/components/ui/AppBanner";
 import PwaManifest from "@/components/ui/PwaManifest";
+import { NATIVE_CLASS_BOOTSTRAP } from "@/lib/native";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,6 +17,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// maximumScale: 1 + userScalable: false — choix assumé (Guideline 4.2) : le
+// pinch-zoom sur l'UI est un signal "page web" immédiat dans la WebView, qui
+// respecte ces directives. Accessibilité : Safari iOS les IGNORE délibérément
+// depuis iOS 10 (le zoom reste possible sur le site web), et dans l'app le
+// zoom système (Réglages > Accessibilité > Zoom) ainsi que la taille de
+// police dynamique restent disponibles. Le site web n'est donc pas dégradé ;
+// seule la WebView native est verrouillée, comme une app native l'est.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -48,6 +56,12 @@ export default function RootLayout({
   return (
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
+        {/* Pose .chair-native sur <html> AVANT le premier paint quand la page
+            tourne dans un shell Capacitor (CHAIR ou CHAIR PRO) — voir
+            lib/native.ts. globals.css s'appuie sur cette classe pour activer
+            le comportement app (sélection, rebond, scrollbars) uniquement en
+            natif, sans dégrader le site web. */}
+        <script dangerouslySetInnerHTML={{ __html: NATIVE_CLASS_BOOTSTRAP }} />
         {/* Carte Apple : DNS + TLS établis d'avance vers les hôtes MapKit —
             la poignée de main réseau ne s'ajoute plus au temps d'affichage
             de la carte quand l'utilisateur ouvre la recherche. */}

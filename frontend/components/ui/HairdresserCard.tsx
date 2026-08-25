@@ -6,7 +6,6 @@ import { formatDistance } from '@/hooks/useGeolocation';
 import { Star, Award, Flame } from 'lucide-react';
 import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { hasChairPlus } from '@/lib/types';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 export default function HairdresserCard({
   hairdresser,
@@ -67,7 +66,7 @@ export default function HairdresserCard({
                 </svg>
               </div>
             )}
-            {hasChairPlus(hairdresser) && <PremiumBadge />}
+            
           </div>
         )}
 

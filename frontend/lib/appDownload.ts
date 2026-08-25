@@ -3,9 +3,34 @@
 // App Store / Play Store restent vides volontairement : un lien mort est pire
 // qu'un état "bientôt disponible" honnête (voir AppDownload.tsx).
 //
-// À REMPLIR dès la mise en ligne publique :
-//   APP_STORE_URL  = "https://apps.apple.com/app/idXXXXXXXXXX"
-//   PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=app.getchair.client"
+// ───────────────────────────────────────────────────────────────────────────
+// JOUR DE LA PUBLICATION — CE QU'IL FAUT BASCULER, EXACTEMENT
+//
+// 1. Renseigner APP_STORE_URL ci-dessous avec l'URL de la fiche
+//    App Store, visible dans App Store Connect → l'app → Distribution, ou
+//    reconstructible : https://apps.apple.com/fr/app/chair/id<APPLE_ID>
+//    L'APPLE_ID est l'« Apple ID » numérique affiché dans App Store Connect
+//    → Informations générales de l'app.
+// 2. Renseigner PLAY_STORE_URL le jour de la sortie Android :
+//    https://play.google.com/store/apps/details?id=app.getchair.client
+//    (l'identifiant vient de frontend/capacitor.chair.config.ts → appId).
+//    Tant qu'Android n'est pas publié, LAISSER VIDE : le badge Google Play
+//    n'est rendu que si la constante est non vide.
+// 3. Rien d'autre à toucher. isAppPublished() passe alors à true et cela
+//    suffit à basculer, sans autre modification :
+//      - components/ui/AppDownload.tsx : remplace le bloc « Bientôt sur
+//        l'App Store et Google Play / L'application est en cours de
+//        déploiement » par les badges stores réels ;
+//      - app/download/page.tsx : redirige automatiquement vers le store de
+//        l'OS détecté au lieu d'afficher la page d'attente ;
+//      - components/ui/AppBanner.tsx : le bandeau « Ouvrir dans l'app »
+//        pointe vers le store au lieu de /download.
+//
+// ATTENTION avant publication : le bloc « bientôt disponible » ne doit jamais
+// être visible DEPUIS l'app native (Apple 2.1 — une app ne peut pas se
+// présenter comme non terminée). C'est déjà géré par le garde `isNativeApp()`
+// en tête de AppDownload.tsx ; ne pas le retirer.
+// ───────────────────────────────────────────────────────────────────────────
 
 export const APP_STORE_URL  = '';
 export const PLAY_STORE_URL = '';

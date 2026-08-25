@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HairdresserProfile;
 use App\Services\BadgeService;
 use App\Services\CloudinaryService;
+use App\Services\ContentFilter;
 use App\Services\GeocodingService;
 use Illuminate\Http\Request;
 
@@ -83,7 +84,7 @@ class ProfileController extends Controller
             'department'        => 'nullable|string|max:100',
             'work_address'      => 'nullable|string|max:255',
             'instagram_url'     => 'nullable|url|max:255',
-            'booking_url'       => 'nullable|url|max:500',
+            'booking_url'       => 'nullable|url|max:500|starts_with:https://',
             'years_experience'  => 'nullable|integer|min:0|max:50',
             'work_availability' => 'nullable|in:employed,looking_salon,looking_gig,not_available',
             'specialties'       => 'nullable|array',
@@ -92,6 +93,24 @@ class ProfileController extends Controller
             'pro_goals'         => 'nullable|array',
             'pro_goals.*'       => 'string|in:find_clients,rent_chair,find_job',
         ]);
+
+        // Filtrage par champ, délibérément asymétrique (App Store 1.2) :
+        //  - bio / tagline (texte libre affiché publiquement) → volet
+        //    insultes/haine UNIQUEMENT. Le volet coordonnées de check()
+        //    n'a pas de sens ici : un pro met légitimement son téléphone ou
+        //    son Instagram dans sa bio, c'est son outil de travail.
+        //  - les champs structurés (work_address, instagram_url, booking_url,
+        //    city...) ne passent PAS par le filtre : leurs règles de
+        //    validation dédiées (url, starts_with:https://, max) suffisent,
+        //    et une adresse postale déclenche par nature le motif « contact ».
+        foreach (['bio', 'tagline'] as $field) {
+            if ($reason = ContentFilter::checkOffensiveOnly($validated[$field] ?? null)) {
+                return response()->json([
+                    'message' => ContentFilter::message($reason, 'pro'),
+                    'field'   => $field,
+                ], 422);
+            }
+        }
 
         $user->update([
             'bio'  => array_key_exists('bio',  $validated) ? $validated['bio']  : $user->bio,

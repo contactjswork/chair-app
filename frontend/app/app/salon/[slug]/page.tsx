@@ -1,10 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, Users, Star, BadgeCheck, Sparkles, ChevronRight } from 'lucide-react';
+import { MapPin, Phone, Globe, Users, Star, BadgeCheck, ChevronRight } from 'lucide-react';
 import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
 import AppShell from '@/components/layout/AppShell';
 import BackButton from '@/components/ui/BackButton';
+import { ContentMenu } from '@/components/ui/ReportSheet';
 
 // Pas d'export "Instagram" dans cette version de lucide-react — même icône
 // maison que PublicProfileAbout.tsx (fiche publique coiffeur).
@@ -61,32 +62,52 @@ function TeamMemberCard({ h }: { h: ApiSalonFull['hairdressers'][number] }) {
   const hasRating = h.reviews_count > 0;
   const spec = h.specialties?.[0]?.name;
 
+  // Le "…" est un FRÈRE du lien, jamais un enfant : un <button> imbriqué dans
+  // un <a> est invalide et le clic serait avalé par la navigation.
   return (
-    <Link
-      href={`/coiffeur/${h.slug}`}
-      className="group block rounded-[22px] overflow-hidden bg-white shadow-[0_6px_20px_-8px_rgba(10,10,10,0.16)] hover:shadow-[0_12px_28px_-10px_rgba(10,10,10,0.24)] active:scale-[0.97] transition-all"
-    >
-      <div className="relative aspect-square bg-neutral-200 overflow-hidden">
-        {photo ? (
-          <Image src={photo} alt={h.user?.name ?? ''} fill className="object-cover group-hover:scale-[1.05] transition-transform duration-500" sizes="200px" />
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-neutral-300 to-neutral-400 flex items-center justify-center">
-            <span className="text-3xl font-bold text-white/70">{firstName[0]}</span>
-          </div>
-        )}
-      </div>
-      <div className="p-3">
-        {spec && <p className="text-[8.5px] font-bold text-neutral-400 tracking-[0.1em] uppercase mb-0.5 truncate">{spec}</p>}
-        <p className="text-[13px] font-bold text-neutral-900 truncate">{h.user?.name}</p>
-        {hasRating && (
-          <div className="flex items-center gap-1 mt-0.5">
-            <Star size={9} className="fill-neutral-900 stroke-none" />
-            <span className="text-[11px] font-semibold text-neutral-500">{parseFloat(h.avg_rating).toFixed(1)}</span>
-            <span className="text-[11px] text-neutral-400">({h.reviews_count})</span>
-          </div>
-        )}
-      </div>
-    </Link>
+    <div className="relative">
+      <Link
+        href={`/app/coiffeur/${h.slug}`}
+        className="group block rounded-[22px] overflow-hidden bg-white shadow-[0_6px_20px_-8px_rgba(10,10,10,0.16)] hover:shadow-[0_12px_28px_-10px_rgba(10,10,10,0.24)] active:scale-[0.97] transition-all"
+      >
+        <div className="relative aspect-square bg-neutral-200 overflow-hidden">
+          {photo ? (
+            <Image src={photo} alt={h.user?.name ?? ''} fill className="object-cover group-hover:scale-[1.05] transition-transform duration-500" sizes="200px" />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-300 to-neutral-400 flex items-center justify-center">
+              <span className="text-3xl font-bold text-white/70">{firstName[0]}</span>
+            </div>
+          )}
+          {/* Dégradé léger pour garder le "…" lisible sur une photo claire. */}
+          <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/35 to-transparent pointer-events-none" />
+        </div>
+        <div className="p-3">
+          {spec && <p className="text-[8.5px] font-bold text-neutral-400 tracking-[0.1em] uppercase mb-0.5 truncate">{spec}</p>}
+          <p className="text-[13px] font-bold text-neutral-900 truncate">{h.user?.name}</p>
+          {hasRating && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <Star size={9} className="fill-neutral-900 stroke-none" />
+              <span className="text-[11px] font-semibold text-neutral-500">{parseFloat(h.avg_rating).toFixed(1)}</span>
+              <span className="text-[11px] text-neutral-400">({h.reviews_count})</span>
+            </div>
+          )}
+        </div>
+      </Link>
+
+      {/* Signalement / blocage du professionnel (App Store 1.2). La cible du
+          signalement 'profile' est l'id du PROFIL coiffeur (voir
+          ReportController::resolveReportedUserId), celle du blocage l'id
+          UTILISATEUR — les deux sont disponibles ici. */}
+      <ContentMenu
+        type="profile"
+        contentId={h.id}
+        authorUserId={h.user?.id ?? null}
+        authorName={h.user?.name ?? null}
+        tone="dark"
+        label={`Options pour ${h.user?.name ?? 'ce coiffeur'}`}
+        className="absolute top-0.5 right-0.5"
+      />
+    </div>
   );
 }
 
@@ -99,6 +120,21 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
   const coverUrl = resolveMediaUrl(salon.cover_image);
   const logoUrl  = resolveMediaUrl(salon.logo);
   const hairdressers = salon.hairdressers ?? [];
+
+  // Signalement de la fiche salon (App Store Review Guideline 1.2). La file de
+  // modération ne connaît que trois cibles — 'post', 'review', 'user' (voir
+  // ReportController) — et un salon n'en est aucune. Le contenu éditorial d'un
+  // salon (nom, description, photos) est publié par son GÉRANT : c'est donc lui
+  // qu'on signale, via l'id de sa fiche coiffeur (content_id =
+  // hairdresser_profiles.id, exigé par resolveReportedUserId pour le type
+  // 'user'). Si le gérant n'a pas de fiche coiffeur, aucune cible honnête
+  // n'existe : on n'affiche alors pas de "…" au niveau du salon plutôt que de
+  // faire porter le signalement à quelqu'un d'autre. Chaque membre de l'équipe
+  // garde de toute façon son propre "…" sur sa carte.
+  const ownerId = salon.owner?.id ?? null;
+  const ownerProfile = ownerId !== null
+    ? hairdressers.find((h) => h.user?.id === ownerId) ?? null
+    : null;
 
   const totalRating = hairdressers.reduce((sum, h) => sum + parseFloat(h.avg_rating ?? '0'), 0);
   const avgRating = hairdressers.length > 0 ? (totalRating / hairdressers.length).toFixed(1) : null;
@@ -123,6 +159,17 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
             façon fiche listing) plutôt qu'un simple bandeau posé à plat sur
             fond blanc comme avant. */}
         <div className="relative -mt-16 mb-6">
+          {ownerProfile && (
+            <ContentMenu
+              type="profile"
+              contentId={ownerProfile.id}
+              authorUserId={ownerProfile.user?.id ?? null}
+              authorName={ownerProfile.user?.name ?? null}
+              tone="light"
+              label="Signaler ce salon"
+              className="absolute top-2 right-2 z-10 bg-white/80 backdrop-blur-sm"
+            />
+          )}
           <div className="bg-white rounded-[28px] shadow-[0_12px_36px_-12px_rgba(10,10,10,0.22)] px-5 pt-5 pb-4">
             <div className="flex items-end gap-4 -mt-16 mb-3">
               <div className="w-24 h-24 rounded-[24px] ring-4 ring-white bg-neutral-100 overflow-hidden flex-shrink-0 shadow-lg">
@@ -138,11 +185,13 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
 
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-[21px] font-bold text-neutral-900 tracking-[-0.02em]">{salon.name}</h1>
-              {salon.is_verified && <BadgeCheck size={17} className="text-neutral-900 flex-shrink-0" />}
-              {salon.is_chair_business && (
-                <span className="inline-flex items-center gap-0.5 text-[9px] px-2 py-1 font-bold uppercase tracking-wide bg-neutral-900 text-white rounded-full">
-                  <Sparkles size={9} />CHAIR Business
-                </span>
+              {/* Le sceau de vérification suffit côté client. La pastille
+                  « CHAIR Business » nommait un abonnement numérique payant
+                  dans l'app client — retirée (décision Julien : aucun produit
+                  d'abonnement mentionné côté client ; App Store 3.1.1(a)).
+                  is_chair_business reste dans l'API pour l'espace pro. */}
+              {(salon.is_verified || salon.is_chair_business) && (
+                <BadgeCheck size={17} className="text-neutral-900 flex-shrink-0" />
               )}
             </div>
             {salon.city && (

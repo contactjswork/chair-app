@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Notification;
 use App\Models\NotificationPreference;
-use Illuminate\Support\Facades\Http;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class NotificationService
@@ -95,13 +95,32 @@ class NotificationService
     }
 
     /**
-     * Envoie une notification push via OneSignal.
+     * Le push APNs est-il configuré ? (clé .p8 + APNS_KEY_ID + APNS_TEAM_ID)
      *
-     * Cible l'External User ID OneSignal = notre user_id (voir OneSignal.login()
-     * côté app mobile après authentification — pas de gestion de token côté nous).
+     * Sans configuration, sendPush() est un no-op : les notifications
+     * internes continuent d'être créées, mais aucun push ne part.
+     * Diagnostic complet : php artisan chair:test-push {email}.
+     */
+    public static function isPushConfigured(): bool
+    {
+        return ApnsService::isConfigured();
+    }
+
+    /**
+     * Envoie une notification push APNs à tous les appareils enregistrés de
+     * l'utilisateur (table push_subscriptions, alimentée par POST /push/register).
      *
-     * No-op silencieux tant que ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY ne sont
-     * pas configurés (voir services.onesignal dans config/services.php).
+     * Délègue à PushService::sendToUser, qui vérifie la préférence du type,
+     * cible chaque token actif, et désactive les tokens morts. Le deep link
+     * (payload "url") est déduit du type et du rôle du destinataire, sauf si
+     * $data['url'] le force — voir le contrat documenté dans PushService.
+     *
+     * No-op silencieux tant qu'APNs n'est pas configuré.
+     *
+     * @return bool true si au moins un appareil a accepté le push.
+     *              La valeur de retour est purement informative (diagnostic,
+     *              commande chair:test-push) : aucun appelant n'en dépend et
+     *              un échec ne fait jamais échouer l'action déclenchante.
      */
     public static function sendPush(
         int    $userId,
@@ -109,29 +128,19 @@ class NotificationService
         string $title,
         string $message,
         array  $data = []
-    ): void {
-        $appId  = config('services.onesignal.app_id');
-        $apiKey = config('services.onesignal.rest_api_key');
-
-        if (empty($appId) || empty($apiKey)) {
-            return;
-        }
-
+    ): bool {
         try {
-            Http::withHeaders([
-                'Authorization' => 'Basic ' . $apiKey,
-                'Content-Type'  => 'application/json',
-            ])->post('https://onesignal.com/api/v1/notifications', [
-                'app_id'                   => $appId,
-                'include_external_user_ids' => [(string) $userId],
-                'headings'                 => ['en' => $title, 'fr' => $title],
-                'contents'                 => ['en' => $message, 'fr' => $message],
-                'data'                     => array_merge($data, ['type' => $type]),
-            ]);
+            $user = User::find($userId);
+            if ($user === null) {
+                return false;
+            }
+
+            return PushService::sendToUser($user, $type, $title, $message, $data) > 0;
         } catch (\Throwable $e) {
             // Une erreur push ne doit jamais faire échouer l'action qui a
             // déclenché la notification (déblocage de badge, RDV, etc.).
-            Log::warning('OneSignal push failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
+            Log::warning('APNs push failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
+            return false;
         }
     }
 
@@ -156,5 +165,42 @@ class NotificationService
         $notif = static::sendInternal($userId, $type, $title, $message, $data);
         static::sendPush($userId, $type, $title, $message, $data);
         return $notif;
+    }
+
+    /**
+     * Envoie une notification dont le texte vient du catalogue centralisé
+     * (App\Services\NotificationCopy) au lieu d'être écrit en dur.
+     *
+     * C'est la méthode à utiliser pour TOUT nouvel envoi. Les appels
+     * historiques à send() avec titre + message restent valides et
+     * strictement inchangés.
+     *
+     * Exemple :
+     *   NotificationService::sendTyped(
+     *       $clientId,
+     *       'appointment_confirmed',
+     *       ['coiffeur' => $name, 'date' => $dateLabel, 'heure' => $time],
+     *       NotificationCopy::AUDIENCE_CLIENT,
+     *       ['appointment_id' => $appointment->id]
+     *   );
+     *
+     * @param  int         $userId    destinataire
+     * @param  string      $type      type de notification (clé du catalogue)
+     * @param  array       $vars      variables du texte ({client}, {date}...)
+     * @param  string|null $audience  'client' | 'pro' | 'salon' — un même type
+     *                                n'a pas le même texte selon le destinataire
+     * @param  array       $data      payload technique (ids de navigation...)
+     * @return Notification|null null si la préférence du destinataire bloque l'envoi.
+     */
+    public static function sendTyped(
+        int     $userId,
+        string  $type,
+        array   $vars = [],
+        ?string $audience = null,
+        array   $data = []
+    ): ?Notification {
+        $copy = NotificationCopy::resolve($type, $vars, $audience);
+
+        return static::send($userId, $type, $copy['title'], $copy['message'], $data);
     }
 }

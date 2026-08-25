@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import BottomNav from '@/components/layout/BottomNav';
 import SignupPromptModal from '@/components/ui/SignupPromptModal';
+import { ContentMenu } from '@/components/ui/ReportSheet';
 import type { ApiPost, ApiHairdresserProfile, ApiUser, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAllImagesRaw } from '@/lib/types';
 import { posts as postsApi, savedPosts as savedPostsApi } from '@/lib/api';
@@ -266,6 +267,18 @@ function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void 
             postId={post.id}
             hairdresserName={hd?.user?.name ?? 'CHAIR'}
             description={post.description}
+          />
+          {/* Signalement / blocage (App Store Review Guideline 1.2 — UGC).
+              Dernier de la colonne d'actions : visible sans encombrer, et le
+              blocage retire réellement ce compte du fil (filtrage serveur
+              dans HairdresserController::feed). */}
+          <ContentMenu
+            type="post"
+            contentId={post.id}
+            authorUserId={hd?.user?.id ?? null}
+            authorName={hd?.user?.name ?? null}
+            tone="dark"
+            label="Signaler ou bloquer"
           />
         </div>
 

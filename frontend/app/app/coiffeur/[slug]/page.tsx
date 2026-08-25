@@ -11,6 +11,8 @@ import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
 import PublicProfileBadges from '@/components/ui/PublicProfileBadges';
 import PublicProfileStickyCTA from '@/components/ui/PublicProfileStickyCTA';
 import BookingResume from '@/components/ui/BookingResume';
+import { ContentMenu } from '@/components/ui/ReportSheet';
+import BlockedProfileNotice from '@/components/ui/BlockedProfileNotice';
 import ScrollToTopOnMount from '@/components/ui/ScrollToTopOnMount';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
@@ -93,13 +95,35 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
 
         <PublicProfileIdentity hairdresser={hairdresser} avatarUrl={avatarUrl} />
 
-        <div className="px-4 mb-6">
-          <ProfileActions
-            hairdresserId={hairdresser.id}
-            hairdresserName={hairdresser.user.name}
-            instagramUrl={hairdresser.instagram_url}
-            tagline={hairdresser.tagline}
-            city={hairdresser.city}
+        {/* Effet visible du blocage sur une fiche ouverte par lien direct
+            (App Store Review Guideline 1.2). Ne rend rien si le visiteur
+            n'a pas bloqué ce compte. */}
+        <BlockedProfileNotice
+          authorUserId={hairdresser.user.id}
+          authorName={hairdresser.user.name}
+        />
+
+        {/* Le menu "…" porte le signalement et le blocage (App Store Review
+            Guideline 1.2 — UGC). Il est posé à côté de la rangée d'actions et
+            non caché dans un sous-écran : l'action doit être trouvable sans
+            chercher. Voir components/ui/ReportSheet.tsx. */}
+        <div className="px-4 mb-6 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <ProfileActions
+              hairdresserId={hairdresser.id}
+              hairdresserName={hairdresser.user.name}
+              instagramUrl={hairdresser.instagram_url}
+              tagline={hairdresser.tagline}
+              city={hairdresser.city}
+            />
+          </div>
+          <ContentMenu
+            type="profile"
+            contentId={hairdresser.id}
+            authorUserId={hairdresser.user.id}
+            authorName={hairdresser.user.name}
+            className="flex-shrink-0 bg-neutral-50"
+            label={`Signaler ou bloquer ${hairdresser.user.name}`}
           />
         </div>
 

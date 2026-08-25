@@ -9,7 +9,7 @@ import { api } from '@/lib/api';
 import { resolveMediaUrl } from '@/lib/types';
 import {
   Briefcase, Clock, Search, X, Send, Check,
-  ChevronLeft, ExternalLink, Building2, GraduationCap, Filter,
+  ChevronLeft, ChevronRight, Building2, GraduationCap, Filter,
 } from 'lucide-react';
 
 const JOB_TYPE_LABELS: Record<string, string> = {
@@ -55,6 +55,30 @@ interface Application {
   status: 'pending' | 'accepted' | 'declined';
 }
 
+/** GET /job-offers renvoie un paginator Laravel, pas un tableau. */
+interface Paginated<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+}
+
+/** Le paginator plafonne à 20 offres par page : sans ça, la recherche et les
+ *  filtres (appliqués côté client) mentaient dès la 21ᵉ offre publiée. */
+const MAX_OFFER_PAGES = 10;
+
+async function fetchAllOffers(): Promise<JobOffer[]> {
+  const first = await api.get<Paginated<JobOffer>>('/job-offers');
+  const all = [...first.data];
+  const lastPage = Math.min(first.last_page ?? 1, MAX_OFFER_PAGES);
+
+  for (let page = 2; page <= lastPage; page++) {
+    const next = await api.get<Paginated<JobOffer>>(`/job-offers?page=${page}`);
+    all.push(...next.data);
+  }
+
+  return all;
+}
+
 export default function OffresEmploiPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
   const [offers,   setOffers]   = useState<JobOffer[]>([]);
@@ -73,10 +97,10 @@ export default function OffresEmploiPage() {
   useEffect(() => {
     if (!user) return;
     Promise.allSettled([
-      api.get<JobOffer[]>('/job-offers'),
+      fetchAllOffers(),
       api.get<Application[]>('/my-applications'),
     ]).then(([r, a]) => {
-      if (r.status === 'fulfilled' && Array.isArray(r.value)) setOffers(r.value);
+      if (r.status === 'fulfilled') setOffers(r.value);
       if (a.status === 'fulfilled' && Array.isArray(a.value)) setMyApps(a.value);
     }).finally(() => setLoading(false));
   }, [user]);
@@ -155,9 +179,11 @@ export default function OffresEmploiPage() {
                 {detail.salon && (
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {detail.salon.slug ? (
-                      <Link href={`/app/salon/${detail.salon.slug}`} target="_blank"
-                        className="text-sm font-semibold text-blue-600 hover:underline flex items-center gap-1">
-                        {detail.salon.name}<ExternalLink size={11} />
+                      /* Navigation interne : dans l'app Capacitor, target="_blank"
+                         éjecte vers Safari où l'utilisateur n'est pas connecté. */
+                      <Link href={`/app/salon/${detail.salon.slug}`}
+                        className="text-sm font-semibold text-neutral-900 hover:underline flex items-center gap-1">
+                        {detail.salon.name}<ChevronRight size={12} className="text-neutral-400" />
                       </Link>
                     ) : (
                       <span className="text-sm font-semibold text-neutral-700">{detail.salon.name}</span>

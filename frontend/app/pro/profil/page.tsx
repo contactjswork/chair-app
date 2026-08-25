@@ -255,6 +255,10 @@ export default function DashboardProfilPage() {
   }
   if (!user) return null;
 
+  // La barre d'enregistrement mobile n'apparaît que s'il y a réellement
+  // quelque chose à enregistrer (ou une sauvegarde en cours).
+  const showSaveBar = isDirty || saveStatus === 'saving';
+
   return (
     <div className="min-h-screen bg-neutral-50">
 
@@ -684,10 +688,34 @@ export default function DashboardProfilPage() {
         </div>
       </div>
 
-      {/* ── Sticky save bar (mobile) ─────────────────────────────────── */}
-      <div className={`fixed bottom-[64px] md:hidden left-0 right-0 z-30 px-4 py-3 transition-all duration-300 ${
-        isDirty || saveStatus === 'saving' ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
-      }`}>
+      {/* ── Barre d'enregistrement (mobile) ───────────────────────────────
+          Deux défauts corrigés ici :
+          1. Position — ProNav est `fixed bottom-0 z-50` et mesure 66px
+             (h-[66px]) + pb-safe-nav, soit calc(env(safe-area-inset-bottom)
+             * 0.4) de plus sur iOS. La barre était à `bottom-[64px] z-30` :
+             son bas passait TOUJOURS sous la nav (2px sans encoche, ~16px sur
+             un iPhone), et la nav, opaque et au-dessus (z-50 > z-30), la
+             recouvrait. On reprend ici la hauteur exacte de la nav, et z-40
+             (au-dessus du contenu, sous la nav qu'on ne chevauche plus).
+             Pas de pb-safe en plus : la barre est posée au-dessus de la nav,
+             qui porte déjà le padding de safe area — l'ajouter décollerait la
+             barre d'autant.
+          2. Affichage — l'apparition reposait sur `translate-y-full` /
+             `translate-y-0`, qui en Tailwind v4 compilent vers la propriété
+             CSS `translate: var(--tw-translate-x) var(--tw-translate-y)`
+             alimentée par des `@property … syntax:"*"`. La barre restait
+             décalée de 100%, donc hors écran. On passe par un `transform`
+             explicite en style inline, qui ne dépend d'aucune variable. */}
+      <div
+        className="fixed md:hidden left-0 right-0 z-40 px-4 py-3"
+        style={{
+          bottom: 'calc(66px + env(safe-area-inset-bottom, 0px) * 0.4)',
+          transform: showSaveBar ? 'translateY(0)' : 'translateY(140%)',
+          opacity: showSaveBar ? 1 : 0,
+          pointerEvents: showSaveBar ? 'auto' : 'none',
+          transition: 'transform 300ms ease, opacity 300ms ease',
+        }}
+      >
         <button
           onClick={handleSave}
           disabled={saveStatus === 'saving'}

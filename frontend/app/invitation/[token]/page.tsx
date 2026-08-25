@@ -146,7 +146,12 @@ export default function InvitationTokenPage() {
                 className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-4 rounded-2xl text-sm hover:bg-neutral-700 transition-colors">
                 <LogIn size={16} />Se connecter
               </Link>
-              <Link href="/inscription" onClick={saveRedirectAndGo}
+              {/* Inscription PRO, pas l'inscription client : l'invitation ne peut
+                  être acceptée que par un compte coiffeur. saveRedirectAndGo pose
+                  le chemin /invitation/<token> en sessionStorage (chair_redirect),
+                  que AuthContext::resolvePostAuthPath rejoue après l'inscription —
+                  le token de l'invitation est donc bien conservé. */}
+              <Link href="/pro/inscription" onClick={saveRedirectAndGo}
                 className="w-full flex items-center justify-center gap-2 border border-neutral-200 text-neutral-700 font-bold py-4 rounded-2xl text-sm hover:bg-neutral-50 transition-colors">
                 <UserPlus size={16} />Créer un compte coiffeur
               </Link>

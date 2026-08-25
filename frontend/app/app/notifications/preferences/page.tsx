@@ -3,9 +3,15 @@
 import { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
-import { Check } from 'lucide-react';
+import { Check, BellOff, Bell } from 'lucide-react';
 import { notifications as notifApi } from '@/lib/api';
 import type { ApiNotificationPreferences } from '@/lib/types';
+import {
+  getPushPermissionState,
+  getStoredPushToken,
+  requestAndRegister,
+  type PushPermissionState,
+} from '@/lib/push';
 
 const PREF_KEY = 'chair_notif_prefs';
 
@@ -61,6 +67,101 @@ function Row({
         <p className="text-[12px] text-neutral-400 mt-0.5 leading-snug">{desc}</p>
       </div>
       <Toggle on={on} onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * État du canal push sur CET appareil — natif uniquement, tout le bloc rend
+ * null sur le web et les binaires sans le plugin ('unavailable').
+ *
+ * Trois cas visibles :
+ *   • 'denied'  → bandeau d'explication. Pas de bouton « Ouvrir les
+ *     réglages » : il n'existe aucun moyen documenté par Capacitor d'ouvrir
+ *     les Réglages iOS sans plugin supplémentaire (l'URL 'app-settings:' via
+ *     App.openUrl n'est ni documentée ni fiable) — plutôt une instruction
+ *     claire qu'un bouton mort.
+ *   • 'granted' sans token local → la permission existe mais l'appareil n'est
+ *     pas (plus) enregistré côté CHAIR (migration, réinstallation, logout) :
+ *     on propose la réactivation, sans popup système puisque déjà accordée.
+ *   • 'prompt' → activation directe : la carte d'opt-in du compte a pu être
+ *     écartée, cette page est l'endroit légitime pour revenir dessus.
+ */
+function PushChannelStatus() {
+  const [perm, setPerm] = useState<PushPermissionState>('unavailable');
+  const [hasToken, setHasToken] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const state = await getPushPermissionState();
+      if (cancelled) return;
+      setPerm(state);
+      setHasToken(!!getStoredPushToken());
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function activate() {
+    if (busy) return; // anti double-tap
+    setBusy(true);
+    const result = await requestAndRegister();
+    setBusy(false);
+    if (result === 'registered') {
+      setPerm('granted');
+      setHasToken(true);
+    } else if (result === 'denied') {
+      setPerm('denied');
+    }
+  }
+
+  if (perm === 'unavailable') return null;
+
+  if (perm === 'denied') {
+    return (
+      <div className="mb-5 bg-neutral-50 rounded-2xl border border-neutral-100 px-5 py-4 flex items-start gap-3">
+        <BellOff size={17} className="text-neutral-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[13px] font-semibold text-neutral-900 leading-snug">
+            Les notifications sont désactivées dans les réglages de ton iPhone.
+          </p>
+          <p className="text-[12px] text-neutral-400 mt-1 leading-snug">
+            Pour les réactiver : Réglages, puis Notifications, puis CHAIR.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (perm === 'granted' && hasToken) return null;
+
+  // 'prompt', ou 'granted' sans appareil enregistré.
+  return (
+    <div className="mb-5 bg-white rounded-2xl border border-neutral-100 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <Bell size={17} className="text-neutral-400 flex-shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-neutral-900 leading-snug">
+            {perm === 'granted' ? 'Cet appareil ne reçoit plus les notifications' : 'Les notifications ne sont pas activées'}
+          </p>
+          <p className="text-[12px] text-neutral-400 mt-0.5 leading-snug">
+            {perm === 'granted'
+              ? 'Réactive-les pour recevoir les confirmations et changements de tes rendez-vous.'
+              : 'Active-les pour recevoir les confirmations et changements de tes rendez-vous.'}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={activate}
+        disabled={busy}
+        aria-busy={busy || undefined}
+        className="mt-3 w-full h-[46px] rounded-2xl bg-neutral-900 text-white text-[14px] font-semibold flex items-center justify-center gap-2 transition-all active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100"
+      >
+        {busy && <span aria-hidden="true" className="inline-block w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+        {busy ? 'Activation…' : perm === 'granted' ? 'Réactiver les notifications' : 'Activer les notifications'}
+      </button>
     </div>
   );
 }
@@ -135,6 +236,9 @@ export default function NotifPrefsPage() {
         </div>
 
         <div className="px-4">
+
+          {/* Canal push sur cet appareil (natif uniquement, null sur le web) */}
+          <PushChannelStatus />
 
           {/* Réservations */}
           <Section title="Réservations" desc="Rappels et mises à jour de tes rendez-vous">
@@ -217,8 +321,9 @@ export default function NotifPrefsPage() {
           </Section>
 
           <p className="text-[11px] text-neutral-300 text-center mt-2 leading-relaxed">
-            Les notifications push sont gérées par ton appareil.{'\n'}
-            Tu peux aussi les désactiver dans les Réglages de ton téléphone.
+            Chaque interrupteur s&apos;applique aux notifications dans l&apos;app
+            et aux notifications push envoyées sur ton téléphone.
+            Tu peux aussi couper toutes les push dans les Réglages de ton téléphone.
           </p>
 
         </div>

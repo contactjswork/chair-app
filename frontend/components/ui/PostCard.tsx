@@ -2,8 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { BadgeCheck } from 'lucide-react';
 import type { ApiPost, ApiHairdresserProfile, ApiUser } from '@/lib/types';
-import { getBeforeImage, getAfterImage, resolveMediaUrl, hasChairPlus } from '@/lib/types';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
+import { getBeforeImage, getAfterImage, resolveMediaUrl } from '@/lib/types';
 
 interface Props {
   post: ApiPost;
@@ -73,7 +72,7 @@ export default function PostCard({ post, hairdresser: hairdresserProp }: Props) 
               <p className="flex items-center gap-1 text-[13px] font-semibold text-neutral-900 leading-none">
                 <span className="truncate">{hairdresserName}</span>
                 {hd?.is_verified && <BadgeCheck size={12} className="text-neutral-900 flex-shrink-0" />}
-                {hasChairPlus(hd) && <PremiumBadge />}
+                
               </p>
               <p className="text-[11px] text-neutral-400 mt-0.5">{hairdresserCity}</p>
             </div>

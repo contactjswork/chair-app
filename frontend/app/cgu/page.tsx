@@ -48,7 +48,7 @@ export default function CGUPage() {
           <ul className="space-y-1.5 list-none mt-2">
             <Li>Site web : <a href="https://getchair.app" className="underline">getchair.app</a></Li>
             <Li>Application mobile : CHAIR (disponible sur l'App Store)</Li>
-            <Li>Contact : <a href="mailto:hello@getchair.app" className="underline">hello@getchair.app</a></Li>
+            <Li>Contact : <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a></Li>
           </ul>
         </Section>
 
@@ -78,7 +78,7 @@ export default function CGUPage() {
             <Li>Découvrir des coiffeurs près de vous grâce à la géolocalisation</Li>
             <Li>Consulter les réalisations, avis et profils des coiffeurs</Li>
             <Li>Sauvegarder vos coiffeurs favoris et vous y abonner</Li>
-            <Li>Réserver des rendez-vous (fonctionnalité en cours de déploiement)</Li>
+            <Li>Réserver des rendez-vous chez les coiffeurs indépendants</Li>
             <Li>Laisser des avis certifiés après un rendez-vous</Li>
           </ul>
           <p><strong className="text-neutral-800">Pour les coiffeurs / salons :</strong></p>
@@ -138,7 +138,8 @@ export default function CGUPage() {
 
         <Section title="7. Réservations et paiements">
           <p>
-            La fonctionnalité de réservation en ligne est en cours de déploiement. Lorsqu'elle sera disponible :
+            La réservation en ligne est disponible chez les coiffeurs indépendants. Les coiffeurs
+            travaillant en salon peuvent renvoyer vers l&apos;outil de réservation de leur salon.
           </p>
           <ul className="space-y-1.5 list-none">
             <Li>Les rendez-vous sont conclus directement entre le client et le coiffeur</Li>
@@ -147,9 +148,17 @@ export default function CGUPage() {
             <Li>En cas de litige, CHAIR peut intervenir en médiation sans y être tenu</Li>
           </ul>
           <p>
-            <strong className="text-neutral-800">Achats in-app :</strong> Si l'application propose des fonctionnalités payantes
-            (abonnements professionnels), les achats sont traités via l'App Store d'Apple conformément aux conditions d'Apple.
-            Les remboursements in-app sont soumis à la politique de remboursement d'Apple.
+            <strong className="text-neutral-800">Aucun paiement dans l&apos;application :</strong> la prestation de coiffure
+            est un service réalisé en personne. Elle se règle directement auprès du coiffeur ou du salon, selon les
+            moyens de paiement qu&apos;il accepte. CHAIR n&apos;encaisse aucun montant pour le compte des professionnels et ne
+            débite jamais le client depuis l&apos;application. Les tarifs affichés sont indicatifs et communiqués par le
+            professionnel.
+          </p>
+          <p>
+            <strong className="text-neutral-800">Abonnements professionnels :</strong> CHAIR propose aux professionnels
+            des abonnements payants souscrits depuis l&apos;espace CHAIR PRO, sur le site web, via notre prestataire de
+            paiement Stripe. Ces abonnements ne sont ni proposés ni accessibles depuis l&apos;application destinée aux
+            clients. Les conditions de résiliation et de remboursement sont celles décrites lors de la souscription.
           </p>
         </Section>
 
@@ -157,12 +166,13 @@ export default function CGUPage() {
           <p>
             Vous pouvez supprimer votre compte à tout moment depuis les paramètres de l'application
             (<em>Compte → Paramètres → Supprimer mon compte</em>) ou en envoyant un email à{' '}
-            <a href="mailto:hello@getchair.app" className="underline">hello@getchair.app</a>.
+            <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>.
           </p>
           <p>
-            La suppression est effective dans un délai de 30 jours. Vos données personnelles seront effacées
-            conformément à notre Politique de confidentialité. Les avis publiés peuvent être conservés de façon
-            anonymisée pour préserver l'intégrité de la plateforme.
+            La suppression est immédiate et irréversible : elle s&apos;exécute dès la confirmation, sans délai de grâce
+            et sans possibilité de récupérer le compte. Vos données personnelles (nom, e-mail, téléphone, photo,
+            biographie, adresse, position) sont effacées, vos sessions révoquées, vos rendez-vous, avis, favoris et
+            abonnements supprimés, conformément à notre Politique de confidentialité.
           </p>
         </Section>
 
@@ -211,7 +221,7 @@ export default function CGUPage() {
             Pour toute question relative aux présentes CGU ou pour exercer vos droits :
           </p>
           <ul className="space-y-1.5 list-none">
-            <Li>Email : <a href="mailto:hello@getchair.app" className="underline">hello@getchair.app</a></Li>
+            <Li>Email : <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a></Li>
             <Li>Réponse garantie sous 72 heures ouvrées</Li>
           </ul>
         </Section>

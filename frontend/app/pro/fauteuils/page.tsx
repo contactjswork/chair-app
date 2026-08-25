@@ -332,7 +332,9 @@ export default function FauteuilsPage() {
         )}
 
         <div className="mt-4">
-          <Link href="/fauteuils-a-louer" target="_blank" className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">
+          {/* Page du même espace pro : navigation interne. target="_blank" éjectait
+              vers Safari dans l'app native, où le token n'existe pas. */}
+          <Link href="/pro/fauteuils-a-louer" className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">
             <ExternalLink size={12} />Voir la recherche côté coiffeurs
           </Link>
         </div>

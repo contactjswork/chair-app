@@ -217,12 +217,12 @@ export default function FavorisPage() {
         <div className="min-h-[75vh] flex items-center justify-center px-6">
           <SharedEmptyState
             icon={Heart}
-            title="Vos favoris vous attendent"
-            subtitle="Connectez-vous pour sauvegarder vos coiffeurs et réalisations préférés."
+            title="Tes favoris t'attendent"
+            subtitle="Connecte-toi pour sauvegarder tes coiffeurs et réalisations préférés."
             action={
               <div className="flex flex-col items-center gap-3">
-                <PrimaryButton href="/connexion" icon={<LogIn size={15} />}>Se connecter</PrimaryButton>
-                <Link href="/inscription" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
+                <PrimaryButton href="/connexion?returnTo=%2Fapp%2Ffavoris" icon={<LogIn size={15} />}>Se connecter</PrimaryButton>
+                <Link href="/inscription?returnTo=%2Fapp%2Ffavoris" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
                   Créer un compte
                 </Link>
               </div>

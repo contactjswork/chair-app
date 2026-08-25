@@ -35,6 +35,7 @@ const BASE = 'inline-flex items-center justify-center font-semibold transition-a
 function Spinner({ light }: { light?: boolean }) {
   return (
     <span
+      aria-hidden="true"
       className={`inline-block w-3.5 h-3.5 rounded-full border-2 border-t-transparent animate-spin ${light ? 'border-white/40 border-t-white' : 'border-neutral-300 border-t-neutral-600'}`}
     />
   );
@@ -54,7 +55,7 @@ function renderVariant(variantCls: string, spinnerLight: boolean) {
       return <Link href={href} className={cls} onClick={anchorClick} {...anchorProps}>{content}</Link>;
     }
     return (
-      <button type={type ?? 'button'} className={cls} disabled={loading || disabled} onClick={onClick}>
+      <button type={type ?? 'button'} className={cls} disabled={loading || disabled} aria-busy={loading || undefined} onClick={onClick}>
         {content}
       </button>
     );

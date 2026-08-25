@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\MailService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,10 +30,11 @@ class AppServiceProvider extends ServiceProvider
         // Laravel appelle route('password.reset', ...) et lève une
         // RouteNotFoundException au moment d'envoyer l'email. Pointe
         // directement vers la page frontend qui consomme le lien.
+        // La construction de l'URL vit dans MailService::passwordResetUrl() :
+        // User::sendPasswordResetNotification() (qui envoie l'email CHAIR)
+        // utilise exactement la même, une seule route à maintenir.
         ResetPassword::createUrlUsing(function ($notifiable, string $token) {
-            $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
-            return $frontendUrl . '/reinitialiser-mot-de-passe?token=' . $token
-                . '&email=' . urlencode($notifiable->getEmailForPasswordReset());
+            return MailService::passwordResetUrl($notifiable->getEmailForPasswordReset(), $token);
         });
     }
 }

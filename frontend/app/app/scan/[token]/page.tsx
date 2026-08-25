@@ -99,7 +99,7 @@ export default function ScanPage() {
     <div className="min-h-screen bg-neutral-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-neutral-100 px-5 py-3.5 flex items-center justify-between">
-        <Link href="/" className="text-base font-bold tracking-[0.12em] uppercase text-neutral-900">
+        <Link href="/app" className="text-base font-bold tracking-[0.12em] uppercase text-neutral-900">
           CHAIR
         </Link>
         {step === 'review' && (
@@ -380,7 +380,7 @@ export default function ScanPage() {
                 </Link>
               )}
               <Link
-                href="/"
+                href="/app/recherche"
                 className="w-full flex items-center justify-center gap-2 border border-neutral-200 text-neutral-600 font-semibold py-3.5 rounded-2xl text-sm hover:bg-neutral-50 transition-colors"
               >
                 Découvrir d&apos;autres coiffeurs

@@ -35,14 +35,14 @@ echo "→ Build number (incrémenté)"
 echo "→ Nom affiché + permissions (CHAIR)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName CHAIR" "$PLIST"
 
-/usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR utilise l appareil photo pour te laisser prendre ta photo de profil directement depuis l app.'" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR utilise l appareil photo pour te laisser prendre ta photo de profil directement depuis l app.'" "$PLIST"
 
-/usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR accede a tes photos pour te laisser choisir ta photo de profil dans ta galerie.'" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR accede a tes photos pour te laisser choisir ta photo de profil dans ta galerie.'" "$PLIST"
 
-/usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.'" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise ta position pour te montrer les coiffeurs les plus proches de toi.'" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise ta position pour te montrer les coiffeurs les plus proches de toi.'" "$PLIST"
 
 BUILD_NUM=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
 ACTUAL_URL=$(node -e "console.log(require('./ios/App/App/capacitor.config.json').server.url)" 2>/dev/null || echo "?")

@@ -61,7 +61,11 @@ export default function AppBanner() {
   }
 
   return (
-    <div className="sticky top-0 z-[60] bg-neutral-900 text-white">
+    // web-only : double sécurité CSS en plus du gating JS isNativeApp() —
+    // une bannière "Ouvrir dans l'app" affichée DANS l'app est le pire
+    // signal webview possible (Guideline 4.2). Si la logique JS évoluait,
+    // globals.css (html.chair-native .web-only) la masquerait quand même.
+    <div className="web-only sticky top-0 z-[60] bg-neutral-900 text-white">
       <div className="flex items-center gap-3 px-4 py-2.5">
         <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
           <span className="text-[12px] font-black">C</span>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { schedule as scheduleApi } from '@/lib/api';
 import { type ApiScheduleDay, type ApiUnavailability } from '@/lib/types';
@@ -259,7 +259,12 @@ function UnavailabilitiesSection() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlanningPage() {
-  const { user } = useAuth();
+  // Garde d'accès : useRequireAuth, comme toutes les autres pages pro. La garde
+  // locale précédente testait `user.role !== 'hairdresser'` et renvoyait vers la
+  // connexion CLIENT — un gérant double-identité passé en Mode Coiffeur
+  // (role='salon_owner', has_hairdresser_profile=true) était éjecté de son
+  // propre planning. hasAccess() raisonne sur la capacité, pas sur le rôle.
+  const { user, isLoading: authLoading } = useRequireAuth(['hairdresser']);
   const router = useRouter();
 
   const [schedule,       setSchedule]       = useState<ApiScheduleDay[]>([]);
@@ -269,14 +274,13 @@ export default function PlanningPage() {
   const [successMsg,     setSuccessMsg]     = useState('');
 
   useEffect(() => {
-    if (user === undefined) return;
-    if (!user || user.role !== 'hairdresser') { router.push('/connexion'); return; }
+    if (authLoading || !user) return;
     if (user.hairdresser_profile?.is_independent === false) { router.replace('/pro'); return; }
     scheduleApi.get()
       .then((sched) => setSchedule(normalizeSchedule(sched as ApiScheduleDay[])))
       .catch(() => setError('Impossible de charger les horaires.'))
       .finally(() => setLoading(false));
-  }, [user, router]);
+  }, [authLoading, user, router]);
 
   function normalizeTime(t: string | null | undefined): string | null {
     if (!t) return null;

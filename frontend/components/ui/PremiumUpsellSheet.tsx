@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Check, BarChart3, Camera, Film, Pin, TrendingUp, BadgeCheck } from 'lucide-react';
 import BottomSheet from '@/components/ui/BottomSheet';
+import { allowsDigitalSubscriptionUI, useAppContext } from '@/lib/appContext';
 
 interface Props {
   open: boolean;
@@ -28,8 +29,17 @@ const POINTS = [
  */
 export default function PremiumUpsellSheet({ open, onClose }: Props) {
   const router = useRouter();
+  const { context: appContext } = useAppContext();
 
   if (!open) return null;
+  // Ceinture et bretelles : ce sheet porte un CTA de souscription à un
+  // abonnement numérique (« Essayer gratuitement pendant 30 jours »). Il
+  // n'est aujourd'hui monté que derrière `showSubscriptionUI`
+  // (/pro/chair-plus), mais étant réutilisable, il refuse lui-même de
+  // s'afficher dans le binaire CHAIR CLIENT ou dans un binaire natif non
+  // identifié — App Store 3.1.1(a), voir lib/appContext.ts. Comportement
+  // identique pour tous, reviewer compris.
+  if (!allowsDigitalSubscriptionUI(appContext)) return null;
 
   function handleCta() {
     onClose();

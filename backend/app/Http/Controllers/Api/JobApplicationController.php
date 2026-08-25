@@ -8,11 +8,37 @@ use App\Models\JobOffer;
 use App\Models\HairdresserProfile;
 use App\Models\Salon;
 use App\Services\NotificationService;
+use App\Support\PublicScope;
 use Illuminate\Http\Request;
 
 class JobApplicationController extends Controller
 {
     // ── SALON OWNER — candidatures reçues ────────────────────────────────────
+
+    /**
+     * Prépare une candidature pour le gérant qui l'a reçue.
+     *
+     * Le gérant a besoin de deux choses que l'API ne renvoyait pas : le slug du
+     * candidat (pour ouvrir son profil public) et de quoi le contacter. Le
+     * candidat a postulé de lui-même chez CE salon : partager son email et son
+     * téléphone avec ce gérant-là est le sens même de la candidature.
+     *
+     * Tout le reste du profil reste masqué (SIRET, URL du diplôme, drapeaux
+     * internes) — c'est exactement la fuite corrigée par PublicScope, on ne la
+     * rouvre pas ici sous prétexte que le destinataire est un pro.
+     */
+    private function shapeForOwner(JobApplication $app): JobApplication
+    {
+        if ($app->relationLoaded('hairdresser') && $app->hairdresser) {
+            PublicScope::hairdresser($app->hairdresser);
+
+            if ($app->hairdresser->relationLoaded('user') && $app->hairdresser->user) {
+                $app->hairdresser->user->makeVisible(['email', 'phone']);
+            }
+        }
+
+        return $app;
+    }
 
     /** GET /my-salon/applications — toutes les candidatures */
     public function myApplications(Request $request)
@@ -23,6 +49,8 @@ class JobApplicationController extends Controller
             ->whereHas('jobOffer', fn ($q) => $q->where('salon_id', $salon->id))
             ->orderByDesc('created_at')
             ->get();
+
+        $apps->each(fn ($app) => $this->shapeForOwner($app));
 
         return response()->json($apps);
     }
@@ -77,7 +105,7 @@ class JobApplicationController extends Controller
         // fresh() sans argument perd les relations eager-loadées ci-dessus
         // (hairdresser.user, jobOffer) — le nom du candidat et le titre de
         // l'offre disparaissaient de la réponse après chaque changement de statut.
-        return response()->json($app->fresh(['hairdresser.user', 'jobOffer']));
+        return response()->json($this->shapeForOwner($app->fresh(['hairdresser.user', 'jobOffer'])));
     }
 
     // ── COIFFEUR — postuler ───────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, QrCode, MessageCircle, MessageSquare } from 'lucide-react';
@@ -37,6 +37,9 @@ const hasNativeShare = () => typeof navigator !== 'undefined' && !!navigator.sha
 export default function ShareSheet({ open, onClose, title, shareUrl, shareText, actionType, targetType, targetId }: Props) {
   const [copiedChannel, setCopiedChannel] = useState<ShareChannel | null>(null);
   const [showQr, setShowQr] = useState(false);
+  /** Nettoyage du repli deep link en attente si le volet est démonté entre-temps. */
+  const deepLinkCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => { deepLinkCleanupRef.current?.(); }, []);
 
   function log(channel: ShareChannel) {
     // Télémétrie best-effort ("invitations envoyées") — jamais de crédit ici.
@@ -85,16 +88,63 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
     log('native');
   }
 
+  /**
+   * Ouvre Instagram/Snapchat par leur schéma d'URL, avec repli web si
+   * l'application n'est pas installée.
+   *
+   * Le repli était auparavant un `setTimeout(..., 900)` inconditionnel : quand
+   * l'application S'OUVRAIT bien, le minuteur restait armé et se déclenchait
+   * au retour dans CHAIR — l'utilisateur qui venait d'annuler le partage dans
+   * Instagram se retrouvait projeté sur instagram.com dans un onglet, sans
+   * l'avoir demandé (double comportement).
+   *
+   * Le repli n'a de sens que dans un seul cas : le schéma n'a rien ouvert,
+   * donc la page CHAIR est TOUJOURS au premier plan 900 ms plus tard. On
+   * annule donc dès que la page passe en arrière-plan (`visibilitychange`,
+   * `pagehide`, `blur` — c'est exactement ce qui se produit quand l'app tierce
+   * prend la main), et on revérifie `document.hidden` avant d'ouvrir.
+   */
   async function handleAppDeepLink(channel: 'instagram' | 'snapchat', scheme: string, webFallback: string) {
+    // Anti double-tap : la garde est posée AVANT le `await` sur le
+    // presse-papier, sinon deux appuis rapprochés passent tous les deux.
+    if (deepLinkCleanupRef.current) return;
+    deepLinkCleanupRef.current = () => {};
+
     await navigator.clipboard.writeText(fullMessage).catch(() => {});
     setCopiedChannel(channel);
     setTimeout(() => setCopiedChannel(null), 3500);
-    if (isMobileUA()) {
-      window.location.href = scheme;
-      setTimeout(() => { window.open(webFallback, '_blank'); }, 900);
-    } else {
+
+    if (!isMobileUA()) {
+      deepLinkCleanupRef.current = null;
       window.open(webFallback, '_blank');
+      log(channel);
+      return;
     }
+
+    let leftThePage = false;
+    let timer = 0;
+    const onLeave = () => { leftThePage = true; };
+    const onVisibilityChange = () => { if (document.hidden) leftThePage = true; };
+    const cleanup = () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', onLeave);
+      window.removeEventListener('blur', onLeave);
+      window.clearTimeout(timer);
+      deepLinkCleanupRef.current = null;
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', onLeave);
+    window.addEventListener('blur', onLeave);
+
+    timer = window.setTimeout(() => {
+      const shouldFallback = !leftThePage && !document.hidden;
+      cleanup();
+      if (shouldFallback) window.open(webFallback, '_blank');
+    }, 900);
+    deepLinkCleanupRef.current = cleanup;
+
+    window.location.href = scheme;
     log(channel);
   }
 

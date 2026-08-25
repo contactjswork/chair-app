@@ -19,7 +19,6 @@ import { FilterChip as SharedFilterChip } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/Button';
 import { Skeleton, SkeletonCircle, SkeletonText } from '@/components/ui/Skeleton';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 // ── Type d'entrée normalisé pour l'affichage — les deux endpoints backend
 // (global / par spécialité) renvoient des formes différentes, unifiées ici
@@ -224,7 +223,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
       <p className={`font-bold text-neutral-900 w-full flex items-center justify-center gap-1 min-w-0 ${isFirst ? 'text-[14px]' : 'text-[12px]'}`}>
         <span className="truncate">{entry.name}</span>
         {entry.isVerified && <BadgeCheck size={isFirst ? 13 : 11} className="text-neutral-900 flex-shrink-0" />}
-        {entry.isChairPlus && <PremiumBadge />}
+        
       </p>
       {entry.city && <p className={`text-neutral-400 truncate w-full ${isFirst ? 'text-[11px]' : 'text-[10px]'} mt-0.5`}>{entry.city}</p>}
       {entry.metaLabel && (
@@ -263,7 +262,7 @@ function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
           <p className="text-[14px] font-bold text-neutral-900 truncate">{entry.name}</p>
           {isMe && <span className="text-[9px] font-bold uppercase tracking-wide text-neutral-500 bg-neutral-100 px-1.5 py-0.5 rounded-full flex-shrink-0">Vous</span>}
           {entry.isVerified && <BadgeCheck size={11} className="text-neutral-900 flex-shrink-0" />}
-          {entry.isChairPlus && <PremiumBadge />}
+          
         </div>
         <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 truncate">
           {entry.metaLabel && <span className="truncate">{entry.metaLabel}</span>}

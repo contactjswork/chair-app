@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\PublicScope;
 use App\Models\HairdresserProfile;
 use App\Models\Post;
 use App\Models\SavedPost;
@@ -92,6 +93,8 @@ class HairdresserController extends Controller
             ? (is_array($request->specialty) ? array_filter($request->specialty) : [$request->specialty])
             : [];
 
+        $blockedUserIds = \App\Models\UserBlock::blockedIdsFor(Auth::guard('sanctum')->user()?->id);
+
         $query = HairdresserProfile::with([
                 'user',
                 // La spécialité qui a fait matcher le filtre passe en premier —
@@ -111,6 +114,11 @@ class HairdresserController extends Controller
             // découverte (Explore/Search/Recommendation/Leaderboard) ne sont
             // pas encore filtrés — limite assumée, voir rapport de mission.
             ->where('is_hidden', false)
+            // Comptes bloqués par le visiteur (App Store 1.2) — même motif que
+            // feed() et SearchController : une seule requête, résolution
+            // manuelle du guard sanctum car la route est publique, et aucune
+            // clause SQL ajoutée pour un visiteur non connecté.
+            ->when(!empty($blockedUserIds), fn($q) => $q->whereNotIn('user_id', $blockedUserIds))
             ->when(!empty($specialtySlugs), fn($q) => $q->whereHas('specialties', fn($sq) =>
                 $sq->whereIn('slug', $specialtySlugs)
             ))
@@ -173,6 +181,7 @@ class HairdresserController extends Controller
 
             $page = $hairdressers->take($perPage)->values();
             BadgeService::attachGamification($page);
+            PublicScope::hairdressers($page);
 
             return response()->json([
                 'data'         => $page,
@@ -211,6 +220,7 @@ class HairdresserController extends Controller
 
             $page = $hairdressers->take($perPage)->values();
             BadgeService::attachGamification($page);
+            PublicScope::hairdressers($page);
 
             return response()->json([
                 'data'         => $page,
@@ -246,6 +256,7 @@ class HairdresserController extends Controller
 
             $page = $hairdressers->take($perPage)->values();
             BadgeService::attachGamification($page);
+            PublicScope::hairdressers($page);
 
             return response()->json([
                 'data'         => $page,
@@ -275,6 +286,7 @@ class HairdresserController extends Controller
         foreach ($paginated->items() as $h) {
             $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
         }
+        PublicScope::hairdressers($paginated->items());
 
         return response()->json($paginated);
     }
@@ -308,7 +320,9 @@ class HairdresserController extends Controller
         }
 
         $points = BadgeService::computePoints($hairdresser);
-        $data   = $hairdresser->toArray();
+        // Masquage des champs privés AVANT sérialisation (email, téléphone,
+        // GPS exact, SIRET, diplôme, drapeaux internes) — voir PublicScope.
+        $data   = PublicScope::hairdresser($hairdresser)->toArray();
         $data['chair_badges']        = BadgeService::getVisibleBadges($hairdresser);
         $data['chair_points']        = $points;
         $data['chair_level']         = BadgeService::getLevel($points);
@@ -323,6 +337,13 @@ class HairdresserController extends Controller
             'current_streak'  => $streak['current_streak'],
             'is_active_today' => $streak['is_active_today'],
         ];
+
+        // NB : l'état "bloqué par le visiteur" n'est délibérément PAS calculé
+        // ici. Cette fiche est rendue côté serveur par Next sans jeton
+        // d'authentification, le champ ne serait donc jamais lu — et il
+        // coûterait une requête sur chaque consultation de profil, qui est le
+        // chemin le plus chaud de l'app. Le bandeau de blocage est résolu
+        // côté client à partir de GET /my-blocks (voir BlockedProfileNotice).
 
         return response()->json($data);
     }
@@ -363,6 +384,20 @@ class HairdresserController extends Controller
         $query = Post::with(['hairdresser.user', 'hairdresser.specialties', 'images', 'specialty', 'tags'])
             ->where('is_published', true)
             ->when($request->type, fn($q) => $q->where('type', $request->type));
+
+        // ── BLOCAGE UTILISATEUR (App Store Review Guideline 1.2) ────────────
+        // Le blocage doit avoir un effet réel, pas décoratif : le contenu d'un
+        // compte bloqué ne doit plus apparaître dans le fil du bloqueur. Le
+        // filtre est posé sur la requête de base, donc il vaut pour TOUS les
+        // tris ci-dessous (trending / personalized / following / scored /
+        // récent). Voir UserBlockController pour la portée exacte du blocage.
+        $blockedUserIds = \App\Models\UserBlock::blockedIdsFor($authUser?->id);
+        if (!empty($blockedUserIds)) {
+            $blockedHairdresserIds = HairdresserProfile::whereIn('user_id', $blockedUserIds)->pluck('id')->all();
+            if (!empty($blockedHairdresserIds)) {
+                $query->whereNotIn('hairdresser_id', $blockedHairdresserIds);
+            }
+        }
 
         // ── TRENDING — score engagements + saves + qualité coiffeur ─────────
         if ($request->sort === 'trending') {

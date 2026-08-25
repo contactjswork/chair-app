@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeClientMail;
+use App\Mail\WelcomeHairdresserMail;
 use App\Models\Appointment;
 use App\Models\HairdresserProfile;
 use App\Models\Notification;
@@ -10,6 +12,7 @@ use App\Models\Review;
 use App\Models\Salon;
 use App\Models\SalonJoinRequest;
 use App\Services\GeocodingService;
+use App\Services\MailService;
 use App\Services\NotificationService;
 use App\Services\ReferralService;
 use Illuminate\Http\Request;
@@ -37,7 +40,7 @@ class AuthController extends Controller
             // un salon_owner qui laisse la ville vide fait planter la création
             // du salon en 500 APRÈS que le compte utilisateur soit déjà créé.
             'salon_city'        => 'required_if:role,salon_owner|nullable|string|max:100',
-            'booking_url'       => 'nullable|url|max:500',
+            'booking_url'       => 'nullable|url|max:500|starts_with:https://',
             'salon_instagram'   => 'nullable|url|max:255',
             // Champs gérant salon
             'siret'             => 'nullable|string|size:14|regex:/^\d{14}$/',
@@ -195,6 +198,19 @@ class AuthController extends Controller
             return [$user, $token];
         });
 
+        // Email de bienvenue — APRÈS la transaction (jamais dedans : un envoi
+        // lent ou en échec ne doit ni allonger ni annuler la création du
+        // compte). MailService n'émet aucune exception, l'inscription répond
+        // 201 même si le mailer est en panne ou non configuré.
+        if ($user->role === 'client') {
+            MailService::send($user->email, new WelcomeClientMail($user->name), $user->name, $user->id);
+        } elseif ($user->role === 'hairdresser') {
+            MailService::send($user->email, new WelcomeHairdresserMail($user->name), $user->name, $user->id);
+        }
+        // Note : aucun email de bienvenue pour le rôle salon_owner — il aurait
+        // besoin de son propre texte (équipe, salon), pas de celui du coiffeur.
+        // Voir docs/EMAILS.md.
+
         return response()->json([
             'user'  => self::withEntitlement($user),
             'token' => $token,
@@ -227,18 +243,69 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * POST /forgot-password — envoi du lien de réinitialisation.
+     *
+     * Deux règles se croisent ici, dans cet ordre :
+     *
+     * 1. NE JAMAIS PERMETTRE D'ÉNUMÉRER LES COMPTES. La réponse ne doit pas
+     *    dépendre de l'existence de l'adresse : compte inconnu
+     *    (`passwords.user`), demande déjà faite il y a moins d'une minute
+     *    (`passwords.throttled`) et envoi réussi (`passwords.sent`) renvoient
+     *    exactement la même réponse 200 et le même message.
+     *
+     * 2. NE JAMAIS ANNONCER UN ENVOI QUI N'A PAS EU LIEU. Si le mailer n'est
+     *    pas configuré (état de la production tant que le SMTP n'est pas
+     *    renseigné, cf. docs/app-store/ACTION_GERANT_SMTP.md), aucun email ne
+     *    peut partir : répondre 200 « un lien a été envoyé » ferait attendre
+     *    indéfiniment un email inexistant. On répond alors 503 avec un message
+     *    d'indisponibilité du service — qui ne dit rien du compte, donc ne
+     *    contredit pas la règle 1 : la réponse est la même pour une adresse
+     *    inconnue et pour une adresse existante.
+     *
+     * Ce test est fait AVANT le broker : inutile de créer une ligne
+     * password_resets (et de déclencher le throttle de 60 s sur le compte)
+     * pour un email qui ne partira pas.
+     */
     public function forgotPassword(Request $request)
     {
         $request->validate(['email' => 'required|email']);
 
-        $status = \Illuminate\Support\Facades\Password::sendResetLink(
+        $problem = MailService::configurationProblem();
+        if ($problem !== null) {
+            \Illuminate\Support\Facades\Log::error('CHAIR — demande de réinitialisation impossible : mailer non configuré', [
+                'reason'    => $problem,
+                'recipient' => MailService::maskEmail((string) $request->input('email')),
+                'mailer'    => (string) config('mail.default'),
+            ]);
+
+            return response()->json([
+                'message' => "L'envoi d'emails est momentanément indisponible. Réessaie dans quelques minutes, ou écris-nous à contact@getchair.app.",
+            ], 503);
+        }
+
+        // Résultat volontairement ignoré : le distinguer révélerait l'existence
+        // du compte (voir règle 1 ci-dessus). Les échecs d'envoi réels sont
+        // journalisés par MailService::send().
+        \Illuminate\Support\Facades\Password::sendResetLink(
             $request->only('email')
         );
 
-        // On retourne toujours 200 pour ne pas révéler si l'email existe
         return response()->json(['message' => 'Si cet email existe, un lien de réinitialisation a été envoyé.']);
     }
 
+    /**
+     * POST /reset-password — consommation du lien.
+     *
+     * Le token est à usage unique (Password::reset supprime la ligne
+     * password_resets) et expire au bout de config('auth.passwords.users.expire')
+     * minutes. Toutes les sessions API existantes du compte sont révoquées :
+     * si quelqu'un d'autre était connecté, il est déconnecté.
+     *
+     * Le message d'échec est volontairement unique (token inconnu, token
+     * expiré, adresse inconnue) : le détailler permettrait d'énumérer les
+     * comptes, exactement comme sur forgotPassword().
+     */
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -251,19 +318,34 @@ class AuthController extends Controller
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
                 $user->forceFill(['password' => bcrypt($password)])->save();
+                // Révocation de toutes les sessions : un mot de passe changé
+                // parce qu'on soupçonne une intrusion doit couper l'intrus.
                 $user->tokens()->delete();
             }
         );
 
         if ($status === \Illuminate\Support\Facades\Password::PASSWORD_RESET) {
-            return response()->json(['message' => 'Mot de passe réinitialisé avec succès.']);
+            return response()->json([
+                'message' => 'Mot de passe réinitialisé. Toutes les sessions ouvertes ont été déconnectées.',
+            ]);
         }
 
-        return response()->json(['message' => 'Lien invalide ou expiré.'], 422);
+        return response()->json(['message' => 'Lien invalide ou expiré. Demande un nouveau lien.'], 422);
     }
 
     public function logout(Request $request)
     {
+        // Détache le token push de CET appareil s'il est transmis (le frontend
+        // peut aussi appeler DELETE /push/register avant — les deux chemins
+        // sont idempotents). On ne supprime pas TOUS les tokens : les autres
+        // appareils de l'utilisateur restent connectés et notifiables.
+        $pushToken = $request->input('push_token');
+        if (is_string($pushToken) && $pushToken !== '') {
+            \App\Models\PushSubscription::where('user_id', $request->user()->id)
+                ->where('token', strtolower($pushToken))
+                ->delete();
+        }
+
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'Déconnecté']);
     }
@@ -278,39 +360,30 @@ class AuthController extends Controller
      * de compte utilisable en autonomie, pas seulement "contacter le
      * support". Supprime exactement ce que l'écran de confirmation annonce
      * (frontend/app/app/compte/supprimer) : avis laissés, réservations en
-     * tant que client, favoris/abonnements — puis anonymise la ligne user
-     * (nom/email/mot de passe/coordonnées) et révoque tous les tokens.
+     * tant que client, notifications, favoris/abonnements/inspirations,
+     * appareils liés — puis anonymise la ligne user (nom/email/mot de
+     * passe/coordonnées) et révoque tous les tokens.
      *
-     * Volontairement PAS de cascade sur salon/équipe/portfolio pour un
-     * compte gérant ou coiffeur — supprimer un salon supprimerait les
-     * données d'autres utilisateurs (équipe, avis reçus) qui ne sont pas
-     * celles de la personne qui supprime son compte. Un flow de suppression
-     * spécifique pro (transfert de salon, etc.) reste à concevoir séparément.
+     * La ligne `users` n'est PAS supprimée : elle porte des clés étrangères
+     * (avis reçus par un coiffeur, historique d'un salon) dont la
+     * destruction effacerait les données d'autres personnes. Elle est donc
+     * vidée de tout ce qui identifie : plus aucun retour en arrière possible,
+     * et l'écran de confirmation le dit dans ces termes.
+     *
+     * Volontairement PAS de cascade sur le salon d'un gérant — supprimer un
+     * salon supprimerait les données d'autres utilisateurs (équipe, avis
+     * reçus). Un flow de suppression spécifique pro (transfert de salon)
+     * reste à concevoir séparément, voir docs/app-store/ACCOUNT_AUDIT.md.
+     *
+     * La logique effective (transaction + scrub du profil coiffeur) vit
+     * désormais dans AccountDeletionService::anonymize() — extraite SANS
+     * changement de comportement pour être réutilisable par les actions de
+     * masse admin (AdminBulkController), qui appliquent la même stratégie
+     * aux comptes réels.
      */
     public function deleteAccount(Request $request)
     {
-        $user = $request->user();
-
-        Review::where('client_id', $user->id)->delete();
-        Appointment::where('client_id', $user->id)->delete();
-        Notification::where('user_id', $user->id)->delete();
-        $user->follows()->detach();
-        $user->savedProfiles()->detach();
-
-        $user->tokens()->delete();
-
-        $user->update([
-            'name'        => 'Utilisateur supprimé',
-            'email'       => 'deleted-' . $user->id . '-' . time() . '@getchair.invalid',
-            'password'    => bcrypt(Str::random(40)),
-            'avatar'      => null,
-            'bio'         => null,
-            'phone'       => null,
-            'city'        => null,
-            'postal_code' => null,
-            'latitude'    => null,
-            'longitude'   => null,
-        ]);
+        \App\Services\AccountDeletionService::anonymize($request->user());
 
         return response()->json(['message' => 'Compte supprimé.']);
     }

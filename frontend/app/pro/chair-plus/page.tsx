@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { subscription } from '@/lib/api';
 import { isFeatureEnabled } from '@/lib/featureFlags';
+import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
+import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
@@ -73,6 +75,12 @@ export default function ChairPlusPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
   const searchParams = useSearchParams();
   const checkoutResult = searchParams.get('checkout');
+  // Quel binaire affiche cette page ? CHAIR CLIENT et CHAIR PRO chargent le
+  // même site : sans ce test, le tarif et le bouton de souscription CHAIR+
+  // (contenu numérique payé hors achat intégré) s'affichent aussi dans l'app
+  // CLIENT — ce que la règle App Store 3.1.1(a) interdit hors storefront US.
+  // Voir lib/appContext.ts pour le détail de la politique et du cas 'unknown'.
+  const { context: appContext, resolved: appContextResolved } = useAppContext();
 
   const [data, setData] = useState<ApiMySubscription | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -115,7 +123,11 @@ export default function ChairPlusPage() {
     }
   }
 
-  if (isLoading || !user) {
+  // `!appContextResolved` inclus dans l'état de chargement : la détection du
+  // binaire lit `navigator`, donc rien n'est décidé avant l'hydratation. On
+  // affiche le spinner plutôt qu'une UI d'abonnement qu'il faudrait retirer
+  // juste après — aucun tarif n'est jamais peint puis rétracté.
+  if (isLoading || !user || !appContextResolved) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
@@ -131,6 +143,12 @@ export default function ChairPlusPage() {
   // NOUVELLES souscriptions, jamais l'entitlement déjà acquis (voir SubscriptionController::subscribe).
   const canManage = !!sub && state !== 'expired';
   const showComingSoon = !flagLoading && !flagEnabled && !canManage;
+  // Séparation CLIENT / PRO : dans le binaire CHAIR CLIENT (et dans tout
+  // binaire natif non identifié, par prudence), cette page n'affiche ni
+  // tarif, ni bouton de souscription, ni bouton de gestion Stripe. Elle dit
+  // honnêtement où cela se passe. Identique pour tout le monde, reviewer
+  // compris — aucune détection de reviewer nulle part.
+  const showSubscriptionUI = allowsDigitalSubscriptionUI(appContext);
 
   return (
     <div className="min-h-screen bg-white">
@@ -154,6 +172,8 @@ export default function ChairPlusPage() {
 
       {showComingSoon ? (
         <ComingSoonState />
+      ) : !showSubscriptionUI ? (
+        <SubscriptionElsewhereState planName="CHAIR+" context={appContext} />
       ) : (
         <>
           {checkoutResult === 'success' && (
@@ -290,10 +310,25 @@ export default function ChairPlusPage() {
         </>
       )}
 
-      <PremiumUpsellSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      {/* Le sheet d'upsell porte un CTA de souscription : il ne doit pas être
+          monté là où l'UI d'abonnement est retirée. */}
+      {showSubscriptionUI && <PremiumUpsellSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />}
     </div>
   );
 }
+
+// ── Binaire CLIENT (ou binaire natif non identifié) ──────────────────────────
+// CHAIR+ est une offre professionnelle numérique payée hors achat intégré.
+// L'App Store Review Guideline 3.1.1(a) interdit, hors storefront américain,
+// d'exposer un tarif ou un appel à l'action de paiement pour du contenu
+// numérique dans une app qui ne passe pas par l'achat intégré. On ne dissimule
+// rien : on explique où la gestion se fait réellement, et on y mène par une
+// sortie navigateur explicite (target="_blank" → Capacitor ouvre le navigateur
+// système, hors de l'app). Le lien pointe l'espace professionnel, pas un
+// tunnel de paiement : c'est de la gestion de compte, pas un CTA d'achat.
+//
+// Rien ici n'est conditionné à l'identité de l'utilisateur : le même binaire
+// affiche le même écran pour tout le monde, reviewer inclus.
 
 // ── État "pas encore disponible" — flag désactivé, honnête, pas de CTA d'abonnement.
 // Même esprit que AppDownload.tsx pour l'app pas encore publiée sur les stores.

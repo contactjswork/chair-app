@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { salons } from '@/lib/api';
 import type { ApiSalonFull } from '@/lib/types';
@@ -58,6 +59,7 @@ const inputCls = 'w-full px-4 py-4 bg-neutral-900 border border-neutral-700 roun
 export default function ProInscriptionPage() {
   const { register } = useAuth();
   const { animClass, transition } = useStepTransition();
+  const router = useRouter();
 
   const [showSlides, setShowSlides] = useState(true);
 
@@ -108,9 +110,17 @@ export default function ProInscriptionPage() {
   }
 
   function goBack() {
-    if (stepIndex === 0) return;
     tapFeedback();
     setError('');
+    // Première étape : on QUITTE l'inscription au lieu de ne rien faire.
+    // Même correctif que l'inscription client (voir app/inscription/page.tsx) :
+    // arrivé ici depuis les slides d'accueil, l'utilisateur était piégé — la
+    // flèche n'apparaissait qu'à partir de l'étape 2, il fallait tuer l'app.
+    if (stepIndex === 0) {
+      if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+      else router.push('/pro/connexion');
+      return;
+    }
     transition(() => setStepIndex((i) => i - 1));
   }
 
@@ -195,7 +205,7 @@ export default function ProInscriptionPage() {
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col">
       <OnboardingHeader
         progress={progress}
-        onBack={stepIndex > 0 ? goBack : undefined}
+        onBack={goBack}
         onSkip={undefined}
       />
 

@@ -30,9 +30,18 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'onesignal' => [
-        'app_id'        => env('ONESIGNAL_APP_ID'),
-        'rest_api_key'  => env('ONESIGNAL_REST_API_KEY'),
+    // Push APNs natif (aucun SDK tiers) — voir App\Services\ApnsService.
+    // Diagnostic : php artisan chair:test-push {email}
+    'apns' => [
+        'key_path'      => env('APNS_KEY_PATH'),
+        'key_id'        => env('APNS_KEY_ID'),
+        'team_id'       => env('APNS_TEAM_ID'),
+        'bundle_id'     => env('APNS_BUNDLE_ID', 'app.getchair.client'),
+        'bundle_id_pro' => env('APNS_BUNDLE_ID_PRO', 'app.getchair.pro'),
+        'environment'   => env('APNS_ENVIRONMENT', 'production'),
+        // Surcharge du host APNs, réservée aux tests locaux (mock) —
+        // ne JAMAIS définir APNS_HOST en production.
+        'host'          => env('APNS_HOST'),
     ],
 
     'mapkit' => [

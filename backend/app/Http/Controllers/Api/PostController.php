@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\ContentFilter;
 use App\Models\Post;
 use App\Models\PostImage;
 use App\Services\BadgeService;
@@ -113,6 +114,13 @@ class PostController extends Controller
                 'tag_ids'          => 'nullable|string',
             ]);
 
+        // Filtrage au dépôt des légendes de réalisation (App Store Review
+        // Guideline 1.2). Le média lui-même n'est pas analysé — c'est dit tel
+        // quel dans les notes de review : les images relèvent du signalement.
+        if ($reason = ContentFilter::check($request->input('description'))) {
+            return response()->json(['message' => ContentFilter::message($reason)], 422);
+        }
+
             $videoUrl = $cloudinary->upload($request->file('video'), 'chair/post-videos', 'video');
             // Cloudinary génère une vignette JPG automatique pour toute vidéo
             // uploadée (même chemin, extension changée) — pas d'appel séparé.
@@ -151,6 +159,13 @@ class PostController extends Controller
                 'specialty_id' => 'nullable|integer|exists:specialties,id',
                 'tag_ids'      => 'nullable|string', // JSON array ou CSV
             ]);
+
+        // Filtrage au dépôt des légendes de réalisation (App Store Review
+        // Guideline 1.2). Le média lui-même n'est pas analysé — c'est dit tel
+        // quel dans les notes de review : les images relèvent du signalement.
+        if ($reason = ContentFilter::check($request->input('description'))) {
+            return response()->json(['message' => ContentFilter::message($reason)], 422);
+        }
 
             $post = Post::create([
                 'hairdresser_id'   => $profile->id,
@@ -198,6 +213,13 @@ class PostController extends Controller
             'duration_minutes' => 'nullable|integer|min:0|max:480',
             'price_indication' => 'nullable|numeric|min:0|max:9999',
         ]);
+
+        // Filtrage au dépôt des légendes de réalisation (App Store Review
+        // Guideline 1.2). Le média lui-même n'est pas analysé — c'est dit tel
+        // quel dans les notes de review : les images relèvent du signalement.
+        if ($reason = ContentFilter::check($request->input('description'))) {
+            return response()->json(['message' => ContentFilter::message($reason)], 422);
+        }
 
         $hasBeforeImage = $request->hasFile('before_image');
         $type           = $hasBeforeImage ? 'before_after' : 'result';
@@ -254,6 +276,13 @@ class PostController extends Controller
             // ne filtre pas is_published).
             'is_published' => 'nullable|boolean',
         ]);
+
+        // Filtrage au dépôt des légendes de réalisation (App Store Review
+        // Guideline 1.2). Le média lui-même n'est pas analysé — c'est dit tel
+        // quel dans les notes de review : les images relèvent du signalement.
+        if ($reason = ContentFilter::check($request->input('description'))) {
+            return response()->json(['message' => ContentFilter::message($reason)], 422);
+        }
 
         $post->update([
             'description'  => $validated['description'] ?? $post->description,

@@ -11,11 +11,16 @@ import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, HelpCircle, Scissors, Trash2,
-  MapPin, Edit3, FileText, Shield,
+  MapPin, Edit3, FileText, Shield, CalendarX, Loader2, X,
+  ShieldOff, ScrollText, ChevronDown, Scale,
 } from 'lucide-react';
+import { BlockedAccountsList } from '@/components/ui/BlockConfirmSheet';
+import BottomSheet from '@/components/ui/BottomSheet';
+import { createPortal } from 'react-dom';
 import { computeClientAchievements } from '@/components/ui/ChairBadges';
 import { LEVEL_STYLES } from '@/lib/chairLevel';
 import { Skeleton, SkeletonCircle } from '@/components/ui/Skeleton';
+import PushOptInCard from '@/components/ui/PushOptInCard';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'En attente',
@@ -24,7 +29,10 @@ const STATUS_LABEL: Record<string, string> = {
   declined: 'Refusé',
   cancelled: 'Annulé',
   no_show: 'Absent',
-  pending_payment: 'Paiement en attente',
+  // Statut vestigial : aucun code ne le produit (voir docs/app-store/PAYMENTS_AUDIT.md).
+  // "Paiement en attente" laissait croire à un débit en cours dans l'app, alors
+  // qu'aucune prestation n'est jamais payée ici — tout se règle au salon.
+  pending_payment: 'À régler sur place',
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -36,6 +44,32 @@ const STATUS_COLOR: Record<string, string> = {
   no_show: 'bg-orange-50 text-orange-600 border-orange-200',
   pending_payment: 'bg-blue-50 text-blue-700 border-blue-200',
 };
+
+/**
+ * Statuts depuis lesquels le client peut encore annuler — miroir exact de la
+ * machine à états du serveur (AppointmentController::STATUS_TRANSITIONS).
+ * Le serveur reste seul juge : ceci évite juste d'afficher un bouton qui
+ * échouerait à coup sûr.
+ */
+const CLIENT_CANCELLABLE_STATUSES: string[] = ['pending', 'pending_payment', 'confirmed'];
+
+/** Instant de début du rendez-vous, ou null si aucune date n'est connue. */
+function apptStartsAt(appt: ApiAppointment): Date | null {
+  const day = appt.appointment_date ?? appt.desired_date;
+  if (!day) return null;
+  // Sans heure ferme (demande legacy avec un simple « matin »), le rendez-vous
+  // n'est considéré passé qu'à la fin de la journée demandée — même règle que
+  // le serveur, pour ne jamais proposer un bouton que l'API refuserait.
+  const time = appt.appointment_time?.slice(0, 5) ?? '23:59';
+  const parsed = new Date(`${day}T${time}:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function canClientCancel(appt: ApiAppointment): boolean {
+  if (!CLIENT_CANCELLABLE_STATUSES.includes(appt.status)) return false;
+  const startsAt = apptStartsAt(appt);
+  return startsAt === null || startsAt.getTime() > Date.now();
+}
 
 export default function ComptePage() {
   const { user, isLoading, logout } = useAuth();
@@ -86,11 +120,11 @@ export default function ComptePage() {
               <div className="w-20 h-20 rounded-full bg-neutral-200 flex items-center justify-center mx-auto mb-4">
                 <User size={32} className="text-neutral-400" />
               </div>
-              <h3 className="font-bold text-neutral-900 mb-1.5">Connectez-vous à CHAIR</h3>
-              <p className="text-sm text-neutral-500">Accédez à votre profil, vos inspirations et vos réservations.</p>
+              <h3 className="font-bold text-neutral-900 mb-1.5">Connecte-toi à CHAIR</h3>
+              <p className="text-sm text-neutral-500">Accède à ton profil, tes inspirations et tes réservations.</p>
             </div>
             <Link
-              href="/connexion"
+              href="/connexion?returnTo=%2Fapp%2Fcompte"
               className="flex items-center justify-between w-full bg-neutral-900 text-white px-5 py-4 rounded-xl hover:bg-neutral-700 active:scale-[0.98] transition-all"
             >
               <div className="flex items-center gap-3">
@@ -293,7 +327,17 @@ export default function ComptePage() {
                 ) : (
                   <div className="space-y-3">
                     {myAppointments.map((appt) => (
-                      <ClientAppointmentCard key={appt.id} appt={appt} />
+                      <ClientAppointmentCard
+                        key={appt.id}
+                        appt={appt}
+                        onUpdated={(updated) =>
+                          // Mise à jour en place : la liste reflète l'annulation
+                          // immédiatement, sans recharger tout l'écran.
+                          setMyAppointments((prev) =>
+                            prev.map((a) => (a.id === updated.id ? updated : a))
+                          )
+                        }
+                      />
                     ))}
                   </div>
                 )}
@@ -346,6 +390,12 @@ export default function ComptePage() {
               );
             })()}
 
+            {/* Opt-in push contextualisé — ne s'affiche que dans un binaire
+                natif avec le plugin, permission encore à 'prompt' et carte
+                non écartée. Invisible sur le web (rend null : aucune marge
+                fantôme, d'où les classes portées par la carte elle-même). */}
+            <PushOptInCard className="mt-6 mx-4" />
+
             {/* ══════════════════════════════════════
                 PARAMÈTRES
             ══════════════════════════════════════ */}
@@ -373,6 +423,36 @@ export default function ComptePage() {
                   <div className="flex items-center gap-3">
                     <FileText size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Conditions d&apos;utilisation</span>
+                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+                <Link href="/mentions-legales" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Scale size={17} className="text-neutral-400" />
+                    <span className="font-medium text-[14px] text-neutral-900">Mentions légales</span>
+                  </div>
+                  <ChevronRight size={15} className="text-neutral-300" />
+                </Link>
+              </div>
+            </section>
+
+            {/* ══════════════════════════════════════
+                SÉCURITÉ & MODÉRATION  (App Store 1.2)
+                Le blocage et les règles doivent se trouver depuis les
+                réglages du compte, pas seulement depuis un menu "…" posé sur
+                un contenu : un examinateur cherche "comptes bloqués" ICI.
+            ══════════════════════════════════════ */}
+            <section className="mt-4 px-4">
+              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Sécurité</p>
+              <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
+                <BlockedAccountsRow />
+                <Link href="/app/regles-communaute" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <ScrollText size={17} className="text-neutral-400" />
+                    <div>
+                      <p className="font-medium text-[14px] text-neutral-900">Règles de communauté</p>
+                      <p className="text-[11px] text-neutral-400 mt-0.5">Ce qui est autorisé, comment signaler un contenu</p>
+                    </div>
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
                 </Link>
@@ -442,9 +522,60 @@ export default function ComptePage() {
   );
 }
 
+// ── Comptes bloqués ──────────────────────────────────────────────────
+
+/**
+ * Entrée "Comptes bloqués" des réglages — App Store Review Guideline 1.2 :
+ * bloquer doit être réversible sans avoir à retrouver la fiche de la personne.
+ * La liste elle-même est le composant partagé BlockedAccountsList (déjà utilisé
+ * sur /app/regles-communaute) : une seule implémentation du déblocage.
+ *
+ * Repliée par défaut — BlockedAccountsList appelle GET /my-blocks à son
+ * montage, on ne le monte donc qu'à l'ouverture pour ne pas alourdir chaque
+ * visite de la page Compte.
+ */
+function BlockedAccountsRow() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="w-full min-h-[44px] flex items-center justify-between px-5 py-4 text-left hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <ShieldOff size={17} className="text-neutral-400" />
+          <div>
+            <p className="font-medium text-[14px] text-neutral-900">Comptes bloqués</p>
+            <p className="text-[11px] text-neutral-400 mt-0.5">Voir et débloquer les comptes que tu as bloqués</p>
+          </div>
+        </div>
+        <ChevronDown
+          size={15}
+          className={`text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="px-5 pb-4 -mt-1">
+          <BlockedAccountsList />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Carte réservation client ─────────────────────────────────────────
 
-function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
+function ClientAppointmentCard({
+  appt,
+  onUpdated,
+}: {
+  appt: ApiAppointment;
+  onUpdated: (updated: ApiAppointment) => void;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const hairdresserName = appt.hairdresser?.user?.name ?? 'Coiffeur';
   const hairdresserSlug = appt.hairdresser?.slug;
   const hairdresserCity = appt.hairdresser?.city;
@@ -457,6 +588,8 @@ function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
     const total = h * 60 + m + appt.duration_minutes;
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   })();
+
+  const cancellable = canClientCancel(appt);
 
   return (
     <div className="border border-neutral-200 rounded-2xl overflow-hidden">
@@ -482,19 +615,190 @@ function ClientAppointmentCard({ appt }: { appt: ApiAppointment }) {
         </div>
         <div className="flex items-center gap-3 mt-1.5">
           {appt.duration_minutes && <span className="text-xs text-neutral-400">{appt.duration_minutes} min</span>}
-          {appt.price && <span className="text-xs font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>}
+          {/* Prix nu = ambigu : rien n'est prélevé par CHAIR, le montant est celui
+              que le coiffeur encaissera au salon. Le suffixe le dit. */}
+          {appt.price && (
+            <span className="text-xs text-neutral-500">
+              <span className="font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span> sur place
+            </span>
+          )}
         </div>
-        {hairdresserSlug && (
-          <div className="mt-3 pt-3 border-t border-neutral-100">
-            <Link
-              href={`/app/coiffeur/${hairdresserSlug}`}
-              className="text-xs font-medium text-neutral-700 hover:text-neutral-900 flex items-center gap-1"
-            >
-              Voir le profil du coiffeur <ChevronRight size={12} />
-            </Link>
+        {(hairdresserSlug || cancellable) && (
+          <div className="mt-3 pt-3 border-t border-neutral-100 space-y-2">
+            {hairdresserSlug && (
+              <Link
+                href={`/app/coiffeur/${hairdresserSlug}`}
+                className="min-h-[44px] text-xs font-medium text-neutral-700 hover:text-neutral-900 flex items-center gap-1"
+              >
+                Voir le profil du coiffeur <ChevronRight size={12} />
+              </Link>
+            )}
+            {cancellable && (
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="w-full min-h-[44px] rounded-xl border border-neutral-200 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <CalendarX size={14} />
+                Annuler ce rendez-vous
+              </button>
+            )}
           </div>
         )}
       </div>
+
+      {confirmOpen && (
+        <CancelAppointmentSheet
+          appt={appt}
+          hairdresserName={hairdresserName}
+          dateLabel={dateLabel}
+          startTime={startTime}
+          onClose={() => setConfirmOpen(false)}
+          onUpdated={onUpdated}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Annulation d'une réservation par le client ───────────────────────
+
+/**
+ * Confirmation d'annulation. Réutilise la coquille BottomSheet commune
+ * (verrouillage du scroll, glisser-fermer) plutôt que d'en réécrire une.
+ *
+ * La conséquence est énoncée AVANT la confirmation : l'annulation est
+ * définitive côté CHAIR (on ne remet pas le créneau de côté), le créneau
+ * repart en ligne, et le coiffeur est prévenu. Rien de plus n'est promis :
+ * aucune politique de préavis ni de pénalité n'existe côté serveur.
+ */
+function CancelAppointmentSheet({
+  appt,
+  hairdresserName,
+  dateLabel,
+  startTime,
+  onClose,
+  onUpdated,
+}: {
+  appt: ApiAppointment;
+  hairdresserName: string;
+  dateLabel: string | null;
+  startTime: string | undefined;
+  onClose: () => void;
+  onUpdated: (updated: ApiAppointment) => void;
+}) {
+  const [working, setWorking] = useState(false);
+  const [done, setDone]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
+  async function confirm() {
+    if (working || done) return; // anti double-tap
+    setWorking(true);
+    setError(null);
+    try {
+      const updated = await appointmentsApi.cancelMine(appt.id);
+      onUpdated(updated);
+      setDone(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "L'annulation n'a pas abouti. Réessaie dans un instant.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  // Portalé dans body pour passer au-dessus de la bottom nav — même raison
+  // que BlockConfirmSheet. La feuille n'existe qu'après un tap, donc jamais
+  // pendant le rendu serveur : ce garde suffit, pas besoin d'état de montage.
+  if (typeof document === 'undefined') return null;
+
+  const when = [dateLabel, startTime ? `à ${startTime}` : null].filter(Boolean).join(' ');
+
+  return createPortal(
+    <BottomSheet onClose={onClose} maxHeight="max-h-[80vh]" zIndexClassName="z-[120]">
+      <div className="px-5 pb-8">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-neutral-100">
+          <p className="text-[16px] font-bold text-neutral-900">
+            {done ? 'Rendez-vous annulé' : 'Annuler ce rendez-vous ?'}
+          </p>
+          <button
+            onClick={onClose}
+            aria-label="Fermer"
+            className="w-11 h-11 -mr-2 -mt-2 flex items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors flex-shrink-0"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="pt-8 pb-2 text-center">
+            <div className="w-12 h-12 rounded-full bg-neutral-900 flex items-center justify-center mx-auto mb-4">
+              <CalendarX size={20} className="stroke-white" />
+            </div>
+            <p className="text-[14px] text-neutral-800 font-semibold">
+              Ton rendez-vous avec {hairdresserName} est annulé.
+            </p>
+            <p className="text-[12px] text-neutral-500 mt-2">
+              {hairdresserName} vient d&apos;être prévenu. Tu peux reprendre un créneau
+              quand tu veux depuis sa fiche.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full mt-6 min-h-[48px] rounded-2xl bg-neutral-900 text-white text-[14px] font-semibold hover:bg-neutral-700 transition-colors"
+            >
+              Fermer
+            </button>
+          </div>
+        ) : (
+          <div className="pt-5">
+            <div className="bg-neutral-50 rounded-2xl px-4 py-3.5">
+              <p className="text-[13px] font-semibold text-neutral-900">{appt.service}</p>
+              <p className="text-[13px] text-neutral-600 mt-0.5">
+                Avec {hairdresserName}
+                {when ? <span className="capitalize"> · {when}</span> : null}
+              </p>
+            </div>
+
+            <div className="mt-4 text-[13px] text-neutral-600 leading-relaxed space-y-2">
+              <p>Si tu annules :</p>
+              <ul className="space-y-1.5">
+                <li className="flex gap-2">
+                  <span className="mt-1.5 w-1 h-1 rounded-full bg-neutral-300 flex-shrink-0" />
+                  <span>le créneau repart en ligne et peut être pris par quelqu&apos;un d&apos;autre&nbsp;;</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 w-1 h-1 rounded-full bg-neutral-300 flex-shrink-0" />
+                  <span>{hairdresserName} est prévenu immédiatement&nbsp;;</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-1.5 w-1 h-1 rounded-full bg-neutral-300 flex-shrink-0" />
+                  <span>l&apos;annulation est définitive&nbsp;: pour revenir, il faudra reprendre un créneau.</span>
+                </li>
+              </ul>
+            </div>
+
+            {error && (
+              <p className="mt-4 text-[13px] text-red-600 bg-red-50 rounded-xl px-3 py-2.5">{error}</p>
+            )}
+
+            <button
+              onClick={confirm}
+              disabled={working}
+              className="w-full mt-5 min-h-[48px] rounded-2xl bg-neutral-900 text-white text-[14px] font-semibold hover:bg-neutral-700 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+            >
+              {working ? <Loader2 size={16} className="animate-spin" /> : null}
+              {working ? 'Un instant…' : 'Annuler le rendez-vous'}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={working}
+              className="w-full mt-2.5 min-h-[48px] rounded-2xl bg-neutral-100 text-neutral-700 text-[14px] font-semibold hover:bg-neutral-200 transition-colors disabled:opacity-40"
+            >
+              Garder mon rendez-vous
+            </button>
+          </div>
+        )}
+      </div>
+    </BottomSheet>,
+    document.body
   );
 }

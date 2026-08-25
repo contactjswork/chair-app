@@ -48,9 +48,16 @@ const STATUS_ACTIONS: Partial<Record<AppointmentStatus, {label:string; status:Ap
     { label:'Annuler',   status:'cancelled', cls:'bg-red-50 text-red-600', Icon:Ban },
   ],
   completed: [],
+  // "Réactiver" reconfirme le rendez-vous — c'est le coiffeur qui le reprend
+  // à son compte, et le client est notifié comme pour une confirmation.
+  // Auparavant, cancelled et declined envoyaient status='pending', une valeur
+  // que la validation serveur a toujours refusée (422) : le bouton ne faisait
+  // rien. Un retour en "en attente" n'aurait de toute façon aucun sens ici —
+  // plus personne n'attend de réponse, et le créneau serait re-bloqué sans
+  // que le client n'en sache rien.
   no_show:   [{ label:'Réactiver', status:'confirmed', cls:'bg-emerald-50 text-emerald-700', Icon:Check }],
-  cancelled: [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700', Icon:AlertTriangle }],
-  declined:  [{ label:'Réactiver', status:'pending',   cls:'bg-amber-50 text-amber-700', Icon:AlertTriangle }],
+  cancelled: [{ label:'Réactiver', status:'confirmed', cls:'bg-emerald-50 text-emerald-700', Icon:Check }],
+  declined:  [{ label:'Réactiver', status:'confirmed', cls:'bg-emerald-50 text-emerald-700', Icon:Check }],
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -127,10 +134,25 @@ function AppointmentSheet({
     ? new Date(apt.appointment_date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})
     : '—';
 
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+
   async function handleReschedule() {
-    await onReschedule(apt.id, newDate, newTime+':00', parseInt(newDur)||null);
-    setSaved(true);
-    setTimeout(()=>setSaved(false),2000);
+    if (rescheduling) return; // anti double-tap
+    setRescheduling(true);
+    setRescheduleError(null);
+    try {
+      // newTime est déjà au format H:i attendu par l'API : y ajouter ':00'
+      // produisait "14:30:00", rejeté en 422 (date_format:H:i) — et l'échec
+      // était masqué par un "Enregistré" affiché quoi qu'il arrive.
+      await onReschedule(apt.id, newDate, newTime, parseInt(newDur)||null);
+      setSaved(true);
+      setTimeout(()=>setSaved(false),2000);
+    } catch (err) {
+      setRescheduleError(err instanceof Error ? err.message : "La modification n'a pas pu être enregistrée.");
+    } finally {
+      setRescheduling(false);
+    }
   }
 
   const hasChanges =
@@ -225,10 +247,10 @@ function AppointmentSheet({
           {hasChanges && (
             <button
               onClick={handleReschedule}
-              disabled={saving}
+              disabled={saving || rescheduling}
               className="mt-3 w-full py-3 bg-neutral-900 text-white text-[13px] font-semibold rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {saving ? (
+              {(saving || rescheduling) ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : saved ? (
                 <><Check size={14} /> Enregistré</>
@@ -238,11 +260,19 @@ function AppointmentSheet({
             </button>
           )}
 
-          {/* Notification note */}
-          <p className="mt-2.5 text-[11px] text-neutral-400 flex items-center gap-1.5">
-            <Bell size={11} className="text-neutral-400 flex-shrink-0" />
-            Le client est notifié automatiquement.
-          </p>
+          {/* Refus du serveur (créneau pris, hors horaires, congé) — affiché
+              tel quel : le message vient de SlotGuard, déjà en français. */}
+          {rescheduleError && (
+            <p className="mt-2.5 text-[12px] text-red-600 leading-snug">{rescheduleError}</p>
+          )}
+
+          {/* Notification note — uniquement si la modification a abouti */}
+          {!rescheduleError && (
+            <p className="mt-2.5 text-[11px] text-neutral-400 flex items-center gap-1.5">
+              <Bell size={11} className="text-neutral-400 flex-shrink-0" />
+              Le client est notifié automatiquement.
+            </p>
+          )}
         </div>
 
         {/* Status actions */}
@@ -1280,12 +1310,23 @@ export default function AgendaPage() {
     try {
       await apptApi.updateStatus(id,status);
       setAppointments(prev=>prev.map(a=>a.id===id?{...a,status}:a));
-    } catch {}
+    } catch (err) {
+      // Le refus du serveur était avalé : transition interdite ou créneau
+      // repris entre-temps, l'écran ne bougeait pas et rien ne l'expliquait.
+      // Le message vient du backend, déjà en français.
+      setAiHint(err instanceof Error ? err.message : "Le changement de statut a été refusé.");
+      setTimeout(()=>setAiHint(null),6000);
+    }
     setUpdating(null); setSaving(false);
   }
 
   async function reschedule(id:number, date:string, time:string, dur:number|null) {
     setSaving(true);
+    // Sauvegarde de l'état d'origine : un refus du serveur (créneau pris,
+    // hors horaires, congé) doit REMETTRE le rendez-vous à sa place. Avant,
+    // l'erreur était avalée et l'agenda affichait durablement un créneau que
+    // le serveur n'avait jamais accepté.
+    const previous = appointments.find(a => a.id === id);
     // Optimistic update
     setAppointments(prev=>prev.map(a=>a.id===id?{
       ...a,
@@ -1307,12 +1348,22 @@ export default function AgendaPage() {
     // API
     try {
       await api.put(`/appointments/${id}/reschedule`,{appointment_date:date,appointment_time:time,...(dur!=null?{duration_minutes:dur}:{})});
-    } catch {}
+    } catch (err) {
+      // Rollback visuel + message : le créneau refusé ne doit jamais rester
+      // affiché comme accepté.
+      if (previous) setAppointments(prev => prev.map(a => a.id === id ? previous : a));
+      setAiHint(err instanceof Error ? err.message : "Le déplacement a été refusé.");
+      setTimeout(() => setAiHint(null), 6000);
+      setSaving(false);
+      throw err;
+    }
     setSaving(false);
   }
 
   function moveAppointment(id:number,date:string,time:string,dur?:number) {
-    reschedule(id,date,time,dur??null);
+    // Drag & drop : l'erreur est déjà affichée et l'état restauré par
+    // reschedule(), on absorbe juste la promesse rejetée.
+    reschedule(id,date,time,dur??null).catch(() => {});
   }
 
   function navigate(dir:-1|1) {

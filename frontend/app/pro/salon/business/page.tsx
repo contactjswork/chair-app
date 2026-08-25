@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
+import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
+import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import { subscription } from '@/lib/api';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
@@ -81,6 +83,13 @@ export default function ChairBusinessPage() {
   const searchParams = useSearchParams();
   const checkoutResult = searchParams.get('checkout');
 
+  // Séparation CLIENT / PRO — CHAIR Business est un abonnement numérique
+  // (49,99 €/mois via Stripe). Dans le binaire CHAIR CLIENT, et dans tout
+  // binaire natif non identifié par prudence, cette page n'affiche ni tarif
+  // ni bouton de souscription. Voir lib/appContext.ts et
+  // components/pro/SubscriptionElsewhereState.tsx.
+  const { context: appContext, resolved: appContextResolved } = useAppContext();
+
   const [data, setData] = useState<ApiMySubscription | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -116,13 +125,17 @@ export default function ChairBusinessPage() {
     }
   }
 
-  if (isLoading || !user) {
+  // `!appContextResolved` fait partie de l'état de chargement : sans cela, le
+  // tarif serait peint pendant une frame puis retiré à l'hydratation.
+  if (isLoading || !user || !appContextResolved) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
+
+  const showSubscriptionUI = allowsDigitalSubscriptionUI(appContext);
 
   const sub = data?.salon_subscription;
   const hasBusiness = data?.has_chair_business ?? false;
@@ -148,6 +161,10 @@ export default function ChairBusinessPage() {
         <h1 className="text-lg font-bold text-neutral-900">CHAIR Business</h1>
       </div>
 
+      {!showSubscriptionUI ? (
+        <SubscriptionElsewhereState planName="CHAIR Business" context={appContext} />
+      ) : (
+      <>
       {checkoutResult === 'success' && (
         <div className="max-w-3xl mx-auto px-4 md:px-6 pt-4">
           <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-semibold flex items-center gap-2">
@@ -312,6 +329,8 @@ export default function ChairBusinessPage() {
           </Reveal>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

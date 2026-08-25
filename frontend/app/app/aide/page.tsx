@@ -1,9 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
-import { Mail, Clock, ChevronDown, ShieldCheck, FileText } from 'lucide-react';
+import { Mail, Clock, ChevronDown, ShieldCheck, FileText, Users, Scale, ShieldOff } from 'lucide-react';
+import {
+  SUPPORT_EMAIL,
+  SUPPORT_MAILTO,
+  SUPPORT_HOURS,
+  SUPPORT_RESPONSE_DELAY,
+  MODERATION_DELAY,
+} from '@/lib/contact';
 
 const FAQS = [
   {
@@ -12,7 +20,7 @@ const FAQS = [
   },
   {
     q: 'Comment annuler une réservation ?',
-    a: "Rends-toi dans Compte → Mes réservations, sélectionne le rendez-vous et appuie sur Annuler. Vérifie la politique d'annulation du coiffeur.",
+    a: "Retrouve ton rendez-vous dans Compte → Mes réservations, puis appuie sur « Annuler ce rendez-vous ». C'est possible tant que le rendez-vous n'a pas eu lieu ; une fois passé, il n'est plus annulable. Pour le décaler, contacte directement le coiffeur : c'est lui qui gère son agenda.",
   },
   {
     q: 'Comment laisser un avis ?',
@@ -28,15 +36,19 @@ const FAQS = [
   },
   {
     q: 'Comment signaler un contenu inapproprié ?',
-    a: 'Appuie longuement sur le contenu concerné ou utilise le menu ⋯ pour le signaler. Notre équipe le traitera sous 72h.',
+    a: `Ouvre le menu ⋯ présent sur la réalisation, le profil ou l'avis concerné, puis choisis Signaler et indique le motif. Notre équipe examine chaque signalement ${MODERATION_DELAY}.`,
+  },
+  {
+    q: 'Comment bloquer quelqu’un ?',
+    a: "Depuis le profil de la personne, ouvre le menu ⋯ puis Bloquer. Ses publications disparaissent immédiatement de ton fil. Tu peux le débloquer à tout moment dans les règles de communauté.",
   },
   {
     q: 'Comment supprimer mon compte ?',
-    a: 'Va dans Compte → Supprimer mon compte. Cette action est irréversible. Tu peux aussi envoyer une demande à contact@getchair.app.',
+    a: `Va dans Compte → Supprimer mon compte. Cette action est irréversible. Tu peux aussi envoyer une demande à ${SUPPORT_EMAIL}.`,
   },
   {
     q: "L'app est-elle gratuite ?",
-    a: 'CHAIR est 100% gratuit pour les clients. Les coiffeurs peuvent créer un profil gratuitement et accéder à des fonctionnalités avancées via un abonnement pro.',
+    a: 'CHAIR est 100% gratuit pour les clients : découvrir, réserver et laisser des avis ne coûte rien. Les coiffeurs disposent de leur propre espace, CHAIR PRO, pour gérer leur activité.',
   },
 ];
 
@@ -77,7 +89,7 @@ export default function AidePage() {
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Nous contacter</p>
           <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
             <a
-              href="mailto:contact@getchair.app"
+              href={SUPPORT_MAILTO}
               className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors"
             >
               <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
@@ -85,7 +97,7 @@ export default function AidePage() {
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-neutral-900">Email</p>
-                <p className="text-[12px] text-neutral-400 mt-0.5">contact@getchair.app</p>
+                <p className="text-[12px] text-neutral-400 mt-0.5">{SUPPORT_EMAIL}</p>
               </div>
             </a>
             <div className="flex items-center gap-4 px-5 py-4">
@@ -94,7 +106,7 @@ export default function AidePage() {
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-neutral-900">Disponibilité</p>
-                <p className="text-[12px] text-neutral-400 mt-0.5">Lun–Ven, 9h–18h · Réponse sous 72h</p>
+                <p className="text-[12px] text-neutral-400 mt-0.5">{SUPPORT_HOURS} · Réponse {SUPPORT_RESPONSE_DELAY}</p>
               </div>
             </div>
           </div>
@@ -120,18 +132,42 @@ export default function AidePage() {
         <div className="mt-6">
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Légal</p>
           <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
-            <a href="/confidentialite" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+            <Link href="/confidentialite" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <ShieldCheck size={17} className="text-neutral-400" />
               </div>
               <p className="text-[14px] font-semibold text-neutral-900">Confidentialité</p>
-            </a>
-            <a href="/cgu" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+            </Link>
+            <Link href="/cgu" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <FileText size={17} className="text-neutral-400" />
               </div>
               <p className="text-[14px] font-semibold text-neutral-900">Conditions générales</p>
-            </a>
+            </Link>
+            <Link href="/app/regles-communaute" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <Users size={17} className="text-neutral-400" />
+              </div>
+              <p className="text-[14px] font-semibold text-neutral-900">Règles de communauté</p>
+            </Link>
+            {/* App Store 1.2 : la gestion des comptes bloqués doit être
+                atteignable sans deviner qu'elle vit au bas des règles de
+                communauté. Elle est aussi listée dans Compte → Sécurité. */}
+            <Link href="/app/regles-communaute#comptes-bloques" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <ShieldOff size={17} className="text-neutral-400" />
+              </div>
+              <div>
+                <p className="text-[14px] font-semibold text-neutral-900">Comptes bloqués</p>
+                <p className="text-[11px] text-neutral-400 mt-0.5">Voir et débloquer les comptes que tu as bloqués</p>
+              </div>
+            </Link>
+            <Link href="/mentions-legales" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                <Scale size={17} className="text-neutral-400" />
+              </div>
+              <p className="text-[14px] font-semibold text-neutral-900">Mentions légales</p>
+            </Link>
           </div>
         </div>
 

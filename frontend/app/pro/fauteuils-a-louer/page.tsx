@@ -181,7 +181,9 @@ export default function FauteuilsALouerPage() {
                       <p className="text-xs font-bold text-neutral-900 truncate">{r.title}</p>
                       <p className="text-[11px] text-neutral-400 truncate mb-1">{r.salon?.name ?? 'Salon'}{r.city ? ` · ${r.city}` : ''}</p>
                       {r.price_per_day != null && <p className="text-xs font-semibold text-neutral-900">{r.price_per_day}€/j</p>}
-                      <Link href={`/fauteuil/${r.slug}`} target="_blank"
+                      {/* Navigation interne : target="_blank" éjecterait vers Safari
+                          dans l'app Capacitor, où l'utilisateur n'est pas connecté. */}
+                      <Link href={`/fauteuil/${r.slug}`}
                         className="mt-1.5 block w-full text-center text-[11px] font-semibold text-neutral-600 border border-neutral-200 rounded-lg py-1.5 hover:bg-neutral-50 transition-colors">
                         Voir l&apos;annonce
                       </Link>
@@ -205,7 +207,7 @@ export default function FauteuilsALouerPage() {
               const myReq = getMyRequest(r.id);
               const badge = myReq ? REQUEST_BADGE[myReq.status] : null;
               return (
-                <Link key={r.id} href={`/fauteuil/${r.slug}`} target="_blank"
+                <Link key={r.id} href={`/fauteuil/${r.slug}`}
                   className="text-left bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden hover:shadow-[0_10px_28px_-10px_rgba(10,10,10,0.2)] transition-shadow">
                   <div className="relative aspect-video bg-neutral-100">
                     {firstPhoto

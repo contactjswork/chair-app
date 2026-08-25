@@ -53,16 +53,25 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
 
   return (
     <div className="px-4 md:px-0">
+      {/* Coiffeur salarié : c'est l'agenda de son salon qui fait foi, pas le
+          nôtre. Le bouton quittait CHAIR sans prévenir — en app native, ce clic
+          éjecte dans le navigateur du téléphone. Le libellé et la phrase qui
+          suit disent où l'on va AVANT le clic. */}
       {!isIndependent && bookingUrl && (
-        <PrimaryButton
-          fullWidth
-          href={bookingUrl}
-          target="_blank"
-          icon={<ExternalLink size={15} strokeWidth={2} />}
-          className="mb-6"
-        >
-          Réserver au salon
-        </PrimaryButton>
+        <div className="mb-6">
+          <PrimaryButton
+            fullWidth
+            href={bookingUrl}
+            target="_blank"
+            icon={<ExternalLink size={15} strokeWidth={2} />}
+          >
+            Réserver sur le site du salon
+          </PrimaryButton>
+          <p className="text-[12px] text-neutral-400 mt-2 text-center leading-relaxed">
+            Ce coiffeur travaille en salon et utilise l&apos;agenda de son salon. Le lien
+            s&apos;ouvre dans ton navigateur, en dehors de CHAIR. Le paiement se fait sur place.
+          </p>
+        </div>
       )}
 
       <div className="space-y-7">
@@ -138,8 +147,10 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
 
       {isIndependent && (
         <>
-          <p className="text-[12px] text-neutral-400 mt-6 text-center">
-            Sélectionnez une prestation pour voir les disponibilités.
+          <p className="text-[12px] text-neutral-400 mt-6 text-center leading-relaxed">
+            Choisis une prestation pour voir les disponibilités.
+            <br />
+            Le paiement se fait sur place, jamais dans l&apos;application.
           </p>
           <BookingSheet
             slug={slug}

@@ -21,6 +21,12 @@ export function proxy(request: NextRequest) {
 
   // Toujours laisser passer
   if (
+    // Universal Links : Apple récupère /.well-known/apple-app-site-association
+    // sans suivre les redirections, et met le résultat en cache sur son CDN
+    // pendant plusieurs jours. Si le mur bêta est réactivé et intercepte ce
+    // chemin, Apple met en cache un échec et les liens profonds cessent
+    // d'ouvrir l'app bien après la désactivation du mur.
+    pathname.startsWith('/.well-known') ||
     pathname.startsWith('/beta') ||
     pathname.startsWith('/api/beta-auth') ||
     pathname.startsWith('/api/admin-auth') ||
@@ -43,8 +49,15 @@ export function proxy(request: NextRequest) {
     // cookie bêta), sinon le lien de récupération de mot de passe est un
     // cul-de-sac.
     pathname.startsWith('/reinitialiser-mot-de-passe') ||
+    // Pages légales et support : Apple exige que la politique de
+    // confidentialité, les CGU et l'URL de support soumises dans App Store
+    // Connect s'ouvrent SANS authentification. Un reviewer qui tombe sur le
+    // portail bêta considère le lien comme mort (guideline 2.1 / 1.2).
+    // /app/regles-communaute est déjà couvert par l'exemption /app.
     pathname.startsWith('/cgu') ||
     pathname.startsWith('/confidentialite') ||
+    pathname.startsWith('/mentions-legales') ||
+    pathname.startsWith('/contact') ||
     pathname.endsWith('.png') ||
     pathname.endsWith('.jpg') ||
     pathname.endsWith('.svg') ||

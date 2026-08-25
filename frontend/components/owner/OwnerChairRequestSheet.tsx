@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, X, Star, ShieldCheck, ShieldAlert, ExternalLink, Send } from 'lucide-react';
+import { Check, X, Star, ShieldCheck, ShieldAlert, ChevronRight, Send } from 'lucide-react';
 import { resolveMediaUrl, type ApiChairRentalRequest, type ChairRentalRequestStatus } from '@/lib/types';
 
 const STATUS_LABELS: Record<ChairRentalRequestStatus, string> = {
@@ -78,8 +78,10 @@ export default function OwnerChairRequestSheet({ request, onAccept, onDecline, o
             </span>
           </div>
           {hd?.slug && (
-            <Link href={`/app/coiffeur/${hd.slug}`} target="_blank" className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-700 mt-1">
-              Voir le profil<ExternalLink size={10} />
+            /* Navigation interne : target="_blank" éjecterait vers Safari dans
+               l'app Capacitor, où le gérant n'est pas connecté. */
+            <Link href={`/app/coiffeur/${hd.slug}`} className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-700 mt-1">
+              Voir le profil<ChevronRight size={11} />
             </Link>
           )}
         </div>

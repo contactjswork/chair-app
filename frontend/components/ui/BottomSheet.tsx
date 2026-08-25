@@ -81,6 +81,8 @@ export default function BottomSheet({ onClose, children, className = '', maxHeig
     <div className={`fixed inset-0 flex items-end justify-center ${zIndexClassName}`}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div
+        role="dialog"
+        aria-modal="true"
         className={`relative bg-white rounded-t-3xl w-full max-w-lg shadow-2xl flex flex-col ${maxHeight} ${className}`}
         style={{
           transform: `translateY(${dragY}px)`,

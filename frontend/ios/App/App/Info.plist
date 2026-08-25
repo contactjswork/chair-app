@@ -5,7 +5,7 @@
     <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>en</string>
+	<string>fr</string>
 	<key>CFBundleDisplayName</key>
         <string>CHAIR</string>
 	<key>CFBundleExecutable</key>
@@ -46,10 +46,10 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>CHAIR utilise l'appareil photo pour publier vos réalisations et vos stories.</string>
+	<string>CHAIR utilise l'appareil photo pour te laisser prendre ta photo de profil directement depuis l'app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>CHAIR accède à vos photos pour publier une réalisation depuis votre galerie.</string>
+	<string>CHAIR accède à tes photos pour te laisser choisir ta photo de profil dans ta galerie.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>CHAIR utilise votre position pour vous montrer les coiffeurs les plus proches de vous.</string>
+	<string>CHAIR utilise ta position pour te montrer les coiffeurs les plus proches de toi.</string>
 </dict>
 </plist>

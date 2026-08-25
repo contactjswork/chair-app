@@ -8,7 +8,6 @@ import { resultHref } from '@/lib/explore';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 interface Props {
   result: ExploreResult;
@@ -106,7 +105,7 @@ export default function SearchResultCard({ result: r, selected = false, isFavori
           <div className={`flex items-center gap-1.5 ${showHeart ? 'pr-7' : ''}`}>
             <h3 className="text-[14px] font-bold text-neutral-900 truncate leading-snug tracking-[-0.01em]">{r.name}</h3>
             {r.is_verified && <BadgeCheck size={13} className="text-neutral-900 flex-shrink-0" />}
-            {r.is_chair_plus && <PremiumBadge />}
+            
             {r.is_chair_pick && (
               <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide bg-neutral-100 text-neutral-900 px-1.5 py-0.5 rounded-full flex-shrink-0">
                 <Heart size={9} fill="currentColor" />Coup de cœur

@@ -17,11 +17,24 @@ export default function MotDePasseOubliePage() {
     setError('');
     setIsLoading(true);
     try {
-      await fetch(`${API}/forgot-password`, {
+      const res = await fetch(`${API}/forgot-password`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body:    JSON.stringify({ email }),
       });
+      // Sans ce test, un 429 (throttle:4,1 sur la route) ou un 500 affichait
+      // quand même « E-mail envoyé » : l'utilisateur attendait un e-mail qui
+      // n'était jamais parti. Le succès reste volontairement neutre — il ne
+      // révèle pas si l'adresse existe (voir AuthController::forgotPassword).
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({} as { message?: string }));
+        setError(
+          res.status === 429
+            ? (data.message ?? 'Trop de demandes. Patiente une minute avant de réessayer.')
+            : 'Impossible d’envoyer le lien pour le moment. Réessaie dans un instant.'
+        );
+        return;
+      }
       setSent(true);
     } catch {
       setError('Une erreur est survenue. Réessaie.');
@@ -43,7 +56,7 @@ export default function MotDePasseOubliePage() {
             <div className="text-center">
               <h1 className="text-[20px] font-bold text-neutral-900">Mot de passe oublié</h1>
               <p className="text-[14px] text-neutral-400 mt-2 leading-relaxed">
-                Renseigne ton adresse e-mail et on t'envoie un lien pour réinitialiser ton mot de passe.
+                Renseigne ton adresse e-mail et on t&apos;envoie un lien pour réinitialiser ton mot de passe.
               </p>
             </div>
 
@@ -84,7 +97,10 @@ export default function MotDePasseOubliePage() {
               <p className="text-[14px] text-neutral-400 mt-2 leading-relaxed max-w-[280px]">
                 Si <strong className="text-neutral-700">{email}</strong> est associé à un compte, tu recevras un lien dans quelques minutes.
               </p>
-              <p className="text-[12px] text-neutral-400 mt-2">Pense à vérifier tes spams.</p>
+              <p className="text-[12px] text-neutral-400 mt-2 leading-relaxed">
+                Pense à vérifier tes spams. Rien reçu au bout de quelques minutes ?
+                Écris-nous à <a href="mailto:contact@getchair.app" className="underline">contact@getchair.app</a>.
+              </p>
             </div>
             <Link
               href="/connexion"

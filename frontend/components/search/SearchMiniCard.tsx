@@ -8,7 +8,6 @@ import { resultHref } from '@/lib/explore';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 interface Props {
   result: ExploreResult;
@@ -54,7 +53,7 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
           <div className="flex items-center gap-1">
             <h3 className="text-[13px] font-bold text-neutral-900 truncate leading-tight">{r.name}</h3>
             {r.is_verified && <BadgeCheck size={12} className="text-neutral-900 flex-shrink-0" />}
-            {r.is_chair_plus && <PremiumBadge />}
+            
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             {(r.distance_km != null || r.city) && (

@@ -5,41 +5,65 @@ import LandingNav from '@/components/landing/LandingNav';
 import LandingFooter from '@/components/landing/LandingFooter';
 import { ArrowRight, Send, Mail, ExternalLink } from 'lucide-react';
 import { api } from '@/lib/api';
+import { SUPPORT_EMAIL, SUPPORT_MAILTO, SUPPORT_HOURS, SUPPORT_RESPONSE_DELAY, SOCIAL_LINKS } from '@/lib/contact';
 
-const CONTACT_OPTIONS = [
-  {
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-white fill-none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-        <circle cx="12" cy="12" r="3.5"/>
-        <circle cx="17.5" cy="6.5" r="0.5" fill="white" stroke="none"/>
-      </svg>
-    ),
-    label: 'Instagram',
-    handle: '@chair.app',
-    href: 'https://instagram.com/chair.app',
-    desc: 'Suis-nous et envoie un DM',
-    bg: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400',
-  },
-  {
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
-        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.79a8.18 8.18 0 0 0 4.78 1.52V6.85a4.85 4.85 0 0 1-1.01-.16Z"/>
-      </svg>
-    ),
-    label: 'TikTok',
-    handle: '@chair.app',
-    href: 'https://tiktok.com/@chair.app',
-    desc: 'Nos dernières vidéos',
-    bg: 'bg-neutral-900',
-  },
+const INSTAGRAM_ICON = (
+  <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-white fill-none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+    <circle cx="12" cy="12" r="3.5"/>
+    <circle cx="17.5" cy="6.5" r="0.5" fill="white" stroke="none"/>
+  </svg>
+);
+
+const TIKTOK_ICON = (
+  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.79a8.18 8.18 0 0 0 4.78 1.52V6.85a4.85 4.85 0 0 1-1.01-.16Z"/>
+  </svg>
+);
+
+// Les cartes réseaux sociaux ne sont rendues que si le compte existe vraiment
+// (voir SOCIAL_LINKS dans lib/contact.ts). Les anciennes valeurs pointaient
+// vers des handles non vérifiés : un lien mort pendant la revue App Store est
+// un motif de rejet (guideline 2.1 / 2.3).
+const CONTACT_OPTIONS: {
+  icon: React.ReactNode;
+  label: string;
+  handle: string;
+  href: string;
+  desc: string;
+  bg: string;
+  external: boolean;
+}[] = [
+  ...(SOCIAL_LINKS.instagram
+    ? [{
+        icon: INSTAGRAM_ICON,
+        label: 'Instagram',
+        handle: SOCIAL_LINKS.instagram.handle,
+        href: SOCIAL_LINKS.instagram.url,
+        desc: 'Suis-nous et envoie un DM',
+        bg: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400',
+        external: true,
+      }]
+    : []),
+  ...(SOCIAL_LINKS.tiktok
+    ? [{
+        icon: TIKTOK_ICON,
+        label: 'TikTok',
+        handle: SOCIAL_LINKS.tiktok.handle,
+        href: SOCIAL_LINKS.tiktok.url,
+        desc: 'Nos dernières vidéos',
+        bg: 'bg-neutral-900',
+        external: true,
+      }]
+    : []),
   {
     icon: <Mail size={20} className="text-white" />,
     label: 'Email',
-    handle: 'contact@getchair.app',
-    href: 'mailto:contact@getchair.app',
-    desc: 'Pour toute demande pro',
+    handle: SUPPORT_EMAIL,
+    href: SUPPORT_MAILTO,
+    desc: 'Clients, coiffeurs, presse : on lit tout',
     bg: 'bg-neutral-700',
+    external: false,
   },
 ];
 
@@ -70,7 +94,11 @@ export default function ContactPage() {
       await api.post('/contact', form);
       setSubmitted(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Une erreur est survenue. Réessaie ou écris-nous directement à contact@getchair.app.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Une erreur est survenue. Réessaie ou écris-nous directement à ${SUPPORT_EMAIL}.`,
+      );
     } finally {
       setLoading(false);
     }
@@ -106,8 +134,7 @@ export default function ContactPage() {
                 <a
                   key={i}
                   href={c.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                   className="flex items-center gap-4 p-5 bg-neutral-50 border border-neutral-100 rounded-2xl hover:border-neutral-200 hover:shadow-md hover:shadow-black/5 transition-all group"
                 >
                   <div className={`w-11 h-11 ${c.bg} rounded-2xl flex items-center justify-center flex-shrink-0`}>
@@ -120,7 +147,9 @@ export default function ContactPage() {
                     <p className="text-[12px] text-neutral-500 font-medium truncate">{c.handle}</p>
                     <p className="text-[11px] text-neutral-400">{c.desc}</p>
                   </div>
-                  <ExternalLink size={13} className="text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0" />
+                  {c.external && (
+                    <ExternalLink size={13} className="text-neutral-300 group-hover:text-neutral-500 transition-colors flex-shrink-0" />
+                  )}
                 </a>
               ))}
 
@@ -131,8 +160,8 @@ export default function ContactPage() {
                   <p className="text-[12px] font-semibold text-neutral-900">Délai de réponse</p>
                 </div>
                 <p className="text-[12px] text-neutral-500 leading-snug">
-                  On répond généralement sous <strong className="text-neutral-900">24h</strong> en semaine.
-                  DM Instagram souvent plus rapide.
+                  On répond <strong className="text-neutral-900">{SUPPORT_RESPONSE_DELAY}</strong> ouvrées.
+                  Support ouvert {SUPPORT_HOURS.toLowerCase()}.
                 </p>
               </div>
             </div>

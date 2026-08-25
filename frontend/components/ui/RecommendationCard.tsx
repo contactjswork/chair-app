@@ -7,7 +7,6 @@ import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import type { RecommendationResult } from '@/lib/recommendation';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 
 /**
  * Carte "hero" pour /api/recommendations — même langage visuel que HDCard
@@ -75,7 +74,7 @@ export default function RecommendationCard({
                   <BadgeCheck size={11} className="text-neutral-900" />
                 </div>
               )}
-              {showChairPlusBadge && r.is_chair_plus && <PremiumBadge />}
+              
             </div>
           )}
         </div>

@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use App\Models\HairdresserProfile;
 use App\Models\Specialty;
 use App\Models\Service;
+use App\Models\UserBlock;
 use App\Services\BadgeService;
+use Illuminate\Support\Facades\Auth;
 
 class SearchController extends Controller
 {
@@ -66,6 +68,19 @@ class SearchController extends Controller
             'posts',
             'salon',
         ]);
+
+        // ── BLOCAGE UTILISATEUR (App Store Review Guideline 1.2) ────────────
+        // Même motif que HairdresserController::feed() : UNE seule requête pour
+        // les ids bloqués, filtre posé sur la requête de base — il vaut donc
+        // pour tous les filtres et tous les scorings ci-dessous. La route est
+        // publique : l'auth est résolue à la main via le guard sanctum, et un
+        // visiteur non connecté ne paie rien (liste vide = aucune clause SQL).
+        // Ici la cible est un HairdresserProfile, on filtre donc directement
+        // sur user_id (pas besoin du détour par hairdresser_id du feed).
+        $blockedUserIds = UserBlock::blockedIdsFor(Auth::guard('sanctum')->user()?->id);
+        if (!empty($blockedUserIds)) {
+            $query->whereNotIn('user_id', $blockedUserIds);
+        }
 
         // Filtres durs (SQL) — réduit le jeu avant scoring PHP
         if ($specialty) {
@@ -182,9 +197,15 @@ class SearchController extends Controller
 
         $allSpecialties = $specialtiesExact->merge($specialtiesPartial);
 
-        // Noms de coiffeurs
+        // Noms de coiffeurs — un compte bloqué ne doit pas se rappeler au
+        // bloqueur par l'autocomplétion (App Store 1.2, même motif que
+        // HairdresserController::feed : une seule requête, aucune clause
+        // ajoutée pour un visiteur non connecté).
+        $blockedUserIds = UserBlock::blockedIdsFor(Auth::guard('sanctum')->user()?->id);
+
         $profiles = HairdresserProfile::with('user')
             ->whereHas('user', fn($q2) => $q2->whereRaw('LOWER(name) LIKE ?', ["%{$qLow}%"]))
+            ->when(!empty($blockedUserIds), fn($q2) => $q2->whereNotIn('user_id', $blockedUserIds))
             ->limit(3)->get();
 
         // Villes (début de mot en priorité)

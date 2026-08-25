@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { interactions } from '@/lib/api';
 import { getSharePayload } from '@/lib/share';
@@ -48,6 +48,14 @@ export default function ProfileActions({
 }: Props) {
   const { user }  = useAuth();
   const router    = useRouter();
+  const pathname  = usePathname();
+
+  // Déconnecté : l'action part vers /connexion AVEC reprise de parcours —
+  // sans returnTo, l'utilisateur revenait sur l'accueil et perdait la fiche
+  // qu'il voulait suivre/sauvegarder (point 52).
+  function redirectToLogin() {
+    router.push(`/connexion?returnTo=${encodeURIComponent(pathname)}`);
+  }
 
   const [following,      setFollowing]      = useState(false);
   const [saved,          setSaved]          = useState(false);
@@ -65,7 +73,7 @@ export default function ProfileActions({
   }, [user, hairdresserId]);
 
   async function handleFollow() {
-    if (!user) { router.push('/connexion'); return; }
+    if (!user) { redirectToLogin(); return; }
     setLoadingFollow(true);
     try {
       if (following) {
@@ -88,7 +96,7 @@ export default function ProfileActions({
   }
 
   async function handleSave() {
-    if (!user) { router.push('/connexion'); return; }
+    if (!user) { redirectToLogin(); return; }
     setLoadingSave(true);
     try {
       if (saved) {
@@ -161,7 +169,13 @@ export default function ProfileActions({
   if (isOwnProfile) {
     return (
       <div className="flex items-center gap-2">
-        <SecondaryButton href="/pro/profil" fullWidth icon={<Edit2 size={15} strokeWidth={2} />}>
+        {/* target="_blank" : sans lui, Next fait un routage client-side et
+            l'espace CHAIR PRO s'ouvre DANS l'app client — d'où l'on peut
+            atteindre la page d'abonnement CHAIR+, c'est-à-dire un achat
+            numérique hors achat intégré (App Store Review Guideline 3.1.1(a),
+            interdite hors storefront américain). Avec target, Capacitor sort
+            vers le navigateur du téléphone, comme les autres entrées PRO. */}
+        <SecondaryButton href="/pro/profil" target="_blank" fullWidth icon={<Edit2 size={15} strokeWidth={2} />}>
           Modifier mon profil
         </SecondaryButton>
         {/* Actions secondaires groupées dans un même bloc — plutôt que deux

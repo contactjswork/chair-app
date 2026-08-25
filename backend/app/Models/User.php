@@ -30,6 +30,35 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+    /**
+     * Envoi du lien de réinitialisation — surcharge la notification Laravel
+     * par défaut (texte anglais, gabarit Laravel) par l'email CHAIR.
+     *
+     * Appelé par Password::sendResetLink() depuis
+     * AuthController::forgotPassword(). L'envoi est volontairement
+     * non-bloquant : une panne SMTP ne doit pas transformer la demande en
+     * erreur 500 côté app (la réponse reste la même dans tous les cas, elle ne
+     * révèle jamais si l'email existe).
+     *
+     * Email de sécurité : aucune préférence de notification ne peut le bloquer
+     * (on ne passe donc pas de type à MailService::send()).
+     *
+     * @param  string $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        \App\Services\MailService::send(
+            (string) $this->getEmailForPasswordReset(),
+            new \App\Mail\ResetPasswordMail(
+                (string) ($this->name ?: ''),
+                \App\Services\MailService::passwordResetUrl((string) $this->getEmailForPasswordReset(), $token),
+                \App\Services\MailService::passwordResetExpireMinutes()
+            ),
+            $this->name
+        );
+    }
+
     public function hairdresserProfile()
     {
         return $this->hasOne(HairdresserProfile::class);

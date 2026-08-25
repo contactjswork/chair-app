@@ -5,11 +5,10 @@ import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl, type ApiPost } from '@/lib/types';
 import { savedPosts as savedPostsApi } from '@/lib/api';
-import { Heart, X, Compass } from 'lucide-react';
+import { Heart, X, Compass, LogIn } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/Button';
@@ -65,18 +64,16 @@ function InspirationTile({ post, onRemove }: { post: ApiPost; onRemove: (id: num
 
 export default function InspirationPage() {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
   const [posts,   setPosts]   = useState<ApiPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isLoading && !user) { router.replace('/connexion'); return; }
     if (!user) return;
     savedPostsApi.list()
       .then((data) => setPosts(data as ApiPost[]))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [user, isLoading, router]);
+  }, [user]);
 
   async function handleRemove(postId: number) {
     setPosts((prev) => prev.filter((p) => p.id !== postId));
@@ -87,7 +84,36 @@ export default function InspirationPage() {
     }
   }
 
-  if (isLoading || !user) return null;
+  if (isLoading) return null;
+
+  // Déconnecté : on explique pourquoi un compte est nécessaire au lieu de
+  // rediriger sans un mot (point 51) — et la connexion revient ici (returnTo).
+  if (!user) {
+    return (
+      <AppShell>
+        <div className="max-w-2xl mx-auto px-4 pb-24">
+          <PageHeader title="Mes inspirations" backHref="/app/compte" />
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <EmptyState
+              icon={Heart}
+              title="Tes inspirations t'attendent"
+              subtitle="Connecte-toi pour retrouver toutes les réalisations que tu as sauvegardées."
+              action={
+                <div className="flex flex-col items-center gap-3">
+                  <PrimaryButton href="/connexion?returnTo=%2Fapp%2Finspirations" icon={<LogIn size={15} />}>
+                    Se connecter
+                  </PrimaryButton>
+                  <Link href="/inscription?returnTo=%2Fapp%2Finspirations" className="text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors">
+                    Créer un compte
+                  </Link>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

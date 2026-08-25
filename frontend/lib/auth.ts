@@ -99,18 +99,29 @@ export function safeInternalPath(path: string | null | undefined): string | null
   return path;
 }
 
-// Fin de dev / démo pré-lancement : onboarding coiffeur désactivé temporairement
-// (voir AuthContext.tsx — même variable). L'onboarding client (/app/onboarding) reste actif.
-const SKIP_PRO_ONBOARDING = process.env.NEXT_PUBLIC_AUTH_BYPASS === 'true';
-
 export function redirectPathForRole(role: UserRole, isNewUser = false): string {
   if (role === 'hairdresser') {
-    if (isNewUser && SKIP_PRO_ONBOARDING) return '/pro';
     return isNewUser ? '/onboarding' : '/pro';
   }
   if (role === 'salon_owner') {
-    if (isNewUser && SKIP_PRO_ONBOARDING) return '/pro/salon-owner';
     return isNewUser ? '/onboarding/gerant' : '/pro/salon-owner';
   }
   return isNewUser ? '/app/onboarding' : '/app';
+}
+
+/**
+ * Un `returnTo` n'est honoré que s'il mène quelque part où le rôle a
+ * réellement le droit d'aller. Sans ce contrôle, un client authentifié
+ * pouvait être renvoyé vers une route /pro protégée par un garde de rôle :
+ * il atterrissait sur un écran de refus juste après s'être connecté, ce qui
+ * est le cul-de-sac que la reprise de parcours est censée éviter.
+ *
+ * Les professionnels, eux, peuvent légitimement rejoindre une route /app
+ * (un lien de réalisation partagé, par exemple) : on ne restreint que le
+ * sens client → espace pro.
+ */
+export function canRoleVisit(role: UserRole, path: string): boolean {
+  const isProPath = path === '/pro' || path.startsWith('/pro/') || path === '/onboarding' || path.startsWith('/onboarding/');
+  if (isProPath) return role === 'hairdresser' || role === 'salon_owner';
+  return true;
 }

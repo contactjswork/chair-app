@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'next/navigation';
+import { useRequireAuth } from '@/hooks/useRequireAuth';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { services as servicesApi, api } from '@/lib/api';
 import type { ApiServiceCategory, ApiService, ApiSpecialty, ApiHairdresserProfile } from '@/lib/types';
@@ -267,8 +267,12 @@ function SpecialtyServiceCard({
 // ── Main Page ─────────────────────────────────────────────────────────
 
 export default function DashboardServicesPage() {
-  const { user } = useAuth();
-  const router = useRouter();
+  // Garde d'accès : useRequireAuth, comme toutes les autres pages pro. La garde
+  // locale précédente testait `user.role !== 'hairdresser'` et renvoyait vers la
+  // connexion CLIENT — un gérant double-identité passé en Mode Coiffeur
+  // (role='salon_owner', has_hairdresser_profile=true) était éjecté de ses
+  // propres services. hasAccess() raisonne sur la capacité, pas sur le rôle.
+  const { user, isLoading: authLoading } = useRequireAuth(['hairdresser']);
   const searchParams = useSearchParams();
   const specialtyParam = searchParams.get('specialty');
 
@@ -284,13 +288,9 @@ export default function DashboardServicesPage() {
   const isIndependent = user?.hairdresser_profile?.is_independent ?? true;
 
   useEffect(() => {
-    if (user === undefined) return;
-    if (!user || user.role !== 'hairdresser') {
-      router.push('/connexion');
-      return;
-    }
+    if (authLoading || !user) return;
     loadData();
-  }, [user, router]);
+  }, [authLoading, user]);
 
   async function loadData() {
     try {

@@ -245,6 +245,11 @@ function RechercheContent() {
   // filtre de zone : l'utilisateur peut vouloir juste se repérer sans perdre
   // les résultats déjà affichés (ex : il a choisi une autre ville).
   const [locatingMe, setLocatingMe] = useState(false);
+  // Refus (ou indisponibilité) de la géolocalisation : sans ce message, le tap
+  // sur "Recentrer sur ma position" ne produisait RIEN de visible — un bouton
+  // muet. On explique et on oriente vers la recherche par ville.
+  const [geoNotice, setGeoNotice] = useState<string | null>(null);
+  const geoNoticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recenterOnMe = useCallback(async () => {
     if (userLocation) {
       mapRef.current?.setCenter(userLocation, 14);
@@ -256,6 +261,10 @@ function RechercheContent() {
     if (ok) {
       const stored = getStoredLocation();
       if (stored) mapRef.current?.setCenter({ lat: stored.latitude, lng: stored.longitude }, 14);
+    } else {
+      setGeoNotice('Position indisponible. Autorise la localisation dans les réglages, ou cherche par ville.');
+      if (geoNoticeTimer.current) clearTimeout(geoNoticeTimer.current);
+      geoNoticeTimer.current = setTimeout(() => setGeoNotice(null), 5000);
     }
   }, [userLocation, requestGeo]);
 
@@ -539,6 +548,19 @@ function RechercheContent() {
             <Loader2 size={12} className="animate-spin" />
             Recherche…
           </div>
+        </div>
+      )}
+
+      {/* Géoloc refusée / indisponible — retour visible, sinon le bouton est muet. */}
+      {geoNotice && (
+        <div className="absolute top-[128px] inset-x-3 z-20 flex justify-center pointer-events-none">
+          <p
+            className="bg-neutral-900 text-white text-[12px] font-medium px-4 py-2.5 rounded-2xl text-center leading-snug"
+            style={{ boxShadow: '0 2px 14px rgba(0,0,0,0.18)' }}
+            role="status"
+          >
+            {geoNotice}
+          </p>
         </div>
       )}
 
