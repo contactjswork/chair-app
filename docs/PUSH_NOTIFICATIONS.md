@@ -507,3 +507,90 @@ fiables pour ce flux), ni le web. Sur un build TestFlight :
 - États de la carte simulables dans un navigateur : forcer
   `localStorage.chair_push_optin_dismissed = '1'` pour vérifier le non-retour
   de la carte (le reste des états exige le plugin, donc un device).
+
+---
+
+## 8. Stratégie d'envoi (26/08/2026)
+
+La doc de référence sur QUI reçoit QUOI, QUAND, et pourquoi le volume reste
+maîtrisé. C'est cette section à montrer si Apple interroge le volume ou la
+nature des notifications (App Review Guideline 4.5.4 : pas de push marketing
+sans consentement explicite).
+
+### 8.1 La hiérarchie
+
+Quatre niveaux, du plus prioritaire au plus contraint :
+
+1. **Transactionnel** — conséquence directe d'une action de l'utilisateur ou
+   d'un engagement pris (réservation, confirmation, annulation, déplacement,
+   rappels 24 h / 1 h, demande d'avis). Envoyé **à toute heure** : un RDV à
+   8 h 30 mérite son rappel 1 h à 7 h 30. Chaque type reste désactivable dans
+   les préférences (sauf sécurité, voir § 5).
+2. **Relationnel** — une personne réelle a agi envers l'utilisateur (le
+   coiffeur répond à son avis). Contextuel, faible volume par nature : une
+   réponse d'avis ne notifie qu'à la **première** réponse, jamais aux
+   éditions. Préférence `review_reply`, **off par défaut** (opt-in).
+3. **Social** — activité d'un profil suivi (`new_post`/`followed_post`,
+   `new_hairdresser_nearby`). Préférences **off par défaut** (opt-in), et
+   DOUBLE garde-fou côté code même après opt-in :
+   - **Fenêtre calme** : aucun push social entre **21 h et 9 h**
+     (Europe/Paris). Appliquée dans `PushService::sendToUser()` (types listés
+     dans `PushService::SOCIAL_TYPES`) — dernier rempart quel que soit
+     l'émetteur. La notification interne, elle, part toujours : l'utilisateur
+     la trouve dans son centre de notifications au réveil, sans vibration
+     nocturne.
+   - **Plafond anti-rafale** : un abonné ne reçoit pas deux pushes du même
+     coiffeur en moins de **6 h** (table `social_push_logs`, une ligne par
+     couple abonné × coiffeur). Un coiffeur qui publie 5 réalisations
+     d'affilée = 1 seul push par abonné ; les 4 autres publications créent
+     uniquement des notifications internes.
+4. **Marketing** (`promotions`) — préférence **off par défaut**, et **AUCUN
+   émetteur n'existe** : rien de ce type n'est envoyé aujourd'hui, et rien ne
+   le sera sans opt-in explicite. Le type est mappé pour que le respect de la
+   préférence soit automatique si un émetteur naît un jour.
+
+### 8.2 Plafond de fan-out des publications
+
+`QUEUE_CONNECTION=sync` en prod (mutualisé Infomaniak, pas de worker
+permanent) : la notification des abonnés s'exécute **dans la requête HTTP du
+pro qui publie** (`PostController::notifyFollowersOfPublication`, par paquets
+de 50). Le push est donc **plafonné à 100 abonnés par publication** — les
+plus récents d'abord. Au-delà : tous les abonnés opt-in reçoivent la
+notification interne, seuls les 100 plus récents reçoivent le push, et un
+log `followed_post fan-out : plafond de pushes atteint` trace l'événement.
+C'est un compromis assumé tant qu'il n'y a pas de worker de queue ; le jour
+où un coiffeur dépasse durablement 100 abonnés actifs, la vraie réponse est
+une queue asynchrone, pas un plafond plus haut.
+
+### 8.3 Le tableau récapitulatif
+
+| Type | Déclencheur | Cible | Préférence (défaut) | Niveau | `data.url` |
+|---|---|---|---|---|---|
+| `appointment_created` | Réservation créée | Coiffeur | — (toujours) | Transactionnel | `/pro/agenda` |
+| `appointment_confirmed` | Confirmation | Client ou coiffeur | `booking_confirmed` (on) | Transactionnel | `/app/compte` · `/pro/agenda` |
+| `appointment_cancelled` | Annulation | Client ou coiffeur | `booking_cancelled` (on) | Transactionnel | `/app/compte` · `/pro/agenda` |
+| `appointment_rescheduled` | Déplacement | Client ou coiffeur | `booking_cancelled` (on) | Transactionnel | `/app/compte` · `/pro/agenda` |
+| `appointment_reminder_24h` | Cron 15 min, RDV confirmé dans [23h45, 24h15] | Client | `reminder_24h` (on) | Transactionnel | `/app/compte` |
+| `appointment_reminder_1h` | Cron 15 min, RDV confirmé dans [45 min, 1h15] | Client | `reminder_1h` (on) | Transactionnel | `/app/compte` |
+| `review_request` | RDV marqué terminé | Client | `review_request` (on) | Transactionnel | `/app/compte` |
+| `review_received` | Avis déposé | Coiffeur | — (toujours) | Relationnel | `/pro/reservations` |
+| `review_reply` | 1re réponse du coiffeur à un avis | Auteur de l'avis (compte requis) | `review_reply` (**off**) | Relationnel | `/app/coiffeur/{slug}` |
+| `new_post` / `followed_post` | Publication (ou republication) d'une réalisation | Abonnés du coiffeur | `followed_post` (**off**) | Social — fenêtre calme + 6 h + plafond 100 | `/app/realisation/{id}` |
+| `new_hairdresser_nearby` | **Aucun émetteur** (préférence prête pour l'avenir) | — | `new_hairdresser_nearby` (**off**) | Social | — |
+| `promotion(s)` | **Aucun émetteur** — jamais sans opt-in | — | `promotions` (**off**) | Marketing | — |
+
+Rappels d'idempotence : `appointments.reminded_24h_at` / `reminded_1h_at` —
+un rappel envoyé ne repart jamais, même si le cron rejoue. Cas limites : un
+RDV réservé moins de 45 min avant l'heure ne reçoit pas de rappel 1 h (aucune
+passe du cron ne matche la fenêtre — le client vient de réserver, il n'en a
+pas besoin) ; un RDV annulé entre-temps est exclu à chaque passe (filtre
+`status = confirmed` relu en direct) ; un client sans compte (`client_id`
+NULL) n'a pas de destinataire — les invités sont couverts par les emails.
+
+### 8.4 Ce que ça donne en volume, côté utilisateur
+
+Un client type (préférences par défaut) reçoit : ses confirmations /
+annulations, deux rappels par RDV, une demande d'avis par RDV terminé. Rien
+d'autre — tout le reste est opt-in. Un client qui a tout activé reçoit en
+plus : les premières réponses à ses avis, et au plus un push par coiffeur
+suivi par tranche de 6 h, jamais entre 21 h et 9 h.

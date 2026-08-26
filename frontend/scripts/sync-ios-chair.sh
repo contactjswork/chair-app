@@ -12,6 +12,26 @@ cp capacitor.chair.config.ts capacitor.config.ts
 echo "→ npx cap sync ios"
 npx cap sync ios
 
+# cap sync régénère ios/App/App/public/ depuis webDir — la page d'erreur
+# hors-ligne committée (server.errorPath des configs Capacitor) est donc
+# écrasée/supprimée à chaque sync : on la restaure depuis git.
+echo "→ Restauration page d'erreur hors-ligne (cap sync régénère public/)"
+git checkout -- ios/App/App/public/error.html 2>/dev/null || true
+
+# Garde-fou : sans ces fichiers/réglages, le build partirait sans push,
+# sans page d'erreur ou sans manifeste privacy — refuser d'archiver.
+echo "→ Vérification du bundle natif (entitlements push, error.html, privacy)"
+for f in ios/App/App/App.entitlements ios/App/App/public/error.html ios/App/App/PrivacyInfo.xcprivacy; do
+  if [ ! -f "$f" ]; then
+    echo "✗ $f manquant — ne pas archiver (restaure-le : git checkout -- $f)"
+    exit 1
+  fi
+done
+if ! grep -q "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;" ios/App/App.xcodeproj/project.pbxproj; then
+  echo "✗ CODE_SIGN_ENTITLEMENTS absent du pbxproj — le push ne serait pas embarqué"
+  exit 1
+fi
+
 echo "→ Icônes/splash depuis resources-chair/ (icon.png + splash.png requis)"
 if [ ! -f resources-chair/icon.png ] || [ ! -f resources-chair/splash.png ]; then
   echo "✗ resources-chair/icon.png et/ou splash.png manquants — voir resources-chair/README.md"

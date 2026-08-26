@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Compass, Search, Images, Heart, User } from 'lucide-react';
 import { useNotificationCount } from '@/contexts/NotificationContext';
+import { hapticLight } from '@/lib/haptics';
 
 /**
  * Vrai quand le clavier virtuel est ouvert. Sur iOS, le clavier ne
@@ -62,7 +63,7 @@ export default function BottomNav() {
               key={href}
               href={href}
               aria-label={label || 'Créations'}
-              onClick={() => { if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8); }}
+              onClick={() => { void hapticLight(); }}
               className="flex flex-col items-center justify-center flex-1 gap-1"
             >
               <div className="relative">

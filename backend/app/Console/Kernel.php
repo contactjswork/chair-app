@@ -17,6 +17,12 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('chair:purge-expired-stories')->hourly();
+
+        // Rappels de RDV (24h et 1h) — fenêtres de ±15 min, donc la commande
+        // DOIT passer toutes les 15 min pour qu'aucun RDV ne tombe entre deux
+        // passes. Idempotent (reminded_24h_at / reminded_1h_at) : un cron qui
+        // rejoue ne double jamais un rappel.
+        $schedule->command('chair:send-appointment-reminders')->everyFifteenMinutes();
     }
 
     /**

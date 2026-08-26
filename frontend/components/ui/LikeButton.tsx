@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { posts } from '@/lib/api';
 import { getStoredToken } from '@/lib/auth';
+import { hapticLight } from '@/lib/haptics';
 
 interface Props {
   postId: number;
@@ -31,6 +32,7 @@ export default function LikeButton({ postId, initialLikes, initialLiked = false,
     const wasLiked = liked;
     setLiked(!wasLiked);
     setCount((c) => wasLiked ? Math.max(0, c - 1) : c + 1);
+    if (!wasLiked) void hapticLight(); // au like uniquement, pas au retrait — no-op hors natif
 
     try {
       const res = await posts.toggleLike(postId);

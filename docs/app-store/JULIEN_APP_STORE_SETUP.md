@@ -566,21 +566,40 @@ l'étape 8).
 ## ÉTAPE 8 — Déploiement et build final
 
 L'ordre est important : Apple teste **ce qui est en production**, pas ce qui est
-dans le dépôt.
+dans le dépôt. Nouveauté de ce build : **le push est embarqué** — l'entitlement
+`aps-environment` est maintenant committé dans le projet Xcode
+(`frontend/ios/App/App/App.entitlements`) et branché dans le pbxproj. Il n'y a
+**rien à cliquer dans Xcode**, mais deux pré-requis côté Apple, sinon la
+signature de l'archive échoue.
 
-### 8.1 Push Git → Vercel (frontend)
+### 8.0 PRÉ-REQUIS BLOQUANTS — à faire AVANT de lancer le build
 
-Le commit et le push de tout le travail en cours sont faits par la session de
-développement (orchestrateur). Dès que `main` est poussé, **Vercel redéploie le
-frontend automatiquement** (2-3 min).
+- [ ] **Capability Push Notifications cochée sur LES DEUX App IDs** :
+  developer.apple.com → **Certificates, Identifiers & Profiles** →
+  **Identifiers** → `app.getchair.client` → coche **Push Notifications** →
+  **Save** — puis exactement pareil pour `app.getchair.pro`.
+  Sans ça, l'archive échoue à la signature (le profil ne porte pas
+  l'entitlement `aps-environment` que le projet réclame désormais). La
+  signature est en « Automatically manage signing » : après ce changement,
+  Xcode régénère seul les profils au moment de l'archive — rien d'autre à faire.
+- [ ] **Clé APNs** (étape 5) : une clé `.p8` APNs vaut pour Sandbox **et**
+  Production, il n'y a rien à choisir côté Apple — vérifie juste que les 5
+  variables `APNS_*` sont posées en prod (étape 5.4).
+- **Universal Links (`applinks:`) : volontairement ABSENTS de ce build.** Les
+  mettre dans les entitlements sans avoir activé Associated Domains sur les
+  App IDs ferait échouer la signature ce soir. Ils partiront dans le build
+  suivant ([DEEPLINKS_SETUP.md](DEEPLINKS_SETUP.md)). Conséquence assumée pour
+  cette version : un lien `getchair.app` reçu par iMessage ouvre Safari, pas
+  l'app — ce n'est pas un bug ce soir.
 
-- [ ] Vérifie sur https://vercel.com que le dernier déploiement est **vert**.
+### 8.1 Déployer AVANT de builder (le binaire charge le site en production)
 
-### 8.2 Backend Infomaniak (SSH)
+Le commit/push est fait par la session de développement (orchestrateur). Dès
+que `main` est poussé, Vercel redéploie le frontend automatiquement (2-3 min).
 
-Procédure de référence : [../DEPLOY.md](../DEPLOY.md) — **lis-y le « piège
-connu » sur la structure de dossier avant de commencer**, il se reproduit à
-chaque déploiement. Résumé :
+- [ ] https://vercel.com : dernier déploiement **vert**.
+- [ ] Backend Infomaniak (SSH) — procédure de référence [../DEPLOY.md](../DEPLOY.md),
+  **lis-y le « piège connu » sur la structure de dossier avant de commencer** :
 
 ```bash
 cd ~/sites/api.getchair.app/backend
@@ -594,47 +613,129 @@ php artisan config:clear
 php artisan route:cache
 ```
 
-- [ ] `https://api.getchair.app/api/...` répond (pas de 500) — en cas de 500,
-  la section diagnostic de `docs/DEPLOY.md`.
+- [ ] `https://api.getchair.app/api/...` répond (pas de 500) — sinon, section
+  diagnostic de `docs/DEPLOY.md`.
 
-### 8.3 Build iOS sur le Mac
+**Tâche planifiée (cron) — indispensable pour les rappels de RDV.** Le
+backend planifie deux commandes (purge des stories expirées, rappels de
+rendez-vous 24 h / 1 h toutes les 15 min). Elles ne tournent que si UNE ligne
+cron unique appelle le scheduler Laravel chaque minute :
+
+```
+* * * * * cd ~/sites/api.getchair.app/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+- **Où la créer** : Manager Infomaniak → Hébergement → **Tâches planifiées /
+  Cron** → nouvelle tâche, fréquence « chaque minute », avec la commande
+  ci-dessus. Si l'interface demande un script plutôt qu'une commande, mets la
+  ligne (sans les `* * * * *`) dans un petit `.sh` et pointe la tâche dessus.
+  Attention au PHP utilisé : si la tâche n'utilise pas le bon binaire,
+  remplace `php` par `/opt/php8.4/bin/php` (le même piège que pour composer,
+  voir `docs/DEPLOY.md`).
+- **Un cron existe peut-être déjà** : `chair:purge-expired-stories` est
+  planifiée depuis un moment — vérifie dans le Manager s'il y a déjà une
+  tâche `schedule:run` avant d'en créer une deuxième (une seule ligne suffit
+  pour TOUTES les commandes planifiées ; un doublon ferait tourner chaque
+  passe deux fois — sans danger, les rappels sont idempotents, mais inutile).
+- **Vérifier que ça tourne** :
+  1. en SSH : `php artisan schedule:list` → les deux commandes apparaissent
+     avec leur prochaine échéance ;
+  2. le lendemain d'un RDV confirmé pris pour J+1 :
+     `SELECT id, reminded_24h_at, reminded_1h_at FROM appointments ORDER BY id DESC LIMIT 5;`
+     → les colonnes `reminded_24h_at` puis `reminded_1h_at` se remplissent
+     toutes seules (et le client reçoit les rappels).
+
+- [ ] La ligne cron `schedule:run` existe (une seule) et
+  `php artisan schedule:list` affiche `chair:send-appointment-reminders`.
+
+### 8.2 Build iOS sur le Mac — séquence exacte
 
 ```bash
+cd chair-app
+git pull origin main   # récupère entitlements + scripts + config push
 cd frontend
-npm install        # OBLIGATOIRE : le plugin push est nouveau, il doit s'installer
-npm run ios:chair  # reconfigure le projet Xcode partagé pour le binaire CLIENT
+npm install            # OBLIGATOIRE : nouveaux plugins natifs
+                       # (@capacitor/push-notifications, @capacitor/haptics —
+                       # cap sync les ajoutera au projet iOS)
+npm run ios:chair      # sync + branding CLIENT + build number auto-incrémenté
+```
+
+Le script **se vérifie tout seul** : il restaure la page d'erreur hors-ligne
+(que `cap sync` écrase), contrôle la présence de `App.entitlements`, de
+`error.html`, du manifeste privacy et de `CODE_SIGN_ENTITLEMENTS` dans le
+pbxproj, et refuse de continuer (✗ explicite) si l'URL chargée n'est pas
+`https://www.getchair.app/app`. **S'il n'affiche pas « ✓ Vérifié » à la fin,
+n'archive pas** — le message dit quoi restaurer.
+
+- [ ] Le script se termine par « ✓ Vérifié » et affiche le **build number**
+  (incrémenté automatiquement via `agvtool` — ne le retouche pas ; en cas de
+  besoin exceptionnel : `cd ios/App && agvtool new-version -all N`).
+
+```bash
 npx cap open ios
 ```
 
-Dans Xcode, cible **App** → onglet **Signing & Capabilities** :
+Dans Xcode — **vérification seule, normalement zéro clic** :
 
-- [ ] la capability **Push Notifications** est présente ;
-- [ ] la capability **Associated Domains** est présente avec
-  `applinks:www.getchair.app` (détail : [DEEPLINKS_SETUP.md](DEEPLINKS_SETUP.md) §4) ;
-- [ ] le Team sélectionné est le tien et la signature ne montre aucune erreur.
+- [ ] cible **App** → **Signing & Capabilities** : **Push Notifications** est
+  listé (il apparaît automatiquement grâce à `App/App.entitlements`, ne
+  l'ajoute pas à la main) et **aucune erreur rouge** de signature.
+  Erreur rouge du style « provisioning profile doesn't include the
+  aps-environment entitlement » → le pré-requis 8.0 n'est pas fait, retournes-y.
+- [ ] Team = le tien, bundle ID = `app.getchair.client`.
+- Note : l'entitlement committé vaut `production` (TestFlight/App Store) ; sur
+  un iPhone branché en Debug, Xcode le bascule seul en `development` à la
+  signature — aucune action, ne modifie pas le fichier.
 
-Puis : menu **Product → Archive** → dans l'Organizer, **Distribute App →
-App Store Connect → Upload**. Réponds à la question Export Compliance (étape 7,
-point Chiffrement).
+Archive et upload :
 
-### 8.4 Tests sur TestFlight
+- [ ] Barre de destination : **Any iOS Device (arm64)** (pas un simulateur) →
+  **Product → Archive**.
+- [ ] Organizer → **Distribute App → App Store Connect → Upload** (options par
+  défaut à chaque écran).
+- [ ] Question **Export Compliance** (chiffrement) : réponds comme documenté à
+  l'étape 7, point Chiffrement — chiffrement standard HTTPS/TLS uniquement.
+- [ ] Le build apparaît dans App Store Connect → **TestFlight** (traitement
+  ~15 min ; tant qu'il est « Processing », attends).
 
-Quand le build apparaît dans TestFlight (traitement : quelques minutes à une
-heure), installe-le sur ton iPhone et teste **dans cet ordre** :
+Pour **CHAIR PRO** : même séquence avec `npm run ios:pro` (bundle
+`app.getchair.pro`, mêmes vérifications — l'entitlement push est identique
+pour les deux binaires, rien à basculer).
 
-- [ ] **Universal Links** : envoie-toi par iMessage/WhatsApp les liens de la
-  liste de test de [DEEPLINKS_SETUP.md](DEEPLINKS_SETUP.md) (profil coiffeur,
-  réalisation, avis…) → ils doivent ouvrir **l'app**, pas Safari.
-- [ ] **Push** : relance `chair:test-push` (étape 5.5) → notification reçue.
-- [ ] **Page d'erreur réseau** : passe l'iPhone en **mode avion**, ouvre l'app →
-  la page d'erreur native s'affiche (pas une page blanche), et le bouton
-  réessayer fonctionne une fois le réseau revenu.
-- [ ] Parcours complet avec le compte de review (étape 6) : connexion,
-  réservation, annulation, dépôt d'avis, suppression de compte sur un compte
-  jetable si tu veux aller au bout.
+### 8.3 Tests sur iPhone (TestFlight) — AVANT de soumettre
 
-**✓ Vérification :** les quatre cases ci-dessus cochées sur le build TestFlight
-exact que tu comptes soumettre — pas sur un build antérieur.
+Installe via TestFlight **le build exact que tu comptes soumettre** et vérifie
+dans cet ordre :
+
+- [ ] **Natif, pas Safari** : l'app s'ouvre en plein écran, aucune barre
+  d'adresse ni chrome Safari.
+- [ ] **Page d'erreur hors-ligne** : mode avion → force-quit → relance l'app →
+  page d'erreur CHAIR (pas d'écran blanc) ; réseau rétabli → **Réessayer**
+  recharge l'app.
+- [ ] **Carte Apple** : recherche coiffeurs → la carte s'affiche avec le fond
+  Apple (MapKit) ; si les tuiles sont en style OpenStreetMap/CARTO, c'est le
+  repli — pas bloquant, mais note-le.
+- [ ] **Push, chaîne complète** : réserve un créneau → sur l'écran de
+  confirmation, la carte d'opt-in notifications s'affiche → **Activer** →
+  accepte l'alerte iOS. Puis côté serveur :
+  `php artisan chair:test-push ton@email` (étape 5.5) → la notification
+  arrive sur l'iPhone, et **le tap ouvre la bonne page dans l'app**.
+- [ ] **Suppression de compte** (sur un compte jetable) : le parcours va au
+  bout et la reconnexion échoue.
+- [ ] **Signalement** d'un contenu (avis ou réalisation) : le formulaire part
+  et la confirmation s'affiche.
+
+**✓ Vérification :** toutes les cases cochées **sur ce build-là** — pas sur un
+build antérieur.
+
+### 8.4 Soumission
+
+- [ ] App Store Connect → ton app → la version → section **Build** →
+  sélectionne le build testé en 8.3 → **Save**.
+- [ ] **Add for Review / Submit for Review**.
+
+**✓ Vérification finale :** le statut de la version passe à
+**Waiting for Review**.
 
 ---
 

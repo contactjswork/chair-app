@@ -35,6 +35,43 @@ use Illuminate\Support\Facades\Log;
 class PushService
 {
     /**
+     * Types SOCIAUX (voir docs/PUSH_NOTIFICATIONS.md § Stratégie d'envoi) :
+     * jamais de push la nuit, plafonnés à la source. Le transactionnel
+     * (RDV, rappels, avis) n'est PAS dans cette liste — il part à toute heure.
+     */
+    public const SOCIAL_TYPES = [
+        'new_post',
+        'followed_post',
+        'new_hairdresser_nearby',
+        'promotion',
+        'promotions',
+    ];
+
+    /** Fenêtre calme des pushes sociaux : de 21 h (inclus) à 9 h (exclu), Europe/Paris. */
+    public const QUIET_HOURS_START = 21;
+    public const QUIET_HOURS_END   = 9;
+
+    /** Ce type est-il social (soumis à la fenêtre calme) ? */
+    public static function isSocialType(string $type): bool
+    {
+        return in_array($type, self::SOCIAL_TYPES, true);
+    }
+
+    /**
+     * Sommes-nous dans la fenêtre calme (21 h → 9 h, Europe/Paris) ?
+     * Les émetteurs sociaux peuvent l'interroger AVANT d'envoyer (pour ne pas
+     * consommer leur plafond) — et sendToUser l'applique de toute façon en
+     * dernier rempart : aucun push social ne part la nuit, quel que soit
+     * l'appelant.
+     */
+    public static function inQuietHours(?\Carbon\Carbon $at = null): bool
+    {
+        $hour = (int) ($at ?? \Carbon\Carbon::now(SlotGuard::TZ))->copy()->setTimezone(SlotGuard::TZ)->format('G');
+
+        return $hour >= self::QUIET_HOURS_START || $hour < self::QUIET_HOURS_END;
+    }
+
+    /**
      * Envoie un push à tous les appareils actifs de l'utilisateur.
      *
      * @param  User   $user  destinataire
@@ -51,6 +88,13 @@ class PushService
             // 1. Préférence CHAIR du type — même mécanisme que les
             //    notifications internes. Un type non mappé est envoyé.
             if (!NotificationService::shouldSend((int) $user->id, $type)) {
+                return 0;
+            }
+
+            // 1 bis. Fenêtre calme : un type social ne pousse JAMAIS entre
+            //        21 h et 9 h (Europe/Paris). La notification interne, elle,
+            //        a déjà été créée par l'appelant — seul le push est sauté.
+            if (self::isSocialType($type) && self::inQuietHours()) {
                 return 0;
             }
 

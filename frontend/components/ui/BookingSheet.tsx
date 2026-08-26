@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { saveBookingIntent } from '@/lib/bookingIntent';
+import { hapticSuccess } from '@/lib/haptics';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import type { ApiServiceCategory, ApiService } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn, UserPlus } from 'lucide-react';
@@ -256,6 +257,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
         appointment_time: selectedSlot,
         message: message || undefined,
       });
+      void hapticSuccess(); // fire-and-forget : no-op sur web et binaires sans le plugin
       setStep('success');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Erreur lors de la réservation.');

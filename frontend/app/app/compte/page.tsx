@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl, formatApptDate, type ApiAppointment } from '@/lib/types';
 import { appointments as appointmentsApi, interactions } from '@/lib/api';
+import { hapticWarning } from '@/lib/haptics';
 import type { SavedHairdresser } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import {
@@ -697,6 +698,7 @@ function CancelAppointmentSheet({
     setError(null);
     try {
       const updated = await appointmentsApi.cancelMine(appt.id);
+      void hapticWarning(); // fire-and-forget : no-op sur web et binaires sans le plugin
       onUpdated(updated);
       setDone(true);
     } catch (e) {

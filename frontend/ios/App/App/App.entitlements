@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements PARTAGÉS par les deux binaires (app.getchair.client et
+  app.getchair.pro) — le projet Xcode est unique, rien à basculer par app.
+
+  aps-environment = production : c'est la valeur pour TestFlight et
+  l'App Store. Pour un build Xcode direct sur un iPhone branché (Debug),
+  Xcode remplace automatiquement la valeur par "development" à la
+  signature — aucune manipulation manuelle, ne pas éditer ce fichier.
+
+  Associated Domains (applinks:www.getchair.app) volontairement ABSENTS
+  de ce build : la capability doit d'abord être activée sur les deux
+  App IDs (developer.apple.com) et les profils régénérés, sinon la
+  signature de l'archive ÉCHOUE. À ajouter au build suivant — voir
+  docs/app-store/DEEPLINKS_SETUP.md.
+-->
+<plist version="1.0">
+<dict>
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>

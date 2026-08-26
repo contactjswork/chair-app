@@ -52,6 +52,20 @@ definitions:
       PLIST="ios/App/App/Info.plist"
       /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
 
+  # cap sync régénère ios/App/App/public/ depuis webDir : la page d'erreur
+  # hors-ligne committée (server.errorPath des configs Capacitor) est écrasée
+  # à chaque sync — on la restaure depuis git, puis on vérifie que le bundle
+  # natif part complet (entitlements push, error.html, manifeste privacy).
+  restore_native_bundle: &restore_native_bundle
+    name: Restaurer page d'erreur + vérifier entitlements push
+    script: |
+      cd frontend
+      git checkout -- ios/App/App/public/error.html || true
+      test -f ios/App/App/public/error.html
+      test -f ios/App/App/App.entitlements
+      test -f ios/App/App/PrivacyInfo.xcprivacy
+      grep -q "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;" ios/App/App.xcodeproj/project.pbxproj
+
 workflows:
   chair-client-ios:
     name: CHAIR (client) — iOS TestFlight
@@ -85,6 +99,7 @@ workflows:
           cd frontend
           test -d ios || npx cap add ios
           npx cap sync ios
+      - <<: *restore_native_bundle
       - <<: *configure_bundle_id
       - name: Configurer nom affiché + permissions caméra/photo (CHAIR)
         script: |
@@ -164,6 +179,7 @@ workflows:
           cd frontend
           test -d ios || npx cap add ios
           npx cap sync ios
+      - <<: *restore_native_bundle
       - <<: *configure_bundle_id
       - name: Configurer nom affiché + permissions caméra/photo (CHAIR PRO)
         script: |

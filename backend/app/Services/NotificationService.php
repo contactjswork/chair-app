@@ -33,15 +33,20 @@ class NotificationService
         'appointment_cancelled'    => 'booking_cancelled',
         'appointment_rescheduled'  => 'booking_cancelled', // "annulé ou modifié" (libellé frontend)
 
-        // Rappels (aucun envoi planifié aujourd'hui — mapping prêt)
+        // Rappels (émis par chair:send-appointment-reminders, cron 15 min)
         'appointment_reminder_24h' => 'reminder_24h',
         'appointment_reminder_1h'  => 'reminder_1h',
 
         // Avis
         'review_request'           => 'review_request',
-        'review_reply'             => 'review_reply', // pas encore envoyé (ReviewController::reply ne notifie pas)
+        'review_reply'             => 'review_reply', // émis par ReviewController::reply (première réponse)
 
-        // Social / découverte (pas encore envoyés — mapping prêt)
+        // Social / découverte — types soumis à la fenêtre calme et aux
+        // plafonds (voir PushService::SOCIAL_TYPES et docs/PUSH_NOTIFICATIONS.md).
+        // new_post/followed_post : émis par PostController à la publication.
+        // new_hairdresser_nearby : AUCUN émetteur (préférence prête pour l'avenir).
+        // promotion(s) : AUCUN émetteur — opt-in explicite requis (off par
+        // défaut), on n'émet RIEN de ce type sans consentement (guideline 4.5.4).
         'followed_post'            => 'followed_post',
         'new_post'                 => 'followed_post',
         'new_hairdresser_nearby'   => 'new_hairdresser_nearby',
@@ -202,5 +207,33 @@ class NotificationService
         $copy = NotificationCopy::resolve($type, $vars, $audience);
 
         return static::send($userId, $type, $copy['title'], $copy['message'], $data);
+    }
+
+    /**
+     * Comme sendTyped(), mais SANS push : notification interne uniquement,
+     * préférence du destinataire toujours respectée.
+     *
+     * Usage prévu : le fan-out social (réalisation d'un coiffeur suivi) quand
+     * le push est plafonné — abonné déjà poussé il y a moins de 6 h, ou
+     * au-delà du plafond de 100 pushes par publication. L'abonné garde la
+     * notification dans son centre de notifications, sans vibration de plus.
+     * Voir docs/PUSH_NOTIFICATIONS.md § Stratégie d'envoi.
+     *
+     * @return Notification|null null si la préférence du destinataire bloque l'envoi.
+     */
+    public static function sendTypedWithoutPush(
+        int     $userId,
+        string  $type,
+        array   $vars = [],
+        ?string $audience = null,
+        array   $data = []
+    ): ?Notification {
+        if (!static::shouldSend($userId, $type)) {
+            return null;
+        }
+
+        $copy = NotificationCopy::resolve($type, $vars, $audience);
+
+        return static::sendInternal($userId, $type, $copy['title'], $copy['message'], $data);
     }
 }

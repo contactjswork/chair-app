@@ -8,9 +8,13 @@ use App\Models\Post;
 use App\Models\PostImage;
 use App\Services\BadgeService;
 use App\Services\CloudinaryService;
+use App\Services\NotificationCopy;
+use App\Services\NotificationService;
+use App\Services\PushService;
 use App\Services\StreakService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PostController extends Controller
 {
@@ -146,6 +150,9 @@ class PostController extends Controller
             StreakService::record($profile);
             BadgeService::refresh($profile);
 
+            // Notifie les abonnés du coiffeur (fenêtre calme + plafonds gérés).
+            $this->notifyFollowersOfPublication($post, $profile);
+
             return response()->json($post->load(['specialty', 'tags', 'images']), 201);
         }
 
@@ -199,6 +206,9 @@ class PostController extends Controller
             StreakService::record($profile);
             BadgeService::refresh($profile);
 
+            // Notifie les abonnés du coiffeur (fenêtre calme + plafonds gérés).
+            $this->notifyFollowersOfPublication($post, $profile);
+
             return response()->json($post->load(['specialty', 'tags', 'images']), 201);
         }
 
@@ -251,6 +261,9 @@ class PostController extends Controller
         StreakService::record($profile);
         BadgeService::refresh($profile);
 
+        // Notifie les abonnés du coiffeur (fenêtre calme + plafonds gérés).
+        $this->notifyFollowersOfPublication($post, $profile);
+
         return response()->json($post->load(['specialty', 'tags', 'images']), 201);
     }
 
@@ -284,12 +297,21 @@ class PostController extends Controller
             return response()->json(['message' => ContentFilter::message($reason)], 422);
         }
 
+        $wasPublished = (bool) $post->is_published;
+
         $post->update([
             'description'  => $validated['description'] ?? $post->description,
             'gender'       => array_key_exists('gender', $validated) ? $validated['gender'] : $post->gender,
             'specialty_id' => array_key_exists('specialty_id', $validated) ? $validated['specialty_id'] : $post->specialty_id,
             'is_published' => array_key_exists('is_published', $validated) ? $validated['is_published'] : $post->is_published,
         ]);
+
+        // Republication (archivé → publié) : mêmes notifications abonnés qu'à
+        // la création. Le plafond 6 h par (abonné, coiffeur) évite qu'un
+        // coiffeur qui archive/républie en boucle spamme ses abonnés en push.
+        if (!$wasPublished && (bool) $post->is_published) {
+            $this->notifyFollowersOfPublication($post, $profile);
+        }
 
         if (array_key_exists('specialty_id', $validated) || array_key_exists('tag_ids', $validated)) {
             $this->syncTags(
@@ -421,6 +443,132 @@ class PostController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // HELPER — notification des abonnés à la publication
+    // ════════════════════════════════════════════════════════════════
+
+    /** Plafond de pushes par publication (fan-out synchrone, cf. commentaire). */
+    private const FOLLOWER_PUSH_CAP = 100;
+
+    /** Un abonné ne reçoit pas 2 pushes du même coiffeur en moins de 6 h. */
+    private const SOCIAL_PUSH_COOLDOWN_HOURS = 6;
+
+    /**
+     * Notifie les abonnés du coiffeur qu'une réalisation vient d'être publiée
+     * (type new_post, préférence followed_post). Stratégie complète :
+     * docs/PUSH_NOTIFICATIONS.md § Stratégie d'envoi. En résumé :
+     *
+     *  - Notification INTERNE pour tous les abonnés dont la préférence
+     *    followed_post est active — toujours, sans plafond ni horaire.
+     *  - PUSH seulement si : hors fenêtre calme (21 h - 9 h, PushService),
+     *    pas de push du même coiffeur depuis moins de 6 h pour cet abonné
+     *    (table social_push_logs), et dans le plafond de 100 pushes par
+     *    publication.
+     *
+     * POURQUOI un plafond de 100 : QUEUE_CONNECTION=sync en prod (mutualisé,
+     * pas de worker) — ce fan-out s'exécute DANS la requête HTTP du pro qui
+     * publie. 100 appels APNs séquentiels restent supportables ; au-delà, les
+     * abonnés les plus récents sont poussés en premier, les autres gardent la
+     * notification interne, et un log l'enregistre.
+     *
+     * Best-effort : ne fait JAMAIS échouer la publication.
+     */
+    private function notifyFollowersOfPublication(Post $post, $profile): void
+    {
+        try {
+            if (!$post->is_published || !$profile) {
+                return;
+            }
+
+            // Abonnés, les plus récents d'abord (ce sont eux qui sont poussés
+            // en premier si le plafond de pushes est atteint).
+            $followerIds = DB::table('follows')
+                ->where('hairdresser_id', $profile->id)
+                ->orderByDesc('created_at')
+                ->pluck('follower_id');
+
+            if ($followerIds->isEmpty()) {
+                return;
+            }
+
+            if ($followerIds->count() > self::FOLLOWER_PUSH_CAP) {
+                Log::info('followed_post fan-out : plafond de pushes atteint', [
+                    'post_id'        => $post->id,
+                    'hairdresser_id' => $profile->id,
+                    'followers'      => $followerIds->count(),
+                    'push_cap'       => self::FOLLOWER_PUSH_CAP,
+                ]);
+            }
+
+            $coiffeurName = $profile->user->name ?? null;
+            $vars         = ['coiffeur' => $coiffeurName];
+            $data         = ['post_id' => $post->id, 'url' => '/app/realisation/' . $post->id];
+            $quietHours   = PushService::inQuietHours();
+            $pushBudget   = self::FOLLOWER_PUSH_CAP;
+            $now          = now();
+
+            foreach ($followerIds->chunk(50) as $chunk) {
+                // Abonnés déjà poussés par CE coiffeur il y a moins de 6 h :
+                // notification interne seulement (anti-rafale).
+                $throttled = DB::table('social_push_logs')
+                    ->whereIn('user_id', $chunk)
+                    ->where('hairdresser_id', $profile->id)
+                    ->where('last_pushed_at', '>', $now->copy()->subHours(self::SOCIAL_PUSH_COOLDOWN_HOURS))
+                    ->pluck('user_id')
+                    ->all();
+
+                foreach ($chunk as $followerId) {
+                    $followerId = (int) $followerId;
+                    $withPush   = !$quietHours
+                        && $pushBudget > 0
+                        && !in_array($followerId, $throttled, true);
+
+                    if ($withPush) {
+                        // Interne + push d'un coup — préférence vérifiée dedans.
+                        // (La fenêtre calme est de toute façon re-vérifiée par
+                        // PushService : double rempart, pas de double logique.)
+                        $notif = NotificationService::sendTyped(
+                            $followerId,
+                            'new_post',
+                            $vars,
+                            NotificationCopy::AUDIENCE_CLIENT,
+                            $data
+                        );
+
+                        if ($notif !== null) {
+                            $pushBudget--;
+                            DB::table('social_push_logs')->upsert(
+                                [[
+                                    'user_id'        => $followerId,
+                                    'hairdresser_id' => $profile->id,
+                                    'last_pushed_at' => $now,
+                                ]],
+                                ['user_id', 'hairdresser_id'],
+                                ['last_pushed_at']
+                            );
+                        }
+                    } else {
+                        // Notification interne seule (préférence respectée).
+                        NotificationService::sendTypedWithoutPush(
+                            $followerId,
+                            'new_post',
+                            $vars,
+                            NotificationCopy::AUDIENCE_CLIENT,
+                            $data
+                        );
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // Un échec de notification ne doit jamais faire échouer la
+            // publication d'une réalisation.
+            Log::warning('followed_post fan-out failed', [
+                'post_id' => $post->id ?? null,
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════
