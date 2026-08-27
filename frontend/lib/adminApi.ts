@@ -758,6 +758,130 @@ export interface AdminSubscriptionsResponse {
   active_paying_count: number;
 }
 
+// ─── Push APNs ──────────────────────────────────────────────────────────────
+// Contrat exact du bloc « PUSH APNs » d'AdminController (backend) : GET
+// /admin/push/diagnostics, /admin/push/devices, /admin/push/recipients,
+// POST /admin/notifications/send, GET /admin/notifications/history.
+// Aucun de ces objets ne transporte de secret : le jeton d'appareil est
+// masqué côté serveur, le JWT Apple n'est représenté que par un booléen.
+
+export interface PushDiagnostics {
+  /** true = la chaîne serveur est complète ; ne dit RIEN du nombre d'appareils. */
+  ready: boolean;
+  /** Ce qui empêche tout envoi, formulé pour être affiché tel quel. */
+  blocking_issues: string[];
+  /** Réglages douteux mais non bloquants (ex. environnement sandbox). */
+  warnings: string[];
+  config: {
+    key_id_present: boolean;
+    team_id_present: boolean;
+    key_path_present: boolean;
+    /** Nom du fichier .p8 seul — le chemin absolu ne sort jamais du serveur. */
+    key_filename: string | null;
+    key_readable: boolean;
+    key_parseable: boolean;
+    jwt_signable: boolean;
+    curl_http2: boolean;
+    environment: string;
+    topic_client: string;
+    topic_pro: string;
+  };
+  devices: {
+    total: number;
+    active: number;
+    disabled: number;
+    users_with_devices: number;
+    by_platform: Record<string, number>;
+  };
+  limits: { broadcast_max_users: number };
+  generated_at: string;
+}
+
+export interface PushDevice {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  user_email: string | null;
+  user_role: string | null;
+  platform: string | null;
+  device_name: string | null;
+  provider: string | null;
+  bundle_id: string | null;
+  /** 8 premiers caractères + « … ». Le jeton complet ne quitte jamais le serveur. */
+  token_masked: string;
+  enabled: boolean;
+  last_used_at: string | null;
+  created_at: string | null;
+}
+
+export interface PushRecipient {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  active_devices_count: number;
+}
+
+export type PushTarget = 'user' | 'all_devices';
+
+export interface PushSendPayload {
+  target: PushTarget;
+  user_id?: number | null;
+  title: string;
+  message: string;
+  /** Chemin interne CHAIR (ex. /app/notifications) — jamais une URL absolue. */
+  url?: string | null;
+}
+
+export interface PushSendResult {
+  ok: true;
+  target: PushTarget;
+  type: string;
+  title: string;
+  url: string | null;
+  recipients: number;
+  recipients_total: number;
+  truncated: boolean;
+  attempted: number;
+  sent: number;
+  failed: number;
+  failures: Array<{
+    user_id: number;
+    name: string;
+    device_id: number;
+    device_name: string | null;
+    token_masked: string;
+    reason: string;
+  }>;
+  skipped: Array<{ user_id: number; name: string; reason: string }>;
+}
+
+export interface PushHistoryRow {
+  id: number;
+  admin_name: string;
+  target: PushTarget | null;
+  type: string | null;
+  title: string | null;
+  message: string | null;
+  url: string | null;
+  recipients: number;
+  attempted: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  sent_at: string | null;
+}
+
+export const pushApi = {
+  diagnostics: () => adminApi.get<PushDiagnostics>('/admin/push/diagnostics'),
+  devices: (params: { search?: string; page?: number; per_page?: number }) =>
+    adminApi.get<Paginated<PushDevice>>('/admin/push/devices', params),
+  recipients: (search: string) => adminApi.get<{ data: PushRecipient[] }>('/admin/push/recipients', { search }),
+  send: (payload: PushSendPayload) => adminApi.post<PushSendResult>('/admin/notifications/send', payload),
+  history: (params?: { page?: number; per_page?: number }) =>
+    adminApi.get<Paginated<PushHistoryRow>>('/admin/notifications/history', params),
+};
+
 // ─── Formatage partagé ──────────────────────────────────────────────────────
 
 export function formatDate(iso?: string | null, opts?: Intl.DateTimeFormatOptions): string {

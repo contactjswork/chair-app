@@ -130,6 +130,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(functi
     Route::get('/insights/geo-coverage',        [AdminInsightController::class, 'geoCoverage'])->middleware('admin.permission:analytics.read');
     Route::post('/notifications/send',          [AdminController::class, 'sendNotification'])->middleware('admin.permission:notifications.send');
     Route::get('/notifications/history',        [AdminController::class, 'notificationHistory'])->middleware('admin.permission:notifications.send');
+    // Panneau push APNs — diagnostic de la chaîne, appareils enregistrés et
+    // recherche de destinataire (voir le bloc « PUSH APNs » d'AdminController).
+    // Même permission que l'envoi : qui peut envoyer doit pouvoir vérifier.
+    Route::get('/push/diagnostics',             [AdminController::class, 'pushDiagnostics'])->middleware('admin.permission:notifications.send');
+    Route::get('/push/devices',                 [AdminController::class, 'pushDevices'])->middleware('admin.permission:notifications.send');
+    Route::get('/push/recipients',              [AdminController::class, 'pushRecipients'])->middleware('admin.permission:notifications.send');
     Route::post('/hairdressers/{id}/chair-pick',   [AdminHairdresserController::class, 'setChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
     Route::delete('/hairdressers/{id}/chair-pick', [AdminHairdresserController::class, 'removeChairPick'])->middleware('admin.permission:hairdressers.chair_pick');
     // Mode test CHAIR+ (spec CHAIR+ §3) — activer/désactiver sans Stripe, réservé admin.

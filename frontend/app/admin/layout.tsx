@@ -14,6 +14,7 @@ import {
   Tags,
   SlidersHorizontal,
   BarChart2,
+  BellRing,
   ScrollText,
   UserCog,
   Wrench,
@@ -128,6 +129,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/specialites', label: 'Spécialités', icon: Tags, permission: PERMISSIONS.SPECIALTIES_MANAGE },
   { href: '/admin/configuration', label: 'Configuration', icon: SlidersHorizontal, permission: PERMISSIONS.SETTINGS_UPDATE },
   { href: '/admin/statistiques', label: 'Analytics', icon: BarChart2, permission: PERMISSIONS.ANALYTICS_READ },
+  { href: '/admin/notifications', label: 'Notifications push', icon: BellRing, permission: PERMISSIONS.NOTIFICATIONS_SEND },
   { href: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, permission: PERMISSIONS.AUDIT_LOGS_READ },
   // Purge des données de démonstration — même permission que la suppression
   // de comptes (users.delete), c'est une suppression de comptes en masse.
