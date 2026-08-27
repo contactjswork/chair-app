@@ -29,7 +29,8 @@ interface Props {
   open: boolean;
   initial: SearchDraft;
   hasGeolocation: boolean;
-  onRequestGeolocation: () => Promise<boolean>;
+  /** Renvoie null si la position a ete obtenue, sinon le message d echec. */
+  onRequestGeolocation: () => Promise<string | null>;
   onClose: () => void;
   onApply: (draft: SearchDraft) => void;
 }
@@ -131,14 +132,18 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
 
   async function handleUseMyPosition() {
     setGeoLoading(true);
-    const ok = hasGeolocation ? true : await onRequestGeolocation();
+    setCityError(null);
+    const failure = hasGeolocation ? null : await onRequestGeolocation();
     setGeoLoading(false);
-    if (ok) {
-      setUseMyPos(true);
-      setCityInput('');
-      setCityCoords(null);
-      setCityError(null);
+    if (failure) {
+      // Sans cette branche, un echec ne produisait RIEN : le spinner
+      // s'arretait et l'ecran restait identique. L'utilisateur retapait.
+      setCityError(failure);
+      return;
     }
+    setUseMyPos(true);
+    setCityInput('');
+    setCityCoords(null);
   }
 
   async function handleApply() {

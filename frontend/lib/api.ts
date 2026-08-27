@@ -26,6 +26,18 @@ function handleUnauthenticated(): void {
 const NETWORK_ERROR_MESSAGE = 'Connexion impossible. Vérifie ta connexion internet et réessaie.';
 
 /**
+ * L'échec vient-il du réseau, et non d'une réponse du serveur ?
+ *
+ * Distinction vitale : une session ne doit JAMAIS être détruite parce que le
+ * réseau a hoqueté. Un 401 purge déjà la session par handleUnauthenticated() ;
+ * tout le reste — métro, avion, backend momentanément injoignable — doit
+ * laisser l'utilisateur connecté avec ses données en cache.
+ */
+export function isNetworkError(err: unknown): boolean {
+  return err instanceof Error && err.message === NETWORK_ERROR_MESSAGE;
+}
+
+/**
  * Traduit en français humain les messages techniques que Laravel renvoie en
  * anglais ("Unauthenticated.", "Too Many Attempts.", "Server Error") — les
  * messages métier du backend sont déjà en français et passent tels quels.

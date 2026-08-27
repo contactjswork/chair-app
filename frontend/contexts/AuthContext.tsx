@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api, SESSION_EXPIRED_EVENT } from '@/lib/api';
+import { api, isNetworkError, SESSION_EXPIRED_EVENT } from '@/lib/api';
 import {
   AuthUser,
   AuthResponse,
@@ -106,7 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser((prev) => (prev && JSON.stringify(prev) === JSON.stringify(freshUser) ? prev : freshUser));
           hydrateUserPrefsFromServer();
         })
-        .catch(() => {
+        .catch((err) => {
+          // Une coupure réseau ne doit JAMAIS déconnecter : l'utilisateur
+          // rouvrait l'app dans le métro et se retrouvait sur l'écran de
+          // connexion, sans un mot d'explication, sa session locale pourtant
+          // valide détruite.
+          //
+          // Le cas « session réellement révoquée » est déjà traité en amont :
+          // un 401 déclenche handleUnauthenticated() dans lib/api.ts, qui
+          // purge le stockage et émet SESSION_EXPIRED_EVENT — écouté plus bas.
+          // Il n'y a donc rien à purger ici, et beaucoup à préserver.
+          if (isNetworkError(err)) return;
           clearSession();
           setUser(null);
         })

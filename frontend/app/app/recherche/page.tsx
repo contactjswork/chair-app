@@ -238,14 +238,25 @@ function RechercheContent() {
   }, [explore.searchInArea]);
 
   // ── Modale Recherche ──────────────────────────────────────────────────────
-  const requestGeo = useCallback(async (): Promise<boolean> => {
+  /**
+   * Demande la position. Renvoie `null` en cas de succès, sinon LE MESSAGE
+   * expliquant l'échec.
+   *
+   * Renvoyait un booléen : la raison — refus d'autorisation, services de
+   * localisation coupés, délai GPS dépassé — était produite par
+   * requestBrowserGeolocation puis jetée. Les deux appelants affichaient donc
+   * la même phrase passe-partout, ou rien du tout.
+   */
+  const requestGeo = useCallback(async (): Promise<string | null> => {
     try {
       const coords = await requestBrowserGeolocation();
       storeLocation({ latitude: coords.latitude, longitude: coords.longitude });
       setUserLocation({ lat: coords.latitude, lng: coords.longitude });
-      return true;
-    } catch {
-      return false;
+      return null;
+    } catch (err) {
+      return err instanceof Error && err.message
+        ? err.message
+        : 'Position indisponible. Autorise la localisation dans les réglages, ou cherche par ville.';
     }
   }, []);
 
@@ -265,13 +276,13 @@ function RechercheContent() {
       return;
     }
     setLocatingMe(true);
-    const ok = await requestGeo();
+    const failure = await requestGeo();
     setLocatingMe(false);
-    if (ok) {
+    if (!failure) {
       const stored = getStoredLocation();
       if (stored) mapRef.current?.setCenter({ lat: stored.latitude, lng: stored.longitude }, 14);
     } else {
-      setGeoNotice('Position indisponible. Autorise la localisation dans les réglages, ou cherche par ville.');
+      setGeoNotice(failure);
       if (geoNoticeTimer.current) clearTimeout(geoNoticeTimer.current);
       geoNoticeTimer.current = setTimeout(() => setGeoNotice(null), 5000);
     }

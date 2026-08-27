@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { Bell, X, Check } from 'lucide-react';
-import { getPushPermissionState, requestAndRegister, installPushListeners, syncRegistrationIfGranted } from '@/lib/push';
+import { getPushPermissionState, requestAndRegister, installPushListeners, syncRegistrationIfGranted, getLastPushError } from '@/lib/push';
 
 /** Dismiss mémorisé — la carte ne réapparaît plus sur cet appareil. */
 const DISMISS_KEY = 'chair_push_optin_dismissed';
@@ -39,6 +39,8 @@ type CardState = 'hidden' | 'idle' | 'busy' | 'done';
 
 export default function PushOptInCard({ className = '' }: Props) {
   const [state, setState] = useState<CardState>('hidden');
+  /** Raison d'un échec d'activation — affichée sous le bouton, jamais avalée. */
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,21 +66,28 @@ export default function PushOptInCard({ className = '' }: Props) {
 
   async function activate() {
     if (state === 'busy') return; // anti double-tap
+    setError(null);
     setState('busy');
     const result = await requestAndRegister();
     if (result === 'registered') {
       setState('done');
       // Confirmation visible un instant, puis la carte se retire seule.
       setTimeout(() => setState('hidden'), 2000);
-    } else {
-      // Refus ou erreur : on n'insiste pas — la carte disparaît, la page de
+    } else if (result === 'denied') {
+      // Refus explicite : on n'insiste pas — la carte disparaît, et la page de
       // préférences explique comment réactiver via les Réglages iPhone.
       setState('hidden');
-      if (result === 'denied') {
-        try {
-          localStorage.setItem(DISMISS_KEY, '1');
-        } catch { /* ignore */ }
-      }
+      try {
+        localStorage.setItem(DISMISS_KEY, '1');
+      } catch { /* ignore */ }
+    } else {
+      // ÉCHEC ≠ REFUS. Les deux cas partageaient le même traitement : la carte
+      // s'évanouissait et les notifications ne marchaient pas, sans que
+      // personne sache pourquoi. C'est précisément le bug corrigé sur la page
+      // de préférences — il vivait encore ici, dans son jumeau.
+      // L'utilisateur n'a rien refusé : on garde la carte et on lui dit.
+      setError(getLastPushError() ?? "L'activation a échoué. Réessaie dans un instant.");
+      setState('idle');
     }
   }
 
@@ -126,6 +135,12 @@ export default function PushOptInCard({ className = '' }: Props) {
         ) : null}
         {state === 'busy' ? 'Activation…' : 'Activer les notifications'}
       </button>
+
+      {error && (
+        <p role="alert" className="mt-2.5 text-[12px] text-red-600 leading-relaxed">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
