@@ -57,13 +57,24 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 md:min-w-[200px]">
+              {/* L'inscription pro sort de l'app cliente — target="_blank",
+                  comme le même lien dans Compte. Dans le binaire natif, une
+                  demande de nouvelle fenêtre est confiée au navigateur du
+                  système : sans ça, le client se retrouvait embarqué dans le
+                  parcours coiffeur à l'intérieur de CHAIR, sans retour
+                  possible. L'app cliente ne doit jamais héberger l'espace pro. */}
+              <div className="flex flex-col gap-2 md:min-w-[200px]">
                 <Link
                   href="/pro/inscription"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center justify-center bg-white text-neutral-900 text-sm font-semibold px-6 py-3.5 rounded-2xl hover:bg-neutral-100 active:scale-[0.97] transition-all text-center"
                 >
                   Créer mon profil gratuit
                 </Link>
+                <p className="text-[10px] text-neutral-500 text-center leading-relaxed">
+                  Sur CHAIR PRO, l&apos;espace coiffeur séparé
+                </p>
               </div>
             </div>
           </div>
