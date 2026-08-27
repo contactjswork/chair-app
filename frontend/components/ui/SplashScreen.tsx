@@ -28,6 +28,15 @@ interface SplashScreenProps {
  */
 
 let hasPlayedOnce = false;
+/**
+ * Instant du tout premier montage. Le layout de l'app rend ce composant à
+ * plusieurs endroits de l'arbre selon l'état d'authentification : quand
+ * celle-ci se résout, React démonte l'instance et en remonte une neuve. Sans
+ * cette référence, l'animation repartait de zéro en plein milieu — les
+ * lettres redescendaient puis remontaient. On mesure donc le temps écoulé
+ * depuis le début réel, et l'animation reprend où elle en était.
+ */
+let startedAt: number | null = null;
 
 const WORD = 'CHAIR';
 /** Décalage entre deux lettres — assez pour lire la vague, pas pour attendre. */
@@ -38,21 +47,31 @@ const HOLD_MS = 1000;
 const TOTAL_MS = 1500;
 
 export default function SplashScreen({ pro = false }: SplashScreenProps) {
-  const [leaving, setLeaving] = useState(false);
-  const [done, setDone] = useState(hasPlayedOnce);
+  // Calculé une seule fois par instance, et jamais pendant le rendu serveur :
+  // au premier rendu client (l'hydratation) le chronomètre démarre, donc la
+  // valeur vaut 0 des deux côtés — aucun écart d'hydratation.
+  const [offset] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    if (hasPlayedOnce) return TOTAL_MS;
+    if (startedAt === null) startedAt = Date.now();
+    return Date.now() - startedAt;
+  });
+
+  const [leaving, setLeaving] = useState(offset >= HOLD_MS);
+  const [done, setDone] = useState(hasPlayedOnce || offset >= TOTAL_MS);
 
   useEffect(() => {
-    if (hasPlayedOnce) return;
-    const t1 = setTimeout(() => setLeaving(true), HOLD_MS);
+    if (hasPlayedOnce || offset >= TOTAL_MS) return;
+    const t1 = setTimeout(() => setLeaving(true), Math.max(0, HOLD_MS - offset));
     const t2 = setTimeout(() => {
       hasPlayedOnce = true;
       setDone(true);
-    }, TOTAL_MS);
+    }, Math.max(0, TOTAL_MS - offset));
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [offset]);
 
   if (done) return null;
 
@@ -72,6 +91,9 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
           '--sp-fg': palette.fg,
           '--sp-sub': palette.sub,
           '--sp-rule': palette.rule,
+          // Retard négatif appliqué à toutes les animations : après un
+          // remontage, chacune reprend à l'instant où elle en était.
+          '--sp-offset': `${offset}ms`,
         } as React.CSSProperties
       }
     >
@@ -81,7 +103,7 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
             <span key={i} className="chair-splash-mask" aria-hidden="true">
               <span
                 className="chair-splash-letter"
-                style={{ animationDelay: `${i * LETTER_STAGGER_MS}ms` }}
+                style={{ animationDelay: `calc(${i * LETTER_STAGGER_MS}ms - var(--sp-offset))` }}
               >
                 {letter}
               </span>
@@ -136,12 +158,17 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
           overflow: hidden;
           line-height: 1;
           padding-bottom: 0.06em;
+          /* La chasse serrée se joue ENTRE les masques, jamais à l'intérieur :
+             un letter-spacing négatif sur la lettre réduit sa boîte sous la
+             largeur du glyphe, et overflow:hidden lui rogne le bord droit —
+             le R en faisait les frais. */
+          margin-right: -0.035em;
         }
+        .chair-splash-mask:last-of-type { margin-right: 0; }
         .chair-splash-letter {
           display: inline-block;
           font-size: 42px;
           font-weight: 800;
-          letter-spacing: -0.035em;
           color: var(--sp-fg);
           transform: translateY(115%);
           animation: chairSplashRise 760ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -155,7 +182,7 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
           letter-spacing: 0.16em;
           color: var(--sp-sub);
           opacity: 0;
-          animation: chairSplashFade 520ms ease 440ms forwards;
+          animation: chairSplashFade 520ms ease calc(440ms - var(--sp-offset)) forwards;
         }
 
         /* Le filet se trace après les lettres : il ponctue, il n'accompagne pas. */
@@ -165,7 +192,7 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
           height: 1px;
           background: var(--sp-rule);
           transform: scaleX(0);
-          animation: chairSplashRule 600ms cubic-bezier(0.16, 1, 0.3, 1) 340ms forwards;
+          animation: chairSplashRule 600ms cubic-bezier(0.16, 1, 0.3, 1) calc(340ms - var(--sp-offset)) forwards;
         }
         @keyframes chairSplashRule { to { transform: scaleX(1); } }
 
@@ -176,7 +203,7 @@ export default function SplashScreen({ pro = false }: SplashScreenProps) {
           text-transform: uppercase;
           color: var(--sp-sub);
           opacity: 0;
-          animation: chairSplashFade 520ms ease 540ms forwards;
+          animation: chairSplashFade 520ms ease calc(540ms - var(--sp-offset)) forwards;
         }
 
         @keyframes chairSplashFade { to { opacity: 1; } }

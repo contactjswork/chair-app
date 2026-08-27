@@ -52,14 +52,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user, isLoading, router, isPublic]);
 
-  // Splash toujours rendu en premier, avant tout check d'auth
-  if (!isPublic) {
-    if (isLoading) return <SplashScreen />;
-    if (user && (user.role === 'hairdresser' || user.role === 'salon_owner')) return null;
-  }
+  // Le splash reste monté au MÊME endroit de l'arbre quel que soit l'état
+  // ci-dessous. C'est essentiel : quand il changeait de position — seul
+  // pendant le chargement de l'auth, puis dans un fragment avec les enfants —
+  // React démontait l'instance et en remontait une neuve, et l'animation
+  // repartait de zéro au moment précis où l'authentification se résolvait.
+  // Seul le contenu DERRIÈRE lui change désormais.
+  let content: React.ReactNode = children;
 
-  if (showOnboarding) {
-    return (
+  if (!isPublic && (isLoading || (user && (user.role === 'hairdresser' || user.role === 'salon_owner')))) {
+    // Auth en cours, ou compte pro en train d'être redirigé vers /pro :
+    // rien à afficher derrière le splash.
+    content = null;
+  } else if (showOnboarding) {
+    content = (
       <OnboardingCarousel
         slides={SLIDES}
         primaryLabel="Créer un compte"
@@ -74,7 +80,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SplashScreen />
-      {children}
+      {content}
     </>
   );
 }

@@ -111,12 +111,16 @@ export default function SiteIntro() {
           overflow: hidden;
           line-height: 1;
           padding-bottom: 0.06em;
+          /* La chasse serrée se joue ENTRE les masques, jamais à l'intérieur :
+             un letter-spacing négatif sur la lettre réduit sa boîte sous la
+             largeur du glyphe, et overflow:hidden lui rogne le bord droit. */
+          margin-right: -0.035em;
         }
+        .chair-intro-mask:last-of-type { margin-right: 0; }
         .chair-intro-letter {
           display: inline-block;
           font-size: 46px;
           font-weight: 800;
-          letter-spacing: -0.035em;
           color: #ffffff;
           transform: translateY(115%);
           animation: chairIntroRise 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
