@@ -4,28 +4,19 @@
 // Apple Plans (MapKit JS) d'abord : si le backend a des clés MapKit
 // configurées (GET /api/mapkit-token répond), la vraie carte Apple s'affiche.
 // Sinon — clés absentes, CDN inaccessible, échec d'init — repli silencieux
-// sur Leaflet/CARTO (l'ancienne carte) : la carte ne casse JAMAIS.
+// sur Leaflet/OpenStreetMap (l'ancienne carte) : la carte ne casse JAMAIS.
 //
-// Le repli n'est PAS définitif pour autant : une microcoupure réseau au
-// lancement ne doit pas condamner l'utilisateur à l'ancienne carte jusqu'au
-// redémarrage de l'app (fréquent en mobilité). Deux régimes d'échec :
-//  - définitif (le backend répond 501/404 sur /mapkit-token : clés non
-//    configurées) → Leaflet pour toute la session, inutile de réessayer ;
-//  - transitoire (réseau, CDN, init) → on retente MapKit dès que l'échec
-//    date de plus de MAPKIT_RETRY_MS, à la prochaine carte montée.
+// Le repli n'est jamais collant : Apple Plans est retenté à CHAQUE carte
+// montée. Seul l'échec « clés non configurées » (501/404 sur /mapkit-token)
+// coupe les tentatives pour la session — lui seul ne peut pas se résoudre
+// tout seul. Voir shouldTryMapkit() pour le raisonnement complet.
 //
 // NEXT_PUBLIC_MAP_PROVIDER=leaflet force l'ancien moteur (debug/urgence).
 
 import type { MapAdapter, MapInitOptions } from './mapProvider';
 
-/** Délai avant de retenter MapKit après un échec transitoire (2 minutes). */
-const MAPKIT_RETRY_MS = 2 * 60 * 1000;
-
 /** Échec définitif pour la session : clés MapKit absentes côté backend. */
 let mapkitBrokenForSession = false;
-
-/** Horodatage du dernier échec transitoire (null = aucun échec en cours). */
-let mapkitFailedAt: number | null = null;
 
 /**
  * Distingue l'échec définitif du transitoire via le message d'erreur émis
@@ -38,10 +29,21 @@ function isDefinitiveMapkitFailure(err: unknown): boolean {
   return /mapkit-token (501|404)\b/.test(msg);
 }
 
+/**
+ * Apple Plans est retenté à CHAQUE carte montée, sans mémoire d'échec — seul
+ * le cas « clés non configurées » (501/404) coupe les tentatives pour la
+ * session, parce que lui ne peut pas se résoudre tout seul.
+ *
+ * Pourquoi aucun délai de reprise : un échec transitoire (réseau faible,
+ * CDN Apple lent) collait l'ancienne carte pendant des minutes alors que la
+ * connexion était revenue — c'est exactement ce que Julien constatait
+ * (« elle s'enlève toujours »). Le coût d'un réessai est négligeable : le
+ * jeton est en cache de session et mapkit.js dans le cache du navigateur,
+ * donc une reprise réussie ne coûte quasiment rien, et un échec retombe sur
+ * le repli comme avant.
+ */
 function shouldTryMapkit(): boolean {
-  if (mapkitBrokenForSession) return false;
-  if (mapkitFailedAt === null) return true;
-  return Date.now() - mapkitFailedAt > MAPKIT_RETRY_MS;
+  return !mapkitBrokenForSession;
 }
 
 export async function createAndInitMapAdapter(el: HTMLElement, opts: MapInitOptions): Promise<MapAdapter> {
@@ -52,13 +54,10 @@ export async function createAndInitMapAdapter(el: HTMLElement, opts: MapInitOpti
       const { MapKitAdapter } = await import('./mapkitAdapter');
       const adapter = new MapKitAdapter();
       await adapter.init(el, opts);
-      mapkitFailedAt = null; // MapKit re-fonctionne : on oublie l'échec passé
       return adapter;
     } catch (err) {
       if (isDefinitiveMapkitFailure(err)) {
         mapkitBrokenForSession = true;
-      } else {
-        mapkitFailedAt = Date.now();
       }
       if (process.env.NODE_ENV !== 'production') {
         console.info('[carte] MapKit indisponible, repli Leaflet :', err);

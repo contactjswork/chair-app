@@ -35,7 +35,7 @@ if (IS_PROD_BUILD) {
 //    images servies depuis /storage ;
 //  - cdn.apple-mapkit.com : mapkit.js + tuiles Apple Plans (mapkitAdapter.ts,
 //    preconnect dans app/layout.tsx) ;
-//  - *.basemaps.cartocdn.com : tuiles CARTO Voyager du moteur de repli
+//  - tile.openstreetmap.org : tuiles du moteur de carte de repli (Leaflet).
 //    Leaflet (leafletAdapter.ts) ;
 //  - res.cloudinary.com / images.unsplash.com / i.pravatar.cc : hôtes
 //    d'images déjà déclarés dans images.remotePatterns ci-dessous ;
@@ -56,7 +56,7 @@ const IMAGE_ORIGINS = [
   'https://res.cloudinary.com',
   'https://images.unsplash.com',
   'https://i.pravatar.cc',
-  'https://*.basemaps.cartocdn.com',
+  'https://tile.openstreetmap.org',
   'https://*.apple-mapkit.com',
 ].join(' ');
 
@@ -88,7 +88,7 @@ const CSP_REPORT_ONLY = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: blob: ${IMAGE_ORIGINS}`,
   "font-src 'self' data:",
-  `connect-src 'self' blob: ${API_ORIGIN} https://*.apple-mapkit.com https://*.basemaps.cartocdn.com`,
+  `connect-src 'self' blob: ${API_ORIGIN} https://*.apple-mapkit.com https://tile.openstreetmap.org`,
   "worker-src 'self' blob:",
   "media-src 'self' data: blob:",
   "manifest-src 'self'",

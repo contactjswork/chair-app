@@ -51,8 +51,13 @@ export class LeafletAdapter implements MapAdapter {
     // pane des tuiles UNIQUEMENT, jamais aux marqueurs) désature et éclaircit
     // légèrement pour se rapprocher du rendu Apple Maps, sans changer de
     // fournisseur ni ajouter de dépendance/clé.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; OpenStreetMap',
+    // Tuiles OpenStreetMap officielles — SANS clé d'API. CARTO
+    // (basemaps.cartocdn.com) exige désormais une clé et incruste
+    // « API KEY REQUIRED » en filigrane sur chaque tuile : le repli censé
+    // sauver la carte l'affichait cassée (constaté en production).
+    // OSM est libre d'accès et suffit pour un repli qui doit juste marcher.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 20,
       subdomains: 'abcd',
     }).addTo(map);
