@@ -13,8 +13,9 @@ import type { ApiLeaderboard, ApiLeaderboardEntry, ApiSpecialty, ApiSpecialtyLea
 import { resolveMediaUrl } from '@/lib/types';
 import {
   Trophy, Star, BadgeCheck, Search, X, ChevronRight,
-  HelpCircle, RotateCcw, WifiOff, Crown,
+  HelpCircle, RotateCcw, WifiOff, Crown, MapPin, Check,
 } from 'lucide-react';
+import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS } from '@/lib/specialties';
 import { FilterChip as SharedFilterChip } from '@/components/ui/Badge';
 import EmptyState from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/Button';
@@ -97,39 +98,156 @@ function GeoSearchBar({ value, onChange }: { value: string; onChange: (v: string
   );
 }
 
-// ── Bottom sheet spécialité ─────────────────────────────────────────────
+// ── Bottom sheet spécialité — tuiles PHOTO, triées Homme/Femme ────────────
+// Même langage visuel que le filtre de la recherche (SpecialtyTile) : la photo
+// live administrable (Specialty.image_url) prime, l'illustration d'onboarding
+// sert de repli. Un choix de spécialité est un choix VISUEL — une liste de
+// libellés nus obligeait à connaître le jargon (retour Julien).
+
+function specialtyImage(s: ApiSpecialty): string | null {
+  return resolveMediaUrl(s.image_url) ?? SPECIALTY_ILLUSTRATIONS[s.slug] ?? null;
+}
+
+function specialtyGender(s: ApiSpecialty): 'homme' | 'femme' {
+  const cat = (s.category ?? '').toLowerCase();
+  if (cat.includes('homme')) return 'homme';
+  if (cat.includes('femme')) return 'femme';
+  return HOMME_SPECIALTY_SLUGS.includes(s.slug) ? 'homme' : 'femme';
+}
+
+function SpecialtyPhotoTile({ s, active, onClick }: { s: ApiSpecialty; active: boolean; onClick: () => void }) {
+  const img = specialtyImage(s);
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className="flex flex-col items-center gap-1.5 min-w-0 active:scale-[0.94] transition-transform"
+    >
+      <span
+        className={`relative w-[64px] h-[64px] rounded-2xl overflow-hidden bg-neutral-100 flex items-center justify-center transition-shadow ${
+          active ? 'ring-[2.5px] ring-neutral-900 ring-offset-2 ring-offset-white' : 'ring-1 ring-neutral-200'
+        }`}
+      >
+        {img ? (
+          <Image src={img} alt="" fill className="object-cover" sizes="64px" />
+        ) : (
+          <span className="text-[15px] font-bold text-neutral-400">{s.name.charAt(0)}</span>
+        )}
+        {active && (
+          <span className="absolute inset-0 bg-neutral-900/35 flex items-center justify-center">
+            <Check size={20} className="text-white" strokeWidth={3} />
+          </span>
+        )}
+      </span>
+      <span className={`text-[10.5px] leading-tight text-center w-full line-clamp-2 ${active ? 'font-bold text-neutral-900' : 'font-medium text-neutral-500'}`}>
+        {s.name}
+      </span>
+    </button>
+  );
+}
+
 function SpecialtySheet({
   specialties, selectedId, onSelect, onClose,
 }: { specialties: ApiSpecialty[]; selectedId: number | null; onSelect: (id: number | null) => void; onClose: () => void }) {
+  const groups: Array<{ label: string; items: ApiSpecialty[] }> = [
+    { label: 'Homme', items: specialties.filter((s) => specialtyGender(s) === 'homme') },
+    { label: 'Femme', items: specialties.filter((s) => specialtyGender(s) === 'femme') },
+  ].filter((g) => g.items.length > 0);
+
   return (
-    <BottomSheet onClose={onClose} maxHeight="max-h-[75vh]">
-      <div className="p-5 pb-8">
+    <BottomSheet onClose={onClose} maxHeight="max-h-[82vh]">
+      <div className="p-5 pb-8 overflow-y-auto max-h-[calc(82vh-2rem)]">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[16px] font-bold text-neutral-900">Spécialité</p>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100">
-            <X size={15} />
+          <button onClick={onClose} aria-label="Fermer" className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100">
+            <X size={16} />
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => { onSelect(null); onClose(); }}
-            className={`text-left px-4 py-3 rounded-2xl text-[13px] font-semibold border transition-all ${
-              selectedId === null ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-700 hover:border-neutral-400'
-            }`}
-          >
-            Toutes spécialités
+
+        <button
+          onClick={() => { onSelect(null); onClose(); }}
+          className={`w-full mb-5 px-4 py-3 rounded-2xl text-[13px] font-semibold border transition-all ${
+            selectedId === null ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-700 hover:border-neutral-400'
+          }`}
+        >
+          Toutes les spécialités
+        </button>
+
+        {groups.map((g) => (
+          <div key={g.label} className="mb-5 last:mb-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">{g.label}</p>
+            <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+              {g.items.map((s) => (
+                <SpecialtyPhotoTile
+                  key={s.id}
+                  s={s}
+                  active={selectedId === s.id}
+                  onClick={() => { onSelect(s.id); onClose(); }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ── Bottom sheet rayon — classement autour de la ville du compte ──────────
+// Le rayon s'applique à la position de la VILLE du compte (jamais le GPS de
+// l'appareil — cohérent avec la politique de confidentialité). 'auto' garde le
+// comportement historique : paliers intelligents qui s'élargissent jusqu'à
+// trouver des résultats.
+export type RadiusChoice = 'auto' | 25 | 50 | 100 | 'france';
+
+const RADIUS_OPTIONS: Array<{ value: RadiusChoice; label: string; hint: string }> = [
+  { value: 'auto',   label: 'Autour de moi',    hint: 'Zone élargie automatiquement si besoin' },
+  { value: 25,       label: '25 km',            hint: 'Tout proche' },
+  { value: 50,       label: '50 km',            hint: 'Ta ville et ses alentours' },
+  { value: 100,      label: '100 km',           hint: 'Ta grande région' },
+  { value: 'france', label: 'Toute la France',  hint: 'Le classement national' },
+];
+
+function radiusChipLabel(choice: RadiusChoice, city: string | null): string {
+  if (choice === 'auto') return city ? `Autour de ${city}` : 'Autour de moi';
+  if (choice === 'france') return 'Toute la France';
+  return `${choice} km`;
+}
+
+function RadiusSheet({
+  choice, city, onSelect, onClose,
+}: { choice: RadiusChoice; city: string | null; onSelect: (c: RadiusChoice) => void; onClose: () => void }) {
+  return (
+    <BottomSheet onClose={onClose}>
+      <div className="p-5 pb-8">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[16px] font-bold text-neutral-900">Distance</p>
+          <button onClick={onClose} aria-label="Fermer" className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100">
+            <X size={16} />
           </button>
-          {specialties.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => { onSelect(s.id); onClose(); }}
-              className={`text-left px-4 py-3 rounded-2xl text-[13px] font-semibold border transition-all ${
-                selectedId === s.id ? 'bg-neutral-900 text-white border-neutral-900' : 'border-neutral-200 text-neutral-700 hover:border-neutral-400'
-              }`}
-            >
-              {s.name}
-            </button>
-          ))}
+        </div>
+        <p className="text-[12px] text-neutral-400 mb-4">
+          {city ? `Le rayon est calculé autour de ${city}, la ville de ton compte.` : 'Le rayon est calculé autour de la ville de ton compte.'}
+        </p>
+        <div className="space-y-1.5">
+          {RADIUS_OPTIONS.map((opt) => {
+            const active = choice === opt.value;
+            return (
+              <button
+                key={String(opt.value)}
+                onClick={() => { onSelect(opt.value); onClose(); }}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl border text-left transition-all ${
+                  active ? 'bg-neutral-900 border-neutral-900' : 'border-neutral-200 hover:border-neutral-400'
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className={`block text-[14px] font-semibold ${active ? 'text-white' : 'text-neutral-900'}`}>{opt.label}</span>
+                  <span className={`block text-[11px] mt-0.5 ${active ? 'text-white/60' : 'text-neutral-400'}`}>{opt.hint}</span>
+                </span>
+                {active && <Check size={16} className="text-white flex-shrink-0" />}
+              </button>
+            );
+          })}
         </div>
       </div>
     </BottomSheet>
@@ -288,8 +406,9 @@ export default function ClassementsPage() {
   const [geoValue, setGeoValue]         = useState('');
   const [specialtyId, setSpecialtyId]   = useState<number | null>(null);
   const [sortType, setSortType]         = useState<'engagement' | 'reviews' | 'progression'>('engagement');
+  const [radiusChoice, setRadiusChoice] = useState<RadiusChoice>('auto');
   const [specialties, setSpecialties]   = useState<ApiSpecialty[]>([]);
-  const [sheetOpen, setSheetOpen]       = useState<'specialty' | 'explain' | null>(null);
+  const [sheetOpen, setSheetOpen]       = useState<'specialty' | 'radius' | 'explain' | null>(null);
 
   const [globalData, setGlobalData]       = useState<ApiLeaderboard | null>(null);
   const [specialtyData, setSpecialtyData] = useState<ApiSpecialtyLeaderboard | null>(null);
@@ -312,8 +431,20 @@ export default function ClassementsPage() {
     setLoadError(false);
     setAutoGeoLabel(null);
 
-    const geo = geoValue ? null : getUserGeo(user);
-    const radiusTiers = await getRankingRadiusTiers();
+    // Une recherche de ville tapée prime sur tout ; le choix de rayon ne vaut
+    // que rapporté à la ville du COMPTE (jamais le GPS appareil). 'france'
+    // ignore la géo, un rayon fixe fait UNE requête (pas de paliers), 'auto'
+    // garde les paliers intelligents historiques.
+    const geo = geoValue || radiusChoice === 'france' ? null : getUserGeo(user);
+
+    // Rayon fixe choisi par l'utilisateur → une seule fenêtre, assumée même
+    // vide (l'état vide propose d'élargir) ; 'auto' → paliers configurables.
+    const fixedKm = typeof radiusChoice === 'number' ? radiusChoice : null;
+    const radiusTiers = geo
+      ? (fixedKm !== null
+          ? [{ km: fixedKm, label: `à moins de ${fixedKm} km${geo.city ? ` de ${geo.city}` : ''}` }]
+          : await getRankingRadiusTiers())
+      : [];
 
     try {
       if (specialtyId) {
@@ -322,7 +453,7 @@ export default function ClassementsPage() {
             const res = await leaderboard.bySpecialty({
               specialtyId, geo: 'radius', lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30,
             });
-            if (res.results.length) {
+            if (res.results.length || fixedKm !== null) {
               setSpecialtyData(res); setGlobalData(null); setAutoGeoLabel(label);
               setLoading(false);
               return;
@@ -335,7 +466,7 @@ export default function ClassementsPage() {
         if (geo) {
           for (const { km, label } of radiusTiers) {
             const res = await leaderboard.get({ type: sortType, lat: geo.lat, lng: geo.lng, radiusKm: km, limit: 30 }) as ApiLeaderboard;
-            if (res.results.length) {
+            if (res.results.length || fixedKm !== null) {
               setGlobalData(res); setSpecialtyData(null); setAutoGeoLabel(label);
               setLoading(false);
               return;
@@ -355,7 +486,7 @@ export default function ClassementsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [specialtyId, geoValue, sortType, user]);
+  }, [specialtyId, geoValue, sortType, radiusChoice, user]);
 
   const specialtyName = specialtyId ? (specialties.find((s) => s.id === specialtyId)?.name ?? null) : null;
   const { title, subtitle } = buildTitle(specialtyName, geoValue, autoGeoLabel);
@@ -368,12 +499,18 @@ export default function ClassementsPage() {
 
   const podium = entries.slice(0, 3);
   const rest   = entries.slice(3);
-  const hasActiveFilters = !!geoValue || !!specialtyId || sortType !== 'engagement';
+  const hasActiveFilters = !!geoValue || !!specialtyId || sortType !== 'engagement' || radiusChoice !== 'auto';
+
+  // Le chip Distance n'a de sens que rapporté à une origine : la ville du
+  // compte. Déconnecté ou sans ville, la recherche texte reste le seul levier.
+  const userGeo = getUserGeo(user);
+  const canUseRadius = !!userGeo && !geoValue;
 
   function resetFilters() {
     setGeoValue('');
     setSpecialtyId(null);
     setSortType('engagement');
+    setRadiusChoice('auto');
   }
 
   return (
@@ -398,6 +535,12 @@ export default function ClassementsPage() {
           <SharedFilterChip active={!!specialtyId} onClick={() => setSheetOpen('specialty')}>
             {specialtyName ? specialtyName : 'Spécialité'}
           </SharedFilterChip>
+          {canUseRadius && (
+            <SharedFilterChip active={radiusChoice !== 'auto'} onClick={() => setSheetOpen('radius')}>
+              <MapPin size={12} className={radiusChoice !== 'auto' ? '' : 'text-neutral-400'} />
+              {radiusChipLabel(radiusChoice, userGeo?.city ?? null)}
+            </SharedFilterChip>
+          )}
           {!specialtyId && (
             <>
               <SharedFilterChip active={sortType === 'reviews'} onClick={() => setSortType((t) => t === 'reviews' ? 'engagement' : 'reviews')}>
@@ -422,6 +565,12 @@ export default function ClassementsPage() {
             {specialtyName && (
               <SharedFilterChip active onClick={() => setSpecialtyId(null)} aria-label={`Retirer le filtre ${specialtyName}`}>
                 {specialtyName}
+                <X size={12} className="text-neutral-400" />
+              </SharedFilterChip>
+            )}
+            {radiusChoice !== 'auto' && (
+              <SharedFilterChip active onClick={() => setRadiusChoice('auto')} aria-label="Retirer le filtre distance">
+                {radiusChipLabel(radiusChoice, userGeo?.city ?? null)}
                 <X size={12} className="text-neutral-400" />
               </SharedFilterChip>
             )}
@@ -481,8 +630,14 @@ export default function ClassementsPage() {
                 <EmptyState
                   icon={Trophy}
                   title="Aucun coiffeur ne correspond à ces filtres"
-                  subtitle="Élargissez la zone ou retirez la spécialité."
-                  action={<PrimaryButton size="sm" onClick={resetFilters}>Réinitialiser les filtres</PrimaryButton>}
+                  subtitle={typeof radiusChoice === 'number'
+                    ? `Personne dans un rayon de ${radiusChoice} km — élargis la zone.`
+                    : 'Élargissez la zone ou retirez la spécialité.'}
+                  action={typeof radiusChoice === 'number'
+                    ? <PrimaryButton size="sm" onClick={() => setRadiusChoice(radiusChoice === 25 ? 50 : radiusChoice === 50 ? 100 : 'france')}>
+                        {radiusChoice === 100 ? 'Voir toute la France' : `Élargir à ${radiusChoice === 25 ? 50 : 100} km`}
+                      </PrimaryButton>
+                    : <PrimaryButton size="sm" onClick={resetFilters}>Réinitialiser les filtres</PrimaryButton>}
                 />
               ) : (
                 <EmptyState
@@ -495,18 +650,40 @@ export default function ClassementsPage() {
           </div>
         ) : (
           <>
-            {/* Podium */}
+            {/* Podium — une vraie scène : les trois cartes sur leurs marches,
+                posées sur un socle dégradé. C'est l'image mentale « podium »
+                qui manquait — trois cartes flottantes ne racontaient pas de
+                hiérarchie (retour Julien). */}
             {podium.length > 0 && (
-              <div className="px-4 mb-4 flex items-end gap-2">
-                {podium[1] && <PodiumCard entry={podium[1]} size="sm" />}
-                {podium[0] && <PodiumCard entry={podium[0]} size="lg" />}
-                {podium[2] && <PodiumCard entry={podium[2]} size="sm" />}
+              <div className="px-4 mb-5">
+                <div className="relative rounded-[28px] bg-gradient-to-b from-neutral-50 to-neutral-100/80 ring-1 ring-neutral-100 px-3 pt-6 pb-0 overflow-hidden">
+                  <div className="relative z-10 flex items-end gap-2">
+                    {podium[1] && <PodiumCard entry={podium[1]} size="sm" />}
+                    {podium[0] && <PodiumCard entry={podium[0]} size="lg" />}
+                    {podium[2] && <PodiumCard entry={podium[2]} size="sm" />}
+                  </div>
+                  {/* Les marches — hauteurs 2 / 1 / 3, sous les cartes */}
+                  <div className="relative z-0 flex items-end gap-2 -mt-1">
+                    <div className="flex-1 h-7 rounded-t-xl bg-neutral-200/70 flex items-start justify-center pt-1">
+                      <span className="text-[11px] font-black text-neutral-400">2</span>
+                    </div>
+                    <div className="flex-[1.15] h-11 rounded-t-xl bg-gradient-to-b from-amber-100 to-amber-50 ring-1 ring-amber-200/60 flex items-start justify-center pt-1.5">
+                      <span className="text-[13px] font-black text-amber-500">1</span>
+                    </div>
+                    <div className="flex-1 h-5 rounded-t-xl bg-orange-100/70 flex items-start justify-center pt-0.5">
+                      <span className="text-[11px] font-black text-orange-400">3</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
             {/* Liste — cartes espacées plutôt que traits, même relief que le podium */}
             {rest.length > 0 && (
-              <div className="px-4 pt-2">
+              <div className="px-4 pt-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2.5 px-1">
+                  Le reste du classement
+                </p>
                 <div className="space-y-2">
                   {rest.map((entry) => (
                     <RankRow key={entry.id} entry={entry} isMe={entry.id === myProfileId} />
@@ -520,6 +697,9 @@ export default function ClassementsPage() {
 
       {sheetOpen === 'specialty' && (
         <SpecialtySheet specialties={specialties} selectedId={specialtyId} onSelect={setSpecialtyId} onClose={() => setSheetOpen(null)} />
+      )}
+      {sheetOpen === 'radius' && (
+        <RadiusSheet choice={radiusChoice} city={userGeo?.city ?? null} onSelect={setRadiusChoice} onClose={() => setSheetOpen(null)} />
       )}
       {sheetOpen === 'explain' && <ExplainSheet onClose={() => setSheetOpen(null)} />}
     </AppShell>
