@@ -6,6 +6,7 @@ import PublicProfileIdentity from '@/components/ui/PublicProfileIdentity';
 import PublicProfileTabs from '@/components/ui/PublicProfileTabs';
 import PublicProfilePortfolio from '@/components/ui/PublicProfilePortfolio';
 import PublicProfileAbout from '@/components/ui/PublicProfileAbout';
+import PublicProfileLocation from '@/components/ui/PublicProfileLocation';
 import PublicProfileServices from '@/components/ui/PublicProfileServices';
 import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
 import PublicProfileBadges from '@/components/ui/PublicProfileBadges';
@@ -157,7 +158,15 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             {
               key: 'about',
               label: 'À propos',
-              content: <PublicProfileAbout hairdresser={hairdresser} />,
+              // La carte vient APRÈS la biographie : on lit d'abord qui est la
+              // personne, on regarde ensuite où elle travaille. L'inverse
+              // ferait passer un détail pratique avant l'essentiel.
+              content: (
+                <>
+                  <PublicProfileAbout hairdresser={hairdresser} />
+                  <PublicProfileLocation hairdresser={hairdresser} />
+                </>
+              ),
             },
             {
               key: 'reviews',
