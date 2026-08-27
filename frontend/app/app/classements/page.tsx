@@ -155,8 +155,13 @@ function SpecialtySheet({
   ].filter((g) => g.items.length > 0);
 
   return (
+    // PAS de conteneur scrollable ici : BottomSheet possède déjà LE conteneur
+    // de scroll, et son geste tirer-pour-fermer surveille ce conteneur-là. Un
+    // second overflow-y-auto imbriqué le rendait aveugle (scrollTop externe
+    // toujours à 0) : chaque tentative de faire défiler la grille armait la
+    // fermeture à la place — la sheet était inscrollable (bug réel constaté).
     <BottomSheet onClose={onClose} maxHeight="max-h-[82vh]">
-      <div className="p-5 pb-8 overflow-y-auto max-h-[calc(82vh-2rem)]">
+      <div className="p-5 pb-8">
         <div className="flex items-center justify-between mb-4">
           <p className="text-[16px] font-bold text-neutral-900">Spécialité</p>
           <button onClick={onClose} aria-label="Fermer" className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100">

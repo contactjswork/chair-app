@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useScrollLock } from '@/hooks/useScrollLock';
 
 interface BottomSheetProps {
@@ -9,7 +10,7 @@ interface BottomSheetProps {
   className?: string;
   /** Hauteur maximale du panneau — Tailwind, ex. 'max-h-[85vh]'. */
   maxHeight?: string;
-  /** z-index du conteneur — Tailwind, ex. 'z-[100]'. Défaut z-50. */
+  /** z-index du conteneur — Tailwind, ex. 'z-[100]'. Défaut z-[80]. */
   zIndexClassName?: string;
 }
 
@@ -31,8 +32,17 @@ interface BottomSheetProps {
  *
  * setPointerCapture + onPointerCancel (pas seulement onPointerUp) pour rester
  * fiable même si le doigt sort du panneau pendant le geste.
+ *
+ * PORTAL + z-[80] PAR DÉFAUT : la BottomNav vit en z-[60] et plusieurs pages
+ * (feed, fiche coiffeur) créent leur propre stacking context. Chaque appelant
+ * devait penser à portaler lui-même et à surcharger le z-index — celui qui
+ * l'oubliait livrait une sheet dont le bas passait SOUS la barre de menu
+ * (bug réel constaté sur le filtre du classement). La coquille se portalise
+ * donc elle-même dans document.body : impossible de recréer ce bug. Les
+ * zIndexClassName explicites des appelants restent respectés, et un portal
+ * d'appelant devenu redondant est sans effet (re-parentage vers body).
  */
-export default function BottomSheet({ onClose, children, className = '', maxHeight = 'max-h-[85vh]', zIndexClassName = 'z-50' }: BottomSheetProps) {
+export default function BottomSheet({ onClose, children, className = '', maxHeight = 'max-h-[85vh]', zIndexClassName = 'z-[80]' }: BottomSheetProps) {
   useScrollLock(true);
 
   const [dragY, setDragY] = useState(0);
@@ -77,7 +87,11 @@ export default function BottomSheet({ onClose, children, className = '', maxHeig
     setDragging(false);
   }
 
-  return (
+  // Monté uniquement côté client (composant conditionnel), mais on garde le
+  // garde-fou SSR : createPortal exige document.
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div className={`fixed inset-0 flex items-end justify-center ${zIndexClassName}`}>
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div
@@ -87,6 +101,7 @@ export default function BottomSheet({ onClose, children, className = '', maxHeig
         style={{
           transform: `translateY(${dragY}px)`,
           transition: dragging ? 'none' : 'transform 250ms ease-out',
+          paddingBottom: 'env(safe-area-inset-bottom)',
         }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={onPanelPointerDown}
@@ -101,6 +116,7 @@ export default function BottomSheet({ onClose, children, className = '', maxHeig
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
