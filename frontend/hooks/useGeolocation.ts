@@ -99,7 +99,28 @@ export async function getGeoPermissionState(): Promise<GeoPermissionState> {
  */
 export async function requestBrowserGeolocation(): Promise<{ latitude: number; longitude: number }> {
   if (isNativeApp()) {
-    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 10_000 });
+    // Le plugin ne demande RIEN de lui-même : sans cette étape,
+    // getCurrentPosition échoue tant que l'autorisation n'a pas déjà été
+    // accordée ailleurs dans l'app. C'est ce qui faisait répondre « Position
+    // indisponible » alors que la localisation fonctionnait parfaitement.
+    let status = await Geolocation.checkPermissions();
+    if (status.location !== 'granted') {
+      status = await Geolocation.requestPermissions({ permissions: ['location'] });
+    }
+    if (status.location !== 'granted') {
+      throw new Error(
+        "L'accès à ta position est refusé. Tu peux l'autoriser dans Réglages › CHAIR › Position."
+      );
+    }
+
+    // 15 s plutôt que 10 : un premier point GPS après le démarrage de l'app
+    // dépasse régulièrement 10 s en intérieur. maximumAge autorise un point
+    // récent déjà connu du système — réponse immédiate dans ce cas.
+    const pos = await Geolocation.getCurrentPosition({
+      enableHighAccuracy: false,
+      timeout: 15_000,
+      maximumAge: 300_000,
+    });
     return { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
   }
   return new Promise((resolve, reject) => {

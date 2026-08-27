@@ -152,11 +152,11 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
                       <span className="text-xl font-bold text-neutral-400">{h.user.name.charAt(0)}</span>
                     </div>
                   )}
-                  {h.is_verified && (
-                    <div className="absolute bottom-0 right-0 w-[18px] h-[18px] rounded-full bg-white shadow flex items-center justify-center">
-                      <BadgeCheck size={10} className="text-neutral-900" />
-                    </div>
-                  )}
+                  {/* Pas de pastille « vérifié » sur ces avatars ronds : à
+                      62 px, une pastille de 18 px mange le visage et empile un
+                      signal de plus sur un anneau de niveau déjà présent. La
+                      vérification reste visible là où elle compte — sur la
+                      fiche du coiffeur et sur les grandes cartes. */}
                 </div>
               </div>
               <div className="text-center w-full">

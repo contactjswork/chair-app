@@ -39,15 +39,38 @@ export default function LocationBar() {
     }
   }
 
+  /**
+   * Trois opérations distinctes, trois messages distincts.
+   *
+   * Un seul try/catch les enveloppait, et affichait « Position indisponible »
+   * quelle que soit celle qui avait échoué — y compris quand la position était
+   * parfaitement obtenue et que c'était la recherche de la ville qui ne
+   * répondait pas. Un message faux envoie l'utilisateur vérifier un réglage
+   * qui n'a jamais été en cause.
+   */
   async function useMyPosition() {
     setLocating(true);
     setError('');
+
+    let latitude: number;
+    let longitude: number;
     try {
-      const { latitude, longitude } = await requestBrowserGeolocation();
+      ({ latitude, longitude } = await requestBrowserGeolocation());
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Position introuvable. Réessaie près d'une fenêtre ou saisis ta ville."
+      );
+      setLocating(false);
+      return;
+    }
+
+    try {
       const result = await geo.reverseCity(latitude, longitude);
       await saveCity(result.city, latitude, longitude);
     } catch {
-      setError('Position indisponible — vérifiez que la géolocalisation est autorisée.');
+      setError('Ta position a bien été trouvée, mais la ville correspondante non. Saisis-la ci-dessus.');
     } finally {
       setLocating(false);
     }
