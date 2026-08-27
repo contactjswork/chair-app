@@ -138,8 +138,17 @@ function RechercheContent() {
     if (userLocation || searchParams.get('city')) { profileGeoAppliedRef.current = true; return; }
     if (user?.latitude == null || user?.longitude == null) return;
 
+    // Conversion explicite : les colonnes DECIMAL de `users` remontent en
+    // CHAÎNES ("48.5734000") tant qu'elles ne sont pas castées côté modèle.
+    // Apple Plans refuse une chaîne et lève « `latitude` is not a number »,
+    // ce qui faisait planter toute la page pour un utilisateur connecté ayant
+    // une ville — d'où un bug qui n'apparaissait jamais hors connexion.
+    const lat = Number(user.latitude);
+    const lng = Number(user.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
     profileGeoAppliedRef.current = true;
-    const geo = { lat: user.latitude, lng: user.longitude };
+    const geo = { lat, lng };
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setUserLocation(geo);
     setFilters({ useMyPosition: true });

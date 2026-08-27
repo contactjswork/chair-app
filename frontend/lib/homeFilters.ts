@@ -47,10 +47,23 @@ export function hasExplicitInterests(): boolean {
 
 export interface UserGeo { lat: number; lng: number; city: string | null }
 
-/** Position réelle de l'utilisateur — sa ville de profil, jamais le GPS appareil. */
+/**
+ * Position réelle de l'utilisateur — sa ville de profil, jamais le GPS appareil.
+ *
+ * Les coordonnées sont converties explicitement en nombres. `users.latitude`
+ * et `users.longitude` sont des colonnes DECIMAL : sans cast côté modèle,
+ * Laravel les sérialise en CHAÎNES ("48.5734000"). Passées telles quelles à
+ * Apple Plans, elles font lever MapKit — « `latitude` is not a number » — et
+ * la page Recherche plantait pour tout utilisateur connecté ayant une ville.
+ * Le modèle User est corrigé, mais on ne fait pas confiance à la forme d'une
+ * donnée qui arrive du réseau.
+ */
 export function getUserGeo(user: AuthUser | null | undefined): UserGeo | null {
   if (!user || user.latitude == null || user.longitude == null) return null;
-  return { lat: user.latitude, lng: user.longitude, city: user.city ?? null };
+  const lat = Number(user.latitude);
+  const lng = Number(user.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng, city: user.city ?? null };
 }
 
 // Paliers de rayon du classement local (primaire, puis élargi "régional"

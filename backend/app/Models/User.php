@@ -28,6 +28,14 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        // latitude/longitude sont des colonnes DECIMAL : sans ces casts, PDO
+        // les remonte en CHAÎNES et l'API sérialise "48.5734000" au lieu de
+        // 48.5734. Apple Plans refuse une chaîne et lève « `latitude` is not a
+        // number » — la page Recherche plantait pour tout utilisateur connecté
+        // ayant une ville, et jamais pour un visiteur. HairdresserProfile les
+        // caste déjà, ce qui explique que les marqueurs, eux, fonctionnaient.
+        'latitude'          => 'float',
+        'longitude'         => 'float',
     ];
 
     /**
