@@ -44,13 +44,26 @@ PLIST="ios/App/App/Info.plist"
 echo "→ Bundle ID"
 sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = app.getchair.pro;/g" ios/App/App.xcodeproj/project.pbxproj
 
-# Codemagic incrémentait automatiquement le build number à chaque build
-# (lookup du dernier build App Store Connect + 1) — sans CI, personne ne le
-# fait plus, donc chaque archive repartait de 1 et App Store Connect
-# ignorait silencieusement les nouveaux uploads (déjà utilisé). On
-# l'incrémente ici à chaque sync : ça monte toujours, jamais de doublon.
-echo "→ Build number (incrémenté)"
-(cd ios/App && agvtool next-version -all)
+# Le numéro de build ne s'invente pas localement : il doit être STRICTEMENT
+# supérieur au plus élevé déjà envoyé sur App Store Connect, tous postes
+# confondus. Ce script l'incrémentait à partir du fichier projet local — donc
+# d'une valeur qui pouvait être en retard sur la réalité (autre Mac, checkout
+# plus ancien). Le piège a coûté une après-midi côté client le 27/08/2026 :
+# « Redundant Binary Upload » à chaque envoi, et un champ Build qui semblait
+# figé dans Xcode — agvtool écrit aussi la valeur EN DUR dans Info.plist, ce
+# qui neutralise toute correction manuelle.
+#
+# Le numéro se passe donc explicitement :   ./sync-ios-pro.sh 13
+# Sans argument, le script n'y touche pas et rappelle simplement la valeur.
+if [ "$#" -ge 1 ]; then
+  echo "→ Build number : $1 (fourni explicitement)"
+  (cd ios/App && agvtool new-version -all "$1")
+else
+  CURRENT_BUILD=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+  echo "→ Build number inchangé ($CURRENT_BUILD)"
+  echo "  ⚠ Vérifie sur App Store Connect qu'aucun build ne porte déjà ce numéro,"
+  echo "    sinon l'envoi sera refusé. Pour le fixer : $0 <numéro>"
+fi
 
 echo "→ Nom affiché + permissions (CHAIR PRO)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR PRO'" "$PLIST"

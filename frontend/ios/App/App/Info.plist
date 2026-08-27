@@ -26,6 +26,16 @@
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<!-- CHAIR n'a pas de thème sombre : tout le site est en blanc
+	     (body bg-white). Sans ce réglage, l'app suivait le thème du système,
+	     et sur un iPhone en mode sombre l'écran de lancement s'affichait en
+	     NOIR — puis le site arrivait en blanc. D'où l'écran noir figé au
+	     démarrage, le temps que la WebView charge le site distant.
+	     Forcer l'apparence claire aligne l'écran de lancement, la barre
+	     d'état et toute l'interface système sur le contenu réellement
+	     affiché. À retirer le jour où un thème sombre existera côté web. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
