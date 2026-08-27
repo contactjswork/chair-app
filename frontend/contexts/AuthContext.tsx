@@ -16,6 +16,7 @@ import {
 import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
 import { unregister as unregisterPush, getStoredPushToken } from '@/lib/push';
+import { hydrateUserPrefsFromServer } from '@/lib/homeFilters';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .then((freshUser) => {
           saveSession(token, freshUser);
           setUser((prev) => (prev && JSON.stringify(prev) === JSON.stringify(freshUser) ? prev : freshUser));
+          hydrateUserPrefsFromServer();
         })
         .catch(() => {
           clearSession();
@@ -156,6 +158,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const data = await api.post<AuthResponse>('/login', { email, password });
     saveSession(data.token, data.user);
     setUser(data.user);
+    // Une connexion sur un appareil neuf n'a aucune préférence locale : on
+    // récupère celles du compte, sinon la home repart sur le repli générique
+    // alors que l'utilisateur a déjà répondu à l'onboarding ailleurs.
+    hydrateUserPrefsFromServer();
     router.push(resolvePostAuthPath(data.user, false, options));
   }
 
