@@ -76,6 +76,9 @@ export default function ComptePage() {
   const { user, isLoading, logout } = useAuth();
   const [myAppointments, setMyAppointments] = useState<ApiAppointment[]>([]);
   const [followedHairdressers, setFollowedHairdressers] = useState<SavedHairdresser[]>([]);
+  // Nombre de favoris — voir /app/objectifs : sans lui, trois objectifs sur
+  // neuf restaient cadenasses alors que leur condition etait remplie.
+  const [savedCount, setSavedCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(false);
 
   useEffect(() => {
@@ -91,6 +94,9 @@ export default function ComptePage() {
           .catch(() => {}),
         interactions.followedList()
           .then((data) => setFollowedHairdressers(data as SavedHairdresser[]))
+          .catch(() => {}),
+        interactions.savedList()
+          .then((data) => setSavedCount((data as unknown[]).length))
           .catch(() => {}),
       );
     }
@@ -354,7 +360,7 @@ export default function ComptePage() {
               const { achievements, points, level } = computeClientAchievements({
                 hasAvatar: !!user.avatar,
                 hasCity: !!user.city,
-                savedCount: 0,
+                savedCount,
                 followsCount: followedHairdressers.length,
                 reviewsCount: reviewsLeft,
                 bookingsCount: completedBookings,

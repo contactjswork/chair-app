@@ -26,6 +26,12 @@ export default function ObjectifsPage() {
   const router = useRouter();
   const [appts, setAppts] = useState<{ status: string; review?: unknown }[]>([]);
   const [follows, setFollows] = useState<SavedHairdresser[]>([]);
+  // Compteur de favoris : sans lui, trois objectifs sur neuf restaient
+  // cadenasses A VIE. computeClientAchievements recevait savedCount: 0 en
+  // dur, alors que la donnee existe et est deja chargee ailleurs. L'utilisateur
+  // voyait un cadenas sur une condition qu'il avait pourtant remplie, sans
+  // qu'aucun texte n'explique pourquoi.
+  const [savedCount, setSavedCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,6 +42,7 @@ export default function ObjectifsPage() {
     Promise.all([
       appointmentsApi.myList().then((d) => setAppts(d as { status: string; review?: unknown }[])).catch(() => {}),
       interactions.followedList().then((d) => setFollows(d as SavedHairdresser[])).catch(() => {}),
+      interactions.savedList().then((d) => setSavedCount((d as unknown[]).length)).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, [user, isLoading, router]);
 
@@ -57,7 +64,7 @@ export default function ObjectifsPage() {
   const { achievements, points, level } = computeClientAchievements({
     hasAvatar: !!user.avatar,
     hasCity: !!user.city,
-    savedCount: 0,
+    savedCount,
     followsCount: follows.length,
     reviewsCount,
     bookingsCount: completedBookings,
