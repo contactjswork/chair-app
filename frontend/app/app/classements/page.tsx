@@ -213,9 +213,13 @@ const RADIUS_OPTIONS: Array<{ value: RadiusChoice; label: string; hint: string }
   { value: 'france', label: 'Toute la France',  hint: 'Le classement national' },
 ];
 
-function radiusChipLabel(choice: RadiusChoice, city: string | null): string {
-  if (choice === 'auto') return city ? `Autour de ${city}` : 'Autour de moi';
-  if (choice === 'france') return 'Toute la France';
+// Libellé COURT — le chip est un bouton, pas un panneau d'information : la
+// zone active complète (« à moins de 25 km de Toulouse ») vit déjà dans le
+// sous-titre de la page. « Autour de Toulouse » dans un chip cassait la
+// rangée (retour Julien).
+function radiusChipLabel(choice: RadiusChoice): string {
+  if (choice === 'auto') return 'Distance';
+  if (choice === 'france') return 'France';
   return `${choice} km`;
 }
 
@@ -535,15 +539,20 @@ export default function ClassementsPage() {
           <GeoSearchBar value={geoValue} onChange={setGeoValue} />
         </div>
 
-        {/* Chips filtres */}
-        <div className="px-4 mb-3 flex gap-2 overflow-x-auto no-scrollbar">
+        {/* Chips filtres — UNE seule rangée, chaque chip porte son état.
+            L'ancienne deuxième rangée « filtres actifs + × » répétait mot pour
+            mot les chips déjà noirs juste au-dessus (retour Julien : « c'est
+            guez ») : un chip actif se retire en le tapant à nouveau, la
+            duplication n'apportait que du bruit. Le reset est un petit bouton
+            circulaire en fin de rangée, seulement quand il a un rôle. */}
+        <div className="px-4 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
           <SharedFilterChip active={!!specialtyId} onClick={() => setSheetOpen('specialty')}>
             {specialtyName ? specialtyName : 'Spécialité'}
           </SharedFilterChip>
           {canUseRadius && (
             <SharedFilterChip active={radiusChoice !== 'auto'} onClick={() => setSheetOpen('radius')}>
               <MapPin size={12} className={radiusChoice !== 'auto' ? '' : 'text-neutral-400'} />
-              {radiusChipLabel(radiusChoice, userGeo?.city ?? null)}
+              {radiusChipLabel(radiusChoice)}
             </SharedFilterChip>
           )}
           {!specialtyId && (
@@ -556,44 +565,17 @@ export default function ClassementsPage() {
               </SharedFilterChip>
             </>
           )}
-        </div>
-
-        {/* Filtres actifs + reset */}
-        {hasActiveFilters && (
-          <div className="px-4 mb-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {geoValue && (
-              <SharedFilterChip active onClick={() => setGeoValue('')} aria-label={`Retirer le filtre ${geoValue}`}>
-                {geoValue}
-                <X size={12} className="text-neutral-400" />
-              </SharedFilterChip>
-            )}
-            {specialtyName && (
-              <SharedFilterChip active onClick={() => setSpecialtyId(null)} aria-label={`Retirer le filtre ${specialtyName}`}>
-                {specialtyName}
-                <X size={12} className="text-neutral-400" />
-              </SharedFilterChip>
-            )}
-            {radiusChoice !== 'auto' && (
-              <SharedFilterChip active onClick={() => setRadiusChoice('auto')} aria-label="Retirer le filtre distance">
-                {radiusChipLabel(radiusChoice, userGeo?.city ?? null)}
-                <X size={12} className="text-neutral-400" />
-              </SharedFilterChip>
-            )}
-            {sortType !== 'engagement' && (
-              <SharedFilterChip
-                active
-                onClick={() => setSortType('engagement')}
-                aria-label={`Retirer le filtre ${sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'}`}
-              >
-                {sortType === 'reviews' ? 'Mieux notés' : 'Nouveaux talents'}
-                <X size={12} className="text-neutral-400" />
-              </SharedFilterChip>
-            )}
-            <button onClick={resetFilters} className="flex-shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors px-1">
-              <RotateCcw size={11} />Réinitialiser
+          {hasActiveFilters && (
+            <button
+              onClick={resetFilters}
+              aria-label="Réinitialiser les filtres"
+              title="Réinitialiser les filtres"
+              className="flex-shrink-0 w-9 h-9 inline-flex items-center justify-center rounded-full bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-800 active:scale-90 transition-all"
+            >
+              <RotateCcw size={13} />
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Comment ça marche */}
         <div className="px-4 mb-4">
