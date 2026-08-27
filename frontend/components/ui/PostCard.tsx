@@ -113,7 +113,7 @@ export default function PostCard({ post, hairdresser: hairdresserProp }: Props) 
   }
 
   return (
-    <Link href={`/coiffeur/${hairdresserSlug}`} className="block group">
+    <Link href={`/app/coiffeur/${hairdresserSlug}`} className="block group">
       {cardContent}
     </Link>
   );

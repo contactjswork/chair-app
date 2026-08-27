@@ -18,6 +18,11 @@ class Salon extends Model
 
     protected $casts = [
         'is_verified' => 'boolean',
+        // Mêmes colonnes DECIMAL, même piège que HairdresserProfile : aucune
+        // carte ne lit encore ces valeurs, mais la mine est armée pour le jour
+        // où on en branchera une. On la désamorce maintenant.
+        'latitude'    => 'float',
+        'longitude'   => 'float',
     ];
 
     public function owner()

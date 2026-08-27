@@ -195,7 +195,12 @@ class AdminController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $query = Appointment::with(['hairdresser:id,name', 'client:id,name']);
+        // hairdresser_profiles n'a PAS de colonne 'name' : la selectionner
+        // produisait un SQLSTATE 42S22 a chaque appel, donc une 500 systematique
+        // sur la page Reservations de l'admin. Le nom vit sur users, via la
+        // relation — et user_id doit figurer dans le select, sinon l'eager
+        // loader n'a aucune cle a resoudre et pose user = null en silence.
+        $query = Appointment::with(['hairdresser:id,slug,user_id', 'hairdresser.user:id,name', 'client:id,name']);
 
         if ($status = $request->get('status')) {
             $query->where('status', $status);

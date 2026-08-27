@@ -174,7 +174,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
                 return (
                   <Link
                     key={p.id}
-                    href={`/realisation/${p.id}`}
+                    href={`/app/realisation/${p.id}`}
                     className="flex-shrink-0 relative w-20 h-20 rounded-xl overflow-hidden bg-neutral-100 hover:opacity-80 transition-opacity"
                   >
                     {thumb && (

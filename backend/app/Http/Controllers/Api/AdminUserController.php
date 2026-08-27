@@ -91,14 +91,14 @@ class AdminUserController extends Controller
                     $q->whereRaw('1 = 0');
                 }
             })
-            ->with(['hairdresser:id,slug', 'hairdresser.user:id,name', 'client:id,name'])
+            ->with(['hairdresser:id,slug,user_id', 'hairdresser.user:id,name', 'client:id,name'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get(['id', 'hairdresser_id', 'client_id', 'status', 'appointment_date', 'appointment_time', 'created_at']);
 
         $recentReviews = Review::where('client_id', $user->id)
             ->when($hairdresserProfile, fn ($q) => $q->orWhere('hairdresser_id', $hairdresserProfile->id))
-            ->with(['client:id,name', 'hairdresser:id,slug', 'hairdresser.user:id,name'])
+            ->with(['client:id,name', 'hairdresser:id,slug,user_id', 'hairdresser.user:id,name'])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();

@@ -325,7 +325,7 @@ function PodiumCard({ entry, size }: { entry: DisplayEntry; size: 'lg' | 'sm' })
 
   return (
     <Link
-      href={`/coiffeur/${entry.slug}`}
+      href={`/app/coiffeur/${entry.slug}`}
       // Relief par ombre douce plutôt que bordure — même langage que le
       // reste de la home (RecommendationCard, HomeRankingSection).
       className={`relative flex flex-col items-center text-center bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.14)] hover:shadow-[0_10px_26px_-8px_rgba(10,10,10,0.22)] active:scale-[0.97] transition-all min-w-0 ${PODIUM_STEP_HEIGHT[entry.rank] ?? ''} ${
@@ -375,7 +375,7 @@ function RankRow({ entry, isMe }: { entry: DisplayEntry; isMe?: boolean }) {
 
   return (
     <Link
-      href={`/coiffeur/${entry.slug}`}
+      href={`/app/coiffeur/${entry.slug}`}
       className={`flex items-center gap-3 rounded-2xl px-4 py-3.5 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] hover:shadow-[0_6px_18px_-6px_rgba(10,10,10,0.14)] active:scale-[0.98] transition-all ${
         isMe ? 'bg-neutral-900/[0.03] ring-1 ring-neutral-200' : 'bg-white ring-1 ring-neutral-100'
       }`}

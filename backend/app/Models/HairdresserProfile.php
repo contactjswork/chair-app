@@ -38,6 +38,16 @@ class HairdresserProfile extends Model
         'chair_pick_until'     => 'datetime',
         'chair_plus_test_mode' => 'boolean',
         'pro_goals'            => 'array',
+        // Colonnes DECIMAL(10,7) : sans ces casts, PDO les remonte en CHAÎNES
+        // et l'API sérialise "48.5690000" au lieu de 48.569. Une chaîne passée
+        // à Apple Plans lève « `latitude` is not a number » et emporte la page
+        // entière — c'est ce qui a fait tomber la recherche le 27/08/2026.
+        // /explore s'en sortait parce qu'il convertit à la main
+        // (ExploreController), mais /hairdressers/{slug} renvoyait bien des
+        // chaînes. Les convertir à la source évite d'avoir à s'en souvenir
+        // dans chaque nouveau consommateur.
+        'latitude'             => 'float',
+        'longitude'            => 'float',
     ];
 
     /** "Coup de cœur CHAIR" — sélection éditoriale manuelle, jamais liée à l'abonnement. */

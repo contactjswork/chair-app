@@ -32,8 +32,14 @@ class User extends Authenticatable
         // les remonte en CHAÎNES et l'API sérialise "48.5734000" au lieu de
         // 48.5734. Apple Plans refuse une chaîne et lève « `latitude` is not a
         // number » — la page Recherche plantait pour tout utilisateur connecté
-        // ayant une ville, et jamais pour un visiteur. HairdresserProfile les
-        // caste déjà, ce qui explique que les marqueurs, eux, fonctionnaient.
+        // ayant une ville, et jamais pour un visiteur.
+        //
+        // Correction d'une affirmation erronée écrite ici le 27/08/2026 :
+        // HairdresserProfile ne castait rien du tout. Si les marqueurs de la
+        // carte fonctionnaient, c'est parce qu'ExploreController convertit à
+        // la main — /hairdressers/{slug}, lui, renvoyait bien des chaînes.
+        // Les trois modèles concernés (User, HairdresserProfile, Salon) castent
+        // désormais réellement.
         'latitude'          => 'float',
         'longitude'         => 'float',
     ];

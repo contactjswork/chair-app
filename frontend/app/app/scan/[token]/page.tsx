@@ -373,7 +373,7 @@ export default function ScanPage() {
             <div className="flex flex-col gap-2 w-full">
               {confirmed?.hairdresser_slug && (
                 <Link
-                  href={`/coiffeur/${confirmed.hairdresser_slug}`}
+                  href={`/app/coiffeur/${confirmed.hairdresser_slug}`}
                   className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-3.5 rounded-2xl text-sm hover:bg-neutral-700 transition-colors"
                 >
                   Voir le profil <ChevronRight size={15} />

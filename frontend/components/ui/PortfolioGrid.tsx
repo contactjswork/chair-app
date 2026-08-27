@@ -35,7 +35,7 @@ function PortfolioItem({ post }: { post: ApiPost }) {
   if (!url) return null;
   return (
     <Link
-      href={`/realisation/${post.id}`}
+      href={`/app/realisation/${post.id}`}
       className="relative aspect-square overflow-hidden bg-neutral-100 group block"
     >
       <Image
@@ -68,7 +68,7 @@ function FeaturedItem({ post }: { post: ApiPost }) {
   if (!url) return null;
   return (
     <Link
-      href={`/realisation/${post.id}`}
+      href={`/app/realisation/${post.id}`}
       className="col-span-2 row-span-2 relative aspect-square overflow-hidden bg-neutral-100 group block"
     >
       <Image
@@ -125,7 +125,7 @@ export default function PortfolioGrid({ posts }: Props) {
     const url = resolveMediaUrl(getAfterImage(posts[0]));
     if (!url) return null;
     return (
-      <Link href={`/realisation/${posts[0].id}`} className="relative block aspect-[4/3] overflow-hidden bg-neutral-100 group md:rounded-2xl">
+      <Link href={`/app/realisation/${posts[0].id}`} className="relative block aspect-[4/3] overflow-hidden bg-neutral-100 group md:rounded-2xl">
         <Image src={url} alt="Réalisation" fill priority className="object-cover group-hover:scale-[1.03] transition-transform duration-700" sizes="100vw" />
         {posts[0].is_pinned && <PinnedBadge />}
       </Link>

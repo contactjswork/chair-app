@@ -85,7 +85,7 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
     if (s.type === 'specialty' && s.slug) {
       router.push(`/app/recherche?specialty=${s.slug}`);
     } else if (s.type === 'hairdresser' && s.slug) {
-      router.push(`/coiffeur/${s.slug}`);
+      router.push(`/app/coiffeur/${s.slug}`);
     } else if (s.type === 'city') {
       router.push(`/app/recherche?city=${encodeURIComponent(s.value)}`);
     } else {

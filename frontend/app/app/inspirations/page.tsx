@@ -22,7 +22,7 @@ function InspirationTile({ post, onRemove }: { post: ApiPost; onRemove: (id: num
 
   return (
     <div className="relative aspect-square rounded-xl overflow-hidden bg-neutral-100">
-      <Link href={`/realisation/${post.id}`} className="block w-full h-full">
+      <Link href={`/app/realisation/${post.id}`} className="block w-full h-full">
         {url ? (
           <Image
             src={url}
