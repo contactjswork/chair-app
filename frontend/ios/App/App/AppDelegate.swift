@@ -11,6 +11,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    // ── Notifications push : pont APNs → Capacitor ───────────────────────
+    //
+    // iOS remet le jeton APNs à ces deux méthodes de l'AppDelegate, et à
+    // elles seules. Le plugin @capacitor/push-notifications ne les voit pas :
+    // il écoute NotificationCenter (voir son load()). Sans ce relais,
+    // `register()` réussit, Apple délivre bien un jeton — et il est jeté en
+    // silence. Ni 'registration' ni 'registrationError' n'arrive côté JS :
+    // l'opt-in tourne dans le vide jusqu'au délai d'attente. C'est
+    // exactement ce qu'on a constaté sur le build 3 (« Apple n'a pas
+    // répondu ») alors que la permission iOS était bien accordée.
+    //
+    // Ces deux méthodes ne sont PAS dans le gabarit Capacitor par défaut :
+    // elles s'ajoutent à la main. Les revérifier après tout `npx cap add ios`
+    // ou toute régénération du projet natif, sinon le push redevient muet.
+
+    func application(_ application: UIApplication,
+                     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications,
+                                        object: deviceToken)
+    }
+
+    func application(_ application: UIApplication,
+                     didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications,
+                                        object: error)
+    }
+
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.

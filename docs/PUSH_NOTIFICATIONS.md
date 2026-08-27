@@ -298,6 +298,39 @@ subscribed » et rien n'arrivera.
 
 ---
 
+## ⚠️ Le piège iOS : le pont APNs dans AppDelegate
+
+**Si l'opt-in tourne dans le vide et finit par « Apple n'a pas répondu »,
+c'est presque toujours ça.**
+
+iOS remet le jeton APNs à deux méthodes de `AppDelegate`, et à elles
+seules :
+
+- `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`
+- `application(_:didFailToRegisterForRemoteNotificationsWithError:)`
+
+Le plugin `@capacitor/push-notifications` ne les voit pas : il écoute
+`NotificationCenter` (`.capacitorDidRegisterForRemoteNotifications`).
+Chaque méthode doit donc **republier** ce qu'elle reçoit — voir
+`frontend/ios/App/App/AppDelegate.swift`.
+
+Sans ce relais, tout a l'air normal : `register()` réussit, la permission
+iOS est accordée, Apple délivre bien un jeton… et il est jeté en silence.
+Ni `registration` ni `registrationError` n'arrive côté JS, l'opt-in attend
+jusqu'au délai de 10 s. Aucun log, aucune erreur. Constaté sur le build 3.
+
+**Ces deux méthodes ne sont PAS dans le gabarit Capacitor par défaut.**
+Les revérifier après tout `npx cap add ios` ou toute régénération du
+projet natif, sinon le push redevient muet sans prévenir.
+
+Deuxième condition nécessaire, indépendante : l'entitlement
+`aps-environment` dans `App.entitlements` (référencé par
+`CODE_SIGN_ENTITLEMENTS` en Debug **et** Release). S'il manque, le
+symptôme est identique — d'où l'intérêt de vérifier les deux.
+
+Rappel : les deux sont **natifs**. Les corriger impose un nouveau build,
+un déploiement web ne suffit pas.
+
 ## 4. Tester
 
 ### Prévisualiser tous les textes (aucun envoi)
