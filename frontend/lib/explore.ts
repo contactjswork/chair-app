@@ -139,12 +139,35 @@ const CACHE_TTL = 45_000;
 const cache = new Map<string, { at: number; res: ExploreResponse }>();
 
 export async function fetchExplore(params: ExploreParams, signal?: AbortSignal): Promise<ExploreResponse> {
-  const key = buildQuery(params);
+  const query = buildQuery(params);
+
+  // Le jeton est INDISPENSABLE ici : le backend écarte les comptes bloqués via
+  // le garde sanctum (ExploreController → UserBlock::blockedIdsFor). Sans
+  // en-tête d'authentification il recevait toujours null, donc aucun filtrage
+  // — un compte bloqué restait parfaitement visible dans la recherche, alors
+  // que l'app affiche noir sur blanc « ses publications n'apparaissent plus
+  // dans ton fil, ta recherche ni tes recommandations ». Le fil et les
+  // recommandations tenaient la promesse ; la recherche, non. C'est aussi une
+  // exigence de la guideline 1.2 : un blocage doit avoir un effet réel.
+  let token: string | null = null;
+  try {
+    token = typeof window !== 'undefined' ? localStorage.getItem('chair_token') : null;
+  } catch { /* stockage inaccessible : on requête en visiteur */ }
+
+  // La clé de cache distingue connecté / anonyme : sans ça, la réponse d'un
+  // visiteur (non filtrée) pouvait être resservie à un utilisateur connecté,
+  // et inversement après une déconnexion.
+  const key = token ? `auth:${query}` : query;
 
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL) return hit.res;
 
-  const res = await fetch(`${API}/explore?${key}`, { signal, headers: { Accept: 'application/json' } });
+  const res = await fetch(`${API}/explore?${query}`, {
+    signal,
+    headers: token
+      ? { Accept: 'application/json', Authorization: `Bearer ${token}` }
+      : { Accept: 'application/json' },
+  });
 
   if (res.status === 404) {
     // Backend pas encore déployé avec /explore — composition depuis les

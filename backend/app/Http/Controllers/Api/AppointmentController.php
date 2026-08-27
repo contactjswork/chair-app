@@ -21,6 +21,43 @@ use Illuminate\Support\Str;
 class AppointmentController extends Controller
 {
     /**
+     * Identifie le client derrière la requête — ou null s'il est anonyme.
+     *
+     * La réservation et le dépôt d'avis acceptent volontairement les visiteurs
+     * non connectés : le rendez-vous est alors rattaché au seul nom/email
+     * saisis. Mais quand un jeton EST présent et que sa résolution échoue,
+     * l'enregistrement partait en anonyme sans la moindre trace — le
+     * rendez-vous n'apparaissait jamais dans « Mes rendez-vous » du client,
+     * qui le croyait perdu et en reprenait un. Le cas est désormais journalisé
+     * pour qu'il cesse d'être invisible.
+     */
+    private static function resolveClientId(Request $request): ?int
+    {
+        if (!$request->bearerToken()) {
+            return null; // Visiteur assumé : rien d'anormal.
+        }
+
+        try {
+            $user = \Auth::guard('sanctum')->user();
+        } catch (\Throwable $e) {
+            \Log::warning('Jeton présent mais non résolvable — enregistrement rattaché à personne.', [
+                'route'     => $request->path(),
+                'exception' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!$user) {
+            \Log::warning('Jeton présent mais invalide ou expiré — enregistrement rattaché à personne.', [
+                'route' => $request->path(),
+            ]);
+            return null;
+        }
+
+        return (int) $user->id;
+    }
+
+    /**
      * Machine à états des rendez-vous : source => destinations autorisées.
      *
      * Avant, updateStatus() acceptait N'IMPORTE QUELLE valeur de l'enum quel
@@ -73,13 +110,7 @@ class AppointmentController extends Controller
      */
     public function store(Request $request)
     {
-        $clientId = null;
-        if ($request->bearerToken()) {
-            try {
-                $user = \Auth::guard('sanctum')->user();
-                if ($user) $clientId = $user->id;
-            } catch (\Throwable $e) {}
-        }
+        $clientId = self::resolveClientId($request);
 
         // Détecter le mode
         $isRealBooking = $request->has('service_id') && $request->has('appointment_date') && $request->has('appointment_time');
@@ -659,13 +690,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => ContentFilter::message($reason)], 422);
         }
 
-        $clientId = null;
-        if ($request->bearerToken()) {
-            try {
-                $user = \Auth::guard('sanctum')->user();
-                if ($user) $clientId = $user->id;
-            } catch (\Throwable $e) {}
-        }
+        $clientId = self::resolveClientId($request);
 
         $review = Review::create([
             'hairdresser_id' => $appointment->hairdresser_id,

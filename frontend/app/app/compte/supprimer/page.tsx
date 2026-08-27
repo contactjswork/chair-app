@@ -40,7 +40,7 @@ export default function SupprimerComptePage() {
         router.replace('/');
       }, 3000);
     } catch {
-      setError('Une erreur est survenue. Réessaie ou contacte ${SUPPORT_EMAIL}.');
+      setError(`Une erreur est survenue. Réessaie ou contacte ${SUPPORT_EMAIL}.`);
     } finally {
       setLoading(false);
     }
