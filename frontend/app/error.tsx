@@ -59,11 +59,22 @@ export default function Error({
         </Link>
       </div>
 
+      {/* Volontairement LISIBLE, pas discret. Le débogage Safari est désactivé
+          dans les binaires distribués (webContentsDebuggingEnabled: false) :
+          ce bloc est la seule fenêtre sur un plantage survenu dans l'app.
+          Une première version en gris très clair était invisible sur un écran
+          de téléphone — un diagnostic qu'on ne peut pas lire ne sert à rien.
+          `select-all` pour que le texte se copie d'un appui long. */}
       {(detail || error?.digest) && (
-        <p className="mt-10 max-w-xs text-[11px] leading-relaxed text-neutral-300 break-words">
-          {detail}
-          {error?.digest ? ` (${error.digest})` : ''}
-        </p>
+        <div className="mt-10 w-full max-w-sm rounded-2xl bg-neutral-100 px-4 py-3 text-left">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400 mb-1.5">
+            Détail technique
+          </p>
+          <p className="select-all text-[12px] leading-relaxed text-neutral-700 break-words">
+            {detail || 'Erreur sans message'}
+            {error?.digest ? ` · ${error.digest}` : ''}
+          </p>
+        </div>
       )}
     </div>
   );
