@@ -16,6 +16,16 @@ const STEPS: Step[] = ['name', 'city', 'email', 'phone', 'password'];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// Miroir exact de la règle serveur (AuthController::register) : 8 à 15
+// chiffres une fois les séparateurs retirés, indicatif international admis.
+// Volontairement pas restreint aux préfixes mobiles français, qui
+// rejetteraient les numéros étrangers — légitimes.
+const PHONE_RE = /^\+?[0-9][0-9 .\-]{7,18}[0-9]$/;
+
+function isPhoneValid(v: string): boolean {
+  return PHONE_RE.test(v.trim());
+}
+
 function Screen(props: Omit<React.ComponentProps<typeof QuestionScreen>, 'theme'>) {
   return <QuestionScreen {...props} theme="light" />;
 }
@@ -86,7 +96,7 @@ function InscriptionContent() {
         city,
         latitude: cityGeo?.lat,
         longitude: cityGeo?.lng,
-        phone: phone || undefined,
+        phone: phone.trim(),
         password,
         password_confirmation: password,
         role: 'client',
@@ -185,13 +195,14 @@ function InscriptionContent() {
           </Screen>
         )}
 
-        {/* ── Téléphone (optionnel) ── */}
+        {/* ── Téléphone (obligatoire) ── */}
         {step === 'phone' && (
           <Screen
             eyebrow="Contact"
             title="Ton numéro de téléphone ?"
-            hint="Optionnel — utile si un coiffeur doit te joindre au sujet d'une réservation."
+            hint="Nécessaire pour qu'un coiffeur puisse te joindre en cas d'imprévu sur un rendez-vous."
             ctaLabel="Continuer"
+            ctaDisabled={!isPhoneValid(phone)}
             onNext={goNext}
           >
             <div className="relative">

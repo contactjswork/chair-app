@@ -28,7 +28,22 @@ class AuthController extends Controller
             'email'             => 'required|string|email|max:255|unique:users',
             'password'          => 'required|string|min:8|confirmed',
             'role'              => 'required|in:client,hairdresser,salon_owner',
-            'phone'             => 'nullable|string|max:20',
+            // Téléphone désormais OBLIGATOIRE : c'est le seul moyen pour un
+            // coiffeur de joindre son client en cas d'imprévu sur un
+            // rendez-vous, et l'absence de numéro rendait la moitié des
+            // annulations impossibles à gérer.
+            //
+            // Le format reste volontairement large (8 à 15 chiffres une fois
+            // les séparateurs retirés, indicatif international accepté) :
+            // n'accepter que les préfixes mobiles français rejetterait les
+            // numéros étrangers, qui sont légitimes.
+            //
+            // Exigé pour les CLIENTS uniquement : le parcours d'inscription
+            // pro (app/pro/inscription) ne comporte aucun champ téléphone,
+            // rendre la règle globale casserait toute création de compte
+            // coiffeur ou gérant. À étendre le jour où ce parcours gagne
+            // l'étape correspondante.
+            'phone'             => ['nullable', 'required_if:role,client', 'string', 'max:20', 'regex:/^\+?[0-9][0-9 .\-]{7,18}[0-9]$/'],
             'city'              => 'nullable|string|max:100',
             // Champs coiffeur étape 2
             'hairdresser_type'  => 'nullable|in:independent,salon',
@@ -60,6 +75,9 @@ class AuthController extends Controller
             'longitude'         => 'nullable|numeric|between:-180,180',
             // Programme ambassadeur — code de parrainage optionnel (voir docs/GROWTH.md)
             'ref'               => 'nullable|string|max:20',
+        ], [
+            'phone.required_if' => 'Le numéro de téléphone est obligatoire.',
+            'phone.regex'    => 'Ce numéro ne semble pas valide. Exemple : 06 12 34 56 78.',
         ]);
 
         // Toute la création (compte + salon/profil) est atomique — si une étape
