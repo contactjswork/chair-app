@@ -6,79 +6,193 @@ interface SplashScreenProps {
   pro?: boolean;
 }
 
-// Ne joue l'animation qu'une fois par session d'app — sinon elle rejoue à
-// chaque fois qu'on quitte /app ou /pro puis qu'on y revient (ex: retour
-// depuis la connexion/inscription), ce qui donne l'impression que l'app
-// redémarre alors qu'on vient juste de naviguer en arrière.
+/**
+ * Écran d'ouverture de l'app.
+ *
+ * L'identité CHAIR est un logotype pur — pas d'icône, pas de symbole. Toute
+ * l'animation repose donc sur la typographie : les cinq lettres montent
+ * l'une après l'autre derrière un masque, un filet se trace sous le mot, et
+ * l'ensemble s'efface. Rien qui tourne, rien qui rebondit : la marque est
+ * sobre, son ouverture doit l'être.
+ *
+ * Durée totale 1,5 s, dont 1 s de présence réelle. C'est court volontairement :
+ * un écran d'ouverture qu'on remarque est un écran d'ouverture trop long.
+ *
+ * Ne joue qu'une fois par session d'app — sinon l'animation rejoue à chaque
+ * aller-retour vers /connexion, et l'app semble redémarrer alors qu'on vient
+ * simplement de revenir en arrière.
+ *
+ * `prefers-reduced-motion` est respecté : les lettres sont posées d'emblée,
+ * seul un fondu court subsiste. Une animation d'entrée ne doit jamais être
+ * une épreuve pour qui a désactivé les mouvements.
+ */
+
 let hasPlayedOnce = false;
 
+const WORD = 'CHAIR';
+/** Décalage entre deux lettres — assez pour lire la vague, pas pour attendre. */
+const LETTER_STAGGER_MS = 55;
+/** Début de la sortie. */
+const HOLD_MS = 1000;
+/** Démontage complet. */
+const TOTAL_MS = 1500;
+
 export default function SplashScreen({ pro = false }: SplashScreenProps) {
-  const [phase, setPhase] = useState<'in' | 'hold' | 'out' | 'done'>(hasPlayedOnce ? 'done' : 'in');
+  const [leaving, setLeaving] = useState(false);
+  const [done, setDone] = useState(hasPlayedOnce);
 
   useEffect(() => {
     if (hasPlayedOnce) return;
-    const t1 = setTimeout(() => setPhase('hold'), 400);
-    const t2 = setTimeout(() => setPhase('out'),  1200);
-    const t3 = setTimeout(() => { hasPlayedOnce = true; setPhase('done'); }, 1700);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [pro]);
+    const t1 = setTimeout(() => setLeaving(true), HOLD_MS);
+    const t2 = setTimeout(() => {
+      hasPlayedOnce = true;
+      setDone(true);
+    }, TOTAL_MS);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
-  if (phase === 'done') return null;
+  if (done) return null;
 
-  const bg  = pro ? '#0a0a0a' : '#ffffff';
-  const fg  = pro ? '#ffffff' : '#111111';
-  const sub = pro ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)';
+  const palette = pro
+    ? { bg: '#0a0a0a', fg: '#ffffff', sub: 'rgba(255,255,255,0.45)', rule: 'rgba(255,255,255,0.20)' }
+    : { bg: '#ffffff', fg: '#111111', sub: 'rgba(0,0,0,0.45)',       rule: 'rgba(0,0,0,0.14)' };
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
-      style={{
-        background: bg,
-        opacity: phase === 'out' ? 0 : 1,
-        transition: phase === 'out' ? 'opacity 0.5s ease' : phase === 'in' ? 'none' : undefined,
-      }}
+      className="chair-splash"
+      data-leaving={leaving}
+      role="status"
+      aria-label="Chargement de CHAIR"
+      style={
+        {
+          '--sp-bg': palette.bg,
+          '--sp-fg': palette.fg,
+          '--sp-sub': palette.sub,
+          '--sp-rule': palette.rule,
+        } as React.CSSProperties
+      }
     >
-      {/* Logo avec scale-in */}
-      <div
-        style={{
-          transform: phase === 'in' ? 'scale(0.85)' : 'scale(1)',
-          opacity:   phase === 'in' ? 0 : 1,
-          transition: 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.25s ease',
-        }}
-        className="flex flex-col items-center gap-2"
-      >
-        <span
-          className="font-bold tracking-tight leading-none"
-          style={{ color: fg, fontSize: 32, letterSpacing: '-0.03em' }}
-        >
-          {pro ? 'CHAIR PRO' : 'CHAIR'}
-        </span>
-        {pro && (
-          <span className="text-[11px] font-medium tracking-[0.2em] uppercase" style={{ color: sub }}>
-            Espace professionnel
-          </span>
-        )}
-      </div>
+      <div className="chair-splash-mark">
+        <div className="chair-splash-word">
+          {WORD.split('').map((letter, i) => (
+            <span key={i} className="chair-splash-mask" aria-hidden="true">
+              <span
+                className="chair-splash-letter"
+                style={{ animationDelay: `${i * LETTER_STAGGER_MS}ms` }}
+              >
+                {letter}
+              </span>
+            </span>
+          ))}
+          {pro && (
+            <span className="chair-splash-pro" aria-hidden="true">
+              PRO
+            </span>
+          )}
+        </div>
 
-      {/* Point animé en bas */}
-      <div className="absolute bottom-16 flex gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: sub,
-              animation: phase === 'hold' ? `splashDot 0.8s ease ${i * 0.15}s infinite alternate` : 'none',
-              opacity: phase === 'hold' ? 1 : 0,
-            }}
-          />
-        ))}
+        <span className="chair-splash-rule" aria-hidden="true" />
+
+        {pro && <span className="chair-splash-sub">Espace professionnel</span>}
       </div>
 
       <style>{`
-        @keyframes splashDot {
-          from { opacity: 0.3; transform: scale(0.8); }
-          to   { opacity: 1;   transform: scale(1.2); }
+        .chair-splash {
+          position: fixed;
+          inset: 0;
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--sp-bg);
+          opacity: 1;
+          transition: opacity 460ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .chair-splash[data-leaving='true'] { opacity: 0; }
+
+        .chair-splash-mark {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px;
+          transition: transform 460ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* L'ensemble s'ouvre très légèrement en partant — le regard est
+           accompagné vers l'app plutôt que lâché d'un coup. */
+        .chair-splash[data-leaving='true'] .chair-splash-mark { transform: scale(1.045); }
+
+        .chair-splash-word {
+          display: flex;
+          align-items: baseline;
+        }
+
+        /* Chaque lettre monte derrière son propre masque : c'est ce qui donne
+           l'impression qu'elles se posent, et non qu'elles apparaissent. */
+        .chair-splash-mask {
+          display: inline-block;
+          overflow: hidden;
+          line-height: 1;
+          padding-bottom: 0.06em;
+        }
+        .chair-splash-letter {
+          display: inline-block;
+          font-size: 42px;
+          font-weight: 800;
+          letter-spacing: -0.035em;
+          color: var(--sp-fg);
+          transform: translateY(115%);
+          animation: chairSplashRise 760ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes chairSplashRise { to { transform: translateY(0); } }
+
+        .chair-splash-pro {
+          margin-left: 11px;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.16em;
+          color: var(--sp-sub);
+          opacity: 0;
+          animation: chairSplashFade 520ms ease 440ms forwards;
+        }
+
+        /* Le filet se trace après les lettres : il ponctue, il n'accompagne pas. */
+        .chair-splash-rule {
+          display: block;
+          width: 68px;
+          height: 1px;
+          background: var(--sp-rule);
+          transform: scaleX(0);
+          animation: chairSplashRule 600ms cubic-bezier(0.16, 1, 0.3, 1) 340ms forwards;
+        }
+        @keyframes chairSplashRule { to { transform: scaleX(1); } }
+
+        .chair-splash-sub {
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.28em;
+          text-transform: uppercase;
+          color: var(--sp-sub);
+          opacity: 0;
+          animation: chairSplashFade 520ms ease 540ms forwards;
+        }
+
+        @keyframes chairSplashFade { to { opacity: 1; } }
+
+        @media (prefers-reduced-motion: reduce) {
+          .chair-splash-letter,
+          .chair-splash-rule,
+          .chair-splash-pro,
+          .chair-splash-sub {
+            animation: none;
+            transform: none;
+            opacity: 1;
+          }
+          .chair-splash,
+          .chair-splash .chair-splash-mark { transition-duration: 200ms; }
+          .chair-splash[data-leaving='true'] .chair-splash-mark { transform: none; }
         }
       `}</style>
     </div>

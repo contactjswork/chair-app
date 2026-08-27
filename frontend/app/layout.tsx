@@ -4,6 +4,7 @@ import { Providers } from "@/components/Providers";
 import CookieBanner from "@/components/ui/CookieBanner";
 import AppBanner from "@/components/ui/AppBanner";
 import PwaManifest from "@/components/ui/PwaManifest";
+import SiteIntro from "@/components/ui/SiteIntro";
 import { NATIVE_CLASS_BOOTSTRAP } from "@/lib/native";
 import "./globals.css";
 
@@ -70,6 +71,11 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://cdn.apple-mapkit.com" />
       </head>
       <body className="min-h-full bg-white text-neutral-900">
+        {/* Rideau d'ouverture du site vitrine — une fois par chargement de
+            page. Rendu ici, tout en haut du body, pour couvrir la page dès le
+            premier paint. Se retire de lui-même, et ne s'affiche jamais sur
+            /app, /pro ni /admin (qui ont leur propre ouverture). */}
+        <SiteIntro />
         <PwaManifest />
         <AppBanner />
         <Providers>{children}</Providers>
