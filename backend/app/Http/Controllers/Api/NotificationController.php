@@ -71,4 +71,45 @@ class NotificationController extends Controller
 
         return response()->json(['ok' => true]);
     }
+
+    /**
+     * DELETE /api/notifications/{id}
+     *
+     * Suppression définitive, pas un simple masquage : le centre de
+     * notifications appartient à l'utilisateur, il doit pouvoir en retirer
+     * ce qu'il ne veut plus y voir. Le filtre sur user_id est la protection
+     * — on ne supprime jamais la notification d'un autre compte.
+     */
+    public function destroy(Request $request, int $id)
+    {
+        $notification = Notification::where('id', $id)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
+
+        $notification->delete();
+
+        return response()->json([
+            'ok'           => true,
+            'unread_count' => Notification::where('user_id', $request->user()->id)
+                ->whereNull('read_at')
+                ->count(),
+        ]);
+    }
+
+    /**
+     * DELETE /api/notifications
+     *
+     * Vide tout le centre de notifications. Action volontairement franche et
+     * sans retour possible : l'écran la fait confirmer avant d'appeler ici.
+     */
+    public function destroyAll(Request $request)
+    {
+        $deleted = Notification::where('user_id', $request->user()->id)->delete();
+
+        return response()->json([
+            'ok'           => true,
+            'deleted'      => (int) $deleted,
+            'unread_count' => 0,
+        ]);
+    }
 }

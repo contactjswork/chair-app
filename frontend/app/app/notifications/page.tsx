@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, Calendar, Star, UserPlus, LogIn } from 'lucide-react';
+import { Bell, Check, Calendar, Star, UserPlus, LogIn, Trash2 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -32,9 +32,11 @@ function notifStyle(type: string) {
 function NotifCard({
   notif,
   onMarkRead,
+  onDelete,
 }: {
   notif: ApiNotification;
   onMarkRead: (id: number) => void;
+  onDelete: (id: number) => void;
 }) {
   const isUnread = !notif.read_at;
   const title = notif.title ?? notif.type;
@@ -58,15 +60,26 @@ function NotifCard({
           <p className={`text-[13.5px] leading-snug ${isUnread ? 'font-semibold text-neutral-900' : 'font-medium text-neutral-500'}`}>
             {title}
           </p>
-          {isUnread && (
+          {/* Actions : cocher (si non lue) puis supprimer. Toujours discrètes
+              — la notification prime, pas ses boutons. */}
+          <div className="shrink-0 flex items-center gap-0.5 -mt-1 -mr-1">
+            {isUnread && (
+              <button
+                onClick={() => onMarkRead(notif.id)}
+                className="w-7 h-7 flex items-center justify-center text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 active:scale-90 rounded-full transition-all"
+                aria-label="Marquer comme lu"
+              >
+                <Check size={14} />
+              </button>
+            )}
             <button
-              onClick={() => onMarkRead(notif.id)}
-              className="shrink-0 w-6 h-6 -mt-1 -mr-1 flex items-center justify-center text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 active:scale-90 rounded-full transition-all"
-              aria-label="Marquer comme lu"
+              onClick={() => onDelete(notif.id)}
+              className="w-7 h-7 flex items-center justify-center text-neutral-300 hover:text-red-600 hover:bg-red-50 active:scale-90 rounded-full transition-all"
+              aria-label={`Supprimer la notification : ${title}`}
             >
-              <Check size={14} />
+              <Trash2 size={13.5} />
             </button>
-          )}
+          </div>
         </div>
         {message && (
           <p className="text-[12.5px] text-neutral-500 mt-0.5 leading-relaxed">{message}</p>
@@ -100,6 +113,10 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
+  /** Vider le centre est irréversible : on demande une confirmation en deux
+   *  temps, sur place, plutôt qu'une boîte de dialogue système. */
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const load = useCallback(() => {
     if (!user) return;
@@ -138,6 +155,39 @@ export default function NotificationsPage() {
       refreshBadge();
     } catch {}
     setMarkingAll(false);
+  };
+
+  /**
+   * Suppression optimiste : la carte disparaît immédiatement. Si l'appel
+   * échoue, on recharge la liste plutôt que de laisser l'écran mentir sur
+   * son contenu.
+   */
+  const handleDelete = async (id: number) => {
+    const removed = notifications.find((n) => n.id === id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    if (removed && !removed.read_at) setUnreadCount((c) => Math.max(0, c - 1));
+    try {
+      await notifApi.remove(id);
+      refreshBadge();
+    } catch {
+      load();
+    }
+  };
+
+  const handleClearAll = async () => {
+    setClearing(true);
+    const snapshot = notifications;
+    setNotifications([]);
+    setUnreadCount(0);
+    try {
+      await notifApi.clearAll();
+      refreshBadge();
+    } catch {
+      setNotifications(snapshot);
+      load();
+    }
+    setClearing(false);
+    setConfirmClear(false);
   };
 
   const unread = notifications.filter((n) => !n.read_at);
@@ -216,7 +266,7 @@ export default function NotificationsPage() {
               </div>
               <div className="space-y-2">
                 {unread.map((n) => (
-                  <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
+                  <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} onDelete={handleDelete} />
                 ))}
               </div>
             </section>
@@ -229,10 +279,48 @@ export default function NotificationsPage() {
               </p>
               <div className="space-y-2">
                 {read.map((n) => (
-                  <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
+                  <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} onDelete={handleDelete} />
                 ))}
               </div>
             </section>
+          )}
+
+          {/* Vider le centre — en bas, discret : une action destructive ne se
+              met pas sous le pouce en haut de l'écran. Confirmation en place. */}
+          {!loading && notifications.length > 0 && (
+            <div className="mt-6 flex justify-center">
+              {!confirmClear ? (
+                <button
+                  onClick={() => setConfirmClear(true)}
+                  className="text-[12px] font-medium text-neutral-400 hover:text-red-600 transition-colors px-3 py-2"
+                >
+                  Tout effacer
+                </button>
+              ) : (
+                <div className="flex flex-col items-center gap-2.5 py-2">
+                  <p className="text-[12px] text-neutral-500 text-center">
+                    Supprimer {notifications.length} notification{notifications.length > 1 ? 's' : ''} ?
+                    Cette action est définitive.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setConfirmClear(false)}
+                      disabled={clearing}
+                      className="text-[12px] font-semibold text-neutral-600 bg-neutral-100 hover:bg-neutral-200 active:scale-95 transition-all disabled:opacity-50 rounded-full px-4 py-2"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={handleClearAll}
+                      disabled={clearing}
+                      className="text-[12px] font-semibold text-white bg-red-600 hover:bg-red-700 active:scale-95 transition-all disabled:opacity-50 rounded-full px-4 py-2"
+                    >
+                      {clearing ? 'Suppression…' : 'Tout effacer'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

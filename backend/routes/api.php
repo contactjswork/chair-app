@@ -353,6 +353,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/notifications',              [NotificationController::class, 'index']);
     Route::post('/notifications/read-all',   [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markRead']);
+    // Suppression — déclarée AVANT la route paramétrée n'a pas d'importance ici
+    // (verbes distincts), mais l'ordre garde les deux DELETE côte à côte.
+    Route::delete('/notifications',           [NotificationController::class, 'destroyAll']);
+    Route::delete('/notifications/{id}',      [NotificationController::class, 'destroy']);
 
     // Préférences de notifications (respectées à l'envoi — voir NotificationService::shouldSend)
     Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);

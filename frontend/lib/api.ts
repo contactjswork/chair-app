@@ -520,6 +520,14 @@ export const notifications = {
   markAllRead: () =>
     api.post<{ ok: boolean }>('/notifications/read-all', {}),
 
+  /** Suppression définitive d'une notification — renvoie le compteur à jour. */
+  remove: (id: number) =>
+    api.delete<{ ok: boolean; unread_count: number }>(`/notifications/${id}`),
+
+  /** Vide tout le centre de notifications. Irréversible : faire confirmer avant. */
+  clearAll: () =>
+    api.delete<{ ok: boolean; deleted: number; unread_count: number }>('/notifications'),
+
   /** Préférences — créées avec les défauts au premier accès (respectées à l'envoi côté backend). */
   getPreferences: () =>
     api.get<{ preferences: ApiNotificationPreferences }>('/notification-preferences'),

@@ -994,6 +994,39 @@ class AdminController extends Controller
         $skipped   = [];
 
         foreach ($users as $user) {
+            // La préférence se vérifie AVANT tout le reste : elle décide si le
+            // message a le droit d'atteindre cette personne, quel que soit le
+            // canal. Un compte qui a refusé les promotions ne doit pas non plus
+            // en retrouver dans son centre de notifications.
+            // (Le mode ciblé utilise un type non mappé : shouldSend renvoie
+            // toujours true. Le contrôle n'a d'effet que sur la diffusion.)
+            if (!\App\Services\NotificationService::shouldSend((int) $user->id, $type)) {
+                $skipped[] = [
+                    'user_id' => (int) $user->id,
+                    'name'    => $user->name,
+                    'reason'  => "Cet utilisateur n'a pas activé les notifications « promotions ».",
+                ];
+                continue;
+            }
+
+            // Trace durable dans le centre de notifications, créée AVANT la
+            // tentative d'envoi et indépendamment de son issue.
+            //
+            // Le push est éphémère : bannière balayée, téléphone éteint,
+            // appareil hors ligne — et le message n'existe plus nulle part.
+            // Une notification envoyée depuis l'admin doit rester consultable
+            // dans l'app, exactement comme celles émises par le produit
+            // (NotificationService::send fait déjà les deux). C'est aussi le
+            // seul endroit où le message peut atterrir pour un compte sans
+            // appareil enregistré, d'où sa place au-dessus du test suivant.
+            \App\Services\NotificationService::sendInternal(
+                (int) $user->id,
+                $type,
+                $title,
+                $body,
+                $payloadData
+            );
+
             $devices = \App\Models\PushSubscription::where('user_id', $user->id)
                 ->where('enabled', true)
                 ->get();
@@ -1002,18 +1035,7 @@ class AdminController extends Controller
                 $skipped[] = [
                     'user_id' => (int) $user->id,
                     'name'    => $user->name,
-                    'reason'  => 'Aucun appareil enregistré pour ce compte.',
-                ];
-                continue;
-            }
-
-            // Le mode ciblé utilise un type non mappé : shouldSend renvoie
-            // toujours true. Le contrôle n'a d'effet que sur la diffusion.
-            if (!\App\Services\NotificationService::shouldSend((int) $user->id, $type)) {
-                $skipped[] = [
-                    'user_id' => (int) $user->id,
-                    'name'    => $user->name,
-                    'reason'  => "Cet utilisateur n'a pas activé les notifications « promotions ».",
+                    'reason'  => "Aucun appareil enregistré : la notification n'apparaîtra que dans l'app.",
                 ];
                 continue;
             }
