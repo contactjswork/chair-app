@@ -37,9 +37,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Onboarding première ouverture — jamais sur un lien profond partagé
   // (profil, avis, scan...), seulement sur l'entrée générale de l'app.
-  const [showOnboarding, setShowOnboarding] = useState(
-    () => !isPublic && typeof window !== 'undefined' && !localStorage.getItem(ONBOARDING_KEY)
-  );
+  // Lu dans un effet, JAMAIS à l'initialisation de l'état : localStorage
+  // n'existe pas côté serveur, qui rendait donc `false` pendant que le
+  // navigateur rendait `true` — et cette divergence-là remplace la page
+  // entière par le carrousel. React abandonne l'hydratation et la barrière
+  // d'erreur prend le relais : écran « Quelque chose s'est mal passé » au
+  // chargement, page fonctionnelle après un clic sur « Réessayer ».
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (isPublic) return;
+    try {
+      // Double rendu volontaire : premier rendu identique au serveur, puis
+      // application de la valeur qui n'existe que dans le navigateur.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (!localStorage.getItem(ONBOARDING_KEY)) setShowOnboarding(true);
+    } catch {
+      // Stockage indisponible (navigation privée verrouillée) : on n'affiche
+      // pas l'onboarding plutôt que de le réafficher à chaque ouverture.
+    }
+  }, [isPublic]);
   function dismissOnboarding() {
     localStorage.setItem(ONBOARDING_KEY, '1');
     setShowOnboarding(false);

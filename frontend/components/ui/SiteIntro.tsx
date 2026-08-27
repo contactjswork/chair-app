@@ -35,11 +35,21 @@ const TOTAL_MS = 1520;
 
 export default function SiteIntro() {
   const pathname = usePathname();
+  // Comme pour SplashScreen : le premier rendu client doit être identique au
+  // rendu serveur. Initialiser `done` avec `hasPlayedOnce` faisait diverger
+  // les deux (le serveur ne peut pas connaître cette valeur), ce qui provoque
+  // une erreur d'hydratation remontant jusqu'à la barrière d'erreur.
   const [leaving, setLeaving] = useState(false);
-  const [done, setDone] = useState(hasPlayedOnce);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (hasPlayedOnce) return;
+    if (hasPlayedOnce) {
+      // Double rendu volontaire : premier rendu identique au serveur, puis
+      // application de la valeur qui n'existe que dans le navigateur.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDone(true);
+      return;
+    }
     const t1 = setTimeout(() => setLeaving(true), HOLD_MS);
     const t2 = setTimeout(() => {
       hasPlayedOnce = true;

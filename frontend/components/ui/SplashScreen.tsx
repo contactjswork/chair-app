@@ -47,31 +47,54 @@ const HOLD_MS = 1000;
 const TOTAL_MS = 1500;
 
 export default function SplashScreen({ pro = false }: SplashScreenProps) {
-  // Calculé une seule fois par instance, et jamais pendant le rendu serveur :
-  // au premier rendu client (l'hydratation) le chronomètre démarre, donc la
-  // valeur vaut 0 des deux côtés — aucun écart d'hydratation.
-  const [offset] = useState(() => {
-    if (typeof window === 'undefined') return 0;
-    if (hasPlayedOnce) return TOTAL_MS;
-    if (startedAt === null) startedAt = Date.now();
-    return Date.now() - startedAt;
-  });
-
-  const [leaving, setLeaving] = useState(offset >= HOLD_MS);
-  const [done, setDone] = useState(hasPlayedOnce || offset >= TOTAL_MS);
+  // Le premier rendu client doit être IDENTIQUE au rendu serveur.
+  //
+  // Une version précédente décidait dès l'initialisation de l'état si
+  // l'animation avait déjà joué (`useState(hasPlayedOnce)`) : le serveur, qui
+  // ne peut pas le savoir, rendait l'écran d'ouverture pendant que le
+  // navigateur rendait `null`. React signale alors une divergence
+  // d'hydratation — et en production, elle remonte jusqu'à la barrière
+  // d'erreur : la page plante au chargement, puis fonctionne si on clique sur
+  // « Réessayer », qui refait un rendu purement client. C'est exactement le
+  // symptôme constaté sur la page Recherche.
+  //
+  // On démarre donc toujours dans l'état « début de l'animation », et on
+  // rattrape la réalité juste après, dans un effet — qui, lui, ne tourne que
+  // côté navigateur.
+  const [offset, setOffset] = useState(0);
+  const [leaving, setLeaving] = useState(false);
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (hasPlayedOnce || offset >= TOTAL_MS) return;
-    const t1 = setTimeout(() => setLeaving(true), Math.max(0, HOLD_MS - offset));
+    if (hasPlayedOnce) {
+      // Le double rendu est ici VOULU : c'est le seul moyen de partir d'un
+      // premier rendu identique au serveur puis d'appliquer une valeur qui
+      // n'existe que dans le navigateur. La règle vise les effets qui
+      // recalculent un état dérivable du rendu — ce n'est pas le cas.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDone(true);
+      return;
+    }
+    if (startedAt === null) startedAt = Date.now();
+    const elapsed = Date.now() - startedAt;
+
+    if (elapsed >= TOTAL_MS) {
+      setDone(true);
+      return;
+    }
+    if (elapsed > 0) setOffset(elapsed);
+    if (elapsed >= HOLD_MS) setLeaving(true);
+
+    const t1 = setTimeout(() => setLeaving(true), Math.max(0, HOLD_MS - elapsed));
     const t2 = setTimeout(() => {
       hasPlayedOnce = true;
       setDone(true);
-    }, Math.max(0, TOTAL_MS - offset));
+    }, Math.max(0, TOTAL_MS - elapsed));
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [offset]);
+  }, []);
 
   if (done) return null;
 
