@@ -171,10 +171,7 @@ export default async function HomePage() {
       <div className="mx-4 md:mx-8 mt-10 h-px bg-neutral-100 max-w-6xl md:mx-auto" />
 
       {/* ⑦ Vous êtes coiffeur */}
-      <HomeCTASection
-        hairdressersCount={featuredHD.length}
-        postsCount={trendingPosts.length}
-      />
+      <HomeCTASection />
 
     </AppShell>
   );

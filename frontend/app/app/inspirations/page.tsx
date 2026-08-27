@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl, type ApiPost } from '@/lib/types';
 import { savedPosts as savedPostsApi } from '@/lib/api';
-import { Heart, X, Compass, LogIn } from 'lucide-react';
+import { Heart, Bookmark, X, Compass, LogIn } from 'lucide-react';
 import { Skeleton } from '@/components/ui/Skeleton';
 import EmptyState from '@/components/ui/EmptyState';
 import { PrimaryButton } from '@/components/ui/Button';
@@ -135,9 +135,14 @@ export default function InspirationPage() {
           </div>
         ) : posts.length === 0 ? (
           <EmptyState
-            icon={Heart}
+            // La consigne désignait « le cœur », qui est le bouton J'AIME du
+            // feed et n'ajoute RIEN à cette liste. Ce qui l'alimente est le
+            // marque-page. Suivre l'instruction à la lettre ne remplissait
+            // donc jamais l'écran. L'icône suit le même raisonnement : elle
+            // doit montrer le bouton que l'utilisateur va chercher.
+            icon={Bookmark}
             title="Aucune inspiration"
-            subtitle="Sauvegarde les réalisations qui t'inspirent en appuyant sur le coeur dans le feed."
+            subtitle="Sauvegarde les réalisations qui t'inspirent en appuyant sur le marque-page dans le feed."
             action={
               <PrimaryButton href="/app/feed" icon={<Compass size={15} />}>
                 Explorer le feed

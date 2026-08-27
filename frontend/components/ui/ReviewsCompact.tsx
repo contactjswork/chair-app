@@ -46,7 +46,7 @@ function SimpleReviewCard({ review }: { review: ApiReview }) {
         </div>
       </div>
       {review.comment && (
-        <p className="text-[13px] text-neutral-600 leading-relaxed pl-11 italic">
+        <p className="text-[13px] text-neutral-600 leading-relaxed pl-11 italic break-words [overflow-wrap:anywhere]">
           &ldquo;{review.comment}&rdquo;
         </p>
       )}

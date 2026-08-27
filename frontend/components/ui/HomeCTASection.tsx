@@ -5,12 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Button';
 import Reveal from '@/components/ui/Reveal';
 
-interface Props {
-  hairdressersCount: number;
-  postsCount: number;
-}
-
-export default function HomeCTASection({ hairdressersCount, postsCount }: Props) {
+// Ce bloc ne prend plus aucune donnée : il était alimenté par deux compteurs
+// qui ne mesuraient rien (voir le commentaire près du texte ci-dessous).
+export default function HomeCTASection() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) return null;
@@ -93,10 +90,16 @@ export default function HomeCTASection({ hairdressersCount, postsCount }: Props)
                 Votre coiffeur.
                 <span className="italic font-light text-neutral-500"> Pas juste le plus proche.</span>
               </h3>
+              {/* Plus aucun chiffre ici. « 10+ coiffeurs · 24+ réalisations »
+                  n'était pas une mesure : c'étaient les longueurs des deux
+                  tableaux ramenés par des requêtes plafonnées (10 et 24). Le
+                  visiteur lisait donc toujours les mêmes nombres, quel que
+                  soit le contenu réel de la plateforme — et ils disparaissaient
+                  si un admin masquait une section de la home. Une preuve
+                  sociale qui ne mesure rien est une affirmation trompeuse en
+                  vitrine ; mieux vaut dire ce qui est vrai. */}
               <p className="text-[12px] text-neutral-500">
-                {hairdressersCount > 0 ? `${hairdressersCount}+ coiffeurs · ` : ''}
-                {postsCount > 0 ? `${postsCount}+ réalisations · ` : ''}
-                Avis certifiés
+                Portfolios réels · Avis certifiés
               </p>
             </div>
             <div className="flex gap-3">

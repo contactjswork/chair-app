@@ -222,7 +222,7 @@ function ReviewCard({
       </div>
 
       {review.comment && (
-        <p className="text-sm text-neutral-600 leading-relaxed pl-12">&ldquo;{review.comment}&rdquo;</p>
+        <p className="text-sm text-neutral-600 leading-relaxed pl-12 break-words [overflow-wrap:anywhere]">&ldquo;{review.comment}&rdquo;</p>
       )}
 
       {review.specialty && (

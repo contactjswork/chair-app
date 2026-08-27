@@ -156,7 +156,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
           )}
 
           {post.description && (
-            <p className="text-[14px] text-neutral-700 leading-relaxed">{post.description}</p>
+            <p className="text-[14px] text-neutral-700 leading-relaxed break-words [overflow-wrap:anywhere]">{post.description}</p>
           )}
 
           <p className="text-[11px] text-neutral-400 mt-3">{formatDate(post.created_at)}</p>

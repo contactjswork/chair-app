@@ -499,6 +499,18 @@ function FeedContent() {
               >
                 Découvrir des coiffeurs
               </Link>
+              {/* Sortie de secours indispensable : cet état vide remplace tout
+                  l'écran, BARRE D'ONGLETS COMPRISE. Sans ce bouton, qui n'a
+                  aucun abonnement se retrouvait piégé — plus rien pour revenir
+                  à « Pour toi », et retaper l'onglet Feed de la barre du bas ne
+                  remonte pas le composant (même URL), donc l'onglet actif
+                  restait bloqué sur « Abonnements ». Il fallait quitter l'app. */}
+              <button
+                onClick={() => setActiveTab('foryou')}
+                className="text-[13px] font-semibold text-white/60 underline underline-offset-4 active:opacity-60 transition-opacity"
+              >
+                Revenir à « Pour toi »
+              </button>
             </>
           ) : (
             <>
@@ -514,7 +526,7 @@ function FeedContent() {
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 bg-black z-50" style={{ bottom: '60px' }}>
+      <div className="fixed top-0 left-0 right-0 bg-black z-50" style={{ bottom: 'calc(60px + env(safe-area-inset-bottom, 0px) * 0.4)' }}>
 
         {/* ── Header avec tabs ── */}
         <div className="absolute top-0 left-0 right-0 z-20 flex flex-col pointer-events-none">
