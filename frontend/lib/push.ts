@@ -144,7 +144,42 @@ async function registerTokenWithBackend(token: string): Promise<void> {
  * geste utilisateur explicite, jamais au chargement), enregistre l'appareil
  * auprès d'APNs/FCM puis pousse le token au backend.
  */
+/**
+ * Détail du dernier échec d'enregistrement, en français, destiné à être
+ * affiché à l'utilisateur.
+ *
+ * Sans ça, un échec était totalement muet : le bouton revenait à son état
+ * initial sans un mot, et personne — pas même nous — ne pouvait savoir si
+ * c'était la permission, le réseau, la session expirée ou un refus d'Apple.
+ * Un opt-in silencieusement cassé est pire qu'un opt-in absent.
+ */
+let lastRegisterError: string | null = null;
+
+export function getLastPushError(): string | null {
+  return lastRegisterError;
+}
+
+/** Traduit une erreur technique en une phrase actionnable. */
+function describeRegisterError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+
+  if (/timeout/i.test(msg)) {
+    return "Apple n'a pas répondu. Vérifie ta connexion et réessaie — si le problème persiste, les notifications ne sont peut-être pas encore activées pour cette version de l'app.";
+  }
+  if (/no valid .?aps-environment|entitlement/i.test(msg)) {
+    return "Cette version de l'app n'est pas autorisée à recevoir des notifications. Une mise à jour est nécessaire.";
+  }
+  if (/401|unauthenticated/i.test(msg)) {
+    return 'Ta session a expiré. Reconnecte-toi puis réessaie.';
+  }
+  if (/network|fetch|connexion/i.test(msg)) {
+    return 'Connexion impossible. Vérifie ta connexion internet et réessaie.';
+  }
+  return msg ? `L'activation a échoué (${msg}).` : "L'activation a échoué. Réessaie dans un instant.";
+}
+
 export async function requestAndRegister(): Promise<PushRegisterResult> {
+  lastRegisterError = null;
   if (!isPushAvailable()) return 'unavailable';
   try {
     let perm = await PushNotifications.checkPermissions();
@@ -156,7 +191,11 @@ export async function requestAndRegister(): Promise<PushRegisterResult> {
     const token = await registerForToken();
     await registerTokenWithBackend(token);
     return 'registered';
-  } catch {
+  } catch (err) {
+    lastRegisterError = describeRegisterError(err);
+    // Trace console : le seul moyen de diagnostiquer un échec sur un appareil
+    // réel (Safari → Développement → l'iPhone, une fois branché au Mac).
+    console.warn('[push] enregistrement impossible :', err);
     return 'error';
   }
 }

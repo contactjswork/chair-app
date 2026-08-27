@@ -9,6 +9,7 @@ import type { ApiNotificationPreferences } from '@/lib/types';
 import {
   getPushPermissionState,
   getStoredPushToken,
+  getLastPushError,
   requestAndRegister,
   type PushPermissionState,
 } from '@/lib/push';
@@ -91,6 +92,7 @@ function PushChannelStatus() {
   const [perm, setPerm] = useState<PushPermissionState>('unavailable');
   const [hasToken, setHasToken] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -106,6 +108,7 @@ function PushChannelStatus() {
   async function activate() {
     if (busy) return; // anti double-tap
     setBusy(true);
+    setError(null);
     const result = await requestAndRegister();
     setBusy(false);
     if (result === 'registered') {
@@ -113,6 +116,10 @@ function PushChannelStatus() {
       setHasToken(true);
     } else if (result === 'denied') {
       setPerm('denied');
+    } else if (result === 'error') {
+      // Un échec muet laissait l'utilisateur (et le support) sans aucune
+      // piste : le bouton revenait à son état initial, rien de plus.
+      setError(getLastPushError() ?? "L'activation a échoué. Réessaie dans un instant.");
     }
   }
 
@@ -162,6 +169,12 @@ function PushChannelStatus() {
         {busy && <span aria-hidden="true" className="inline-block w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
         {busy ? 'Activation…' : perm === 'granted' ? 'Réactiver les notifications' : 'Activer les notifications'}
       </button>
+
+      {error && (
+        <p role="alert" className="mt-2.5 text-[12px] text-red-600 leading-relaxed">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
