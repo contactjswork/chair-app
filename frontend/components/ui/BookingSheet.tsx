@@ -47,7 +47,7 @@ const FLOWS: Record<FlowStart, Step[]> = {
   date:     ['date', 'slot', 'info', 'confirm'],
 };
 
-const INPUT_CLS = 'w-full border border-neutral-200 rounded-xl px-4 h-12 text-[14px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors';
+const INPUT_CLS = 'w-full border border-neutral-200 rounded-xl px-4 h-12 text-[16px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors';
 
 /**
  * Date du device au format YYYY-MM-DD, en heure LOCALE.
@@ -792,7 +792,12 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       <span className="text-[12px] font-medium text-neutral-500 mb-1.5 block">
                         Une réalisation qui vous inspire ? (optionnel)
                       </span>
-                      <div className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1 no-scrollbar">
+                      {/* Pas de marge negative pour faire deborder la bande jusqu'au
+                          bord de l'ecran : le corps de la feuille est en overflow-y-auto,
+                          ce qui force overflow-x a auto aussi, et le moindre depassement
+                          rendait TOUTE la feuille deplacable lateralement. La bande reste
+                          dans le padding du conteneur et defile toute seule. */}
+                      <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 no-scrollbar">
                         {refPosts.map((post) => {
                           const img = getAfterImage(post);
                           const picked = referencePostId === post.id;
@@ -839,7 +844,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Précisions sur votre demande..."
                       rows={3}
-                      className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-[14px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 resize-none transition-colors"
+                      className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-[16px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 resize-none transition-colors"
                     />
                   </div>
                   <PrimaryButton

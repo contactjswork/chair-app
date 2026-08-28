@@ -54,7 +54,7 @@ function ConnexionContent() {
     }
   }
 
-  const inputCls = 'w-full px-4 py-3.5 bg-neutral-50 rounded-xl text-[14px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all';
+  const inputCls = 'w-full px-4 py-3.5 bg-neutral-50 rounded-xl text-[16px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all';
 
   return (
     <div className="min-h-[100svh] bg-white flex flex-col items-center justify-center px-5 py-10">
