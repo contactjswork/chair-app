@@ -104,6 +104,31 @@ export default function ComptePage() {
     Promise.all(promises).finally(() => setDataLoading(false));
   }, [user]);
 
+  /**
+   * Coiffeurs déjà vus, pour reprendre rendez-vous en un tap.
+   *
+   * Dérivé des rendez-vous plutôt que d'un nouvel appel : la donnée est déjà
+   * là. Un coiffeur n'apparaît qu'une fois, les plus récents d'abord — la
+   * liste est déjà triée par date décroissante côté serveur.
+   *
+   * Les rendez-vous annulés ou refusés en sont exclus : reproposer quelqu'un
+   * chez qui on n'est jamais allé n'a rien d'un raccourci utile.
+   */
+  const rebookables = (() => {
+    const seen = new Set<string>();
+    const out: { slug: string; name: string; avatar: string | null }[] = [];
+    for (const a of myAppointments) {
+      if (a.status === 'cancelled' || a.status === 'declined') continue;
+      const slug = a.hairdresser?.slug;
+      const name = a.hairdresser?.user?.name;
+      if (!slug || !name || seen.has(slug)) continue;
+      seen.add(slug);
+      out.push({ slug, name, avatar: resolveMediaUrl(a.hairdresser?.user?.avatar) });
+      if (out.length >= 8) break;
+    }
+    return out;
+  })();
+
   if (isLoading) {
     return (
       <AppShell>
@@ -346,6 +371,42 @@ export default function ComptePage() {
                         }
                       />
                     ))}
+                  </div>
+                )}
+
+                {/* ── Reprendre rendez-vous ──────────────────────────────
+                    Un client satisfait devait refaire une recherche complète
+                    pour revenir chez le même coiffeur : chercher, filtrer,
+                    retrouver le bon profil. C'est absurde — c'est exactement
+                    le client qu'on veut garder, et le seul dont on connaisse
+                    déjà le choix. */}
+                {!dataLoading && rebookables.length > 0 && (
+                  <div className="mt-7">
+                    <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">
+                      Reprendre rendez-vous
+                    </p>
+                    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+                      {rebookables.map((h) => (
+                        <Link
+                          key={h.slug}
+                          href={`/app/coiffeur/${h.slug}`}
+                          className="flex-shrink-0 w-[76px] flex flex-col items-center gap-2 active:scale-[0.94] transition-transform"
+                        >
+                          <div className="relative w-[62px] h-[62px] rounded-full overflow-hidden bg-neutral-200 ring-1 ring-neutral-100">
+                            {h.avatar ? (
+                              <Image src={h.avatar} alt={h.name} fill className="object-cover" sizes="62px" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="text-lg font-bold text-neutral-400">{h.name.charAt(0)}</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-[11px] font-semibold text-neutral-700 text-center leading-tight truncate w-full">
+                            {h.name.split(' ')[0]}
+                          </p>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </section>

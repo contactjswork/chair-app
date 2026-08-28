@@ -49,10 +49,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const description = h.tagline
     ? `${h.user.name}${h.city ? ` à ${h.city}` : ''}. "${h.tagline}" — CHAIR`
     : `${h.user.name}${h.city ? ` à ${h.city}` : ''}. Portfolios réels, avis vérifiés sur CHAIR.`;
-  const ogImage = resolveMediaUrl(h.banner_image) ?? resolveMediaUrl(h.user?.avatar) ?? null;
+  // Plus d'`images` déclarées ici : opengraph-image.tsx (même dossier) génère
+  // une vraie carte de partage — visage, nom, spécialité, ville, note — au
+  // lieu de la bannière brute, qui ne disait ni qui c'était ni d'où venait le
+  // lien. Next la rattache automatiquement ; la redéclarer ici l'écraserait.
   return {
     title, description,
-    openGraph: { title, description, type: 'profile' as const, ...(ogImage ? { images: [{ url: ogImage }] } : {}) },
+    openGraph: { title, description, type: 'profile' as const },
   };
 }
 
