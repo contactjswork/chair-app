@@ -135,7 +135,11 @@ const nextConfig: NextConfig = {
       // Anciennes routes client → /app/...
       { source: '/feed',             destination: '/app/feed',          permanent: true },
       { source: '/rechercher',       destination: '/app/recherche',     permanent: true },
-      { source: '/mes-inspirations', destination: '/app/inspirations',  permanent: true },
+      // « Inspirations » et l'onglet « Publications » des favoris designaient la
+      // MEME liste (savedPosts), sous deux noms et deux adresses, et la page
+      // dediee n'etait liee depuis aucun ecran. Une seule destination desormais.
+      { source: '/mes-inspirations', destination: '/app/favoris', permanent: true },
+      { source: '/app/inspirations', destination: '/app/favoris', permanent: true },
       { source: '/favoris',          destination: '/app/favoris',       permanent: true },
       { source: '/classements',      destination: '/app/classements',   permanent: true },
       { source: '/notifications',    destination: '/app/notifications', permanent: true },

@@ -156,11 +156,11 @@ function FavorisEmptyState({ tab }: { tab: Tab }) {
   return (
     <SharedEmptyState
       icon={tab === 'coiffeurs' ? Heart : Bookmark}
-      title={tab === 'coiffeurs' ? 'Aucun coiffeur sauvegardé' : 'Aucune publication sauvegardée'}
+      title={tab === 'coiffeurs' ? 'Aucun coiffeur sauvegardé' : 'Aucune inspiration sauvegardée'}
       subtitle={
         tab === 'coiffeurs'
           ? 'Sauvegarde des coiffeurs depuis leur profil pour les retrouver ici.'
-          : 'Sauvegarde des réalisations depuis le feed pour les retrouver ici.'
+          : 'Appuie sur le marque-page d’une réalisation dans le feed pour la retrouver ici.'
       }
       action={
         <PrimaryButton href={tab === 'coiffeurs' ? '/app/recherche' : '/app/feed'}>
@@ -259,7 +259,7 @@ export default function FavorisPage() {
                 tab === t ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400 hover:text-neutral-700'
               }`}
             >
-              {t === 'coiffeurs' ? `Coiffeurs${coiffeurs.length > 0 ? ` (${coiffeurs.length})` : ''}` : `Publications${posts.length > 0 ? ` (${posts.length})` : ''}`}
+              {t === 'coiffeurs' ? `Coiffeurs${coiffeurs.length > 0 ? ` (${coiffeurs.length})` : ''}` : `Inspirations${posts.length > 0 ? ` (${posts.length})` : ''}`}
             </button>
           ))}
         </div>
