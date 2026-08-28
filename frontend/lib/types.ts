@@ -593,6 +593,12 @@ export interface ApiNotification {
   data: Record<string, unknown>;
   read_at: string | null;
   created_at: string;
+  /**
+   * Destination du tap, calculée par le serveur — la même que celle du push,
+   * pour que la carte et la notification système ne divergent jamais.
+   * Absente des réponses de comptage (badge).
+   */
+  url?: string;
 }
 
 export interface ApiNotificationsResponse {

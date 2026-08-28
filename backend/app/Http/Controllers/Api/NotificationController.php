@@ -13,15 +13,42 @@ class NotificationController extends Controller
      * ?all=true → toutes les notifications (centre de notifications)
      * sans param  → non lues seulement + unread_count (badge polling)
      */
+    /**
+     * Destination d'une notification, identique à celle du push.
+     *
+     * Une notification poussée ouvre bien une page quand on tape dessus
+     * depuis l'écran verrouillé — la MÊME notification, dans le centre de
+     * notifications de l'app, ne menait nulle part : la carte était un simple
+     * bloc. Le travail existait déjà côté serveur, il n'était juste pas
+     * exposé. En le calculant ici, la carte et le push ne peuvent pas
+     * diverger.
+     *
+     * `data.url` prime quand il existe : c'est le contrat de deep link déjà
+     * établi avec le frontend (voir lib/push.ts).
+     */
+    private function resolveUrl(Notification $notification, $user): string
+    {
+        $data = $notification->data;
+        if (is_array($data) && !empty($data['url']) && is_string($data['url'])) {
+            return $data['url'];
+        }
+
+        return \App\Services\PushService::defaultUrl($notification->type, $user);
+    }
+
     public function index(Request $request)
     {
-        $userId = $request->user()->id;
+        $user   = $request->user();
+        $userId = $user->id;
 
         if ($request->boolean('all')) {
             $notifications = Notification::where('user_id', $userId)
                 ->orderByDesc('created_at')
                 ->limit(50)
-                ->get();
+                ->get()
+                ->each(function (Notification $n) use ($user) {
+                    $n->setAttribute('url', $this->resolveUrl($n, $user));
+                });
 
             $unreadCount = Notification::where('user_id', $userId)
                 ->whereNull('read_at')

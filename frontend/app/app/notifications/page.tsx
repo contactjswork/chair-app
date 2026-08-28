@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, Calendar, Star, UserPlus, LogIn, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Bell, Calendar, Star, UserPlus, LogIn, Trash2 } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
@@ -42,49 +43,84 @@ function NotifCard({
   const title = notif.title ?? notif.type;
   const message = notif.message ?? '';
   const { icon, bg, fg } = notifStyle(notif.type);
+  const [confirming, setConfirming] = useState(false);
+
+  /**
+   * Le corps de la carte MÈNE quelque part.
+   *
+   * La même notification, poussée sur l'écran verrouillé, ouvrait bien une
+   * page — dans l'app, la carte était un simple bloc inerte. La destination
+   * vient du serveur (champ `url`), donc identique à celle du push : les deux
+   * ne peuvent pas diverger.
+   *
+   * Le tap marque aussi comme lue : c'est le geste naturel, et ça rend le
+   * bouton « cocher » superflu — un contrôle de moins dans un coin déjà
+   * encombré.
+   */
+  const body = (
+    <>
+      <div className={`mt-0.5 shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${bg} ${fg}`}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0 text-left">
+        <p className={`text-[13.5px] leading-snug ${isUnread ? 'font-semibold text-neutral-900' : 'font-medium text-neutral-500'}`}>
+          {title}
+        </p>
+        {message && (
+          <p className="text-[12.5px] text-neutral-500 mt-0.5 leading-relaxed break-words">{message}</p>
+        )}
+        <p className="text-[11px] text-neutral-400 mt-1.5">{formatDate(notif.created_at)}</p>
+      </div>
+    </>
+  );
 
   return (
     <div
-      className={`relative flex gap-3 px-4 py-3.5 rounded-2xl border transition-colors ${
+      className={`relative flex items-start rounded-2xl border transition-colors ${
         isUnread ? 'bg-white border-neutral-100' : 'bg-neutral-50/70 border-transparent'
       }`}
     >
       {isUnread && <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-neutral-900" />}
 
-      <div className={`mt-0.5 shrink-0 w-9 h-9 rounded-full flex items-center justify-center ${bg} ${fg}`}>
-        {icon}
-      </div>
+      {/* Le bouton de suppression est un FRÈRE du lien, jamais un enfant : un
+          bouton imbriqué dans un lien est invalide et son clic serait avalé
+          par la navigation. */}
+      {notif.url ? (
+        <Link
+          href={notif.url}
+          onClick={() => { if (isUnread) onMarkRead(notif.id); }}
+          className="flex flex-1 min-w-0 gap-3 pl-4 pr-1 py-3.5 active:opacity-70 transition-opacity"
+        >
+          {body}
+        </Link>
+      ) : (
+        <div className="flex flex-1 min-w-0 gap-3 pl-4 pr-1 py-3.5">{body}</div>
+      )}
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className={`text-[13.5px] leading-snug ${isUnread ? 'font-semibold text-neutral-900' : 'font-medium text-neutral-500'}`}>
-            {title}
-          </p>
-          {/* Actions : cocher (si non lue) puis supprimer. Toujours discrètes
-              — la notification prime, pas ses boutons. */}
-          <div className="shrink-0 flex items-center gap-0.5 -mt-1 -mr-1">
-            {isUnread && (
-              <button
-                onClick={() => onMarkRead(notif.id)}
-                className="w-7 h-7 flex items-center justify-center text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 active:scale-90 rounded-full transition-all"
-                aria-label="Marquer comme lu"
-              >
-                <Check size={14} />
-              </button>
-            )}
-            <button
-              onClick={() => onDelete(notif.id)}
-              className="w-7 h-7 flex items-center justify-center text-neutral-300 hover:text-red-600 hover:bg-red-50 active:scale-90 rounded-full transition-all"
-              aria-label={`Supprimer la notification : ${title}`}
-            >
-              <Trash2 size={13.5} />
-            </button>
-          </div>
-        </div>
-        {message && (
-          <p className="text-[12.5px] text-neutral-500 mt-0.5 leading-relaxed">{message}</p>
+      {/* 44 px : la cible faisait 28 px, collée à 2 px du bouton voisin, pour
+          une action DÉFINITIVE et sans annulation. Un pouce qui rate de trois
+          millimètres détruisait la notification. Confirmation en deux temps,
+          qui s'annule seule au bout de trois secondes. */}
+      <div className="shrink-0 pr-1.5 py-2">
+        {confirming ? (
+          <button
+            onClick={() => { setConfirming(false); onDelete(notif.id); }}
+            className="h-11 px-3 flex items-center justify-center text-[12px] font-semibold text-red-600 bg-red-50 rounded-full active:scale-95 transition-transform"
+          >
+            Supprimer ?
+          </button>
+        ) : (
+          <button
+            onClick={() => {
+              setConfirming(true);
+              setTimeout(() => setConfirming(false), 3000);
+            }}
+            className="w-11 h-11 flex items-center justify-center text-neutral-300 hover:text-red-600 hover:bg-red-50 active:scale-90 rounded-full transition-all"
+            aria-label={`Supprimer la notification : ${title}`}
+          >
+            <Trash2 size={14} />
+          </button>
         )}
-        <p className="text-[11px] text-neutral-400 mt-1.5">{formatDate(notif.created_at)}</p>
       </div>
     </div>
   );
