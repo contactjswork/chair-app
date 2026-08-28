@@ -403,6 +403,7 @@ export default function DashboardSalonPage() {
         department:    salonData.salon.department ?? '',
         phone:         salonData.salon.phone ?? '',
         website:       salonData.salon.website ?? '',
+        booking_url:   salonData.salon.booking_url ?? '',
         instagram_url: salonData.salon.instagram_url ?? '',
         siret:         salonData.salon.siret ?? '',
       });
@@ -696,6 +697,10 @@ export default function DashboardSalonPage() {
               { key: 'department',  label: 'Département', type: 'select' },
               { key: 'phone',       label: 'Téléphone',   type: 'text' },
               { key: 'website',     label: 'Site web',    type: 'url' },
+              // Hérité par TOUS les salariés du salon : c'est ce lien qui rend un
+              // coiffeur salarié réservable sur CHAIR. Sans lui, ses prestations
+              // s'affichent sans qu'aucune ne soit cliquable.
+              { key: 'booking_url', label: 'Lien de réservation en ligne (Planity, Zenoti, Shortcuts…)', type: 'url' },
               { key: 'instagram_url', label: 'Instagram', type: 'url' },
               { key: 'siret',       label: 'SIRET (14 chiffres)', type: 'text' },
             ].map(({ key, label, type }) => (
