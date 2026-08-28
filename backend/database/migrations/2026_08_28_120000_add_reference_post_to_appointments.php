@@ -16,13 +16,17 @@ use Illuminate\Support\Facades\Schema;
  * Décrire une coupe est difficile, et le malentendu qui s'ensuit est le
  * premier motif de déception en salon. Pointer une photo ne l'est pas.
  *
- * Le portfolio devient donc un briefing : la réalisation choisie voyage avec
- * la demande jusqu'à l'agenda du coiffeur.
+ * La réalisation choisie voyage donc avec la demande jusqu'à l'agenda du
+ * coiffeur.
  *
- * Restreint aux réalisations DU coiffeur réservé (contrôlé à l'enregistrement,
- * voir AppointmentController::store) : montrer le travail d'un confrère
- * serait au mieux maladroit, au pire vexant — et ne prouve pas que celui-ci
- * sait le faire.
+ * Elle est prise dans les FAVORIS du client, pas dans le portfolio du
+ * coiffeur réservé. On avait d'abord fait l'inverse, en exigeant qu'elle lui
+ * appartienne : c'était l'envers du bon sens. Ce qu'un client veut montrer,
+ * c'est ce qu'il a lui-même mis de côté en parcourant CHAIR — et arriver
+ * avec une photo de référence trouvée ailleurs est la chose la plus banale
+ * du monde en salon. Le coiffeur voit de qui elle est : le crédit est
+ * affiché partout où la photo apparaît, donc rien n'est présenté à tort
+ * comme son propre travail.
  *
  * nullOnDelete : une réalisation supprimée ne doit jamais emporter le
  * rendez-vous avec elle.

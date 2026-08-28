@@ -299,7 +299,7 @@ function CreateSalonForm({ onCreated }: { onCreated: (salon: ApiSalonFull) => vo
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState('');
 
-  const inputCls = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
+  const inputCls = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[16px] focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -10,7 +10,7 @@ interface Props {
   onChange: (patch: Partial<{ price_per_day: string; price_per_week: string; price_per_month: string; deposit_amount: string }>) => void;
 }
 
-const inputCls = 'w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
+const inputCls = 'w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[16px] focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder: string }) {
   return (

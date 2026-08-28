@@ -659,6 +659,7 @@ function ClientAppointmentCard({
 
   const cancellable = canClientCancel(appt);
   const referenceImage = appt.reference_post ? getAfterImage(appt.reference_post) : null;
+  const referenceAuthor = appt.reference_post?.hairdresser?.user?.name ?? null;
 
   return (
     <div className="border border-neutral-200 rounded-2xl overflow-hidden">
@@ -706,6 +707,7 @@ function ClientAppointmentCard({
             />
             <p className="text-[11px] text-neutral-500 leading-snug">
               Vous avez montré cette réalisation
+              {referenceAuthor ? ` — de ${referenceAuthor}` : ''}
             </p>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi } from '@/lib/api';
+import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi, savedPosts as savedPostsApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { saveBookingIntent } from '@/lib/bookingIntent';
 import { hapticSuccess } from '@/lib/haptics';
@@ -13,8 +13,6 @@ import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn
 import { PrimaryButton, SecondaryButton } from './Button';
 import EmptyState from './EmptyState';
 import { Skeleton } from './Skeleton';
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 import PushOptInCard from './PushOptInCard';
 
 type Step = 'category' | 'service' | 'date' | 'slot' | 'info' | 'confirm' | 'success';
@@ -121,6 +119,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
    * d'un confrère ne prouverait pas qu'il sait le faire.
    */
   const [refPosts, setRefPosts] = useState<ApiPost[]>([]);
+  const [refPostsLoaded, setRefPostsLoaded] = useState(false);
   const [referencePostId, setReferencePostId] = useState<number | null>(null);
   const referencePost = refPosts.find((p) => p.id === referencePostId) ?? null;
   const referenceImage = referencePost ? getAfterImage(referencePost) : null;
@@ -200,22 +199,30 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
     }
   }, [user]);
 
-  // Réalisations du coiffeur, pour le choix « je voudrais ce résultat ».
-  // Un échec est sans conséquence : le sélecteur disparaît simplement, et la
+  // Les favoris du client, pour le choix « je voudrais ce résultat ».
+  //
+  // On y montrait d'abord le portfolio du coiffeur réservé. C'était l'envers
+  // du bon sens : ce que le client veut montrer, c'est ce qu'il a lui-même
+  // mis de côté en parcourant CHAIR — pas ce qu'il a déjà sous les yeux sur
+  // la fiche qu'il est en train de consulter. Arriver avec une photo de
+  // référence trouvée ailleurs est d'ailleurs la chose la plus banale du
+  // monde en salon.
+  //
+  // Un échec est sans conséquence : le sélecteur disparaît, et la
   // réservation reste possible sans photo. On ne bloque jamais une demande
   // de rendez-vous sur un confort.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !user) return;
     let cancelled = false;
-    fetch(`${API}/hairdressers/${slug}/posts`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (cancelled || !Array.isArray(d?.data)) return;
-        setRefPosts((d.data as ApiPost[]).filter((post) => getAfterImage(post)).slice(0, 12));
+    savedPostsApi.list()
+      .then((posts) => {
+        if (cancelled || !Array.isArray(posts)) return;
+        setRefPosts(posts.filter((post) => getAfterImage(post)).slice(0, 24));
+        setRefPostsLoaded(true);
       })
-      .catch(() => {});
+      .catch(() => { if (!cancelled) setRefPostsLoaded(true); });
     return () => { cancelled = true; };
-  }, [open, slug]);
+  }, [open, user]);
 
   // `loadingDates` est dérivé plutôt que posé en début d'effet : on retient
   // quel (prestation, mois) a effectivement répondu, et tant que la clé
@@ -780,59 +787,80 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       className={INPUT_CLS}
                     />
                   </div>
-                  {/* « Je voudrais ce résultat » — le portfolio devient un
-                      briefing. Le client vient d'admirer une photo ; lui
-                      demander ensuite de la DÉCRIRE EN MOTS, c'est fabriquer
-                      le malentendu qui est le premier motif de déception en
-                      salon. Uniquement les réalisations de CE coiffeur :
-                      montrer le travail d'un confrère ne prouverait pas
-                      qu'il sait le faire (contrôlé côté serveur, 422 sinon). */}
-                  {refPosts.length > 0 && (
+                  {/* « Je voudrais ce résultat » — les favoris du client
+                      deviennent un briefing. Il vient de mettre des photos de
+                      côté en parcourant CHAIR ; lui demander ensuite de les
+                      DÉCRIRE EN MOTS, c'est fabriquer le malentendu qui est le
+                      premier motif de déception en salon.
+
+                      Ce sont ses favoris, pas le portfolio du coiffeur réservé :
+                      arriver avec une photo de référence trouvée ailleurs est la
+                      chose la plus banale du monde en salon, et le coiffeur voit
+                      de qui elle est (crédit affiché côté pro). */}
+                  {refPostsLoaded && (
                     <div>
                       <span className="text-[12px] font-medium text-neutral-500 mb-1.5 block">
                         Une réalisation qui vous inspire ? (optionnel)
                       </span>
-                      {/* Pas de marge negative pour faire deborder la bande jusqu'au
-                          bord de l'ecran : le corps de la feuille est en overflow-y-auto,
-                          ce qui force overflow-x a auto aussi, et le moindre depassement
-                          rendait TOUTE la feuille deplacable lateralement. La bande reste
-                          dans le padding du conteneur et defile toute seule. */}
-                      <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 no-scrollbar">
-                        {refPosts.map((post) => {
-                          const img = getAfterImage(post);
-                          const picked = referencePostId === post.id;
-                          return (
-                            <button
-                              key={post.id}
-                              type="button"
-                              onClick={() => setReferencePostId(picked ? null : post.id)}
-                              aria-pressed={picked}
-                              aria-label={picked ? 'Retirer cette réalisation' : 'Montrer cette réalisation au coiffeur'}
-                              className={`relative flex-shrink-0 w-[72px] h-[96px] rounded-xl overflow-hidden transition-all ${
-                                picked
-                                  ? 'ring-2 ring-neutral-900 ring-offset-2'
-                                  : 'ring-1 ring-neutral-200 opacity-70 active:opacity-100'
-                              }`}
-                            >
-                              {img && (
-                                // Miniatures distantes non configurées dans next.config :
-                                // un <img> simple évite un crash d'optimisation.
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={img} alt="" className="w-full h-full object-cover" />
-                              )}
-                              {picked && (
-                                <span className="absolute inset-0 bg-neutral-900/35 flex items-center justify-center">
-                                  <Check className="w-5 h-5 text-white" strokeWidth={3} />
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {referencePostId !== null && (
-                        <p className="text-[11px] text-neutral-400 mt-1.5">
-                          Cette photo sera jointe à votre demande.
+                      {refPosts.length === 0 ? (
+                        // Sans favoris, une bande vide ne dirait rien. On explique
+                        // où le geste se fait, plutôt que de masquer la section :
+                        // c'est aussi comme ça qu'on apprend que les favoris
+                        // servent à quelque chose.
+                        <p className="text-[12px] text-neutral-400 leading-snug border border-dashed border-neutral-200 rounded-xl px-3.5 py-3">
+                          Mettez des réalisations en favori pendant que vous
+                          parcourez CHAIR : vous pourrez les montrer ici, au
+                          moment de réserver.
                         </p>
+                      ) : (
+                        <>
+                          {/* Pas de marge négative pour faire déborder la bande jusqu'au
+                              bord de l'écran : le corps de la feuille est en overflow-y-auto,
+                              ce qui force overflow-x à auto aussi, et le moindre dépassement
+                              rendait TOUTE la feuille déplaçable latéralement. La bande reste
+                              dans le padding du conteneur et défile toute seule. */}
+                          <div className="flex gap-2 overflow-x-auto overscroll-x-contain pb-1 no-scrollbar">
+                            {refPosts.map((post) => {
+                              const img = getAfterImage(post);
+                              const picked = referencePostId === post.id;
+                              const auteur = post.hairdresser?.user?.name;
+                              return (
+                                <button
+                                  key={post.id}
+                                  type="button"
+                                  onClick={() => setReferencePostId(picked ? null : post.id)}
+                                  aria-pressed={picked}
+                                  aria-label={
+                                    (picked ? 'Retirer cette réalisation' : 'Montrer cette réalisation au coiffeur')
+                                    + (auteur ? ` — par ${auteur}` : '')
+                                  }
+                                  className={`relative flex-shrink-0 w-[72px] h-[96px] rounded-xl overflow-hidden transition-all ${
+                                    picked
+                                      ? 'ring-2 ring-neutral-900 ring-offset-2'
+                                      : 'ring-1 ring-neutral-200 opacity-70 active:opacity-100'
+                                  }`}
+                                >
+                                  {img && (
+                                    // Miniatures distantes non configurées dans next.config :
+                                    // un <img> simple évite un crash d'optimisation.
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                  )}
+                                  {picked && (
+                                    <span className="absolute inset-0 bg-neutral-900/35 flex items-center justify-center">
+                                      <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {referencePostId !== null && (
+                            <p className="text-[11px] text-neutral-400 mt-1.5">
+                              Cette photo sera jointe à votre demande.
+                            </p>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -894,7 +922,10 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                             className="w-11 h-14 rounded-lg object-cover border border-neutral-200 shrink-0"
                           />
                           <p className="text-[12px] text-neutral-500 leading-snug">
-                            Cette réalisation sera montrée au coiffeur.
+                            Cette réalisation sera montrée au coiffeur
+                            {referencePost?.hairdresser?.user?.name
+                              ? ` — elle est de ${referencePost.hairdresser.user.name}.`
+                              : '.'}
                           </p>
                         </div>
                       </div>

@@ -126,25 +126,20 @@ class AppointmentController extends Controller
                 'appointment_time' => 'required|date_format:H:i',
                 'message'          => 'nullable|string|max:1000',
                 // « Je voudrais ce résultat » — la réalisation que le client
-                // montre en réservant. Voir la migration
-                // add_reference_post_to_appointments.
+                // montre en réservant. C'est une de SES favorites, prise
+                // n'importe où sur CHAIR : arriver avec une photo de référence
+                // trouvée ailleurs est la chose la plus banale du monde en
+                // salon. On a d'abord exigé qu'elle appartienne au coiffeur
+                // réservé ; c'était l'envers du bon sens, et ça rejetait la
+                // quasi-totalité des favoris d'un client.
+                //
+                // Le coiffeur voit de qui est la photo — le crédit est affiché
+                // dans son agenda — donc rien n'est présenté à tort comme son
+                // propre travail. On garde 'exists' : on ne stocke pas un
+                // identifiant qui ne pointe nulle part.
+                // Voir la migration add_reference_post_to_appointments.
                 'reference_post_id' => 'nullable|integer|exists:posts,id',
             ]);
-
-            // La réalisation doit appartenir au coiffeur réservé. Sans ce
-            // contrôle, un POST direct pourrait joindre le travail d'un
-            // confrère — au mieux maladroit, au pire vexant, et surtout aucune
-            // preuve que CE coiffeur sache le faire.
-            if (!empty($validated['reference_post_id'])) {
-                $ownsPost = \App\Models\Post::where('id', $validated['reference_post_id'])
-                    ->where('hairdresser_id', $validated['hairdresser_id'])
-                    ->exists();
-                if (!$ownsPost) {
-                    return response()->json([
-                        'message' => "Cette réalisation n'appartient pas à ce coiffeur.",
-                    ], 422);
-                }
-            }
 
             $service = \App\Models\Service::where('id', $validated['service_id'])
                 ->where('hairdresser_id', $validated['hairdresser_id'])
@@ -292,7 +287,7 @@ class AppointmentController extends Controller
         // referencePost : la realisation que le client a montree en reservant.
         // Sans elle ici, la fonctionnalite n'existerait que d'un cote — c'est
         // le coiffeur qui doit la voir, c'est lui qui execute.
-        $appointments = Appointment::with(['client', 'serviceModel.category', 'referencePost.images'])
+        $appointments = Appointment::with(['client', 'serviceModel.category', 'referencePost.images', 'referencePost.hairdresser.user'])
             ->where('hairdresser_id', $profile->id)
             ->orderByRaw("FIELD(status, 'pending', 'confirmed', 'completed', 'declined', 'cancelled', 'no_show', 'pending_payment')")
             ->orderBy('appointment_date')
@@ -823,7 +818,7 @@ class AppointmentController extends Controller
 
     public function clientAppointments(Request $request)
     {
-        $appointments = Appointment::with(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
+        $appointments = Appointment::with(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images', 'referencePost.hairdresser.user'])
             ->where('client_id', $request->user()->id)
             ->orderByDesc('appointment_date')
             ->orderByDesc('created_at')
@@ -928,7 +923,7 @@ class AppointmentController extends Controller
 
         if ($applied === 0) {
             return response()->json(
-                $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
+                $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images', 'referencePost.hairdresser.user'])
             );
         }
 
@@ -964,7 +959,7 @@ class AppointmentController extends Controller
         }
 
         return response()->json(
-            $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
+            $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images', 'referencePost.hairdresser.user'])
         );
     }
 

@@ -160,6 +160,7 @@ function AppointmentSheet({
     newTime !== fmtTime(apt.appointment_time) ||
     newDur  !== String(apt.duration_minutes??60);
   const referenceImage = apt.reference_post ? getAfterImage(apt.reference_post) : null;
+  const referenceAuthor = apt.reference_post?.hairdresser?.user?.name ?? null;
 
   return (
     <BottomSheet onClose={onClose} maxHeight="max-h-[90vh]">
@@ -226,7 +227,9 @@ function AppointmentSheet({
                 className="w-20 h-[104px] rounded-xl object-cover border border-neutral-200 flex-shrink-0"
               />
               <p className="text-[12px] text-neutral-500 leading-snug">
-                Le client a choisi cette réalisation dans votre portfolio en réservant.
+                {referenceAuthor
+                  ? `Réalisation de ${referenceAuthor}, que le client a mise en favori et montre pour ce rendez-vous.`
+                  : 'Réalisation que le client a mise en favori et montre pour ce rendez-vous.'}
               </p>
             </div>
           </div>

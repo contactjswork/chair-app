@@ -65,6 +65,7 @@ function AppointmentCard({
     ? appt.appointment_time.slice(0, 5)
     : appt.desired_slot;
   const referenceImage = appt.reference_post ? getAfterImage(appt.reference_post) : null;
+  const referenceAuthor = appt.reference_post?.hairdresser?.user?.name ?? null;
 
   return (
     <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 space-y-3">
@@ -97,11 +98,14 @@ function AppointmentCard({
             <span className="font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>
           )}
         </div>
-        {/* La réalisation que le client a montrée en réservant. C'est le
-            briefing le plus fiable qu'on puisse recevoir : pas une
-            description, une photo — et une photo du travail de ce coiffeur,
-            donc reproductible. Elle passe AVANT le message : on regarde
-            d'abord, on lit ensuite. */}
+        {/* La réalisation que le client a montrée en réservant, prise dans
+            ses favoris. C'est le briefing le plus fiable qu'on puisse
+            recevoir : pas une description, une photo. Elle passe AVANT le
+            message : on regarde d'abord, on lit ensuite.
+
+            L'auteur est crédité — la photo peut venir de n'importe où sur
+            CHAIR, et la faire passer pour le travail du coiffeur qui la
+            reçoit serait malhonnête. */}
         {referenceImage && (
           <div className="flex items-start gap-2.5 border-t border-neutral-200 pt-2 mt-2">
             {/* Miniature distante non déclarée dans next.config. */}
@@ -113,7 +117,9 @@ function AppointmentCard({
             />
             <p className="text-[11px] text-neutral-600 leading-snug">
               <span className="font-semibold text-neutral-900 block">Résultat souhaité</span>
-              Le client a choisi cette réalisation dans votre portfolio.
+              {referenceAuthor
+                ? `Réalisation de ${referenceAuthor}, mise en favori par le client.`
+                : 'Réalisation mise en favori par le client.'}
             </p>
           </div>
         )}

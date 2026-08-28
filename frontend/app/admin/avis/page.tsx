@@ -129,7 +129,7 @@ export default function AvisPage() {
       {error && <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">{error}</div>}
 
       <div className="flex flex-wrap gap-3">
-        <select value={ratingFilter} onChange={(e) => { setRatingFilter(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[13px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
+        <select value={ratingFilter} onChange={(e) => { setRatingFilter(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[16px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
           <option value="">Toutes les notes</option>
           <option value="lte2">≤ 2 étoiles (signalés)</option>
           <option value="1">1 étoile</option>
@@ -138,7 +138,7 @@ export default function AvisPage() {
           <option value="4">4 étoiles</option>
           <option value="5">5 étoiles</option>
         </select>
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[13px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[16px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
           <option value="">Tous statuts</option>
           <option value="visible">Visible</option>
           <option value="hidden">Masqué</option>

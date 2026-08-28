@@ -82,7 +82,7 @@ function nextStage(current: ApplicantStatus): ApplicantStatus | null {
   return STAGE_ORDER[idx + 1];
 }
 
-const inputCls  = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-sm focus:outline-none focus:border-neutral-400 transition-colors';
+const inputCls  = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-2xl text-[16px] focus:outline-none focus:border-neutral-400 transition-colors';
 
 export default function RecrutementPage() {
   const { user, isLoading } = useRequireAuth(['salon_owner']);

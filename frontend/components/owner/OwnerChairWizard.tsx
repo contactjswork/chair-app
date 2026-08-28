@@ -72,7 +72,7 @@ function initialDraft(initial: ApiChairRental | null | undefined, salon: ApiSalo
   };
 }
 
-const inputCls = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-sm focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
+const inputCls = 'w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-[16px] focus:outline-none focus:border-neutral-400 focus:bg-white transition-all';
 const labelCls = 'block text-xs font-semibold text-neutral-700 mb-1.5';
 
 interface Props {

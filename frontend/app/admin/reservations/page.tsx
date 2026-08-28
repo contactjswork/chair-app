@@ -124,7 +124,7 @@ export default function ReservationsPage() {
 
       {/* Filtres */}
       <div className="flex flex-wrap gap-3">
-        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[13px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
+        <select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[16px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300">
           <option value="">Tous statuts</option>
           <option value="pending">En attente</option>
           <option value="confirmed">Confirmé</option>
@@ -133,11 +133,11 @@ export default function ReservationsPage() {
         </select>
         <div className="flex items-center gap-2">
           <label className="text-[12px] text-neutral-400">Du</label>
-          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[13px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300" />
+          <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[16px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300" />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-[12px] text-neutral-400">Au</label>
-          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[13px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300" />
+          <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-[16px] text-neutral-700 focus:outline-none focus:ring-1 focus:ring-neutral-300" />
         </div>
       </div>
 
