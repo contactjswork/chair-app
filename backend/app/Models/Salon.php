@@ -11,7 +11,7 @@ class Salon extends Model
 
     protected $fillable = [
         'owner_id', 'name', 'slug', 'description', 'address', 'city',
-        'postal_code', 'department', 'region', 'latitude', 'longitude', 'phone', 'website',
+        'postal_code', 'department', 'region', 'latitude', 'longitude', 'phone', 'website', 'booking_url',
         'instagram_url', 'cover_image', 'logo', 'is_verified',
         'siret', 'verification_status',
     ];

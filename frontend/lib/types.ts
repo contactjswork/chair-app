@@ -163,6 +163,9 @@ export interface ApiSalon {
   slug: string;
   city: string | null;
   address: string | null;
+  /** Agenda en ligne du salon (Planity, Zenoti, Shortcuts…), hérité par ses
+   *  salariés — voir PublicProfileServices. Absent des réponses allégées. */
+  booking_url?: string | null;
 }
 
 export interface ApiReview {
@@ -853,9 +856,16 @@ export interface ApiSalonFull {
   department: string | null;
   phone: string | null;
   website: string | null;
+  /** Agenda en ligne du salon (Planity, Zenoti, Shortcuts…) — hérité par ses
+   *  salariés, qui n'ont ainsi rien à saisir de leur côté. */
+  booking_url: string | null;
   instagram_url: string | null;
   cover_image: string | null;
   logo: string | null;
+  /** Colonnes DECIMAL : castées en float côté serveur, mais LocationMapCard
+   *  reconvertit par sécurité — voir le bug « latitude is not a number ». */
+  latitude: number | string | null;
+  longitude: number | string | null;
   is_verified: boolean;
   /** CHAIR BUSINESS actif — appendu uniquement sur la fiche publique unique (show()), jamais sur les listes. */
   is_chair_business?: boolean;
@@ -864,6 +874,21 @@ export interface ApiSalonFull {
   hairdressers_count?: number;
   hairdressers: (ApiHairdresserProfile & { user: ApiUser })[];
   owner?: ApiUser;
+  /**
+   * Note du salon, calculée par le serveur sur les avis de toute l'équipe.
+   *
+   * Ne se calcule PAS côté client en moyennant les moyennes de chaque
+   * coiffeur : cette méthode donnait le même poids à un coiffeur ayant 1 avis
+   * qu'à un autre en ayant 100, et comptait les coiffeurs sans avis comme des
+   * zéros. `avg_rating` vaut null tant qu'aucun avis n'existe — jamais 0.
+   */
+  rating_summary?: {
+    avg_rating: number | null;
+    reviews_count: number;
+    team_count: number;
+  };
+  /** Réalisations récentes publiées par l'équipe — appendu par show(). */
+  team_posts?: ApiPost[];
 }
 
 export interface ApiSalonJoinRequest {

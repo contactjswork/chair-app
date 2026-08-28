@@ -6,7 +6,7 @@ import PublicProfileIdentity from '@/components/ui/PublicProfileIdentity';
 import PublicProfileTabs from '@/components/ui/PublicProfileTabs';
 import PublicProfilePortfolio from '@/components/ui/PublicProfilePortfolio';
 import PublicProfileAbout from '@/components/ui/PublicProfileAbout';
-import PublicProfileLocation from '@/components/ui/PublicProfileLocation';
+import LocationMapCard from '@/components/ui/LocationMapCard';
 import PublicProfileServices from '@/components/ui/PublicProfileServices';
 import PublicProfileReviews from '@/components/ui/PublicProfileReviews';
 import PublicProfileBadges from '@/components/ui/PublicProfileBadges';
@@ -71,7 +71,13 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
   const avatarUrl       = resolveMediaUrl(hairdresser.user.avatar);
   const bannerUrl        = resolveMediaUrl(hairdresser.banner_image);
   const portfolioPosts  = posts.filter((p) => getAfterImage(p));
-  const canBook          = hairdresser.is_independent || !!hairdresser.booking_url;
+  // Un salarié est réservable dès que SON salon a un agenda en ligne, même
+  // s'il n'a lui-même rien saisi : c'est le salon qui détient l'abonnement.
+  // Sans cette retombée, le bouton flottant restait masqué et le seul point
+  // d'entrée était noyé dans l'onglet Services.
+  const canBook          = hairdresser.is_independent
+    || !!hairdresser.booking_url
+    || !!hairdresser.salon?.booking_url;
 
   return (
     <AppShell>
@@ -151,6 +157,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                   categories={serviceCategories}
                   isIndependent={hairdresser.is_independent}
                   bookingUrl={hairdresser.booking_url}
+                  salonBookingUrl={hairdresser.salon?.booking_url ?? null}
                   specialtyHighlights={hairdresser.specialty_highlights ?? []}
                 />
               ),
@@ -164,7 +171,15 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               content: (
                 <>
                   <PublicProfileAbout hairdresser={hairdresser} />
-                  <PublicProfileLocation hairdresser={hairdresser} />
+                  <LocationMapCard
+                    latitude={hairdresser.latitude}
+                    longitude={hairdresser.longitude}
+                    placeName={hairdresser.salon?.name ?? null}
+                    addressLine={[hairdresser.work_address, hairdresser.salon?.city ?? hairdresser.city].filter(Boolean).join(' · ') || null}
+                    markerInitial={(hairdresser.user?.name ?? '?').charAt(0).toUpperCase()}
+                    markerKey={`hairdresser-${hairdresser.id}`}
+                    className="px-4 pt-2 pb-6"
+                  />
                 </>
               ),
             },
@@ -199,7 +214,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
             <PublicProfileStickyCTA
               slug={hairdresser.slug}
               isIndependent={hairdresser.is_independent}
-              bookingUrl={hairdresser.booking_url}
+              bookingUrl={hairdresser.booking_url ?? hairdresser.salon?.booking_url ?? null}
               canBook={canBook}
             />
           }

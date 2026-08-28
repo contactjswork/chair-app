@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, Users, Star, BadgeCheck, ChevronRight } from 'lucide-react';
-import { resolveMediaUrl, type ApiSalonFull } from '@/lib/types';
+import { MapPin, Phone, Globe, Users, Star, BadgeCheck, ChevronRight, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { resolveMediaUrl, getAfterImage, type ApiSalonFull } from '@/lib/types';
 import AppShell from '@/components/layout/AppShell';
 import BackButton from '@/components/ui/BackButton';
 import { ContentMenu } from '@/components/ui/ReportSheet';
+import LocationMapCard from '@/components/ui/LocationMapCard';
+import { PrimaryButton } from '@/components/ui/Button';
 
 // Pas d'export "Instagram" dans cette version de lucide-react — même icône
 // maison que PublicProfileAbout.tsx (fiche publique coiffeur).
@@ -136,9 +138,18 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
     ? hairdressers.find((h) => h.user?.id === ownerId) ?? null
     : null;
 
-  const totalRating = hairdressers.reduce((sum, h) => sum + parseFloat(h.avg_rating ?? '0'), 0);
-  const avgRating = hairdressers.length > 0 ? (totalRating / hairdressers.length).toFixed(1) : null;
-  const totalReviews = hairdressers.reduce((sum, h) => sum + (h.reviews_count ?? 0), 0);
+  // Note calculée par le serveur sur les AVIS eux-mêmes.
+  //
+  // Le calcul se faisait ici, en moyennant les moyennes de chaque coiffeur.
+  // C'était faux deux fois : un coiffeur avec 1 avis pesait autant qu'un
+  // autre avec 100, et surtout les coiffeurs SANS avis comptaient comme des
+  // zéros. Un salon avec un coiffeur à 5,0 et un nouveau sans avis affichait
+  // 2,5 — vérifié en base sur un cas réel. La note d'un salon, c'est la
+  // moyenne de tous les avis reçus par son équipe, rien d'autre.
+  const ratingSummary = salon.rating_summary ?? null;
+  const avgRating = ratingSummary?.avg_rating != null ? ratingSummary.avg_rating.toFixed(1) : null;
+  const totalReviews = ratingSummary?.reviews_count ?? 0;
+  const teamPosts = (salon.team_posts ?? []).filter((p) => getAfterImage(p));
 
   return (
     <AppShell>
@@ -232,14 +243,43 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
           <p className="text-[13.5px] text-neutral-600 leading-relaxed mb-6 px-1">{salon.description}</p>
         )}
 
+        {/* Réserver dans ce salon — au-dessus de tout le reste : c'est
+            l'action que vient chercher quelqu'un à qui le salon plaît. Ouvre
+            l'agenda du salon dans le navigateur du système, CHAIR reste
+            ouverte derrière. */}
+        {salon.booking_url && (
+          <div className="mb-8">
+            <PrimaryButton
+              fullWidth
+              href={salon.booking_url}
+              target="_blank"
+              icon={<ExternalLink size={15} strokeWidth={2} />}
+            >
+              Réserver dans ce salon
+            </PrimaryButton>
+            <p className="text-[12px] text-neutral-400 mt-2 text-center leading-relaxed">
+              L&apos;agenda du salon s&apos;ouvre dans ton navigateur. Le paiement se fait sur place.
+            </p>
+          </div>
+        )}
+
+        {/* Localisation — la carte remplace l'adresse en texte : elle répond à
+            « est-ce sur mon trajet ? », ce qu'une ligne d'adresse ne fait pas,
+            et elle porte l'itinéraire. */}
+        <LocationMapCard
+          latitude={salon.latitude}
+          longitude={salon.longitude}
+          sectionTitle="Adresse"
+          placeName={salon.name}
+          addressLine={[salon.address, [salon.postal_code, salon.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || null}
+          markerInitial={(salon.name ?? '?').charAt(0).toUpperCase()}
+          markerKey={`salon-${salon.id}`}
+          className="mb-8"
+        />
+
         {/* Infos pratiques — carte avec relief, icônes en pastille */}
-        {(salon.address || salon.phone || salon.website || salon.instagram_url) && (
+        {(salon.phone || salon.website || salon.instagram_url) && (
           <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 px-4 py-1 mb-8 divide-y divide-neutral-50">
-            {salon.address && (
-              <InfoRow icon={<MapPin size={15} />}>
-                {salon.address}{salon.city ? `, ${salon.city}` : ''}{salon.postal_code ? ` ${salon.postal_code}` : ''}
-              </InfoRow>
-            )}
             {salon.phone && (
               <InfoRow icon={<Phone size={15} />} href={`tel:${salon.phone}`}>{salon.phone}</InfoRow>
             )}
@@ -272,6 +312,53 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
             </div>
           )}
         </div>
+
+        {/* Le travail de l'équipe.
+            La fiche n'avait aucune image en dehors de sa bannière : elle
+            présentait un lieu sans jamais montrer ce qu'on y fait. Plutôt
+            qu'une galerie qu'un gérant devrait remplir à la main — et qui
+            resterait vide — on affiche les réalisations déjà publiées par
+            l'équipe. Du contenu réel, disponible dès aujourd'hui. */}
+        {teamPosts.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-4">
+              <ImageIcon size={14} className="text-neutral-400" />
+              <h2 className="text-[10px] font-bold tracking-[0.25em] uppercase text-neutral-400">
+                Leurs réalisations
+              </h2>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {teamPosts.map((post) => {
+                const img = resolveMediaUrl(getAfterImage(post));
+                return (
+                  <Link
+                    key={post.id}
+                    href={`/app/realisation/${post.id}`}
+                    className="relative aspect-square rounded-xl overflow-hidden bg-neutral-100 active:scale-[0.97] transition-transform"
+                  >
+                    {img && (
+                      <Image
+                        src={img}
+                        alt={post.hairdresser?.user?.name ?? 'Réalisation'}
+                        fill
+                        className="object-cover"
+                        sizes="33vw"
+                      />
+                    )}
+                    {post.hairdresser?.user?.name && (
+                      <>
+                        <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
+                        <p className="absolute bottom-1.5 left-2 right-2 text-[10.5px] font-semibold text-white truncate">
+                          {post.hairdresser.user.name}
+                        </p>
+                      </>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );

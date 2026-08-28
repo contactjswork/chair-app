@@ -58,6 +58,53 @@ class SalonController extends Controller
         // liste (index()) qui devraient batcher au lieu d'append() par ligne.
         $salon->append('is_chair_business');
 
+        $teamIds = $salon->hairdressers->pluck('id');
+
+        // ── Note du salon ────────────────────────────────────────────────
+        //
+        // Calculée ici, sur les AVIS eux-mêmes, et non plus côté frontend en
+        // moyennant les moyennes de chaque coiffeur. Cette ancienne méthode
+        // était doublement fausse : elle donnait le même poids à un coiffeur
+        // ayant 1 avis qu'à un autre en ayant 100, et surtout elle comptait
+        // les coiffeurs SANS avis comme des zéros. Un salon avec un coiffeur
+        // à 5,0 et un nouveau sans avis affichait 2,5.
+        //
+        // La vraie note du salon, c'est la moyenne de tous les avis reçus par
+        // son équipe — un seul calcul, sur la seule source qui fasse foi.
+        // Filtre « différent de masqué » plutôt que « égale visible » : la
+        // colonne a pour défaut 'visible', mais des jeux de données plus
+        // anciens portent 'approved'. Exiger l'égalité stricte écartait
+        // silencieusement des avis parfaitement légitimes — constaté sur un
+        // salon dont l'unique avis 5 étoiles disparaissait du calcul. Seul un
+        // masquage explicite par la modération doit retirer un avis.
+        $stats = \App\Models\Review::whereIn('hairdresser_id', $teamIds)
+            ->where('status', '!=', 'hidden')
+            ->selectRaw('COUNT(*) as reviews_count, AVG(rating) as avg_rating')
+            ->first();
+
+        $reviewsCount = (int) ($stats->reviews_count ?? 0);
+
+        $salon->setAttribute('rating_summary', [
+            'avg_rating'    => $reviewsCount > 0 ? round((float) $stats->avg_rating, 1) : null,
+            'reviews_count' => $reviewsCount,
+            'team_count'    => $teamIds->count(),
+        ]);
+
+        // ── Réalisations de l'équipe ─────────────────────────────────────
+        //
+        // La fiche salon n'avait aucune image en dehors de sa bannière : elle
+        // ne montrait pas ce qu'on y fait. Plutôt que d'ajouter une galerie
+        // qu'un gérant devrait remplir à la main (et qui resterait vide),
+        // on affiche le travail réel de l'équipe, déjà publié.
+        $salon->setAttribute(
+            'team_posts',
+            $teamIds->isEmpty() ? [] : \App\Models\Post::with(['images', 'hairdresser.user:id,name'])
+                ->whereIn('hairdresser_id', $teamIds)
+                ->latest()
+                ->limit(12)
+                ->get()
+        );
+
         return response()->json($salon);
     }
 
@@ -172,6 +219,10 @@ class SalonController extends Controller
             'department'   => 'nullable|string|max:100',
             'phone'        => 'nullable|string|max:30',
             'website'      => 'nullable|url|max:500',
+            // Lien de reservation du salon (Planity, Zenoti, Shortcuts...).
+            // https impose comme pour hairdresser_profiles.booking_url : ce lien
+            // est ouvert dans le navigateur du systeme, jamais en clair.
+            'booking_url'  => 'nullable|url|max:500|starts_with:https://',
             'instagram_url'=> 'nullable|url|max:255',
             'siret'        => 'nullable|string|size:14|regex:/^\d{14}$/',
         ]);

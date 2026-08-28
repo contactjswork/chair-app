@@ -4,33 +4,43 @@ import { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { MapAdapter } from '@/components/search/mapProvider';
-import type { ApiHairdresserProfile } from '@/lib/types';
 
 /**
- * Où travaille ce coiffeur — carte + itinéraire.
+ * Carte de localisation + itinéraire — partagée par la fiche coiffeur et la
+ * fiche salon.
  *
- * La fiche indiquait le salon et la ville en texte, sans jamais montrer
- * l'endroit : impossible de juger si c'est sur le trajet, ni d'y aller. Cette
- * section répond aux deux questions, avec la même carte que la recherche
- * (Apple Plans, repli OpenStreetMap) plutôt qu'une image statique.
+ * Une adresse en texte ne répond à aucune des deux questions qu'on se pose
+ * vraiment : est-ce sur mon trajet, et comment j'y vais ? La carte répond à la
+ * première, les deux boutons à la seconde.
  *
  * L'itinéraire part vers l'application de cartes du téléphone, jamais dans
- * l'app : `target="_blank"` fait passer la demande au système, qui ouvre Plans
- * ou Google Maps. Sans ça, l'utilisateur se retrouverait avec une carte
- * embarquée dans CHAIR, sans navigation vocale et sans moyen de revenir.
+ * l'app : `target="_blank"` confie la demande au système, qui ouvre Plans ou
+ * Google Maps. Une carte embarquée dans CHAIR n'aurait ni navigation vocale ni
+ * moyen de revenir.
  *
- * Ne s'affiche pas du tout si le profil n'a pas de coordonnées exploitables —
- * une carte centrée sur un point faux est pire que pas de carte.
+ * Ne rend rien sans coordonnées exploitables — une carte centrée sur un point
+ * faux est pire qu'une absence de carte.
  */
 
 interface Props {
-  hairdresser: ApiHairdresserProfile;
+  /** Peuvent arriver en chaîne : colonnes DECIMAL non castées côté serveur. */
+  latitude: number | string | null | undefined;
+  longitude: number | string | null | undefined;
+  /** Titre de l'encart (« Où le trouver », « Adresse »…). */
+  sectionTitle?: string;
+  /** Nom mis en avant sous la carte (salon, enseigne) — facultatif. */
+  placeName?: string | null;
+  /** Rue, ville… déjà assemblées par l'appelant. */
+  addressLine?: string | null;
+  /** Initiale affichée dans le marqueur. */
+  markerInitial?: string;
+  markerKey: string;
+  className?: string;
 }
 
 /**
- * Conversion défensive : `latitude`/`longitude` remontent parfois en chaînes
- * (colonnes DECIMAL non castées côté serveur). Une chaîne passée à MapKit fait
- * lever « `latitude` is not a number » et emporte toute la page.
+ * Conversion défensive : une chaîne passée à MapKit fait lever
+ * « `latitude` is not a number » et emporte toute la page.
  */
 function toCoord(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null;
@@ -38,9 +48,18 @@ function toCoord(value: number | string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export default function PublicProfileLocation({ hairdresser }: Props) {
-  const lat = toCoord(hairdresser.latitude);
-  const lng = toCoord(hairdresser.longitude);
+export default function LocationMapCard({
+  latitude,
+  longitude,
+  sectionTitle = 'Où le trouver',
+  placeName = null,
+  addressLine = null,
+  markerInitial = '?',
+  markerKey,
+  className = '',
+}: Props) {
+  const lat = toCoord(latitude);
+  const lng = toCoord(longitude);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const adapterRef = useRef<MapAdapter | null>(null);
@@ -58,9 +77,9 @@ export default function PublicProfileLocation({ hairdresser }: Props) {
         const adapter = await createAndInitMapAdapter(containerRef.current, {
           center: { lat, lng },
           zoom: 14,
-          // Carte de consultation : aucun marqueur à sélectionner, aucune
-          // recherche à relancer au déplacement. Les rappels existent parce
-          // que l'interface les exige, ils n'ont rien à faire ici.
+          // Carte de consultation : rien à sélectionner, aucune recherche à
+          // relancer au déplacement. Ces rappels n'existent que parce que
+          // l'interface les exige.
           onSelect: () => {},
           onBackgroundTap: () => {},
           onUserMoveEnd: () => {},
@@ -73,14 +92,7 @@ export default function PublicProfileLocation({ hairdresser }: Props) {
 
         adapterRef.current = adapter;
         adapter.setMarkers([
-          {
-            key: `hairdresser-${hairdresser.id}`,
-            lat,
-            lng,
-            type: 'hairdresser',
-            rating: null,
-            initials: (hairdresser.user?.name ?? '?').charAt(0).toUpperCase(),
-          },
+          { key: markerKey, lat, lng, type: 'hairdresser', rating: null, initials: markerInitial },
         ]);
       } catch {
         if (!cancelled) setMapFailed(true);
@@ -92,27 +104,22 @@ export default function PublicProfileLocation({ hairdresser }: Props) {
       adapterRef.current?.destroy();
       adapterRef.current = null;
     };
-  }, [lat, lng, hairdresser.id, hairdresser.user?.name]);
+  }, [lat, lng, markerKey, markerInitial]);
 
   if (lat === null || lng === null) return null;
 
-  const salonName = hairdresser.salon?.name ?? null;
-  const street = hairdresser.work_address ?? null;
-  const city = hairdresser.salon?.city ?? hairdresser.city ?? null;
-
-  // Une seule ligne d'adresse, sans répétition ni virgule orpheline.
-  const addressLine = [street, city].filter(Boolean).join(' · ') || 'Localisation approximative';
-
   const destination = `${lat},${lng}`;
-  const label = encodeURIComponent(salonName ?? hairdresser.user?.name ?? 'CHAIR');
+  const label = encodeURIComponent(placeName ?? 'CHAIR');
   const appleMapsUrl = `https://maps.apple.com/?daddr=${destination}&q=${label}&dirflg=d`;
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
 
   return (
-    <section className="px-4 pt-2 pb-6">
-      <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-neutral-400 mb-3">
-        Où le trouver
-      </p>
+    <section className={className}>
+      {sectionTitle && (
+        <p className="text-[11px] font-bold tracking-[0.1em] uppercase text-neutral-400 mb-3">
+          {sectionTitle}
+        </p>
+      )}
 
       <div className="rounded-3xl overflow-hidden border border-neutral-100 bg-white">
         {mapFailed ? (
@@ -127,14 +134,16 @@ export default function PublicProfileLocation({ hairdresser }: Props) {
           <div className="flex items-start gap-2.5">
             <MapPin size={15} className="mt-0.5 shrink-0 text-neutral-400" />
             <div className="min-w-0">
-              {salonName && (
-                <p className="text-[13.5px] font-semibold text-neutral-900 leading-snug truncate">
-                  {salonName}
+              {placeName && (
+                <p className="text-[13.5px] font-semibold text-neutral-900 leading-snug break-words">
+                  {placeName}
                 </p>
               )}
-              <p className="text-[12.5px] text-neutral-500 leading-relaxed break-words">
-                {addressLine}
-              </p>
+              {addressLine && (
+                <p className="text-[12.5px] text-neutral-500 leading-relaxed break-words">
+                  {addressLine}
+                </p>
+              )}
             </div>
           </div>
 
