@@ -195,7 +195,7 @@ export function CoupDeCoeurStrip({
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
   }, [user, isLoading, effectiveLimit]);
 
-  // Exclut les coiffeurs déjà affichés par "Pour vous" (voir HomeDedupeContext)
+  // Exclut les coiffeurs déjà affichés par "Pour toi" (voir HomeDedupeContext)
   // — jamais le même visage deux fois de suite sur la home.
   const displayed = useDedupedList(hairdressers, (h) => h.id, effectiveLimit);
 
@@ -205,7 +205,7 @@ export function CoupDeCoeurStrip({
       <Reveal>
         <SectionHeader
           tag="Sélection CHAIR"
-          title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez vous' : 'Coup de cœur CHAIR')}
+          title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez toi' : 'Coup de cœur CHAIR')}
           href="/app/recherche"
         />
       </Reveal>
@@ -230,7 +230,7 @@ export function NewTalentsStrip({
       .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
   }, [user, isLoading, effectiveLimit]);
 
-  // Exclut les coiffeurs déjà affichés par "Pour vous" ET "Coup de cœur"
+  // Exclut les coiffeurs déjà affichés par "Pour toi" ET "Coup de cœur"
   // (voir HomeDedupeContext) — dernière section de la home à filtrer, elle
   // a donc la vue la plus complète de ce qui a déjà été montré.
   const displayed = useDedupedList(hairdressers, (h) => h.id, effectiveLimit);
@@ -241,7 +241,7 @@ export function NewTalentsStrip({
       <Reveal>
         <SectionHeader
           tag="Nouveau sur CHAIR"
-          title={titleOverride ?? (isGeo ? 'Nouveaux talents autour de vous' : 'Nouveaux talents')}
+          title={titleOverride ?? (isGeo ? 'Nouveaux talents autour de toi' : 'Nouveaux talents')}
           href="/app/recherche"
         />
       </Reveal>

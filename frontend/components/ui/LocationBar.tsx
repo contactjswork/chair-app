@@ -9,7 +9,7 @@ import BottomSheet from './BottomSheet';
 import CityAutocomplete from './CityAutocomplete';
 
 /**
- * Bouton "ville" visible au-dessus de "Pour vous" — le seul endroit d'où on
+ * Bouton "ville" visible au-dessus de "Pour toi" — le seul endroit d'où on
  * peut changer la ville qui pilote TOUT le filtrage géographique de la home,
  * sans devoir aller dans modifier-profil. Deux façons de la définir :
  * position GPS (reverse-géocodée) ou recherche ville avec autocomplétion.
@@ -93,14 +93,14 @@ export default function LocationBar() {
         <BottomSheet onClose={() => setOpen(false)} zIndexClassName="z-[70]">
           <div className="px-5 pb-8">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[17px] font-bold text-neutral-900">Votre ville</h2>
+              <h2 className="text-[17px] font-bold text-neutral-900">Ta ville</h2>
               <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
                 <X size={16} className="text-neutral-500" />
               </button>
             </div>
 
             <p className="text-[12px] text-neutral-400 mb-4">
-              Pilote tous les résultats « près de chez vous » sur la home.
+              Pilote tous les résultats « près de chez toi » sur la home.
             </p>
 
             <CityAutocomplete

@@ -151,7 +151,7 @@ export default function ComptePage() {
               <ChevronRight size={18} />
             </Link>
             <div className="border-t border-neutral-100 pt-4 mt-6">
-              <p className="text-xs text-neutral-400 text-center mb-4">Vous êtes coiffeur ?</p>
+              <p className="text-xs text-neutral-400 text-center mb-4">Tu es coiffeur ?</p>
               <Link
                 href="/pro/inscription"
                 target="_blank"
@@ -329,7 +329,7 @@ export default function ComptePage() {
                   <div className="text-center py-8 border border-dashed border-neutral-200 rounded-2xl">
                     <CalendarDays size={26} className="mx-auto text-neutral-300 mb-2" />
                     <p className="text-sm text-neutral-400">Aucune réservation</p>
-                    <p className="text-xs text-neutral-300 mt-1">Vos prochains rendez-vous apparaîtront ici</p>
+                    <p className="text-xs text-neutral-300 mt-1">Tes prochains rendez-vous apparaîtront ici</p>
                   </div>
                 ) : (
                   <div className="space-y-3">

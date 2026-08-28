@@ -114,7 +114,7 @@ export default function HomeRealisationsSection({
       <Reveal>
         <SectionHeader
           tag="Communauté"
-          title={titleOverride ?? (personalized ? 'Réalisations pour vous' : 'Réalisations du moment')}
+          title={titleOverride ?? (personalized ? 'Réalisations pour toi' : 'Réalisations du moment')}
           href="/app/feed"
         />
       </Reveal>

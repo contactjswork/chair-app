@@ -15,7 +15,7 @@ import type { RecommendationResult, RecommendationMeta } from '@/lib/recommendat
 import { useHomeDedupe } from '@/contexts/HomeDedupeContext';
 
 /**
- * "Pour vous" — section hero de la home, branchée sur le vrai moteur
+ * "Pour toi" — section hero de la home, branchée sur le vrai moteur
  * GET /api/recommendations (même service que /app/recherche). Hiérarchie de
  * poids gérée entièrement côté backend : spécialité choisie à l'onboarding
  * D'ABORD, puis proximité, puis réputation, CHAIR+ en tout dernier
@@ -39,7 +39,7 @@ export default function HomePersonalized({
   const [meta, setMeta] = useState<RecommendationMeta | null>(null);
   const [ready, setReady] = useState(false);
   const effectiveLimit = limit && limit > 0 ? limit : 12;
-  // "Pour vous" est premier dans le fil — ses picks ont priorité, les
+  // "Pour toi" est premier dans le fil — ses picks ont priorité, les
   // sections suivantes (Coup de cœur, Nouveaux talents) les excluent des
   // leurs pour ne jamais montrer deux fois le même coiffeur sur la home.
   const { claim } = useHomeDedupe();
@@ -111,13 +111,13 @@ export default function HomePersonalized({
             <div className="relative z-10">
               <div className="flex items-center gap-1.5 mb-3">
                 <Sparkles size={12} className="text-white/50" />
-                <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour vous</p>
+                <p className="text-[10px] font-bold tracking-[0.25em] uppercase text-white/50">Pour toi</p>
               </div>
               <h2 className="text-[20px] font-bold text-white leading-tight mb-2">
-                Le bon coiffeur,<br />selon votre style.
+                Le bon coiffeur,<br />selon ton style.
               </h2>
               <p className="text-[13px] text-white/55 leading-relaxed mb-5">
-                Créez un compte gratuit, CHAIR sélectionne les profils faits pour vous.
+                Crée un compte gratuit, CHAIR sélectionne les profils faits pour toi.
               </p>
               <div className="flex gap-2">
                 <Link href="/inscription" className="flex items-center gap-2 bg-white text-neutral-900 font-bold text-[13px] px-4 py-2.5 rounded-xl hover:bg-neutral-100 active:scale-[0.97] transition-all">
@@ -140,7 +140,7 @@ export default function HomePersonalized({
   if (entries.length === 0) {
     return (
       <section className="pt-10 px-4 md:px-8 max-w-6xl md:mx-auto">
-        <SectionHeader tag="Pour vous" title="Bientôt près de chez vous" />
+        <SectionHeader tag="Pour toi" title="Bientôt près de chez toi" />
         <p className="text-[13px] text-neutral-400 -mt-3">
           Aucun coiffeur inscrit sur CHAIR pour le moment. Revenez bientôt.
         </p>
@@ -149,13 +149,13 @@ export default function HomePersonalized({
   }
 
   const personalized = meta ? meta.pref_source !== 'none' : false;
-  const title = titleOverride ?? (personalized ? 'Selon votre style' : 'Les mieux notés');
+  const title = titleOverride ?? (personalized ? 'Selon ton style' : 'Les mieux notés');
   const badge = meta?.is_fallback ? meta.fallback_label ?? undefined : undefined;
   const noGeo = meta?.tier === 'no_geo';
 
   return (
     <section className="pt-10">
-      <Reveal><SectionHeader tag="Pour vous" title={title} href="/app/recherche" badge={badge} /></Reveal>
+      <Reveal><SectionHeader tag="Pour toi" title={title} href="/app/recherche" badge={badge} /></Reveal>
       <div className="flex gap-3 overflow-x-auto px-4 md:px-8 pb-3 no-scrollbar">
         {/* Cascade légère (délai croissant par carte, borné à 4 crans) — la
             promesse "pas juste le plus proche" mérite de se dévoiler carte
@@ -171,12 +171,12 @@ export default function HomePersonalized({
           href="/app/compte/modifier"
           className="mx-4 md:mx-8 mt-3 flex items-center gap-2 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors w-fit"
         >
-          <MapPin size={12} />Ajoutez votre ville pour affiner ces résultats
+          <MapPin size={12} />Ajoute ta ville pour affiner ces résultats
         </Link>
       )}
       {meta?.specialty_filter_relaxed && (
         <p className="mx-4 md:mx-8 mt-3 text-[12px] text-neutral-400">
-          Aucun profil ne correspond exactement à votre style dans le secteur — voici les mieux notés autour de vous.
+          Aucun profil ne correspond exactement à ton style dans le secteur — voici les mieux notés autour de toi.
         </p>
       )}
     </section>

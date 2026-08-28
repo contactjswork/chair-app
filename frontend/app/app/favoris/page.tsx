@@ -159,8 +159,8 @@ function FavorisEmptyState({ tab }: { tab: Tab }) {
       title={tab === 'coiffeurs' ? 'Aucun coiffeur sauvegardé' : 'Aucune publication sauvegardée'}
       subtitle={
         tab === 'coiffeurs'
-          ? 'Sauvegardez des coiffeurs depuis leur profil pour les retrouver ici.'
-          : 'Sauvegardez des réalisations depuis le feed pour les retrouver ici.'
+          ? 'Sauvegarde des coiffeurs depuis leur profil pour les retrouver ici.'
+          : 'Sauvegarde des réalisations depuis le feed pour les retrouver ici.'
       }
       action={
         <PrimaryButton href={tab === 'coiffeurs' ? '/app/recherche' : '/app/feed'}>

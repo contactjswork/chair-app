@@ -101,7 +101,7 @@ export default function NearbyMapSection({
   return (
     <section className="pt-10">
       <Reveal>
-        <SectionHeader tag="Autour de vous" title={titleOverride ?? 'Sur la carte'} href="/app/recherche" />
+        <SectionHeader tag="Autour de toi" title={titleOverride ?? 'Sur la carte'} href="/app/recherche" />
         {/* Le cadre (dimensions, coins, overlay, badge) est du ressort de
             cette section — le rendu interne de la carte (tuiles/marqueurs
             Leaflet) reste géré par leafletAdapter.ts, non touché ici. */}
@@ -120,7 +120,7 @@ export default function NearbyMapSection({
               <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur px-3.5 py-2 rounded-full shadow">
                 <MapPin size={13} className="text-neutral-900" />
                 <span className="text-[12px] font-bold text-neutral-900">
-                  {hairdressers.length}+ coiffeurs {geo.city ? `près de ${geo.city}` : 'près de vous'}
+                  {hairdressers.length}+ coiffeurs {geo.city ? `près de ${geo.city}` : 'près de toi'}
                 </span>
               </div>
               <div className="w-8 h-8 rounded-full bg-white/95 backdrop-blur flex items-center justify-center shadow flex-shrink-0">

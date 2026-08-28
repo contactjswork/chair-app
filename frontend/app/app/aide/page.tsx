@@ -24,7 +24,13 @@ const FAQS = [
   },
   {
     q: 'Comment laisser un avis ?',
-    a: "Les avis sont certifiés : tu peux en laisser un uniquement après un rendez-vous vérifié via QR code. Tu recevras une invitation par email ou notification.",
+    // La réponse affirmait « uniquement après un rendez-vous vérifié via QR
+    // code ». C'est faux : l'app propose aussi de noter un rendez-vous
+    // terminé, sans aucun QR (ReviewPromptModal, déclenché automatiquement).
+    // Un utilisateur à qui la fenêtre s'ouvre sans avoir rien scanné avait
+    // toutes les raisons de douter de la promesse « avis certifiés ». Les deux
+    // chemins existent, la différence entre eux mérite d'être dite.
+    a: "Deux façons. Après un rendez-vous pris sur CHAIR, l'app te propose de le noter — tu reçois une invitation par notification. Et si ton coiffeur te présente son QR code en fin de prestation, ton avis devient certifié : il porte alors un sceau indiquant que la visite a été vérifiée sur place.",
   },
   {
     q: 'Comment fonctionne la géolocalisation ?',

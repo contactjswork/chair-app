@@ -69,16 +69,20 @@ export default function ReviewPromptTrigger() {
     if (next) setCurrent(next);
   }, [pending]);
 
+  /**
+   * Fermer, c'est fermer — une seule demande par passage.
+   *
+   * La version précédente rouvrait immédiatement la fenêtre du rendez-vous
+   * suivant : un client ayant trois rendez-vous non notés en fermait trois
+   * d'affilée, et ça recommençait à chaque chargement de page tant que la
+   * fenêtre de quatre heures n'était pas écoulée — y compris pendant une
+   * réservation, la modale étant au même niveau d'empilement que la feuille
+   * de réservation. Enchaîner les demandes après un refus, c'est insister ;
+   * les rendez-vous restants seront proposés au prochain passage.
+   */
   const handleClose = () => {
     if (current) recordDismissal(current.id);
     setCurrent(null);
-    // Passer au suivant s'il y en a un autre
-    const remaining = pending.filter(
-      (a) => a.id !== current?.id && !isDismissedRecently(a.id)
-    );
-    if (remaining.length > 0) {
-      setTimeout(() => setCurrent(remaining[0]), 400);
-    }
   };
 
   const handleSubmitted = (appointmentId: number) => {
