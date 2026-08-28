@@ -438,6 +438,8 @@ export interface RealBookingData {
   appointment_date: string;
   appointment_time: string;
   message?: string;
+  /** Réalisation du portfolio jointe à la demande : « je voudrais ce résultat ». */
+  reference_post_id?: number;
 }
 
 export const appointments = {

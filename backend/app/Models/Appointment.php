@@ -11,6 +11,8 @@ class Appointment extends Model
         'client_name', 'client_email', 'client_phone',
         // Legacy fields (demande simple)
         'service', 'desired_date', 'desired_slot', 'message',
+        // Realisation du coiffeur montree en reservant — « je voudrais ca ».
+        'reference_post_id',
         // New real booking fields
         'service_id', 'appointment_date', 'appointment_time',
         'duration_minutes', 'price', 'payment_method',
@@ -32,6 +34,16 @@ class Appointment extends Model
     public function client()
     {
         return $this->belongsTo(User::class, 'client_id');
+    }
+
+    /**
+     * La realisation jointe a la demande. Toujours une realisation DU coiffeur
+     * reserve : montrer le travail d'un confrere ne prouverait pas qu'il sait
+     * le faire.
+     */
+    public function referencePost()
+    {
+        return $this->belongsTo(Post::class, 'reference_post_id');
     }
 
     public function serviceModel()

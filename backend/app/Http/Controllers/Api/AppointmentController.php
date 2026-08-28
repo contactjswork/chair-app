@@ -125,7 +125,26 @@ class AppointmentController extends Controller
                 'appointment_date' => 'required|date|after_or_equal:today',
                 'appointment_time' => 'required|date_format:H:i',
                 'message'          => 'nullable|string|max:1000',
+                // « Je voudrais ce résultat » — la réalisation que le client
+                // montre en réservant. Voir la migration
+                // add_reference_post_to_appointments.
+                'reference_post_id' => 'nullable|integer|exists:posts,id',
             ]);
+
+            // La réalisation doit appartenir au coiffeur réservé. Sans ce
+            // contrôle, un POST direct pourrait joindre le travail d'un
+            // confrère — au mieux maladroit, au pire vexant, et surtout aucune
+            // preuve que CE coiffeur sache le faire.
+            if (!empty($validated['reference_post_id'])) {
+                $ownsPost = \App\Models\Post::where('id', $validated['reference_post_id'])
+                    ->where('hairdresser_id', $validated['hairdresser_id'])
+                    ->exists();
+                if (!$ownsPost) {
+                    return response()->json([
+                        'message' => "Cette réalisation n'appartient pas à ce coiffeur.",
+                    ], 422);
+                }
+            }
 
             $service = \App\Models\Service::where('id', $validated['service_id'])
                 ->where('hairdresser_id', $validated['hairdresser_id'])
@@ -175,6 +194,7 @@ class AppointmentController extends Controller
                     'duration_minutes' => $service->duration_minutes,
                     'price'            => $service->price,
                     'message'          => $validated['message'] ?? null,
+                    'reference_post_id' => $validated['reference_post_id'] ?? null,
                     'status'           => 'confirmed',
                 ]);
             });
@@ -269,7 +289,10 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
         }
 
-        $appointments = Appointment::with(['client', 'serviceModel.category'])
+        // referencePost : la realisation que le client a montree en reservant.
+        // Sans elle ici, la fonctionnalite n'existerait que d'un cote — c'est
+        // le coiffeur qui doit la voir, c'est lui qui execute.
+        $appointments = Appointment::with(['client', 'serviceModel.category', 'referencePost.images'])
             ->where('hairdresser_id', $profile->id)
             ->orderByRaw("FIELD(status, 'pending', 'confirmed', 'completed', 'declined', 'cancelled', 'no_show', 'pending_payment')")
             ->orderBy('appointment_date')
@@ -800,7 +823,7 @@ class AppointmentController extends Controller
 
     public function clientAppointments(Request $request)
     {
-        $appointments = Appointment::with(['hairdresser.user', 'serviceModel', 'review'])
+        $appointments = Appointment::with(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
             ->where('client_id', $request->user()->id)
             ->orderByDesc('appointment_date')
             ->orderByDesc('created_at')
@@ -905,7 +928,7 @@ class AppointmentController extends Controller
 
         if ($applied === 0) {
             return response()->json(
-                $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review'])
+                $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
             );
         }
 
@@ -941,7 +964,7 @@ class AppointmentController extends Controller
         }
 
         return response()->json(
-            $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review'])
+            $appointment->fresh()->load(['hairdresser.user', 'serviceModel', 'review', 'referencePost.images'])
         );
     }
 

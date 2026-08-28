@@ -4,7 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { resolveMediaUrl, formatApptDate, type ApiAppointment } from '@/lib/types';
+import { resolveMediaUrl, getAfterImage, formatApptDate, type ApiAppointment } from '@/lib/types';
 import { appointments as appointmentsApi, interactions } from '@/lib/api';
 import { hapticWarning } from '@/lib/haptics';
 import type { SavedHairdresser } from '@/lib/api';
@@ -658,6 +658,7 @@ function ClientAppointmentCard({
   })();
 
   const cancellable = canClientCancel(appt);
+  const referenceImage = appt.reference_post ? getAfterImage(appt.reference_post) : null;
 
   return (
     <div className="border border-neutral-200 rounded-2xl overflow-hidden">
@@ -691,6 +692,23 @@ function ClientAppointmentCard({
             </span>
           )}
         </div>
+        {/* La réalisation jointe à la demande. Elle a autant sa place ici que
+            l'heure : c'est ce que le client a demandé, et c'est à cette photo
+            qu'il comparera le résultat en sortant du salon. */}
+        {referenceImage && (
+          <div className="mt-3 flex items-center gap-2.5">
+            {/* Miniature distante non déclarée dans next.config. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={referenceImage}
+              alt=""
+              className="w-11 h-14 rounded-lg object-cover border border-neutral-200 shrink-0"
+            />
+            <p className="text-[11px] text-neutral-500 leading-snug">
+              Vous avez montré cette réalisation
+            </p>
+          </div>
+        )}
         {(hairdresserSlug || cancellable) && (
           <div className="mt-3 pt-3 border-t border-neutral-100 space-y-2">
             {hairdresserSlug && (

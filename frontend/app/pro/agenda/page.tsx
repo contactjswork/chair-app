@@ -8,7 +8,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import BottomSheet from '@/components/ui/BottomSheet';
 import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
-import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl } from '@/lib/types';
+import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl, getAfterImage } from '@/lib/types';
 import {
   CalendarDays, Clock, ChevronLeft, ChevronRight, Settings,
   Bell, ZoomIn, ZoomOut, User, X, Check, Phone, Mail,
@@ -159,6 +159,7 @@ function AppointmentSheet({
     newDate !== (apt.appointment_date??'') ||
     newTime !== fmtTime(apt.appointment_time) ||
     newDur  !== String(apt.duration_minutes??60);
+  const referenceImage = apt.reference_post ? getAfterImage(apt.reference_post) : null;
 
   return (
     <BottomSheet onClose={onClose} maxHeight="max-h-[90vh]">
@@ -206,6 +207,28 @@ function AppointmentSheet({
                 <Mail size={13} className="flex-shrink-0" /><span className="truncate">{apt.client_email}</span>
               </a>
             )}
+          </div>
+        )}
+
+        {/* Le résultat souhaité. Un coiffeur qui ouvre une fiche juste avant
+            de recevoir son client doit voir la photo tout de suite — c'est
+            l'information qui change le geste. D'où sa place ici, avant la
+            planification, et une taille où l'on distingue vraiment la coupe. */}
+        {referenceImage && (
+          <div className="px-5 py-4 border-b border-neutral-100">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 mb-3">Résultat souhaité</p>
+            <div className="flex items-center gap-3">
+              {/* Miniature distante non déclarée dans next.config. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={referenceImage}
+                alt=""
+                className="w-20 h-[104px] rounded-xl object-cover border border-neutral-200 flex-shrink-0"
+              />
+              <p className="text-[12px] text-neutral-500 leading-snug">
+                Le client a choisi cette réalisation dans votre portfolio en réservant.
+              </p>
+            </div>
           </div>
         )}
 

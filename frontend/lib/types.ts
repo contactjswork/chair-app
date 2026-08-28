@@ -560,6 +560,12 @@ export interface ApiAppointment {
   price: string | null;
   payment_method: 'on_site' | 'deposit' | 'full' | null;
   message: string | null;
+  /**
+   * La réalisation que le client a jointe en réservant : « je voudrais ce
+   * résultat ». Toujours une réalisation du coiffeur réservé — le serveur
+   * refuse les autres.
+   */
+  reference_post?: ApiPost | null;
   status: AppointmentStatus;
   review_token: string | null;
   review_unlocked: boolean;

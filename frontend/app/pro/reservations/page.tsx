@@ -6,7 +6,7 @@ import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { appointments as apptApi } from '@/lib/api';
 import type { ApiAppointment, AppointmentStatus } from '@/lib/types';
-import { formatDate } from '@/lib/types';
+import { formatDate, getAfterImage } from '@/lib/types';
 import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Copy, Check } from 'lucide-react';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
@@ -64,6 +64,7 @@ function AppointmentCard({
   const timeFormatted = appt.appointment_time
     ? appt.appointment_time.slice(0, 5)
     : appt.desired_slot;
+  const referenceImage = appt.reference_post ? getAfterImage(appt.reference_post) : null;
 
   return (
     <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 space-y-3">
@@ -96,6 +97,26 @@ function AppointmentCard({
             <span className="font-semibold text-neutral-900">{parseFloat(appt.price).toFixed(0)} €</span>
           )}
         </div>
+        {/* La réalisation que le client a montrée en réservant. C'est le
+            briefing le plus fiable qu'on puisse recevoir : pas une
+            description, une photo — et une photo du travail de ce coiffeur,
+            donc reproductible. Elle passe AVANT le message : on regarde
+            d'abord, on lit ensuite. */}
+        {referenceImage && (
+          <div className="flex items-start gap-2.5 border-t border-neutral-200 pt-2 mt-2">
+            {/* Miniature distante non déclarée dans next.config. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={referenceImage}
+              alt=""
+              className="w-14 h-[72px] rounded-lg object-cover border border-neutral-200 shrink-0"
+            />
+            <p className="text-[11px] text-neutral-600 leading-snug">
+              <span className="font-semibold text-neutral-900 block">Résultat souhaité</span>
+              Le client a choisi cette réalisation dans votre portfolio.
+            </p>
+          </div>
+        )}
         {appt.message && (
           <p className="text-xs text-neutral-500 italic border-t border-neutral-200 pt-1.5 mt-1.5">
             &quot;{appt.message}&quot;
