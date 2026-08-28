@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Globe, Users, Star, BadgeCheck, ChevronRight, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Globe, Users, Star, BadgeCheck, ChevronRight, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { resolveMediaUrl, getAfterImage, type ApiSalonFull } from '@/lib/types';
 import AppShell from '@/components/layout/AppShell';
 import BackButton from '@/components/ui/BackButton';
@@ -274,15 +274,13 @@ export default async function SalonPage({ params }: { params: Promise<{ slug: st
           addressLine={[salon.address, [salon.postal_code, salon.city].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || null}
           markerInitial={(salon.name ?? '?').charAt(0).toUpperCase()}
           markerKey={`salon-${salon.id}`}
+          phone={salon.phone}
           className="mb-8"
         />
 
         {/* Infos pratiques — carte avec relief, icônes en pastille */}
-        {(salon.phone || salon.website || salon.instagram_url) && (
+        {(salon.website || salon.instagram_url) && (
           <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 px-4 py-1 mb-8 divide-y divide-neutral-50">
-            {salon.phone && (
-              <InfoRow icon={<Phone size={15} />} href={`tel:${salon.phone}`}>{salon.phone}</InfoRow>
-            )}
             {salon.website && (
               <InfoRow icon={<Globe size={15} />} href={salon.website}>{salon.website.replace(/^https?:\/\//, '')}</InfoRow>
             )}

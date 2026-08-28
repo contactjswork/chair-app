@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Clock, ExternalLink, ChevronRight, Scissors, BadgeCheck } from 'lucide-react';
+import { Clock, ExternalLink, ChevronRight, Scissors, BadgeCheck, Phone } from 'lucide-react';
 import type { ApiServiceCategory, ApiService, ApiSpecialtyHighlight } from '@/lib/types';
 import BookingSheet from './BookingSheet';
 import EmptyState from './EmptyState';
@@ -21,12 +21,14 @@ interface Props {
    * aucun moyen d'être réservé — donc aucune clientèle possible sur CHAIR.
    */
   salonBookingUrl?: string | null;
+  /** Téléphone du salon — seul moyen de réserver quand il n'a pas d'agenda. */
+  salonPhone?: string | null;
   /** Réputation par spécialité (specialty_highlights du profil) — sert à
    *  afficher les visites certifiées réelles à côté de chaque groupe. */
   specialtyHighlights?: ApiSpecialtyHighlight[];
 }
 
-export default function PublicProfileServices({ slug, categories, isIndependent, bookingUrl, salonBookingUrl = null, specialtyHighlights = [] }: Props) {
+export default function PublicProfileServices({ slug, categories, isIndependent, bookingUrl, salonBookingUrl = null, salonPhone = null, specialtyHighlights = [] }: Props) {
   const [preselect, setPreselect] = useState<ApiService | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -99,9 +101,22 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
           </p>
           <p className="text-[12px] text-neutral-500 mt-1 leading-relaxed">
             Ce coiffeur travaille en salon et n&apos;a pas encore de réservation en ligne.
-            Contacte son salon pour prendre rendez-vous avec lui — les prestations
-            ci-dessous sont celles qu&apos;il propose.
+            {salonPhone
+              ? ' Appelle son salon pour prendre rendez-vous avec lui — les prestations ci-dessous sont celles qu’il propose.'
+              : ' Contacte son salon pour prendre rendez-vous avec lui — les prestations ci-dessous sont celles qu’il propose.'}
           </p>
+          {/* Un numéro qu'on ne peut que lire ne sert à rien sur un téléphone :
+              le lien tel: ouvre directement le composeur. C'est ici le SEUL
+              chemin possible vers un rendez-vous. */}
+          {salonPhone && (
+            <a
+              href={`tel:${salonPhone.replace(/\s/g, '')}`}
+              className="mt-3 flex items-center justify-center gap-2 bg-neutral-900 text-white text-[13px] font-semibold px-4 py-2.5 rounded-full active:scale-[0.98] transition-transform"
+            >
+              <Phone size={14} />
+              {salonPhone}
+            </a>
+          )}
         </div>
       )}
 

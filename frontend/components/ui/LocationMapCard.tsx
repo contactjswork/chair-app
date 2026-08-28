@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, Phone } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import type { MapAdapter } from '@/components/search/mapProvider';
 
@@ -35,6 +35,12 @@ interface Props {
   /** Initiale affichée dans le marqueur. */
   markerInitial?: string;
   markerKey: string;
+  /**
+   * Téléphone du lieu. Affiché en bouton d'appel à côté de l'itinéraire :
+   * c'est là qu'on le cherche, et c'est le seul moyen de joindre un salon qui
+   * n'a pas d'agenda en ligne.
+   */
+  phone?: string | null;
   className?: string;
 }
 
@@ -56,6 +62,7 @@ export default function LocationMapCard({
   addressLine = null,
   markerInitial = '?',
   markerKey,
+  phone = null,
   className = '',
 }: Props) {
   const lat = toCoord(latitude);
@@ -166,6 +173,19 @@ export default function LocationMapCard({
               Google Maps
             </a>
           </div>
+
+          {/* Appeler — sur une ligne à part, en pleine largeur : pour un salon
+              sans agenda en ligne, c'est le SEUL moyen de prendre rendez-vous.
+              Le lien tel: ouvre directement le composeur du téléphone. */}
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/\s/g, '')}`}
+              className="mt-2 flex items-center justify-center gap-2 border border-neutral-200 text-neutral-800 text-[12.5px] font-semibold px-4 py-2.5 rounded-full active:scale-[0.98] transition-transform"
+            >
+              <Phone size={13} />
+              {phone}
+            </a>
+          )}
         </div>
       </div>
     </section>

@@ -166,6 +166,8 @@ export interface ApiSalon {
   /** Agenda en ligne du salon (Planity, Zenoti, Shortcuts…), hérité par ses
    *  salariés — voir PublicProfileServices. Absent des réponses allégées. */
   booking_url?: string | null;
+  /** Seul moyen de joindre un salon qui n'a pas d'agenda en ligne. */
+  phone?: string | null;
 }
 
 export interface ApiReview {

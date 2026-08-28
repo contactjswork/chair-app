@@ -158,6 +158,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                   isIndependent={hairdresser.is_independent}
                   bookingUrl={hairdresser.booking_url}
                   salonBookingUrl={hairdresser.salon?.booking_url ?? null}
+                  salonPhone={hairdresser.salon?.phone ?? null}
                   specialtyHighlights={hairdresser.specialty_highlights ?? []}
                 />
               ),
@@ -178,6 +179,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
                     addressLine={[hairdresser.work_address, hairdresser.salon?.city ?? hairdresser.city].filter(Boolean).join(' · ') || null}
                     markerInitial={(hairdresser.user?.name ?? '?').charAt(0).toUpperCase()}
                     markerKey={`hairdresser-${hairdresser.id}`}
+                    phone={hairdresser.salon?.phone ?? null}
                     className="px-4 pt-2 pb-6"
                   />
                 </>
