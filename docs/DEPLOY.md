@@ -33,56 +33,72 @@ git push origin main
 
 **Connexion SSH :** Infomaniak → Hébergement → getchair.app → SSH
 
+**Une seule commande** (le `( ... )` évite que la session SSH se ferme en cas
+d'erreur — on garde le message à l'écran) :
+
 ```bash
-cd ~/sites/api.getchair.app/backend
-git pull origin main
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:clear
-php artisan route:cache
+( set -eo pipefail; cd ~/sites/api.getchair.app; test -f artisan; test -f .env; git fetch origin main; git archive origin/main backend | tar -x --strip-components=1; php artisan migrate --force; php artisan config:clear; php artisan route:clear; php artisan route:cache; curl -s -o /dev/null -w "API %{http_code}\n" https://api.getchair.app/api/hairdressers )
 ```
 
-**C'est tout.** Ne jamais faire `migrate:fresh` ou `migrate:fresh --seed` en prod.
+Attendu à la fin : les migrations en `DONE`, puis `API 200`.
 
-### ⚠️ Piège connu (découvert le 2026-07-27) — structure de dossier
-
-`~/sites/api.getchair.app/backend/` est un clone git du **mono-repo entier**
-(`chair-app.git`, qui contient `backend/` ET `frontend/` comme sous-dossiers),
-mais le serveur attend les fichiers Laravel **directement à la racine** de ce
-dossier (`artisan`, `routes/`, `app/`... à plat, pas dans un sous-dossier
-`backend/`). Un `git pull`/`git reset --hard origin/main` classique recrée
-donc `backend/` et `frontend/` comme sous-dossiers imbriqués **sans mettre à
-jour les fichiers à plat que le site sert réellement**.
-
-Si après un `git pull` les changements ne semblent pas pris en compte, vérifier :
+Vérifier au besoin qu'une migration précise est bien passée :
 ```bash
-ls backend/routes/api.php   # si ce fichier existe, le pull a atterri au mauvais endroit
-```
-Si c'est le cas, fusionner manuellement puis nettoyer :
-```bash
-cp -a backend/. .
-rm -rf backend frontend
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:clear
-php artisan route:cache
+cd ~/sites/api.getchair.app && php artisan migrate:status 2>/dev/null | grep NOM_DE_LA_MIGRATION
 ```
 
-**Après tout `composer install` en SSH** : le PHP utilisé en ligne de commande
-sur ce serveur (`which php` → `/opt/php8.4/bin/php`) n'est pas celui qui sert
-le site (`php -v` côté web → 8.2.31). Composer génère alors un
-`vendor/composer/platform_check.php` qui exige PHP 8.4+ et fait planter
-**toutes** les requêtes web en 500, alors que `composer.json` n'exige en
-réalité que `^7.3|^8.0`. Neutraliser systématiquement après chaque
-`composer install` :
+**Ne jamais faire** `migrate:fresh` ni `migrate:fresh --seed` en prod.
+
+---
+
+### Pourquoi `git archive` et pas `git pull` (piège de structure)
+
+`~/sites/api.getchair.app/` est un clone du **mono-repo** (qui contient
+`backend/` ET `frontend/` comme sous-dossiers), mais le serveur sert les
+fichiers Laravel **à plat** dans ce dossier (`artisan`, `routes/`, `app/`…),
+avec `public/` comme document root. Un `git pull` recrée donc un sous-dossier
+`backend/` **sans toucher aux fichiers à plat réellement servis** : le déploiement
+semble marcher et rien ne change.
+
+`git archive origin/main backend | tar -x --strip-components=1` extrait le
+sous-dossier `backend/` du dépôt **directement à plat**. Il écrase les fichiers
+suivis et **ne supprime rien** : `.env`, `vendor/` et `storage/` sont intouchés.
+
+> ⚠️ **Ne jamais utiliser `rm -rf backend frontend`** (l'ancienne recette de ce
+> guide). Le 2026-08-27 elle a mis l'API entièrement hors ligne : le document
+> root pointait dans un de ces dossiers. Aucune suppression n'est nécessaire —
+> `git archive` suffit.
+
+### Chemin : `~/sites/api.getchair.app` — SANS `/backend`
+
+Vérifié le 2026-08-28. Il existe une **copie orpheline** `~/backend/`, restée
+de l'incident : elle n'est pas servie, ne pas déployer dedans.
+
+Pour reconfirmer lequel est servi (témoin posé puis effacé aussitôt) :
+```bash
+echo SITES > ~/sites/api.getchair.app/public/_probe.txt; echo TILDE_BACKEND > ~/backend/public/_probe.txt; echo -n "SERVI = "; curl -s https://api.getchair.app/_probe.txt; rm -f ~/sites/api.getchair.app/public/_probe.txt ~/backend/public/_probe.txt
+```
+
+### Composer : seulement si `composer.lock` a changé
+
+Vérifier avant, depuis le PC :
+```bash
+git diff --name-only <commit_serveur> main -- backend/composer.lock
+```
+Vide → sauter `composer install`, et éviter du même coup le piège ci-dessous.
+
+**Après tout `composer install` en SSH** : le PHP en ligne de commande
+(`/opt/php8.4/bin/php`) n'est pas celui qui sert le site (8.2). Composer génère
+un `vendor/composer/platform_check.php` qui exige PHP 8.4+ et fait planter
+**toutes** les requêtes web en 500, alors que `composer.json` n'exige que
+`^7.3|^8.0`. Neutraliser systématiquement :
 ```bash
 sed -i 's/PHP_VERSION_ID >= 80401/true/' vendor/composer/platform_check.php
 ```
 
-**Cause structurelle non résolue** : ce dossier devrait idéalement être un
-sparse-checkout ne récupérant que le sous-dossier `backend/` du mono-repo, ou
-un repo séparé. Tant que ce n'est pas mis en place, ce piège se reproduira à
-chaque déploiement — suivre la procédure ci-dessus à chaque fois.
+**Cause structurelle non résolue** : ce dossier devrait être un sparse-checkout
+du seul sous-dossier `backend/`, ou un repo séparé. En attendant, `git archive`
+contourne le problème proprement à chaque fois.
 
 ---
 
@@ -112,7 +128,7 @@ NEXT_PUBLIC_API_URL = https://api.getchair.app/api
 ### Backend — fichier .env sur le serveur
 ```
 # NE JAMAIS écraser ce fichier avec le .env local !
-# Chemin : ~/sites/api.getchair.app/backend/.env
+# Chemin : ~/sites/api.getchair.app/.env
 APP_ENV=production
 APP_URL=https://api.getchair.app
 DB_HOST=0o3cnm.myd.infomaniak.com
@@ -127,9 +143,9 @@ DB_PASSWORD=[mot de passe Infomaniak — ne pas committer]
 
 | Quoi              | Chemin                                                                  |
 |-------------------|-------------------------------------------------------------------------|
-| Backend Laravel   | `~/sites/api.getchair.app/backend/`                                     |
-| Fichier .env prod | `~/sites/api.getchair.app/backend/.env`                                 |
-| Logs Laravel      | `~/sites/api.getchair.app/backend/storage/logs/laravel.log`            |
+| Backend Laravel   | `~/sites/api.getchair.app/`                                     |
+| Fichier .env prod | `~/sites/api.getchair.app/.env`                                 |
+| Logs Laravel      | `~/sites/api.getchair.app/storage/logs/laravel.log`            |
 | Frontend Vercel   | Auto-géré par Vercel                                                    |
 
 ---
@@ -137,7 +153,7 @@ DB_PASSWORD=[mot de passe Infomaniak — ne pas committer]
 ## Diagnostic en cas de 500 sur l'API
 
 ```bash
-cd ~/sites/api.getchair.app/backend
+cd ~/sites/api.getchair.app
 
 # Voir l'erreur exacte
 grep -n "ERROR" storage/logs/laravel.log | tail -5
@@ -163,6 +179,8 @@ php artisan config:clear
 - `php artisan migrate:fresh --seed` — efface + remet des données fictives
 - Écraser le `.env` de prod avec le `.env` local
 - `git push --force` sur main
+- `rm -rf backend frontend` — a mis l'API hors ligne le 2026-08-27
+- Deployer dans `~/backend/` — copie orpheline, non servie
 
 ---
 
