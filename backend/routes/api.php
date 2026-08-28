@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\AppConfigController;
 use App\Http\Controllers\Api\MapKitTokenController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserBlockController;
+use App\Http\Controllers\Api\BookingIntentController;
 
 // Admin — authentification par compte Sanctum réel (role='admin' + un
 // admin_role granulaire), PLUS de jeton statique partagé. Voir
@@ -357,6 +358,12 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // (verbes distincts), mais l'ordre garde les deux DELETE côte à côte.
     Route::delete('/notifications',           [NotificationController::class, 'destroyAll']);
     Route::delete('/notifications/{id}',      [NotificationController::class, 'destroy']);
+
+    // Intentions de reservation — trace qu'un client a ouvert l'agenda
+    // externe d'un coiffeur depuis CHAIR (voir le modele BookingIntent).
+    Route::post('/booking-intents',              [BookingIntentController::class, 'store']);
+    Route::get('/booking-intents/pending',      [BookingIntentController::class, 'pending']);
+    Route::post('/booking-intents/{id}/dismiss', [BookingIntentController::class, 'dismiss']);
 
     // Préférences de notifications (respectées à l'envoi — voir NotificationService::shouldSend)
     Route::get('/notification-preferences', [NotificationPreferenceController::class, 'show']);

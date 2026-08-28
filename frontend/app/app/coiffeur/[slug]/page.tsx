@@ -154,6 +154,7 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               content: (
                 <PublicProfileServices
                   slug={hairdresser.slug}
+                  hairdresserId={hairdresser.id}
                   categories={serviceCategories}
                   isIndependent={hairdresser.is_independent}
                   bookingUrl={hairdresser.booking_url}

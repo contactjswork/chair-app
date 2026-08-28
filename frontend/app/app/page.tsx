@@ -5,6 +5,7 @@ import StoriesBar from '@/components/ui/StoriesBar';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import SpecialtyQuickLinks from '@/components/ui/SpecialtyQuickLinks';
 import LocationBar from '@/components/ui/LocationBar';
+import BookingIntentReminder from '@/components/ui/BookingIntentReminder';
 import HomePersonalized from '@/components/ui/HomePersonalized';
 import { CoupDeCoeurStrip, NewTalentsStrip } from '@/components/ui/HomeGeoStrips';
 import HomeRankingSection, { type RankedEntry } from '@/components/ui/HomeRankingSection';
@@ -152,6 +153,12 @@ export default async function HomePage() {
 
       {/* Ville active — pilote tout le filtrage géo de la home, changeable ici */}
       <LocationBar />
+
+      {/* Rappel de faire scanner le QR après un départ vers un agenda externe.
+          Ne rend rien dans l'immense majorité des cas — voir le composant. */}
+      <div className="px-4 md:px-8 max-w-6xl md:mx-auto pt-4">
+        <BookingIntentReminder />
+      </div>
 
       {/* Stories — coiffeurs suivis uniquement, jamais un feed mondial. Se
           masque toute seule si vide (visiteur, ou personne suivi) : ne

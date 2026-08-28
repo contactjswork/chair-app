@@ -6,9 +6,13 @@ import type { ApiServiceCategory, ApiService, ApiSpecialtyHighlight } from '@/li
 import BookingSheet from './BookingSheet';
 import EmptyState from './EmptyState';
 import { PrimaryButton } from './Button';
+import { bookingIntents } from '@/lib/api';
+import { getStoredToken } from '@/lib/auth';
 
 interface Props {
   slug: string;
+  /** Nécessaire pour enregistrer l'intention au départ vers l'agenda externe. */
+  hairdresserId: number;
   categories: ApiServiceCategory[];
   isIndependent: boolean;
   bookingUrl: string | null;
@@ -28,7 +32,7 @@ interface Props {
   specialtyHighlights?: ApiSpecialtyHighlight[];
 }
 
-export default function PublicProfileServices({ slug, categories, isIndependent, bookingUrl, salonBookingUrl = null, salonPhone = null, specialtyHighlights = [] }: Props) {
+export default function PublicProfileServices({ slug, hairdresserId, categories, isIndependent, bookingUrl, salonBookingUrl = null, salonPhone = null, specialtyHighlights = [] }: Props) {
   const [preselect, setPreselect] = useState<ApiService | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -58,6 +62,23 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
    */
   const externalBookingUrl = isIndependent ? null : (bookingUrl ?? salonBookingUrl ?? null);
 
+  /**
+   * Trace le départ vers l'agenda externe — en silence, sans rien demander.
+   *
+   * C'est le seul moment où CHAIR sait qu'un client s'intéresse assez à ce
+   * coiffeur pour aller réserver. Sans cette trace, la personne disparaît :
+   * pas de rappel de faire scanner le QR sur place, donc pas d'avis certifié,
+   * donc aucune réputation possible pour un salarié.
+   *
+   * Volontairement non bloquant, et l'échec est ignoré : perdre une
+   * statistique est sans conséquence, retarder un rendez-vous ne l'est pas.
+   * Sans session, il n'y a personne à qui rappeler quoi que ce soit.
+   */
+  function trackDeparture() {
+    if (!getStoredToken()) return;
+    void bookingIntents.record(hairdresserId).catch(() => {});
+  }
+
   if (visibleCategories.length === 0) {
     return (
       <EmptyState
@@ -80,6 +101,7 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
             fullWidth
             href={externalBookingUrl}
             target="_blank"
+            onClick={trackDeparture}
             icon={<ExternalLink size={15} strokeWidth={2} />}
           >
             Réserver sur le site du salon
@@ -202,6 +224,7 @@ export default function PublicProfileServices({ slug, categories, isIndependent,
                       href={externalBookingUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={trackDeparture}
                       aria-label={`Réserver ${svc.name} sur le site du salon`}
                       className="w-full flex items-center py-4 border-b border-neutral-100 text-left transition-colors active:bg-neutral-50 hover:bg-neutral-50/60"
                     >

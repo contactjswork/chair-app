@@ -215,6 +215,19 @@ class VisitController extends Controller
 
         $visit = QrTokenService::recordVisit($token, $clientUserId, $serviceName, $specialtyId);
 
+        // La boucle se referme ICI, et nulle part ailleurs.
+        //
+        // Quand ce client avait ouvert l'agenda externe de ce coiffeur depuis
+        // CHAIR, une intention avait été enregistrée en silence. Le scan
+        // prouve qu'il est venu : on la résout, et le rappel « pense à faire
+        // scanner ton QR » disparaît de lui-même. Le client n'a jamais eu à
+        // déclarer quoi que ce soit — c'est le QR qui fait foi.
+        \App\Models\BookingIntent::resolveByVisit(
+            $clientUserId,
+            $token->hairdresser_id,
+            $visit->scanned_at ?? now()
+        );
+
         return response()->json([
             'visit_id'         => $visit->id,
             'hairdresser_id'   => $token->hairdresser_id,

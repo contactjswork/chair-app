@@ -517,6 +517,26 @@ export const visits = {
 
 import type { ApiNotificationPreferences, ApiNotificationsResponse, ApiSearchResponse, ApiSearchSuggestion } from './types';
 
+/**
+ * Intentions de réservation — trace qu'un client a ouvert l'agenda externe
+ * d'un coiffeur depuis CHAIR. Voir le modèle BookingIntent côté serveur.
+ */
+export const bookingIntents = {
+  /**
+   * À déclencher au moment du tap, sans jamais bloquer la navigation : si
+   * l'appel échoue, le client part quand même sur l'agenda du salon. Perdre
+   * une statistique est sans conséquence ; retarder son rendez-vous, non.
+   */
+  record: (hairdresserId: number) =>
+    api.post<{ intent_id: number; created: boolean }>('/booking-intents', { hairdresser_id: hairdresserId }),
+
+  pending: () =>
+    api.get<{ intent: null | { id: number; hairdresser_slug: string | null; hairdresser_name: string | null; opened_at: string } }>('/booking-intents/pending'),
+
+  dismiss: (id: number) =>
+    api.post<{ ok: boolean }>(`/booking-intents/${id}/dismiss`, {}),
+};
+
 export const notifications = {
   /** Badge polling — retourne { notifications, unread_count } pour les non lues */
   list: () =>
