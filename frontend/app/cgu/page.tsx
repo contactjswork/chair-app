@@ -80,14 +80,14 @@ export default function CGUPage() {
             <Li>Consulter les réalisations, avis et profils des coiffeurs</Li>
             <Li>Sauvegarder vos coiffeurs favoris et vous y abonner</Li>
             <Li>Réserver des rendez-vous chez les coiffeurs indépendants</Li>
-            <Li>Laisser des avis certifiés après un rendez-vous</Li>
+            <Li>Laisser des avis vérifiés après un rendez-vous</Li>
           </ul>
           <p><strong className="text-neutral-800">Pour les coiffeurs / salons :</strong></p>
           <ul className="space-y-1.5 list-none">
             <Li>Créer et gérer un profil professionnel</Li>
             <Li>Publier des réalisations (photos/vidéos)</Li>
             <Li>Recevoir et gérer des réservations</Li>
-            <Li>Obtenir des avis clients certifiés via QR code</Li>
+            <Li>Obtenir des avis clients vérifiés via QR code</Li>
             <Li>Accéder à des statistiques de performance</Li>
           </ul>
         </Section>
@@ -112,8 +112,10 @@ export default function CGUPage() {
 
         <Section title="5. Avis et évaluations">
           <p>
-            Le système d'avis de CHAIR est basé sur des <strong className="text-neutral-800">avis certifiés</strong> :
-            seuls les clients ayant effectué un rendez-vous vérifié (via QR code unique) peuvent laisser un avis.
+            Un avis se laisse après un rendez-vous pris sur CHAIR. Lorsque la visite a été confirmée
+            sur place au moyen du QR code du coiffeur, l&apos;avis porte en outre la mention
+            <strong className="text-neutral-800">« visite vérifiée »</strong>, qui atteste de la présence du
+            client auprès du professionnel — et non du contenu de la prestation.
           </p>
           <ul className="space-y-1.5 list-none">
             <Li>Les avis doivent être sincères, honnêtes et basés sur votre expérience réelle</Li>

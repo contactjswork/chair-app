@@ -147,7 +147,7 @@ export default function ReviewsCompact({
           <div className="flex items-start gap-2 bg-neutral-50 rounded-xl px-3 py-2.5">
             <ShieldCheck size={13} className="text-neutral-400 mt-0.5 flex-shrink-0" />
             <p className="text-[11px] text-neutral-500 leading-relaxed">
-              Les avis CHAIR sont certifiés après un rendez-vous confirmé et terminé.
+              Les avis CHAIR sont vérifiés après un rendez-vous confirmé et terminé.
             </p>
           </div>
         </div>

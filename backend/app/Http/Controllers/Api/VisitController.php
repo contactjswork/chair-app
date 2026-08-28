@@ -240,7 +240,7 @@ class VisitController extends Controller
 
     /**
      * POST /api/scan/review  [auth:client]
-     * Soumet un avis certifié pour une visite vérifiée.
+     * Soumet un avis vérifié pour une visite vérifiée.
      */
     public function submitReview(Request $request)
     {
@@ -296,7 +296,7 @@ class VisitController extends Controller
         $count = Review::where('hairdresser_id', $visit->hairdresser_id)->count();
         $visit->hairdresser->update(['avg_rating' => round($avg, 2), 'reviews_count' => $count]);
 
-        // Un avis certifié alimente le score de la spécialité visée + peut
+        // Un avis vérifié alimente le score de la spécialité visée + peut
         // débloquer des badges carrière/exceptionnels.
         BadgeService::refresh($visit->hairdresser);
 

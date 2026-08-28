@@ -63,7 +63,7 @@ export default function LandingFooter() {
             </div>
             <p className="text-neutral-500 text-[14px] leading-relaxed max-w-xs mb-6">
               La plateforme qui connecte les meilleurs coiffeurs à leurs futurs clients.
-              Portfolios réels, avis certifiés, réservation directe.
+              Portfolios réels, avis vérifiés, réservation directe.
             </p>
             <div className={`flex items-center gap-2 ${SOCIALS.length === 0 ? 'hidden' : ''}`}>
               {SOCIALS.map((s) => (

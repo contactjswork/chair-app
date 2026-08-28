@@ -22,7 +22,7 @@ class QrTokenService
      *
      * Le blocage d'auto-scan et l'intervalle de 12 h protègent contre le rejeu
      * d'UN compte, mais pas contre PLUSIEURS : un coiffeur qui crée cinq
-     * comptes et les scanne tour à tour obtient cinq avis certifiés. Rien ne
+     * comptes et les scanne tour à tour obtient cinq avis vérifiés. Rien ne
      * l'en empêchait.
      *
      * Un coiffeur reçoit 8 à 15 clients par jour. Quarante visites dans la

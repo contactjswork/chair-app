@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "CHAIR — La plateforme des coiffeurs professionnels",
-  description: "Découvrez les meilleurs coiffeurs près de chez vous. Portfolios, avis certifiés, spécialités.",
+  description: "Découvrez les meilleurs coiffeurs près de chez vous. Portfolios, avis vérifiés, spécialités.",
   // Web app installable (plein écran, pas un raccourci Safari) — PwaManifest
   // bascule ces valeurs vers CHAIR PRO sur /pro/*.
   manifest: "/manifest-app.webmanifest",

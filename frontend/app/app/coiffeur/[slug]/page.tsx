@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const title = [h.user.name, specialty, h.city].filter(Boolean).join(' · ') + ' — CHAIR';
   const description = h.tagline
     ? `${h.user.name}${h.city ? ` à ${h.city}` : ''}. "${h.tagline}" — CHAIR`
-    : `${h.user.name}${h.city ? ` à ${h.city}` : ''}. Portfolios réels, avis certifiés sur CHAIR.`;
+    : `${h.user.name}${h.city ? ` à ${h.city}` : ''}. Portfolios réels, avis vérifiés sur CHAIR.`;
   const ogImage = resolveMediaUrl(h.banner_image) ?? resolveMediaUrl(h.user?.avatar) ?? null;
   return {
     title, description,

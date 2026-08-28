@@ -24,7 +24,7 @@ const OWNER_FEATURES: DiscoverFeature[] = [
   { icon: Users,     title: 'Équipe',       desc: 'Invitez vos coiffeurs — par recherche ou par email — et gérez qui rejoint votre salon.' },
   { icon: Briefcase, title: 'Recrutement',  desc: 'Publiez des offres et suivez vos candidatures, du premier contact à l\'embauche.' },
   { icon: Armchair,  title: 'Fauteuils',    desc: 'Louez vos fauteuils libres à des coiffeurs indépendants, à vos conditions.' },
-  { icon: Star,      title: 'Avis clients', desc: 'Générez des demandes d\'avis certifiés pour votre équipe, visite après visite.' },
+  { icon: Star,      title: 'Avis clients', desc: 'Générez des demandes d\'avis vérifiés pour votre équipe, visite après visite.' },
 ];
 
 export default function OwnerOnboardingPage() {

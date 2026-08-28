@@ -39,7 +39,7 @@ export default function AvisTokenPage() {
           <CheckCircle2 size={48} className="text-neutral-900 mx-auto mb-5" strokeWidth={1.5} />
           <h1 className="text-xl font-bold text-neutral-900 mb-2">Avis publié</h1>
           <p className="text-sm text-neutral-500 leading-relaxed mb-8">
-            Merci pour ton avis certifié. Il est maintenant visible sur le profil du coiffeur.
+            Merci pour ton avis vérifié. Il est maintenant visible sur le profil du coiffeur.
           </p>
           <Link href="/app" className="inline-flex items-center gap-2 bg-neutral-900 text-white font-semibold px-6 py-3 rounded-xl text-sm hover:bg-neutral-700 transition-colors">
             Retour à l'accueil
@@ -53,7 +53,7 @@ export default function AvisTokenPage() {
     <AppShell>
       <div className="max-w-sm mx-auto px-4 py-12">
         <div className="text-center mb-8">
-          <p className="text-[11px] font-semibold tracking-[0.25em] uppercase text-neutral-400 mb-2">Avis certifié</p>
+          <p className="text-[11px] font-semibold tracking-[0.25em] uppercase text-neutral-400 mb-2">Avis vérifié</p>
           <h1 className="text-2xl font-bold text-neutral-900 mb-2">Ton expérience</h1>
           <p className="text-sm text-neutral-500 leading-relaxed">
             Partage ton avis suite à ton rendez-vous. Il sera publié comme avis vérifié.

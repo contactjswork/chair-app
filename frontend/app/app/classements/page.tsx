@@ -266,7 +266,7 @@ function RadiusSheet({
 // ── Bottom sheet explication ────────────────────────────────────────────
 function ExplainSheet({ onClose }: { onClose: () => void }) {
   const points = [
-    'La qualité et la quantité des avis certifiés (un avis isolé ne suffit jamais à dépasser un profil avec beaucoup d\'avis constants).',
+    'La qualité et la quantité des avis vérifiés (un avis isolé ne suffit jamais à dépasser un profil avec beaucoup d\'avis constants).',
     'L\'activité récente et la régularité des publications.',
     'La qualité du profil et du portfolio.',
     'La pertinence dans la spécialité choisie.',
@@ -630,7 +630,7 @@ export default function ClassementsPage() {
                 <EmptyState
                   icon={Trophy}
                   title="Pas encore assez de données"
-                  subtitle="Le classement sera disponible dès que suffisamment d'avis certifiés auront été publiés."
+                  subtitle="Le classement sera disponible dès que suffisamment d'avis vérifiés auront été publiés."
                 />
               )}
             </div>

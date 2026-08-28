@@ -131,8 +131,9 @@ export default function ReglesCommunautePage() {
 
         <Section title="5. Avis">
           <p>
-            Les avis CHAIR sont certifiés : seuls les clients ayant effectué un rendez-vous
-            vérifié peuvent en laisser un. Un avis doit porter sur ta propre expérience, dans
+            Un avis se laisse après un rendez-vous pris sur CHAIR. Quand la visite a été
+            confirmée sur place par le QR code du coiffeur, l’avis porte en plus la mention
+            « visite vérifiée ». Un avis doit porter sur ta propre expérience, dans
             un langage correct, sans attaque personnelle ni information privée.
           </p>
           <p>

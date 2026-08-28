@@ -13,7 +13,7 @@ class ReferralController extends Controller
 {
     /**
      * GET /my-referral — code, lien, QR (même pattern que le QR d'avis
-     * certifié) et statistiques du programme ambassadeur.
+     * vérifié) et statistiques du programme ambassadeur.
      */
     public function mine(Request $request)
     {

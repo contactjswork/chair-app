@@ -34,7 +34,7 @@ export default function DownloadPage() {
         <p className="text-white/50 text-[14.5px] mt-3 max-w-sm leading-relaxed">
           {redirecting
             ? 'Si rien ne se passe, utilisez le bouton ci-dessous.'
-            : "L'expérience complète — feed, réservation, avis certifiés — se vit sur l'app. Téléchargez-la pour continuer."}
+            : "L'expérience complète — feed, réservation, avis vérifiés — se vit sur l'app. Téléchargez-la pour continuer."}
         </p>
 
         <div className="mt-10">

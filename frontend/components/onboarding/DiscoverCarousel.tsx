@@ -15,7 +15,7 @@ export interface DiscoverFeature {
 const HAIRDRESSER_FEATURES: DiscoverFeature[] = [
   { icon: Trophy,   title: 'Classements',      desc: 'Grimpe dans le top de ta spécialité et de ta ville — vu par tous les clients qui cherchent près de chez eux.' },
   { icon: Award,    title: 'Badges & niveau',  desc: 'Chaque réalisation, chaque avis, chaque visite te fait gagner des points et monter de niveau.' },
-  { icon: Sparkles, title: 'CHAIR+',           desc: 'Stories illimitées, badge certifié et mise en avant locale — pour sortir du lot.' },
+  { icon: Sparkles, title: 'CHAIR+',           desc: 'Stories illimitées, badge vérifié et mise en avant locale — pour sortir du lot.' },
   { icon: Gift,     title: 'Parrainage',       desc: "Invite d'autres coiffeurs ou salons : points, boost et CHAIR+ offert à la clé." },
 ];
 

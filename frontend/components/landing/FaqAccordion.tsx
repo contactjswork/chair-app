@@ -9,12 +9,12 @@ const FAQS = [
     a: "Oui, CHAIR est entièrement gratuit pour les clients. Téléchargez l'application, créez votre compte et commencez à explorer des coiffeurs sans frais.",
   },
   {
-    q: "Comment les avis sont-ils certifiés ?",
+    q: "Comment les avis sont-ils vérifiés ?",
     a: "Chaque avis est généré automatiquement après un rendez-vous terminé. Le coiffeur scanne un QR code unique qui déverrouille la demande d'avis côté client. Impossible de laisser un avis sans avoir réellement visité le salon.",
   },
   {
     q: "Je suis coiffeur indépendant, CHAIR PRO est-il fait pour moi ?",
-    a: "Absolument. CHAIR PRO est conçu pour les coiffeurs indépendants comme pour les salons. Gérez votre agenda, publiez votre portfolio, recevez des réservations directes et développez votre réputation grâce aux avis certifiés.",
+    a: "Absolument. CHAIR PRO est conçu pour les coiffeurs indépendants comme pour les salons. Gérez votre agenda, publiez votre portfolio, recevez des réservations directes et développez votre réputation grâce aux avis vérifiés.",
   },
   {
     q: "Je travaille en salon, puis-je quand même utiliser CHAIR PRO ?",

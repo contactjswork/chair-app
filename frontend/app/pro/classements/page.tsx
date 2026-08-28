@@ -102,7 +102,7 @@ function PickerSheet({
 
 function ExplainSheet({ onClose }: { onClose: () => void }) {
   const points = [
-    "La qualité et la quantité des avis certifiés — un avis isolé ne dépasse jamais un profil aux avis constants.",
+    "La qualité et la quantité des avis vérifiés — un avis isolé ne dépasse jamais un profil aux avis constants.",
     "L'activité récente et la régularité des publications.",
     'La qualité du profil et du portfolio.',
     'La pertinence dans la spécialité concernée.',
@@ -300,7 +300,7 @@ export default function ProClassementsPage() {
               <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-white/40">Votre position</p>
               <p className="mt-2 text-[19px] font-semibold text-white leading-snug">Pas encore classé</p>
               <Link href="/pro/portfolio" className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-white/60 hover:text-white transition-colors">
-                Publiez et récoltez des avis certifiés <ArrowRight size={14} />
+                Publiez et récoltez des avis vérifiés <ArrowRight size={14} />
               </Link>
             </>
           )}
@@ -344,7 +344,7 @@ export default function ProClassementsPage() {
             <div className="bg-neutral-50 rounded-[20px] px-5 py-5">
               <p className="text-[15px] text-neutral-900">Pas encore de classement ici</p>
               <p className="text-[13px] text-neutral-400 mt-1">
-                Il faut assez d&apos;avis certifiés sur {specialtyName ?? 'cette spécialité'} à {zoneLabel} pour en établir un.
+                Il faut assez d&apos;avis vérifiés sur {specialtyName ?? 'cette spécialité'} à {zoneLabel} pour en établir un.
               </p>
             </div>
           ) : (
@@ -388,7 +388,7 @@ export default function ProClassementsPage() {
             </Link>
             <Link href="/pro/mon-qr" className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100/70 transition-colors">
               <div className="flex-1 min-w-0">
-                <p className="text-[15px] text-neutral-900">Récolter un avis certifié</p>
+                <p className="text-[15px] text-neutral-900">Récolter un avis vérifié</p>
                 <p className="text-[12px] text-neutral-400 mt-0.5">Le signal qui pèse le plus dans le classement</p>
               </div>
               <ArrowRight size={16} className="text-neutral-300 flex-shrink-0" />

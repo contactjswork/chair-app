@@ -89,7 +89,7 @@ export function getSharePayload(
       const salonName = name ?? 'ce salon';
       return {
         title: name ? `${name} sur CHAIR` : 'Salon sur CHAIR',
-        text: `Découvre ${salonName}${city ? ` à ${city}` : ''} sur CHAIR — ses coiffeurs, leurs réalisations et les avis certifiés.`,
+        text: `Découvre ${salonName}${city ? ` à ${city}` : ''} sur CHAIR — ses coiffeurs, leurs réalisations et les avis vérifiés.`,
         url,
       };
     }

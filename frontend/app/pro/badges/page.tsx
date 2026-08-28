@@ -47,7 +47,7 @@ const CATEGORY_ORDER = [
   'streak', 'discipline', 'ancienneté', 'vérification', 'ambassadeur', 'spécial', 'exceptionnel',
 ];
 const CATEGORY_LABELS: Record<string, string> = {
-  demarrage: 'Démarrage', contenu: 'Réalisations', avis: 'Avis & clientèle', visites: 'Visites certifiées',
+  demarrage: 'Démarrage', contenu: 'Réalisations', avis: 'Avis & clientèle', visites: 'Visites vérifiées',
   communauté: 'Abonnés', reseau: 'Partages', streak: 'Régularité', discipline: 'Discipline',
   ancienneté: 'Ancienneté', vérification: 'Certifications CHAIR', ambassadeur: 'Parrainage',
   spécial: 'Spécial', exceptionnel: 'Exceptionnels',

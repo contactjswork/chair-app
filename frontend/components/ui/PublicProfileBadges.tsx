@@ -97,7 +97,7 @@ export default function PublicProfileBadges({ badges, level, coiffeurName }: Pro
       </div>
 
       <p className="text-[11px] text-neutral-400 leading-relaxed mt-8">
-        Chaque badge récompense une étape réelle du parcours de {firstName} sur CHAIR — avis certifiés,
+        Chaque badge récompense une étape réelle du parcours de {firstName} sur CHAIR — avis vérifiés,
         réalisations publiées, régularité, ancienneté. Touchez un badge pour découvrir son histoire.
       </p>
 

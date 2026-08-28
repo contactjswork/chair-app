@@ -140,7 +140,7 @@ class SpecialtyReputationService
             ->first();
 
         // "Visite prouvée" dans cette spécialité = RDV réservé et honoré via
-        // CHAIR OU visite certifiée par QR — les deux anciennes catégories
+        // CHAIR OU visite vérifiée par QR — les deux anciennes catégories
         // globales "réservations" et "visites" se rejoignent ici en une seule
         // dimension par spécialité (toutes deux prouvent un passage réel).
         $qrVisitsCount = DB::table('verified_visits')
@@ -521,7 +521,7 @@ class SpecialtyReputationService
     private static function rankedRows(int $specialtyId, string $geo, ?string $geoValue, ?float $lat = null, ?float $lng = null, ?float $radiusKm = null)
     {
         // Pas de filtre sur hp.posts_count : un salarié sans aucune réalisation
-        // publiée mais avec de vrais avis/visites certifiés dans la spécialité
+        // publiée mais avec de vrais avis/visites vérifiés dans la spécialité
         // (hsp.score > 0, déjà une preuve d'activité réelle) doit pouvoir être
         // classé — sinon le classement spécialité pénalise injustement les
         // salariés, alors que c'est exactement le public qu'il doit aussi servir.

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
  * Voir la migration create_booking_intents_table pour le pourquoi. En deux
  * mots : ce n'est pas une réservation, c'est le fil qui permet de rappeler au
  * client de faire scanner le QR sur place — le seul geste qui prouve la
- * visite et produit un avis certifié.
+ * visite et produit un avis vérifié.
  */
 class BookingIntent extends Model
 {

@@ -72,7 +72,7 @@ export default function BookingIntentReminder({ className = '' }: { className?: 
             Rendez-vous chez {name} ?
           </p>
           <p className="text-[12.5px] text-white/55 leading-relaxed mt-1">
-            Demande-lui son QR code sur place : ton avis sera certifié, et ça compte
+            Demande-lui son QR code sur place : ton avis sera vérifié, et ça compte
             beaucoup plus pour lui.
           </p>
           {intent.hairdresser_slug && (

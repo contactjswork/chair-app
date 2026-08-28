@@ -28,7 +28,7 @@ interface Props {
   /** Téléphone du salon — seul moyen de réserver quand il n'a pas d'agenda. */
   salonPhone?: string | null;
   /** Réputation par spécialité (specialty_highlights du profil) — sert à
-   *  afficher les visites certifiées réelles à côté de chaque groupe. */
+   *  afficher les visites vérifiées réelles à côté de chaque groupe. */
   specialtyHighlights?: ApiSpecialtyHighlight[];
 }
 
@@ -40,7 +40,7 @@ export default function PublicProfileServices({ slug, hairdresserId, categories,
     .map((cat) => ({ cat, active: (cat.services ?? []).filter((s) => s.is_active) }))
     .filter(({ active }) => active.length > 0);
 
-  // Visites certifiées de la spécialité du groupe (données réelles issues des
+  // Visites vérifiées de la spécialité du groupe (données réelles issues des
   // QR de visite — hairdresser_specialty_progress.visits_count). Le groupe est
   // relié à sa spécialité par le specialty_id de ses services ; affiché
   // uniquement si > 0 — jamais un "0 visites" par défaut.
@@ -67,7 +67,7 @@ export default function PublicProfileServices({ slug, hairdresserId, categories,
    *
    * C'est le seul moment où CHAIR sait qu'un client s'intéresse assez à ce
    * coiffeur pour aller réserver. Sans cette trace, la personne disparaît :
-   * pas de rappel de faire scanner le QR sur place, donc pas d'avis certifié,
+   * pas de rappel de faire scanner le QR sur place, donc pas d'avis vérifié,
    * donc aucune réputation possible pour un salarié.
    *
    * Volontairement non bloquant, et l'échec est ignoré : perdre une
@@ -153,7 +153,7 @@ export default function PublicProfileServices({ slug, hairdresserId, categories,
                 {certifiedVisits != null && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-500 whitespace-nowrap">
                     <BadgeCheck size={12} className="text-neutral-400" />
-                    {certifiedVisits} visite{certifiedVisits > 1 ? 's' : ''} certifiée{certifiedVisits > 1 ? 's' : ''}
+                    {certifiedVisits} visite{certifiedVisits > 1 ? 's' : ''} vérifiée{certifiedVisits > 1 ? 's' : ''}
                   </span>
                 )}
               </div>

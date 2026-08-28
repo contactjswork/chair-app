@@ -504,7 +504,7 @@ export const visits = {
   confirmVisit: (token: string, serviceId: number | null, serviceName?: string) =>
     api.post<ApiVisitConfirmed>(`/scan/${token}`, serviceId != null ? { service_id: serviceId } : { service_name: serviceName }),
 
-  /** Auth requis : soumet un avis certifié */
+  /** Auth requis : soumet un avis vérifié */
   submitReview: (data: { visit_id: number; rating: number; comment: string }) =>
     api.post('/scan/review', data),
 

@@ -19,7 +19,7 @@ namespace App\Services;
  *  - Message : 120 caractères MAX, variables incluses.
  *  - Tutoiement, phrases courtes, concret. Jamais de majuscules criardes,
  *    jamais de point d'exclamation multiple, jamais de promesse non tenue.
- *  - Vocabulaire maison : "réalisation" (jamais "post"), "avis certifié",
+ *  - Vocabulaire maison : "réalisation" (jamais "post"), "avis vérifié",
  *    "niveau CHAIR", "Coup de cœur CHAIR", "spécialités", "CHAIR+".
  *  - Emoji : ZÉRO dans les titres. Un seul maximum dans un message, et
  *    uniquement s'il ajoute quelque chose. La grande majorité n'en a aucun.
@@ -168,16 +168,16 @@ class NotificationCopy
         'review_request' => [
             self::AUDIENCE_CLIENT => [
                 'title'    => 'Ton avis compte',
-                'message'  => 'Ton avis certifié sur {coiffeur} fait la différence. 30 secondes suffisent.',
-                'fallback' => 'Ton rendez-vous est terminé. Laisse un avis certifié, 30 secondes suffisent.',
+                'message'  => 'Ton avis vérifié sur {coiffeur} fait la différence. 30 secondes suffisent.',
+                'fallback' => 'Ton rendez-vous est terminé. Laisse un avis vérifié, 30 secondes suffisent.',
             ],
         ],
 
         'review_received' => [
             self::AUDIENCE_PRO => [
-                'title'    => 'Nouvel avis certifié',
+                'title'    => 'Nouvel avis vérifié',
                 'message'  => '{client} t\'a mis {note}/5. Va lire son avis.',
-                'fallback' => 'Tu viens de recevoir un nouvel avis certifié. Va le lire.',
+                'fallback' => 'Tu viens de recevoir un nouvel avis vérifié. Va le lire.',
             ],
         ],
 
@@ -185,8 +185,8 @@ class NotificationCopy
         'review_reply' => [
             self::AUDIENCE_CLIENT => [
                 'title'    => 'Réponse à ton avis',
-                'message'  => '{coiffeur} a répondu à ton avis certifié. Va voir.',
-                'fallback' => 'Ton avis certifié a reçu une réponse. Va la lire.',
+                'message'  => '{coiffeur} a répondu à ton avis vérifié. Va voir.',
+                'fallback' => 'Ton avis vérifié a reçu une réponse. Va la lire.',
             ],
         ],
 

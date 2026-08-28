@@ -178,7 +178,7 @@ export default async function HomePage() {
 
           <p className="mt-7 text-[17px] md:text-[20px] text-neutral-500 leading-relaxed max-w-xl mx-auto">
             CHAIR met le coiffeur au centre. Voyez son travail, ses spécialités et ses avis
-            certifiés, puis réservez directement — dans votre navigateur comme dans l&apos;app.
+            vérifiés, puis réservez directement — dans votre navigateur comme dans l&apos;app.
           </p>
 
           <div className="mt-10 max-w-xl mx-auto">
@@ -318,7 +318,7 @@ export default async function HomePage() {
             <div className="divide-y divide-neutral-100 border-t border-neutral-100">
               {[
                 { n: '01', t: 'Cherchez', d: "Une spécialité, une ville, ou juste un nom. CHAIR affiche des coiffeurs, pas des adresses de salon." },
-                { n: '02', t: 'Comparez', d: "Portfolio, spécialités, avis certifiés, tarifs : tout est sur le profil avant que vous choisissiez." },
+                { n: '02', t: 'Comparez', d: "Portfolio, spécialités, avis vérifiés, tarifs : tout est sur le profil avant que vous choisissiez." },
                 { n: '03', t: 'Réservez', d: "Vous prenez un créneau directement sur le profil. Le coiffeur confirme, vous êtes notifié. Aucun appel." },
                 { n: '04', t: 'Vérifiez', d: "Après la prestation, un QR code unique débloque votre avis. C'est ce qui garde le classement honnête." },
               ].map((step) => (
@@ -420,7 +420,7 @@ export default async function HomePage() {
               n="05"
               kicker="Le classement"
               title={<>La réputation se mérite.<br /><span className="text-neutral-300">Elle ne s&apos;achète pas.</span></>}
-              lead="Aucune place ne s'achète sur CHAIR. Un coiffeur monte grâce à ses avis certifiés, à sa régularité et à la confiance réelle de ses clients — dans sa ville et dans sa spécialité."
+              lead="Aucune place ne s'achète sur CHAIR. Un coiffeur monte grâce à ses avis vérifiés, à sa régularité et à la confiance réelle de ses clients — dans sa ville et dans sa spécialité."
               href="/app/classements"
               hrefLabel="Voir le classement complet"
             />
@@ -514,7 +514,7 @@ export default async function HomePage() {
                   n="07"
                   kicker="Web et application"
                   title={<>Tout CHAIR,<br />dans votre navigateur.</>}
-                  lead="Rien à installer pour chercher un coiffeur, ouvrir son portfolio, lire ses avis et réserver : le site fait tout. L'application ajoute les notifications, la caméra pour les avis certifiés, et l'accès en un geste depuis votre écran d'accueil."
+                  lead="Rien à installer pour chercher un coiffeur, ouvrir son portfolio, lire ses avis et réserver : le site fait tout. L'application ajoute les notifications, la caméra pour les avis vérifiés, et l'accès en un geste depuis votre écran d'accueil."
                 />
 
                 <div className="flex flex-wrap items-center gap-4">
@@ -548,7 +548,7 @@ export default async function HomePage() {
               kicker="Côté coiffeur"
               dark
               title={<>Vous coupez ?<br />Passez côté CHAIR PRO.</>}
-              lead="Un coiffeur change de salon, sa clientèle reste au salon. CHAIR PRO lui donne une marque à son nom : un profil, un portfolio, des avis certifiés et un classement qui le suivent partout, qu'il soit salarié ou indépendant."
+              lead="Un coiffeur change de salon, sa clientèle reste au salon. CHAIR PRO lui donne une marque à son nom : un profil, un portfolio, des avis vérifiés et un classement qui le suivent partout, qu'il soit salarié ou indépendant."
             />
           </Reveal>
 

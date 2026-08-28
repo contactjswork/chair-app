@@ -35,7 +35,7 @@ class LeaderboardController extends Controller
      *
      * GET /leaderboard?specialty_id=5&geo=city&geo_value=Haguenau&limit=20
      * Classement PAR SPÉCIALITÉ (voir docs/REPUTATION_ARCHITECTURE.md) — basé
-     * sur specialty_score (avis certifiés + réalisations + visites, déjà
+     * sur specialty_score (avis vérifiés + réalisations + visites, déjà
      * résistant à la manipulation) avec pénalité/exclusion si inactif.
      * geo : city | department | region | country (défaut country).
      */

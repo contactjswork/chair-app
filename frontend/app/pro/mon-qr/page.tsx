@@ -272,7 +272,7 @@ export default function MonQrPage() {
             },
             {
               icon: Shield,
-              title: 'Avis certifié débloqué',
+              title: 'Avis vérifié débloqué',
               desc: 'Il peut laisser un avis « Visite vérifiée », qui booste votre réputation.',
             },
           ].map(({ icon: Icon, title, desc }) => (

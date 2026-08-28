@@ -12,7 +12,7 @@ const ONBOARDING_KEY = 'chair_pro_onboarding_seen';
 
 const SLIDES: OnboardingSlide[] = [
   { Icon: TrendingUp,   title: 'Fais connaître ton talent.',           body: "CHAIR PRO aide les coiffeurs à gagner en visibilité et à développer leur clientèle." },
-  { Icon: Award,        title: 'Construis ta réputation.',              body: 'Portfolio, avis certifiés, spécialités, badges et classements.' },
+  { Icon: Award,        title: 'Construis ta réputation.',              body: 'Portfolio, avis vérifiés, spécialités, badges et classements.' },
   { Icon: CalendarClock,title: 'Gère ton activité.',                    body: 'Agenda, performances, profil, demandes et outils professionnels.' },
   { Icon: Briefcase,    title: 'Trouve de nouvelles opportunités.',     body: 'Location de fauteuil, recrutement et réseau professionnel.' },
 ];

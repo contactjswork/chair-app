@@ -534,7 +534,7 @@ export default function PerformancePage() {
                   )}
                   {stats.reviews_count === 0 && (
                     <p className="text-[12px] text-neutral-400 mt-3 pt-3 border-t border-neutral-100 leading-relaxed">
-                      Générez votre QR d&apos;avis certifié pour récolter vos premiers retours clients.
+                      Générez votre QR d&apos;avis vérifié pour récolter vos premiers retours clients.
                     </p>
                   )}
                 </div>

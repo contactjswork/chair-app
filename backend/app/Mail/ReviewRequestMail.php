@@ -10,7 +10,7 @@ use App\Services\MailService;
  * RDV en "completed" (AppointmentController::updateStatus), au moment même où
  * le review_token est généré.
  *
- * C'est le levier des avis certifiés : le lien porte le review_token du
+ * C'est le levier des avis vérifiés : le lien porte le review_token du
  * rendez-vous, consommé par POST /api/review-by-token/{token}. Sans ce token,
  * personne ne peut noter — c'est ce qui rend les avis CHAIR impossibles à
  * falsifier, y compris pour un client sans compte.
@@ -50,7 +50,7 @@ class ReviewRequestMail extends ChairMailable
                 'clientName' => $this->appointment->client_name ?: 'à toi',
                 'rows'       => $rows,
                 'reviewUrl'  => MailService::frontendUrl('/app/avis/' . $this->appointment->review_token),
-                'preheader'  => 'Deux minutes pour laisser un avis certifié.',
+                'preheader'  => 'Deux minutes pour laisser un avis vérifié.',
             ]));
     }
 }

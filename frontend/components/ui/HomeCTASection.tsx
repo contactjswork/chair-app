@@ -99,7 +99,7 @@ export default function HomeCTASection() {
                   sociale qui ne mesure rien est une affirmation trompeuse en
                   vitrine ; mieux vaut dire ce qui est vrai. */}
               <p className="text-[12px] text-neutral-500">
-                Portfolios réels · Avis certifiés
+                Portfolios réels · Avis vérifiés
               </p>
             </div>
             <div className="flex gap-3">

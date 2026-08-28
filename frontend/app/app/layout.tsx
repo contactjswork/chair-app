@@ -12,7 +12,7 @@ const ONBOARDING_KEY = 'chair_client_onboarding_seen';
 const SLIDES: OnboardingSlide[] = [
   { Icon: Compass,     title: 'Trouve le coiffeur qui te correspond.', body: 'Découvre des professionnels selon ton style, ta ville et tes besoins.' },
   { Icon: Sparkles,    title: 'Inspire-toi.',                          body: 'Parcours des réalisations, profils, spécialités et tendances.' },
-  { Icon: ShieldCheck, title: 'Choisis en confiance.',                 body: 'Consulte les avis certifiés, portfolios et disponibilités.' },
+  { Icon: ShieldCheck, title: 'Choisis en confiance.',                 body: 'Consulte les avis vérifiés, portfolios et disponibilités.' },
   { Icon: Heart,       title: 'Garde tes favoris.',                    body: 'Enregistre les coiffeurs et réalisations que tu aimes.' },
 ];
 

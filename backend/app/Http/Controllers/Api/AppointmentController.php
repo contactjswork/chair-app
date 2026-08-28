@@ -391,7 +391,7 @@ class AppointmentController extends Controller
         if ($newStatus === 'completed' && $appointment->review_token) {
             // Demande d'avis par email — le lien porte le review_token généré
             // juste au-dessus, donc il fonctionne même pour un client sans
-            // compte (avis certifié : on ne peut noter qu'avec ce token).
+            // compte (avis vérifié : on ne peut noter qu'avec ce token).
             MailService::send(
                 (string) $appointment->client_email,
                 new ReviewRequestMail($appointment),

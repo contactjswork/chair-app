@@ -148,7 +148,7 @@ export default function ScanPage() {
                 Connectez-vous pour confirmer votre visite
               </h2>
               <p className="text-sm text-neutral-500 leading-relaxed">
-                Un compte CHAIR est nécessaire pour valider votre visite et laisser un avis certifié.
+                Un compte CHAIR est nécessaire pour valider votre visite et laisser un avis vérifié.
               </p>
             </div>
 
@@ -259,7 +259,7 @@ export default function ScanPage() {
             </button>
 
             <p className="text-[10px] text-neutral-400 text-center leading-relaxed">
-              En confirmant, vous certifiez avoir eu une prestation chez ce coiffeur aujourd&apos;hui.
+              En confirmant, vous déclarez avoir eu une prestation chez ce coiffeur aujourd&apos;hui.
               Anti-fraude : ce QR expire dans quelques minutes.
             </p>
           </div>
@@ -281,7 +281,7 @@ export default function ScanPage() {
 
             <div>
               <h2 className="text-lg font-bold text-neutral-900 mb-1">
-                Laissez un avis certifié
+                Laissez un avis vérifié
               </h2>
               <p className="text-sm text-neutral-500">
                 Votre avis sera marqué{' '}
@@ -351,7 +351,7 @@ export default function ScanPage() {
             >
               {submitting
                 ? <><Loader2 size={16} className="animate-spin" /> Envoi...</>
-                : <><Star size={15} /> Publier mon avis certifié</>
+                : <><Star size={15} /> Publier mon avis vérifié</>
               }
             </button>
           </div>
@@ -367,7 +367,7 @@ export default function ScanPage() {
               <h2 className="text-xl font-black text-neutral-900 mb-2">Merci !</h2>
               <p className="text-sm text-neutral-500 leading-relaxed">
                 Votre visite a été vérifiée{confirmed ? ` chez ${confirmed.hairdresser_name}` : ''}.
-                {' '}Votre avis certifié est maintenant visible sur son profil.
+                {' '}Votre avis vérifié est maintenant visible sur son profil.
               </p>
             </div>
             <div className="flex flex-col gap-2 w-full">

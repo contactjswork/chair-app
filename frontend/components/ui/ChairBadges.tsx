@@ -147,7 +147,7 @@ export function BadgeMedallion({
 }
 
 // ── Fenêtre d'explication d'un badge ─────────────────────────────────────────
-// Un client qui voit "Maestro certifié" ne sait pas ce que ça veut dire.
+// Un client qui voit "Maestro vérifié" ne sait pas ce que ça veut dire.
 // Cliquer sur n'importe quel badge ouvre ce volet — icône + nom + une phrase
 // qui raconte concrètement ce que LE coiffeur a fait pour l'obtenir (pas la
 // règle générique, pas les points/tier — jargon réservé au coiffeur).
@@ -192,7 +192,7 @@ const BADGE_STORY: Record<string, string> = {
   perfect_100:       '{name} a atteint tous ses objectifs du jour, 100 fois au total.',
   first_specialty:       '{name} a choisi sa première spécialité sur CHAIR.',
   first_review_received: '{name} a reçu son premier avis client.',
-  first_verified_visit:  '{name} a certifié sa première visite par QR code.',
+  first_verified_visit:  '{name} a vérifié sa première visite par QR code.',
   first_service:         '{name} a renseigné sa première prestation.',
   first_appointment:     '{name} a reçu son premier rendez-vous via CHAIR.',
   first_share:           '{name} a partagé son profil ou une réalisation pour la première fois.',
@@ -200,8 +200,8 @@ const BADGE_STORY: Record<string, string> = {
   review_50:  '{name} a reçu 50 avis clients.',
   review_100: '{name} a reçu 100 avis clients.',
   review_500: '{name} a reçu 500 avis clients — une réputation qui ne doit rien au hasard.',
-  visit_25:   '{name} a certifié 25 visites par QR code.',
-  visit_100:  '{name} a certifié 100 visites par QR code.',
+  visit_25:   '{name} a vérifié 25 visites par QR code.',
+  visit_100:  '{name} a vérifié 100 visites par QR code.',
   regular_clients_5: '{name} a fidélisé 5 clients revenus au moins deux fois.',
   follower_10:   '{name} est suivi par 10 personnes sur CHAIR.',
   follower_1000: '{name} est suivi par 1 000 personnes sur CHAIR.',
