@@ -352,8 +352,20 @@ class HairdresserController extends Controller
     // POSTS D'UN COIFFEUR
     // ════════════════════════════════════════════════════════════════
 
-    public function posts(string $slug)
+    /**
+     * `per_page` accepté (12 par défaut, 60 au maximum).
+     *
+     * La page d'une réalisation charge les réalisations voisines pour proposer
+     * « précédent / suivant ». Figée à 12, elle ne trouvait pas la réalisation
+     * courante au-delà de la douzième : le compteur affichait « 0 / 12 » et la
+     * flèche suivante renvoyait à la PREMIÈRE réalisation du coiffeur. On y
+     * arrive par un lien partagé, depuis les favoris ou les inspirations.
+     */
+    public function posts(string $slug, Request $request)
     {
+        $perPage = (int) $request->query('per_page', 12);
+        $perPage = max(1, min($perPage, 60));
+
         $hairdresser = HairdresserProfile::where('slug', $slug)->firstOrFail();
 
         $posts = Post::with(['hairdresser.user', 'images', 'specialty'])
@@ -364,7 +376,7 @@ class HairdresserController extends Controller
             ->orderByDesc('is_pinned')
             ->orderBy('display_order')
             ->orderByDesc('created_at')
-            ->paginate(12);
+            ->paginate($perPage);
 
         return response()->json($posts);
     }
