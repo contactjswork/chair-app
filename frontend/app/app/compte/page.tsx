@@ -12,7 +12,7 @@ import { useEffect, useState } from 'react';
 import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, HelpCircle, Scissors, Trash2,
-  MapPin, Edit3, FileText, Shield, CalendarX, Loader2, X,
+  MapPin, Edit3, FileText, Shield, CalendarX, CalendarPlus, Loader2, X,
   ShieldOff, ScrollText, ChevronDown, Scale,
 } from 'lucide-react';
 import { BlockedAccountsList } from '@/components/ui/BlockConfirmSheet';
@@ -639,6 +639,23 @@ function ClientAppointmentCard({
               >
                 Voir le profil du coiffeur <ChevronRight size={12} />
               </Link>
+            )}
+            {/* Le rendez-vous dans l'agenda du téléphone.
+                Il n'existait aucun moyen de l'y mettre : on réservait, on
+                recevait une confirmation, et on devait noter la date soi-même.
+                Le fichier .ics est confié à l'application d'agenda du système
+                — CHAIR ne demande aucune permission et ne synchronise rien.
+                Le rappel de la veille est inclus dans le fichier. */}
+            {appt.calendar_url && (
+              <a
+                href={appt.calendar_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[44px] rounded-xl border border-neutral-200 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50 active:bg-neutral-100 transition-colors flex items-center justify-center gap-2"
+              >
+                <CalendarPlus size={14} />
+                Ajouter à mon agenda
+              </a>
             )}
             {cancellable && (
               <button

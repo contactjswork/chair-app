@@ -6,6 +6,7 @@ import { Star, BadgeCheck } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { getUserSpecialtySlugs } from '@/lib/homeFilters';
 import type { RecommendationResult } from '@/lib/recommendation';
 
 /**
@@ -31,7 +32,25 @@ export default function RecommendationCard({
   // plus qu'en repli si aucune photo de profil n'existe.
   const photo = avatar ?? banner;
   const hasRating = r.reviews_count > 0;
-  const spec = r.specialties[0]?.name;
+
+  /**
+   * Pourquoi CE coiffeur, pour CETTE personne.
+   *
+   * La carte affichait une spécialité — la première de la liste — sans jamais
+   * dire en quoi elle concernait l'utilisateur. « Selon ton style » annonçait
+   * une recommandation, puis présentait une rangée de visages sans un mot
+   * d'explication : impossible de savoir si le classement voulait dire
+   * quelque chose.
+   *
+   * On cherche donc la spécialité du coiffeur qui recoupe RÉELLEMENT les
+   * préférences de l'utilisateur. Quand il y en a une, on l'affirme —
+   * « Spécialiste Boucles ». Sinon on se contente de nommer sa spécialité,
+   * sans prétendre à une correspondance qui n'existe pas.
+   */
+  const preferred = getUserSpecialtySlugs();
+  const matched = r.specialties.find((s) => preferred.includes(s.slug));
+  const spec = matched?.name ?? r.specialties[0]?.name;
+  const isMatch = Boolean(matched);
   const levelColor = r.chair_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   // Réduite (retour Julien : la nouvelle carte était "un peu" trop grande).
@@ -89,7 +108,11 @@ export default function RecommendationCard({
             de profil (voir `photo` ci-dessus), un médaillon aurait juste
             dupliqué le même visage en plus petit. */}
         <div className="pt-3 pb-3 px-3.5">
-          {spec && <p className="text-[9px] font-bold text-neutral-400 tracking-[0.1em] uppercase mb-0.5 truncate">{spec}</p>}
+          {spec && (
+            <p className={`text-[9px] font-bold tracking-[0.1em] uppercase mb-0.5 truncate ${isMatch ? 'text-neutral-900' : 'text-neutral-400'}`}>
+              {isMatch ? `Spécialiste ${spec}` : spec}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-neutral-900 font-bold text-[14px] leading-tight truncate">{r.name}</h3>
             {hasRating && (

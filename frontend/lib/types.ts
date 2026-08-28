@@ -542,6 +542,8 @@ export interface ApiUnavailability {
 }
 
 export interface ApiAppointment {
+  /** Lien signé vers le .ics du rendez-vous — null sans date confirmée. */
+  calendar_url?: string | null;
   id: number;
   hairdresser_id: number;
   client_id: number | null;

@@ -715,13 +715,112 @@ class AppointmentController extends Controller
      * GET /api/my-appointments
      * Liste des RDVs du client connecté (avec info coiffeur + avis existant).
      */
+    /**
+     * GET /api/appointments/{id}/calendar.ics  [auth:client]
+     *
+     * Le rendez-vous dans l'agenda du téléphone.
+     *
+     * Il n'existait aucun moyen de l'y mettre : le client réservait, recevait
+     * une confirmation, et devait noter la date lui-même. C'est le genre
+     * d'absence qu'on ne remarque pas en développant et qui saute aux yeux
+     * dès le premier usage réel.
+     *
+     * Un fichier .ics servi tel quel : iOS et Android le confient à leur
+     * application d'agenda, sans que CHAIR ait à demander la moindre
+     * permission ni à synchroniser quoi que ce soit.
+     */
+    public function calendar(Request $request, int $id)
+    {
+        // Route PUBLIQUE mais SIGNÉE (voir routes/api.php) : c'est la signature
+        // qui vaut autorisation, pas un jeton d'authentification — un lien
+        // ouvert dans un nouvel onglet n'emporte aucun en-tête. Le lien est
+        // inviolable, lié à ce rendez-vous, et il expire.
+        $appointment = Appointment::with(['hairdresser.user', 'hairdresser.salon'])
+            ->findOrFail($id);
+
+        if (!$appointment->appointment_date) {
+            return response()->json(['message' => 'Ce rendez-vous n\'a pas encore de date confirmée.'], 422);
+        }
+
+        // Les horaires sont saisis en heure française ; l'ICS part en UTC
+        // (suffixe Z), la seule forme qu'aucun agenda ne peut mal interpréter.
+        $start = \Carbon\Carbon::parse(
+            $appointment->appointment_date->format('Y-m-d') . ' ' . ($appointment->appointment_time ?: '09:00'),
+            'Europe/Paris'
+        )->utc();
+        $end = $start->copy()->addMinutes($appointment->duration_minutes ?: 60);
+
+        $hairdresserName = $appointment->hairdresser?->user?->name ?? 'ton coiffeur';
+        $salon    = $appointment->hairdresser?->salon;
+        $location = trim(implode(', ', array_filter([
+            $salon?->name,
+            $salon?->address ?? $appointment->hairdresser?->work_address,
+            $salon?->city ?? $appointment->hairdresser?->city,
+        ])));
+
+        // Échappement ICS (RFC 5545) : virgule, point-virgule et antislash
+        // sont des séparateurs de champ — un nom de salon contenant une
+        // virgule casserait le fichier sans ça.
+        $esc = fn(?string $v) => str_replace(
+            ["\\", ';', ',', "\n"],
+            ['\\\\', '\\;', '\\,', '\\n'],
+            (string) $v
+        );
+
+        $lines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//CHAIR//Rendez-vous//FR',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH',
+            'BEGIN:VEVENT',
+            'UID:chair-appointment-' . $appointment->id . '@getchair.app',
+            'DTSTAMP:' . now()->utc()->format('Ymd\THis\Z'),
+            'DTSTART:' . $start->format('Ymd\THis\Z'),
+            'DTEND:'   . $end->format('Ymd\THis\Z'),
+            'SUMMARY:' . $esc('Coiffeur — ' . $hairdresserName),
+            'DESCRIPTION:' . $esc(trim(($appointment->service ?: 'Rendez-vous') . ' · Réservé sur CHAIR')),
+            'LOCATION:' . $esc($location),
+            // Rappel la veille : le client a réservé, il ne doit pas l'oublier.
+            'BEGIN:VALARM',
+            'TRIGGER:-P1D',
+            'ACTION:DISPLAY',
+            'DESCRIPTION:' . $esc('Demain, coiffeur chez ' . $hairdresserName),
+            'END:VALARM',
+            'END:VEVENT',
+            'END:VCALENDAR',
+        ];
+
+        // CRLF exigé par la RFC — certains agendas refusent un fichier en LF.
+        return response(implode("\r\n", $lines) . "\r\n", 200, [
+            'Content-Type'        => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="rendez-vous-chair.ics"',
+        ]);
+    }
+
     public function clientAppointments(Request $request)
     {
         $appointments = Appointment::with(['hairdresser.user', 'serviceModel', 'review'])
             ->where('client_id', $request->user()->id)
             ->orderByDesc('appointment_date')
             ->orderByDesc('created_at')
-            ->get();
+            ->get()
+            ->each(function (Appointment $a) {
+                // Lien signé vers le .ics, forgé ici parce que c'est le seul
+                // endroit où l'on sait que ce rendez-vous appartient bien à
+                // celui qui demande. Sans date confirmée, il n'y a rien à
+                // mettre dans un agenda.
+                $a->setAttribute(
+                    'calendar_url',
+                    $a->appointment_date
+                        ? \Illuminate\Support\Facades\URL::temporarySignedRoute(
+                            'appointments.calendar',
+                            now()->addDays(90),
+                            ['id' => $a->id]
+                        )
+                        : null
+                );
+            });
 
         return response()->json($appointments);
     }

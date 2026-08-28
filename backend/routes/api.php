@@ -218,6 +218,14 @@ Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middle
 // Scan QR — info publique (affichage avant connexion)
 Route::get('/scan/{token}', [VisitController::class, 'getTokenInfo']);
 
+// Le rendez-vous dans l'agenda du telephone (.ics). PUBLIQUE mais SIGNEE :
+// un lien ouvert dans un nouvel onglet n'emporte aucun en-tete
+// d'authentification, et un telechargement declenche depuis une WebView non
+// plus. La signature vaut autorisation, elle est inviolable et elle expire.
+Route::get('/appointments/{id}/calendar.ics', [AppointmentController::class, 'calendar'])
+    ->name('appointments.calendar')
+    ->middleware('signed');
+
 // Stripe webhook — PUBLIC par nécessité (Stripe n'a pas de token Sanctum),
 // sécurisé uniquement par la vérification de signature (voir StripeWebhookController).
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
