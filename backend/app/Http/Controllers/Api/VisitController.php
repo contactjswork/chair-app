@@ -193,6 +193,26 @@ class VisitController extends Controller
             ], 429);
         }
 
+        // Plafond quotidien du COIFFEUR (voir QrTokenService::MAX_VISITS_PER_DAY).
+        //
+        // L'intervalle de 12 h ci-dessus protège d'un compte qui rejoue ; il ne
+        // protège pas de plusieurs comptes créés pour l'occasion. Le plafond
+        // borne ce que la fraude peut rapporter en une journée.
+        //
+        // Le message ne met rien sur le dos du client : il n'y est pour rien,
+        // et il ne doit surtout pas comprendre qu'on soupçonne son coiffeur.
+        if (QrTokenService::dailyQuotaReached($token->hairdresser_id)) {
+            \Log::warning('Plafond quotidien de visites vérifiées atteint.', [
+                'hairdresser_id' => $token->hairdresser_id,
+                'visits_today'   => QrTokenService::visitsToday($token->hairdresser_id),
+                'client_user_id' => $clientUserId,
+            ]);
+
+            return response()->json([
+                'message' => "Le nombre de visites vérifiables pour ce coiffeur est atteint pour aujourd'hui. Reviens demain, ou laisse-lui un avis depuis son profil.",
+            ], 429);
+        }
+
         $visit = QrTokenService::recordVisit($token, $clientUserId, $serviceName, $specialtyId);
 
         return response()->json([
