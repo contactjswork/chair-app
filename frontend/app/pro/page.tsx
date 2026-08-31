@@ -111,7 +111,7 @@ export default function CockpitPage() {
     { libelle: 'Ajouter votre photo de profil', fait: !!user.avatar, href: '/pro/profil' },
     { libelle: 'Compléter votre profil', fait: (completion?.pct ?? 0) >= 100, href: '/pro/profil' },
     { libelle: 'Publier 3 réalisations', fait: posts.length >= 3, href: '/pro/portfolio' },
-    { libelle: 'Imprimer votre QR pour le comptoir', fait: !!fullProfile?.qr_printed_at, href: '/pro/mon-qr' },
+    { libelle: 'Valider votre premier passage client', fait: (fullProfile?.visits_count ?? 0) >= 1, href: '/pro/mon-qr' },
     { libelle: 'Décrocher un premier avis vérifié', fait: (stats?.reviews_count ?? 0) >= 1, href: '/pro/mon-qr' },
   ];
   const lancementFini = gestes.every((g) => g.fait);

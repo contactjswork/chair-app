@@ -15,7 +15,7 @@ import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import {
   Plus, X, Check, Camera, Loader, ImageIcon,
   Eye, Star, TrendingUp, Award, Scissors,
-  Pin, GripVertical, Move, Bookmark, Sparkles, Film, Play, ChevronLeft, ChevronRight, MoreHorizontal, Printer,
+  Pin, GripVertical, Move, Bookmark, Sparkles, Film, Play, ChevronLeft, MoreHorizontal,
 } from 'lucide-react';
 import PostActionsSheet from '@/components/pro/PostActionsSheet';
 
@@ -885,13 +885,6 @@ export default function PortfolioPage() {
                 )}
               </div>
             )}
-            {/* Le book PDF : le portfolio à envoyer (candidature, location de
-                fauteuil) ou à poser en salle d'attente. */}
-            <Link href="/pro/portfolio/book"
-              className="flex items-center justify-between mt-4 pt-4 border-t border-neutral-50 text-[12px] font-semibold text-neutral-600 hover:text-neutral-900 transition-colors">
-              <span className="flex items-center gap-2"><Printer size={14} className="text-neutral-400" strokeWidth={1.5} />Imprimer mon book (PDF)</span>
-              <ChevronRight size={14} className="text-neutral-300" />
-            </Link>
           </div>
         )}
 

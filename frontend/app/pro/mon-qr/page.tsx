@@ -9,7 +9,7 @@ import type { ApiQrTokenResponse } from '@/lib/types';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, RefreshCw, Clock, Shield, CheckCircle2,
-  Smartphone, Copy, Check, Scissors, Printer,
+  Smartphone, Copy, Check, Scissors,
 } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/Badge';
@@ -243,13 +243,6 @@ export default function MonQrPage() {
                   {copied ? 'Copié !' : 'Copier le lien'}
                 </SecondaryButton>
               </div>
-
-              {/* Le chevalet imprimable : le QR ne sert que s'il est SUR le
-                  comptoir. La version imprimée pointe vers l'URL permanente,
-                  pas ce token tournant — voir /pro/mon-qr/imprimer. */}
-              <PrimaryButton fullWidth href="/pro/mon-qr/imprimer" icon={<Printer size={15} />}>
-                Imprimer pour le comptoir
-              </PrimaryButton>
             </div>
           </div>
         ) : null}
