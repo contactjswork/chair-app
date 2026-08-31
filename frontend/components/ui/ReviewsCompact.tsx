@@ -7,6 +7,8 @@ import StarRating from '@/components/ui/StarRating';
 import ReviewsSection from '@/components/ui/ReviewsSection';
 import BottomSheet from '@/components/ui/BottomSheet';
 import { resolveMediaUrl, formatDate } from '@/lib/types';
+import { reviews as reviewsApi } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ApiReview } from '@/lib/types';
 
 function buildBreakdown(reviews: ApiReview[]): Record<number, number> {
@@ -15,8 +17,22 @@ function buildBreakdown(reviews: ApiReview[]): Record<number, number> {
   return b;
 }
 
-function SimpleReviewCard({ review }: { review: ApiReview }) {
+function SimpleReviewCard({ review, isOwner, onReplied }: { review: ApiReview; isOwner: boolean; onReplied: (id: number, reply: string) => void }) {
   const clientAvatar = resolveMediaUrl(review.client?.avatar ?? null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(review.hairdresser_reply ?? '');
+  const [saving, setSaving] = useState(false);
+
+  function save() {
+    const texte = draft.trim();
+    if (!texte) return;
+    setSaving(true);
+    reviewsApi
+      .reply(review.id, texte)
+      .then(() => { onReplied(review.id, texte); setEditing(false); })
+      .catch(() => {})
+      .finally(() => setSaving(false));
+  }
   const firstName = (review.client?.name ?? 'Client').split(' ')[0];
   const initial = firstName.charAt(0).toUpperCase();
   return (
@@ -35,7 +51,7 @@ function SimpleReviewCard({ review }: { review: ApiReview }) {
             {review.is_verified && (
               <span className="inline-flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium">
                 <BadgeCheck size={11} />
-                Certifié
+                Vérifié
               </span>
             )}
           </div>
@@ -54,6 +70,65 @@ function SimpleReviewCard({ review }: { review: ApiReview }) {
         <span className="inline-block mt-2 ml-11 text-[10px] bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full">
           {review.specialty}
         </span>
+      )}
+
+      {/* La réponse du coiffeur — publique, sous l'avis, en retrait. C'est
+          elle que lisent les FUTURS clients : sur un avis mitigé, une bonne
+          réponse vaut mieux qu'un 5 étoiles de plus. */}
+      {review.hairdresser_reply && !editing && (
+        <div className="mt-2.5 ml-11 border-l-2 border-neutral-200 pl-3">
+          <p className="text-[11px] font-semibold text-neutral-500">Réponse du coiffeur</p>
+          <p className="text-[13px] text-neutral-600 leading-relaxed mt-0.5 break-words [overflow-wrap:anywhere]">
+            {review.hairdresser_reply}
+          </p>
+          {isOwner && (
+            <button
+              onClick={() => setEditing(true)}
+              className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] text-[12px] font-medium text-neutral-400 active:text-neutral-700 mt-1"
+            >
+              Modifier
+            </button>
+          )}
+        </div>
+      )}
+
+      {isOwner && (editing || !review.hairdresser_reply) && (
+        <div className="mt-2.5 ml-11">
+          {editing ? (
+            <div>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Votre réponse, visible par tous…"
+                rows={2}
+                maxLength={1000}
+                className="w-full border border-neutral-200 rounded-xl px-3.5 py-2.5 text-[16px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 resize-none transition-colors"
+              />
+              <div className="flex gap-2 mt-1.5">
+                <button
+                  onClick={save}
+                  disabled={saving || !draft.trim()}
+                  className="text-[12.5px] font-semibold text-white bg-neutral-900 px-3.5 min-h-[36px] rounded-xl disabled:opacity-40 active:scale-[0.97] transition-transform"
+                >
+                  {saving ? 'Envoi…' : 'Publier la réponse'}
+                </button>
+                <button
+                  onClick={() => { setEditing(false); setDraft(review.hairdresser_reply ?? ''); }}
+                  className="text-[12.5px] font-medium text-neutral-500 px-2 min-h-[36px]"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="relative before:absolute before:-inset-y-[8px] before:inset-x-0 before:content-[''] text-[12.5px] font-semibold text-neutral-500 active:text-neutral-900"
+            >
+              Répondre à cet avis
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -75,10 +150,19 @@ export default function ReviewsCompact({
   reviewsCount,
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Copie locale : la réponse tout juste publiée doit apparaître sans
+  // recharger la page — le coiffeur doit voir sa parole en place.
+  const [liste, setListe] = useState(initialReviews);
+  const { user } = useAuth();
+  const isOwner = user?.id === hairdresserUserId;
   const hasRating = reviewsCount > 0;
   const avg = parseFloat(avgRating);
-  const breakdown = buildBreakdown(initialReviews);
-  const top3 = initialReviews.slice(0, 3);
+  const breakdown = buildBreakdown(liste);
+  const top3 = liste.slice(0, 3);
+
+  function surReponse(id: number, reply: string) {
+    setListe((avant) => avant.map((r) => (r.id === id ? { ...r, hairdresser_reply: reply } : r)));
+  }
 
   return (
     <section className="mt-8">
@@ -129,7 +213,7 @@ export default function ReviewsCompact({
           {top3.length > 0 && (
             <div className="divide-y divide-neutral-100 mb-4">
               {top3.map((r) => (
-                <SimpleReviewCard key={r.id} review={r} />
+                <SimpleReviewCard key={r.id} review={r} isOwner={isOwner} onReplied={surReponse} />
               ))}
             </div>
           )}
