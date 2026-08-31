@@ -76,6 +76,8 @@ export interface ApiSpecialtyHighlight {
   is_reference: boolean;
   local_rank: number | null;
   local_total: number | null;
+  /** Ecart de points avec le rang juste au-dessus. Prive : toujours null sur le profil public. */
+  points_to_next?: number | null;
   fast_progress: boolean;
   visits_count: number;
 }

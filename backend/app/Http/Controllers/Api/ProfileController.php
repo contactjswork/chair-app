@@ -8,6 +8,7 @@ use App\Services\BadgeService;
 use App\Services\CloudinaryService;
 use App\Services\ContentFilter;
 use App\Services\GeocodingService;
+use App\Services\SpecialtyReputationService;
 use Illuminate\Http\Request;
 
 class ProfileController extends Controller
@@ -60,6 +61,11 @@ class ProfileController extends Controller
             'next_badges'   => BadgeService::nextBadges($profile),
             'chair_points'  => $points,
             'chair_level'   => BadgeService::getLevel($points),
+            // Classement par specialite dans la ville du coiffeur : le signal
+            // le plus concret qu'on puisse lui rendre. « 3e sur 12 en Coupe
+            // Homme a Haguenau » se comprend d'un coup d'oeil, la ou un
+            // niveau « Novice » ne dit rien de sa position reelle.
+            'specialty_highlights' => SpecialtyReputationService::publicHighlights($profile, true),
         ]);
     }
 

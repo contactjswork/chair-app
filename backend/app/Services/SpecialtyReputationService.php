@@ -736,12 +736,12 @@ class SpecialtyReputationService
      * où le coiffeur a un score > 0. Triée par score décroissant, limitée
      * aux signaux qui valent la peine d'être montrés à un client.
      */
-    public static function publicHighlights(HairdresserProfile $profile): array
+    public static function publicHighlights(HairdresserProfile $profile, bool $includePrivate = false): array
     {
         $rows = self::forProfile($profile)->filter(fn($r) => $r->score > 0);
         if ($rows->isEmpty()) return [];
 
-        return $rows->map(function ($row) use ($profile) {
+        return $rows->map(function ($row) use ($profile, $includePrivate) {
             $level = self::levelFor($profile, $row);
             $rank = self::rankFor($profile, $row->specialty_id, 'city', $profile->city);
 
@@ -759,6 +759,11 @@ class SpecialtyReputationService
                 'is_reference'    => $level['level'] >= 4,
                 'local_rank'      => $rank['rank'] ?? null,
                 'local_total'     => $rank['total'] ?? null,
+                // L'ecart au rang superieur n'a de sens que pour le coiffeur
+                // lui-meme : c'est ce qui lui donne un cap. On ne l'expose pas
+                // sur le profil public, ou il ne dirait rien a un client et
+                // reviendrait a publier la mecanique de classement.
+                'points_to_next'  => $includePrivate ? ($rank['points_to_next'] ?? null) : null,
                 'fast_progress'   => $fastProgress,
                 'visits_count'    => $row->visits_count,
             ];

@@ -4,24 +4,26 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { api, appointments as apptApi, specialtyProgress } from '@/lib/api';
-import { computeScore } from '@/lib/profileScore';
+import { api, appointments as apptApi } from '@/lib/api';
 import {
-  resolveMediaUrl, hasChairPlus,
+  hasChairPlus,
   type ApiPost, type ApiStats, type ApiHairdresserProfile,
-  type ApiAppointment, type ApiScheduleDay,
-  type ApiChairLevel, type ApiService, type ApiSpecialtyProgress,
-  apptDateStr,
+  type ApiAppointment,
+  type ApiChairLevel,
+  type ApiSpecialtyHighlight, type ApiNextBadge, type ApiChairBadge,
 } from '@/lib/types';
 import {
-  ChevronRight, Clock, Gift, Pencil, Crown, Trophy, UserCheck, Sparkles, Eye,
+  ChevronRight, Gift, Pencil, Sparkles, Eye,
 } from 'lucide-react';
-import CockpitHero from '@/components/ui/CockpitHero';
-import NextStepCard from '@/components/ui/NextStepCard';
 import BusinessSnapshotCard from '@/components/ui/BusinessSnapshotCard';
 import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
 import StoryCreateCard from '@/components/ui/StoryCreateCard';
-import StreakWidget from '@/components/ui/StreakWidget';
+import RankCard from '@/components/pro/home/RankCard';
+import TodayCard from '@/components/pro/home/TodayCard';
+import StreakCard from '@/components/pro/home/StreakCard';
+import QuestCard from '@/components/pro/home/QuestCard';
+import CompletionCard from '@/components/pro/home/CompletionCard';
+import { completionFromProfile } from '@/lib/profileCompletion';
 import ProSection from '@/components/pro/ProSection';
 import { ProGroup, ProGroupRow } from '@/components/pro/ProGroup';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
@@ -42,12 +44,13 @@ export default function CockpitPage() {
   const [stats,         setStats]         = useState<ApiStats | null>(null);
   const [posts,         setPosts]         = useState<ApiPost[]>([]);
   const [appointments,  setAppointments]  = useState<ApiAppointment[]>([]);
-  const [services,      setServices]      = useState<ApiService[]>([]);
-  const [schedule,      setSchedule]      = useState<ApiScheduleDay[]>([]);
-  const [scheduleSet,   setScheduleSet]   = useState(false);
   const [dataLoading,   setDataLoading]   = useState(true);
-  const [chairLevel,    setChairLevel]    = useState<ApiChairLevel | null>(null);
-  const [specialties,   setSpecialties]   = useState<ApiSpecialtyProgress[]>([]);
+  // Tout vient du même GET /profile : classements par spécialité, badges
+  // débloqués, prochains paliers. Pas d'appel supplémentaire pour la home.
+  const [specialtyHighlights, setSpecialtyHighlights] = useState<ApiSpecialtyHighlight[]>([]);
+  const [nextBadges,    setNextBadges]    = useState<ApiNextBadge[]>([]);
+  const [unlockedBadges, setUnlockedBadges] = useState<ApiChairBadge[]>([]);
+  const [badgeCatalogueTotal, setBadgeCatalogueTotal] = useState(0);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
 
@@ -59,11 +62,8 @@ export default function CockpitPage() {
       api.get<ApiHairdresserProfile>('/profile'),
       apptApi.getStats(),
       api.get<ApiPost[]>('/posts'),
-      api.get<ApiService[]>('/services'),
       api.get<ApiAppointment[]>('/appointments'),
-      api.get<ApiScheduleDay[]>('/schedule'),
-      specialtyProgress.mine(),
-    ]).then(([prof, st, ps, svcs, apts, sched, sp]) => {
+    ]).then(([prof, st, ps, apts]) => {
       if (prof.status === 'fulfilled') {
         const p = prof.value as ApiHairdresserProfile & {
           chair_level?: ApiChairLevel;
@@ -71,18 +71,21 @@ export default function CockpitPage() {
         };
         const profileData = (p as { profile?: ApiHairdresserProfile }).profile ?? p;
         setFullProfile(profileData as ApiHairdresserProfile);
-        if (p.chair_level) setChairLevel(p.chair_level);
+        const brut = p as unknown as {
+          specialty_highlights?: ApiSpecialtyHighlight[];
+          next_badges?: ApiNextBadge[];
+          chair_badges_all?: ApiChairBadge[];
+          chair_badges_catalog?: ApiChairBadge[];
+        };
+        if (Array.isArray(brut.specialty_highlights)) setSpecialtyHighlights(brut.specialty_highlights);
+        if (Array.isArray(brut.next_badges)) setNextBadges(brut.next_badges);
+        if (Array.isArray(brut.chair_badges_all)) setUnlockedBadges(brut.chair_badges_all);
+        if (Array.isArray(brut.chair_badges_catalog)) setBadgeCatalogueTotal(brut.chair_badges_catalog.length);
       }
       if (st.status  === 'fulfilled') setStats(st.value as ApiStats);
       // Liste complète (pas tronquée) — nécessaire pour des totaux réels (likes, meilleure réalisation)
       if (ps.status  === 'fulfilled' && Array.isArray(ps.value)) setPosts(ps.value as ApiPost[]);
-      if (svcs.status === 'fulfilled' && Array.isArray(svcs.value)) setServices(svcs.value as ApiService[]);
       if (apts.status === 'fulfilled' && Array.isArray(apts.value)) setAppointments(apts.value as ApiAppointment[]);
-      if (sched.status === 'fulfilled' && Array.isArray(sched.value)) {
-        setSchedule(sched.value as ApiScheduleDay[]);
-        setScheduleSet((sched.value as ApiScheduleDay[]).some((d) => d.is_open && d.start_time));
-      }
-      if (sp.status === 'fulfilled') setSpecialties(sp.value.specialties);
     }).finally(() => setDataLoading(false));
   }, [user]);
 
@@ -95,23 +98,19 @@ export default function CockpitPage() {
   }
 
   const profile   = user.hairdresser_profile;
+  // Meme calcul que la page Profil, importe et non recopie : deux ecrans
+  // qui annoncent deux pourcentages differents pour le meme profil, c est
+  // le genre d incoherence qui fait douter du reste.
+  const completion = completionFromProfile(fullProfile);
   const firstName = user.name.split(' ')[0];
-  const avatarUrl = resolveMediaUrl(user.avatar);
 
-  const { score, items: missingItems } = computeScore(user, fullProfile, stats, services.length, scheduleSet);
 
-  const now      = new Date();
-  const today    = now.toISOString().slice(0, 10);
-  const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
   const pending      = appointments.filter((a) => a.status === 'pending');
-  const todayApts    = appointments.filter((a) => a.status === 'confirmed' && apptDateStr(a) === today);
-  const tomorrowApts = appointments.filter((a) => a.status === 'confirmed' && apptDateStr(a) === tomorrow);
 
   const todayDateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   // Meilleure spécialité = score de spécialité le plus élevé (déjà trié
   // ainsi côté backend, /my-specialty-progress ORDER BY score DESC).
-  const bestSpecialty = specialties[0] ?? null;
 
   // Horaires du jour. hairdresser_schedules.day_of_week suit la convention
   // PHP date('w') : 0 = Dimanche … 6 = Samedi (voir la migration
@@ -119,14 +118,7 @@ export default function CockpitPage() {
   // les 7 jours indexés 0..6, AvailabilityController et SlotGuard).
   // Date.getDay() utilise exactement la même numérotation : le décalage
   // "(getDay() + 6) % 7" appliqué ici lisait donc la ligne de la VEILLE.
-  const todayDow = new Date().getDay();
-  const todaySchedule = schedule.find((d) => d.day_of_week === todayDow && d.is_open);
 
-  const bestRanked = specialties
-    .filter((s) => s.local_rank != null && (s.local_total ?? 0) >= 2)
-    .sort((a, b) => (a.local_rank ?? 999) - (b.local_rank ?? 999))[0] ?? null;
-  const hasSpecialtyActivity = specialties.some((s) => s.score > 0);
-  const showRankRow = !!profile?.city && (bestRanked || hasSpecialtyActivity);
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 md:pt-10 pb-12">
@@ -139,28 +131,40 @@ export default function CockpitPage() {
         </div>
       )}
 
-      {/* ══════════ Qui je suis ══════════ */}
-      {!dataLoading ? (
-        <CockpitHero
-          firstName={firstName}
-          avatarUrl={avatarUrl}
-          dateStr={todayDateStr}
-          publicSlug={profile?.slug ?? null}
-          bestSpecialty={bestSpecialty}
-          city={profile?.city ?? null}
-        />
+      {/* ══════════ Qui je suis ══════════
+          Une ligne, pas une carte. L'identité n'a pas besoin d'occuper le
+          haut de l'écran : le coiffeur sait qui il est. Ce qu'il vient
+          chercher, c'est sa place et sa journée. */}
+      <div className="flex items-baseline justify-between gap-3 mb-5">
+        <h1 className="text-[26px] font-bold text-neutral-900 tracking-[-0.02em] truncate">
+          {firstName ? `Bonjour ${firstName}` : 'Bonjour'}
+        </h1>
+        <span className="text-[12px] text-neutral-400 capitalize shrink-0">{todayDateStr}</span>
+      </div>
+
+      {/* ══════════ Où je me situe ══════════
+          En tête, et volontairement. C'est le seul écran de l'app qui
+          répond à « est-ce que je progresse ? » — et « Novice » n'y
+          répondait pas. Voir components/pro/home/RankCard.tsx. */}
+      {dataLoading ? (
+        <div className="h-48 bg-neutral-100 rounded-[24px] animate-pulse" />
       ) : (
-        <div className="h-40 bg-neutral-50 rounded-[24px] animate-pulse" />
+        <RankCard highlights={specialtyHighlights} city={profile?.city ?? null} />
       )}
 
-      {/* ══════════ Ce qui se passe maintenant ══════════ */}
-      <ProSection title="Aujourd'hui" href={isIndependent ? '/pro/agenda' : undefined}>
+      {/* ══════════ Ma journée ══════════ */}
+      <div className="mt-3 space-y-3">
         {dataLoading ? (
-          <div className="h-16 bg-neutral-50 rounded-[20px] animate-pulse" />
+          <div className="h-32 bg-neutral-50 rounded-[24px] animate-pulse" />
         ) : (
-          <div className="space-y-3">
+          <>
+            {/* Les demandes en attente passent avant tout le reste : un
+                client qui n'a pas de réponse est un client qui part. */}
             {isIndependent && pending.length > 0 && (
-              <Link href="/pro/agenda" className="flex items-center gap-3.5 bg-amber-50 rounded-[20px] px-5 py-4 hover:bg-amber-100/70 transition-colors">
+              <Link
+                href="/pro/agenda"
+                className="flex items-center gap-3.5 bg-amber-50 rounded-[24px] px-5 py-4 active:bg-amber-100/70 transition-colors"
+              >
                 <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-[15px] font-semibold text-amber-900">
@@ -168,104 +172,25 @@ export default function CockpitPage() {
                   </p>
                   <p className="text-[13px] text-amber-700/70 mt-0.5">Répondez pour ne pas perdre ces clients</p>
                 </div>
-                <ChevronRight size={16} className="text-amber-400 flex-shrink-0" />
+                <ChevronRight size={16} className="text-amber-700/50 flex-shrink-0" />
               </Link>
             )}
 
-            {todayApts.length === 0 && !(!isIndependent && todaySchedule) ? (
-              <div className="bg-neutral-50 rounded-[20px] px-5 py-5">
-                <p className="text-[15px] text-neutral-500">Aucun rendez-vous aujourd&apos;hui</p>
-                {isIndependent && tomorrowApts.length > 0 && (
-                  <p className="text-[13px] text-neutral-400 mt-1">{tomorrowApts.length} RDV demain</p>
-                )}
-              </div>
-            ) : (
-              <ProGroup>
-                {!isIndependent && todaySchedule && (
-                  <ProGroupRow
-                    icon={Clock}
-                    label="Horaires"
-                    value={`${todaySchedule.start_time?.slice(0, 5)} – ${todaySchedule.end_time?.slice(0, 5)}`}
-                  />
-                )}
-                {todayApts.length === 0 ? (
-                  <ProGroupRow
-                    icon={Clock}
-                    label="Aucun rendez-vous aujourd'hui"
-                    hint={isIndependent && tomorrowApts.length > 0 ? `${tomorrowApts.length} RDV demain` : undefined}
-                  />
-                ) : (
-                  todayApts.slice(0, 4).map((apt) => (
-                    <ProGroupRow
-                      key={apt.id}
-                      href="/pro/agenda"
-                      label={apt.client_name ?? 'Client'}
-                      hint={apt.service ?? undefined}
-                      value={apt.appointment_time?.slice(0, 5) ?? ''}
-                    />
-                  ))
-                )}
-                {todayApts.length > 4 && (
-                  <ProGroupRow href="/pro/agenda" label={`+ ${todayApts.length - 4} autres rendez-vous`} />
-                )}
-              </ProGroup>
-            )}
-          </div>
-        )}
-      </ProSection>
+            <TodayCard appointments={appointments} href={isIndependent ? '/pro/agenda' : '/pro/reservations'} />
 
-      {/* ══════════ LA seule chose à faire ensuite ══════════ */}
-      <ProSection title="À faire maintenant">
-        {!dataLoading ? (
-          <NextStepCard profileScore={score} topProfileItem={missingItems[0] ?? null} bestSpecialty={bestSpecialty} />
-        ) : (
-          <div className="h-24 bg-neutral-50 rounded-[20px] animate-pulse" />
-        )}
-      </ProSection>
+            {/* ══════════ Ce qui me tire vers le haut ══════════ */}
+            <StreakCard />
 
-      {/* ══════════ Où j'en suis — une liste, pas quatre cartes ══════════ */}
-      {!dataLoading && (
-        <ProSection title="Ma progression" href="/pro/badges">
-          <ProGroup>
-            {chairLevel && (
-              <ProGroupRow
-                href="/pro/badges"
-                icon={Crown}
-                label="Niveau CHAIR"
-                value={chairLevel.name}
-                hint={chairLevel.next ? `${chairLevel.progress}% vers ${chairLevel.next.name}` : 'Niveau maximum'}
-              />
-            )}
-            <StreakWidget row />
-            {showRankRow && (
-              <ProGroupRow
-                href="/pro/classements"
-                icon={Trophy}
-                label="Classement"
-                value={bestRanked ? `#${bestRanked.local_rank}` : '—'}
-                hint={
-                  bestRanked
-                    ? bestRanked.points_to_next
-                      ? `${bestRanked.points_to_next} pt${bestRanked.points_to_next > 1 ? 's' : ''} avant la ${(bestRanked.local_rank ?? 1) - 1}e place`
-                      : `${bestRanked.specialty_name} à ${profile?.city}`
-                    : `Pas encore classé à ${profile?.city}`
-                }
-              />
-            )}
-            <ProGroupRow
-              href="/pro/profil"
-              icon={UserCheck}
-              label="Profil"
-              value={`${score} %`}
-              hint={
-                missingItems.length > 0
-                  ? `Il manque ${missingItems[0].short}${missingItems.length > 1 ? ` et ${missingItems.length - 1} autre${missingItems.length > 2 ? 's' : ''}` : ''}`
-                  : isIndependent ? 'Prêt pour les réservations' : 'Profil complet'
-              }
+            <QuestCard
+              nextBadges={nextBadges}
+              unlocked={unlockedBadges}
+              catalogueTotal={badgeCatalogueTotal}
             />
-          </ProGroup>
-        </ProSection>
-      )}
+
+            {completion && <CompletionCard completion={completion} />}
+          </>
+        )}
+      </div>
 
       {/* ══════════ Ce que je montre ══════════ */}
       {!dataLoading && (
