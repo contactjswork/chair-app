@@ -240,6 +240,7 @@ Route::get('/hairdressers/{slug}', [HairdresserController::class, 'show']);
 Route::get('/hairdressers/{slug}/posts', [HairdresserController::class, 'posts']);
 Route::get('/hairdressers/{slug}/services', [ServiceController::class, 'publicList']);
 Route::get('/hairdressers/{slug}/availability', [AvailabilityController::class, 'slots']);
+Route::get('/hairdressers/{slug}/flash-promos', [\App\Http\Controllers\Api\FlashPromoController::class, 'publicIndex']);
 Route::get('/hairdressers/{slug}/available-dates', [AvailabilityController::class, 'availableDates']);
 Route::get('/specialties', [SpecialtyController::class, 'index']);
 
@@ -520,6 +521,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/my-clients',                 [ClientBookController::class, 'index']);
     Route::get('/my-clients/{userId}',        [ClientBookController::class, 'show']);
     Route::put('/my-clients/{userId}/note',   [ClientBookController::class, 'saveNote']);
+    // Promo flash : brader un jour creux pour le remplir.
+    Route::get('/flash-promos',         [\App\Http\Controllers\Api\FlashPromoController::class, 'index']);
+    Route::post('/flash-promos',        [\App\Http\Controllers\Api\FlashPromoController::class, 'store']);
+    Route::delete('/flash-promos/{id}', [\App\Http\Controllers\Api\FlashPromoController::class, 'destroy']);
     // Carte de fidelite — configuration (add-on requis) et recompenses a honorer.
     Route::get('/loyalty/program',              [LoyaltyController::class, 'show']);
     Route::put('/loyalty/program',              [LoyaltyController::class, 'update']);

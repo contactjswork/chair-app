@@ -9,7 +9,7 @@ import { hapticSuccess } from '@/lib/haptics';
 import { useScrollLock } from '@/hooks/useScrollLock';
 import type { ApiServiceCategory, ApiService, ApiPost } from '@/lib/types';
 import { getAfterImage } from '@/lib/types';
-import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn, UserPlus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check, Clock, CalendarX2, Scissors, X, LogIn, UserPlus, Zap } from 'lucide-react';
 import { PrimaryButton, SecondaryButton } from './Button';
 import EmptyState from './EmptyState';
 import { Skeleton } from './Skeleton';
@@ -99,6 +99,9 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const [selectedSlot, setSelectedSlot] = useState('');
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+  // Promos flash à venir du coiffeur — jour bradé signalé sur le calendrier,
+  // prix remisé affiché dès que la date choisie en porte une.
+  const [flashPromos, setFlashPromos] = useState<{ date: string; discount_percent: number }[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [datesLoadedKey, setDatesLoadedKey] = useState('');
 
@@ -235,6 +238,14 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const loadingDates = !!selectedService && datesKey !== datesLoadedKey;
 
   useEffect(() => {
+    if (!open) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api'}/hairdressers/${slug}/flash-promos`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setFlashPromos(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [open, slug]);
+
+  useEffect(() => {
     if (!selectedService) return;
     const month = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
     const key = `${selectedService.id}-${viewYear}-${viewMonth}`;
@@ -367,6 +378,12 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   if (!open) return null;
 
   const priceOf = (svc: ApiService) => parseFloat(svc.price ?? '0').toFixed(0);
+
+  // Remise du jour sélectionné (null si aucune) — le backend applique la
+  // même règle à la réservation, l'affichage ne fait que l'annoncer.
+  const promoPct = flashPromos.find((p) => p.date === selectedDate)?.discount_percent ?? null;
+  const promoPriceOf = (svc: ApiService) =>
+    (parseFloat(svc.price ?? '0') * (1 - (promoPct ?? 0) / 100)).toFixed(0);
 
   return (
     <>
@@ -506,7 +523,14 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       <span className="text-[12px] text-neutral-400 flex items-center gap-1">
                         <Clock size={11} />{selectedService.duration_minutes} min
                       </span>
-                      <span className="text-[12px] font-semibold text-neutral-900">{priceOf(selectedService)} €</span>
+                      {promoPct ? (
+                        <span className="text-[12px] font-semibold text-neutral-900">
+                          <span className="line-through text-neutral-400 mr-1">{priceOf(selectedService)} €</span>
+                          <span className="text-amber-600">{promoPriceOf(selectedService)} €</span>
+                        </span>
+                      ) : (
+                        <span className="text-[12px] font-semibold text-neutral-900">{priceOf(selectedService)} €</span>
+                      )}
                     </div>
                   </div>
                   {/* La date n'entre dans le rappel qu'une fois l'heure choisie :
@@ -643,6 +667,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                           const isSelected = dateStr === selectedDate;
                           const todayStr = toLocalYMD(today);
                           const isPast = dateStr < todayStr;
+                          const hasPromo = isAvailable && !isPast && flashPromos.some((p) => p.date === dateStr);
                           return (
                             <button
                               key={dayNum}
@@ -660,6 +685,8 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                               className={`h-11 text-[14px] rounded-xl font-medium tabular-nums transition-colors ${
                                 isSelected
                                   ? 'bg-neutral-900 text-white'
+                                  : hasPromo
+                                  ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 hover:bg-amber-100'
                                   : isAvailable && !isPast
                                   ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200'
                                   : 'text-neutral-300 cursor-default'
@@ -679,9 +706,19 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                           subtitle="Ce coiffeur n'a pas ouvert de créneau ce mois-ci. Essayez le mois suivant."
                         />
                       ) : (
-                        <div className="flex items-center justify-center gap-2 mt-5">
-                          <span className="w-3 h-3 rounded-md bg-neutral-100" />
-                          <span className="text-[12px] text-neutral-400">Jours disponibles</span>
+                        <div className="flex items-center justify-center gap-4 mt-5">
+                          <span className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-md bg-neutral-100" />
+                            <span className="text-[12px] text-neutral-400">Jours disponibles</span>
+                          </span>
+                          {flashPromos.some((p) => availableDates.includes(p.date)) && (
+                            <span className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-md bg-amber-50 ring-1 ring-amber-200" />
+                              <span className="text-[12px] text-amber-600 font-semibold">
+                                Promo flash -{flashPromos.find((p) => availableDates.includes(p.date))!.discount_percent}%
+                              </span>
+                            </span>
+                          )}
                         </div>
                       )}
                     </>
@@ -694,6 +731,17 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                 <div>
                   <p className="text-[15px] font-semibold text-neutral-900 mb-1 capitalize">{formatDate(selectedDate)}</p>
                   <p className="text-[12px] text-neutral-400 mb-4">Créneaux de {selectedService.duration_minutes} min</p>
+
+                  {promoPct && (
+                    <div className="flex items-center gap-2 bg-amber-50 ring-1 ring-amber-100 rounded-xl px-3.5 py-2.5 mb-4">
+                      <Zap size={14} className="text-amber-500 flex-shrink-0" />
+                      <p className="text-[12px] font-semibold text-amber-700">
+                        Promo flash ce jour-là :{' '}
+                        <span className="line-through opacity-60">{priceOf(selectedService)} €</span>{' '}
+                        → {promoPriceOf(selectedService)} € (-{promoPct}%)
+                      </p>
+                    </div>
+                  )}
 
                   {/* Avant : la ligne de texte "Chargement des créneaux...",
                       puis un remplissage brutal de la grille. */}
@@ -966,16 +1014,25 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                     <div className="py-4 flex items-center justify-between gap-3">
                       <div>
                         <p className="text-[14px] font-semibold text-neutral-900">Prix de la prestation</p>
-                        <p className="text-[12px] text-neutral-400 mt-0.5">À régler sur place, au salon</p>
+                        <p className="text-[12px] text-neutral-400 mt-0.5">
+                          {promoPct ? `Promo flash -${promoPct}% · à régler sur place` : 'À régler sur place, au salon'}
+                        </p>
                       </div>
-                      <span className="text-[22px] font-bold text-neutral-900 tabular-nums">{priceOf(selectedService)} €</span>
+                      {promoPct ? (
+                        <span className="text-right">
+                          <span className="block text-[13px] text-neutral-400 line-through tabular-nums">{priceOf(selectedService)} €</span>
+                          <span className="block text-[22px] font-bold text-amber-600 tabular-nums">{promoPriceOf(selectedService)} €</span>
+                        </span>
+                      ) : (
+                        <span className="text-[22px] font-bold text-neutral-900 tabular-nums">{priceOf(selectedService)} €</span>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-4 mb-6 border border-neutral-200 rounded-xl px-4 py-3">
                     <p className="text-[13px] font-semibold text-neutral-900">Aucun paiement dans l&apos;application</p>
                     <p className="text-[12px] text-neutral-500 mt-1 leading-relaxed">
-                      Tu régleras les {priceOf(selectedService)} € directement à ton coiffeur, le jour du
+                      Tu régleras les {promoPct ? promoPriceOf(selectedService) : priceOf(selectedService)} € directement à ton coiffeur, le jour du
                       rendez-vous. Aucune carte n&apos;est demandée maintenant, rien ne sera débité.
                     </p>
                   </div>

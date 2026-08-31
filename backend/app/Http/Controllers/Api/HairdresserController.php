@@ -331,6 +331,14 @@ class HairdresserController extends Controller
         // hairdresser_specialty_progress, les highlights lisent des données à jour.
         $data['specialty_highlights'] = SpecialtyReputationService::publicHighlights($hairdresser);
 
+        // Promos flash à venir — le client voit le jour bradé avant de choisir
+        // sa date. Les promos passées ont expiré d'elles-mêmes (filtre date).
+        $data['flash_promos'] = \App\Models\FlashPromo::where('hairdresser_id', $hairdresser->id)
+            ->whereDate('date', '>=', now('Europe/Paris')->toDateString())
+            ->orderBy('date')
+            ->get(['date', 'discount_percent'])
+            ->map(fn ($p) => ['date' => $p->date->format('Y-m-d'), 'discount_percent' => $p->discount_percent]);
+
         // Streak public — juste de quoi afficher la flamme, pas le détail interne
         $streak = StreakService::get($hairdresser->id);
         $data['chair_streak'] = [

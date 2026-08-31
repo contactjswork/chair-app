@@ -13,7 +13,7 @@ import {
   CalendarDays, Clock, ChevronLeft, ChevronRight, Settings,
   Bell, ZoomIn, ZoomOut, User, X, Check, Phone, Mail,
   Calendar, AlertTriangle, CheckCircle2, Ban, UserX, Trash2,
-  List, Euro, Users,
+  List, Euro, Users, Zap,
 } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -621,7 +621,12 @@ interface DayViewProps {
   onSelectUnavailability: (u:ApiUnavailability) => void;
   onQuickCreate: (time:string, date:string) => void;
   onStatusChange: (id:number, status:AppointmentStatus) => void;
+  /** Promo flash du jour affiché (null = aucune) et ouverture de la feuille. */
+  promoPct?: number|null;
+  onPromoTap?: () => void;
 }
+
+interface FlashPromoDto { id:number; date:string; discount_percent:number; }
 
 // Prochain créneau libre (>= maintenant si aujourd'hui) en tenant compte des
 // RDV actifs et des blocages — dérivé des données réelles, jamais estimé.
@@ -642,7 +647,7 @@ function nextFreeSlot(dayApts: ApiAppointment[], dayUnavail: ApiUnavailability[]
   return cursor < END_HOUR*60 ? cursor : null;
 }
 
-function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate, onStatusChange }: DayViewProps) {
+function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate, onStatusChange, promoPct, onPromoTap }: DayViewProps) {
   const dateStr      = isoDate(date);
   const dayApts      = aptsForDate(appointments, dateStr);
   const dayUnavail   = unavailForDate(unavailabilities, dateStr);
@@ -889,6 +894,22 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-red-400 flex items-center gap-1"><AlertTriangle size={9}/>Retard</p>
             <p className="text-[14px] font-bold text-red-600">{late}</p>
           </div>
+        )}
+        {/* Promo flash — seulement sur un jour à venir (une promo sur hier ne sert à rien). */}
+        {onPromoTap && dateStr >= isoDate(new Date()) && (
+          <button onClick={onPromoTap}
+            className={`flex-shrink-0 min-w-[84px] rounded-2xl px-3 py-2 text-left transition-colors ${
+              promoPct!=null
+                ? 'bg-amber-50 shadow-[0_2px_8px_-6px_rgba(245,158,11,0.3)] ring-1 ring-amber-100'
+                : 'bg-neutral-50 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]'
+            }`}>
+            <p className={`text-[9px] font-bold uppercase tracking-[0.14em] flex items-center gap-1 ${promoPct!=null?'text-amber-500':'text-neutral-400'}`}>
+              <Zap size={9}/>Promo
+            </p>
+            <p className={`text-[14px] font-bold ${promoPct!=null?'text-amber-600':'text-neutral-900'}`}>
+              {promoPct!=null ? `-${promoPct}%` : '—'}
+            </p>
+          </button>
         )}
       </div>
 
@@ -1309,6 +1330,8 @@ export default function AgendaPage() {
   const [unavailabilities, setUnavailabilities] = useState<ApiUnavailability[]>([]);
   const [blockCreate, setBlockCreate] = useState<{date:string;time:string;presetReason?:string}|null>(null);
   const [selectedUnavail, setSelectedUnavail] = useState<ApiUnavailability|null>(null);
+  const [flashPromos, setFlashPromos] = useState<FlashPromoDto[]>([]);
+  const [promoSheetOpen, setPromoSheetOpen] = useState(false);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
   const weekStart = getWeekStart(current);
@@ -1326,6 +1349,7 @@ export default function AgendaPage() {
       .catch(()=>{})
       .finally(()=>setLoading(false));
     loadUnavailabilities();
+    api.get<FlashPromoDto[]>('/flash-promos').then(setFlashPromos).catch(()=>{});
   },[user]);
 
   // Dérivé de appointments — reste toujours synchronisé sans effet ni copie.
@@ -1503,6 +1527,8 @@ export default function AgendaPage() {
           onSelectUnavailability={u=>setSelectedUnavail(u)}
           onQuickCreate={(time,date)=>setQuickCreate({time,date})}
           onStatusChange={updateStatus}
+          promoPct={flashPromos.find(p=>p.date===isoDate(current))?.discount_percent ?? null}
+          onPromoTap={()=>setPromoSheetOpen(true)}
         />
       )}
       {view==='week'&&(
@@ -1564,6 +1590,105 @@ export default function AgendaPage() {
           onDeleted={(id)=>{ setUnavailabilities(prev=>prev.filter(u=>u.id!==id)); setSelectedUnavail(null); }}
         />
       )}
+
+      {/* Promo flash du jour affiché */}
+      {promoSheetOpen&&(
+        <FlashPromoSheet
+          date={isoDate(current)}
+          promo={flashPromos.find(p=>p.date===isoDate(current)) ?? null}
+          onClose={()=>setPromoSheetOpen(false)}
+          onChanged={(next)=>{
+            setFlashPromos(prev=>{
+              const sans = prev.filter(p=>p.date!==isoDate(current));
+              return next ? [...sans, next] : sans;
+            });
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// ── FlashPromoSheet ───────────────────────────────────────────────────────────
+
+/**
+ * Brader un jour creux : -10 à -50 % sur toutes les prestations de CE jour.
+ * À la création, les clients qui suivent le coiffeur (favoris + abonnés)
+ * sont prévenus une seule fois ; le prix remisé s'applique tout seul aux
+ * réservations du jour.
+ */
+function FlashPromoSheet({date,promo,onClose,onChanged}:{
+  date:string; promo:FlashPromoDto|null;
+  onClose:()=>void; onChanged:(next:FlashPromoDto|null)=>void;
+}) {
+  const [pct, setPct] = useState<number>(promo?.discount_percent ?? 20);
+  const [busy, setBusy] = useState(false);
+  const [erreur, setErreur] = useState('');
+  const jourLabel = new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+
+  async function poser() {
+    setBusy(true); setErreur('');
+    try {
+      const created = await api.post<FlashPromoDto>('/flash-promos',{date,discount_percent:pct});
+      onChanged(created);
+      onClose();
+    } catch (e) {
+      setErreur(e instanceof Error ? e.message : 'Impossible de poser la promo.');
+    } finally { setBusy(false); }
+  }
+
+  async function retirer() {
+    if (!promo) return;
+    setBusy(true); setErreur('');
+    try {
+      await api.delete(`/flash-promos/${promo.id}`);
+      onChanged(null);
+      onClose();
+    } catch {
+      setErreur('Impossible de retirer la promo.');
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <BottomSheet onClose={onClose}>
+      <div className="px-5 pb-safe-5">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-500 flex items-center gap-1.5 mb-0.5">
+          <Zap size={11}/>Promo flash
+        </p>
+        <p className="text-[22px] font-bold text-neutral-900 capitalize">{jourLabel}</p>
+        <p className="text-[13px] text-neutral-500 leading-relaxed mt-1.5 mb-5">
+          La remise s&apos;applique à toutes vos prestations ce jour-là. Vos clients
+          fidèles et abonnés sont prévenus à la création — une seule fois.
+        </p>
+
+        <div className="flex gap-2 mb-5">
+          {[10,20,30,40,50].map(p=>(
+            <button key={p} onClick={()=>setPct(p)}
+              className={`flex-1 py-3 rounded-xl text-[14px] font-bold border transition-all ${
+                pct===p ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+              }`}>
+              -{p}%
+            </button>
+          ))}
+        </div>
+
+        {erreur && <p className="text-[12px] font-semibold text-red-600 mb-3">{erreur}</p>}
+
+        <button onClick={poser} disabled={busy}
+          className="w-full py-3.5 rounded-2xl bg-neutral-900 text-white text-[14px] font-bold disabled:opacity-50">
+          {promo ? `Passer à -${pct}%` : `Poser la promo -${pct}%`}
+        </button>
+        {promo && (
+          <button onClick={retirer} disabled={busy}
+            className="w-full py-3 mt-1.5 text-[13px] font-semibold text-red-600 disabled:opacity-50">
+            Retirer la promo de ce jour
+          </button>
+        )}
+        <p className="text-[11px] text-neutral-400 leading-snug mt-3">
+          Le prix remisé est figé à la réservation : retirer la promo ensuite ne
+          change rien pour les clients qui ont déjà réservé.
+        </p>
+      </div>
+    </BottomSheet>
   );
 }

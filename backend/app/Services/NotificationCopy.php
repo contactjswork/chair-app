@@ -468,6 +468,16 @@ class NotificationCopy
                 'fallback' => 'Ton coiffeur a des créneaux cette semaine.',
             ],
         ],
+
+        // Promo flash : un coiffeur suivi ou en favori brade un jour creux.
+        // Une seule vague par promo (drapeau notified_at posé avant l'envoi).
+        'flash_promo' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Promo flash ⚡',
+                'message'  => '-{pct}% chez {coiffeur} {jour}. Les créneaux partent vite.',
+                'fallback' => 'Un coiffeur que tu suis fait une promo flash.',
+            ],
+        ],
     ];
 
     /**
