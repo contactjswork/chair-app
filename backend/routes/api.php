@@ -521,6 +521,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/my-clients',                 [ClientBookController::class, 'index']);
     Route::get('/my-clients/{userId}',        [ClientBookController::class, 'show']);
     Route::put('/my-clients/{userId}/note',   [ClientBookController::class, 'saveNote']);
+    // « Votre annee CHAIR » — recap annuel du coiffeur.
+    Route::get('/my-year-recap', [\App\Http\Controllers\Api\YearRecapController::class, 'mine']);
     // Promo flash : brader un jour creux pour le remplir.
     Route::get('/flash-promos',         [\App\Http\Controllers\Api\FlashPromoController::class, 'index']);
     Route::post('/flash-promos',        [\App\Http\Controllers\Api\FlashPromoController::class, 'store']);

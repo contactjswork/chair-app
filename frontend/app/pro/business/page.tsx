@@ -17,7 +17,7 @@ import { PremiumLockCard } from '@/components/ui/PremiumLock';
 import {
   Users, Star, Eye, Bookmark, Euro, Percent, TrendingUp, TrendingDown, Minus,
   Crown, ChevronRight, Calendar, CheckCircle2, Clock, ImageIcon, Lightbulb, ArrowRight,
-  Medal, Scissors, MessageSquare, UserPlus, Heart,
+  Medal, Scissors, MessageSquare, UserPlus, Heart, Sparkles,
 } from 'lucide-react';
 
 // ── Tendance ──────────────────────────────────────────────────────────
@@ -580,6 +580,20 @@ export default function PerformancePage() {
                   <p className="text-xs text-neutral-400 mt-0.5">Niveau, récompenses et objectifs CHAIR</p>
                 </div>
                 <ChevronRight size={14} className="text-neutral-300 group-hover:text-neutral-700 flex-shrink-0" />
+              </Link>
+
+              {/* Le récap annuel : les mêmes chiffres, racontés. */}
+              <Link href="/pro/retrospective"
+                className="flex items-center gap-4 rounded-[22px] p-4 mt-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_22px_-10px_rgba(10,10,10,0.5)] hover:shadow-[0_10px_26px_-10px_rgba(10,10,10,0.6)] transition-all group"
+                style={{ background: 'radial-gradient(120% 100% at 50% 0%, #1f1f21 0%, #0a0a0a 62%)' }}>
+                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Sparkles size={17} className="text-white/80" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold">Votre année CHAIR</p>
+                  <p className="text-xs text-white/45 mt-0.5">Le récap : passages, CA, mois record, prestation signature</p>
+                </div>
+                <ChevronRight size={14} className="text-white/30 group-hover:text-white/70 flex-shrink-0" />
               </Link>
             </section>
 
