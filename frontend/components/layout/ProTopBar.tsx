@@ -13,7 +13,7 @@ export default function ProTopBar() {
   const { homeHref } = useProNav();
 
   return (
-    <div className="md:hidden fixed top-0 inset-x-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] pt-safe">
+    <div className="md:hidden fixed top-[var(--chair-banner-h,0px)] inset-x-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] pt-safe">
       <div className="h-14 flex items-center justify-between px-4">
         <div className="w-9" />
         <ChairLogo href={homeHref} size="md" pro />

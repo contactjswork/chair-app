@@ -32,7 +32,7 @@ export default function TopNav() {
   return (
     <>
       {/* ── Header mobile ── */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-100">
+      <header className="md:hidden fixed top-[var(--chair-banner-h,0px)] left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-neutral-100">
         <div className="pt-safe-header" />
         <div className="flex items-center justify-between px-4 h-14">
           <ChairLogo href="/app" size="md" />

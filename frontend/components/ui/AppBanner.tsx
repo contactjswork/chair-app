@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { detectOS, isAppPublished, storeUrlFor } from '@/lib/appDownload';
@@ -46,6 +46,23 @@ export default function AppBanner() {
     setVisible(computeVisible());
   }, [pathname]);
 
+  // Hauteur publiée aux barres fixes (ProTopBar, TopNav), qui sinon se
+  // retrouvent dessous, invisibles. Remise à zéro dès que la bannière
+  // disparaît — sinon les barres resteraient décalées dans le vide.
+  const boite = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const racine = document.documentElement;
+    if (!visible) { racine.style.setProperty('--chair-banner-h', '0px'); return; }
+    const publier = () => {
+      const h = boite.current?.getBoundingClientRect().height ?? 0;
+      racine.style.setProperty('--chair-banner-h', `${Math.round(h)}px`);
+    };
+    publier();
+    const ro = new ResizeObserver(publier);
+    if (boite.current) ro.observe(boite.current);
+    return () => { ro.disconnect(); racine.style.setProperty('--chair-banner-h', '0px'); };
+  }, [visible]);
+
   if (!visible) return null;
 
   function dismiss() {
@@ -65,7 +82,7 @@ export default function AppBanner() {
     // une bannière "Ouvrir dans l'app" affichée DANS l'app est le pire
     // signal webview possible (Guideline 4.2). Si la logique JS évoluait,
     // globals.css (html.chair-native .web-only) la masquerait quand même.
-    <div className="web-only sticky top-0 z-[60] bg-neutral-900 text-white">
+    <div ref={boite} className="web-only sticky top-0 z-[60] bg-neutral-900 text-white">
       <div className="flex items-center gap-3 px-4 py-2.5">
         <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
           <span className="text-[12px] font-black">C</span>
