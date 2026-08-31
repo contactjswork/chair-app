@@ -67,6 +67,15 @@ export interface ApiMySpecialtyRank {
   points_to_next?: number | null;
 }
 
+/** Reponse de GET /my-rankings — mes classements au perimetre demande. */
+export interface ApiMyRankings {
+  geo: 'city' | 'department' | 'region' | 'country';
+  /** Le lieu reellement utilise pour filtrer — « Haguenau », « France »… */
+  geo_value: string;
+  /** Uniquement les niveaux calculables pour ce profil. */
+  available_scopes: { geo: 'city' | 'department' | 'region' | 'country'; value: string }[];
+  highlights: ApiSpecialtyHighlight[];
+}
 export interface ApiSpecialtyHighlight {
   specialty_id: number;
   specialty_name: string | null;

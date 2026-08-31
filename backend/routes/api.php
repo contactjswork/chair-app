@@ -498,6 +498,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Rang privé (classement public déjà exposé sur GET /leaderboard)
     Route::get('/my-rank', [LeaderboardController::class, 'myRank']);
     Route::get('/my-specialty-rank', [LeaderboardController::class, 'mySpecialtyRank']);
+    // Mes classements par specialite, au perimetre choisi (ville, departement,
+    // region, France). Sert a la home pro : « 1er sur 2 » ne laisse rien a
+    // gravir, « 6e sur 9 en France » donne un cap.
+    Route::get('/my-rankings', [LeaderboardController::class, 'myRankings']);
 
     // Réputation par spécialité (voir docs/REPUTATION_ARCHITECTURE.md)
     Route::get('/my-specialty-progress', [SpecialtyProgressController::class, 'mine']);

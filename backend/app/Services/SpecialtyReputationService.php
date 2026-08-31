@@ -731,19 +731,61 @@ class SpecialtyReputationService
     }
 
     /**
+     * Le périmètre géographique d'un coiffeur, pour un niveau donné.
+     *
+     * Renvoie null quand le niveau n'est pas calculable — et c'est important :
+     * `rankedRows` ne filtre pas quand la valeur est vide, donc un
+     * département inconnu donnerait silencieusement le classement de la
+     * France entière. Annoncer « 6e sur 9 dans le Bas-Rhin » alors qu'il
+     * s'agit du national serait faux ; on préfère ne pas proposer le niveau.
+     */
+    public static function geoValueFor(HairdresserProfile $profile, string $geo): ?string
+    {
+        switch ($geo) {
+            case 'city':
+                return $profile->city ?: null;
+            case 'department':
+                return $profile->department ?: GeoLookupService::departmentName($profile->postal_code);
+            case 'region':
+                return $profile->region ?: GeoLookupService::regionName($profile->postal_code);
+            case 'country':
+                // Pas de filtre : le pays entier est le périmètre par défaut.
+                return null;
+        }
+        return null;
+    }
+
+    /**
+     * Les niveaux réellement affichables pour ce coiffeur, du plus proche au
+     * plus large. La France est toujours disponible ; les autres dépendent de
+     * ce que le profil renseigne.
+     */
+    public static function availableScopes(HairdresserProfile $profile): array
+    {
+        $scopes = [];
+        foreach (['city', 'department', 'region'] as $geo) {
+            if (self::geoValueFor($profile, $geo)) {
+                $scopes[] = ['geo' => $geo, 'value' => self::geoValueFor($profile, $geo)];
+            }
+        }
+        $scopes[] = ['geo' => 'country', 'value' => 'France'];
+        return $scopes;
+    }
+
+    /**
      * "Pourquoi ce coiffeur est reconnu" — données prêtes pour le profil
      * public (badges métier + classement local), une entrée par spécialité
      * où le coiffeur a un score > 0. Triée par score décroissant, limitée
      * aux signaux qui valent la peine d'être montrés à un client.
      */
-    public static function publicHighlights(HairdresserProfile $profile, bool $includePrivate = false): array
+    public static function publicHighlights(HairdresserProfile $profile, bool $includePrivate = false, string $geo = 'city'): array
     {
         $rows = self::forProfile($profile)->filter(fn($r) => $r->score > 0);
         if ($rows->isEmpty()) return [];
 
-        return $rows->map(function ($row) use ($profile, $includePrivate) {
+        return $rows->map(function ($row) use ($profile, $includePrivate, $geo) {
             $level = self::levelFor($profile, $row);
-            $rank = self::rankFor($profile, $row->specialty_id, 'city', $profile->city);
+            $rank = self::rankFor($profile, $row->specialty_id, $geo, self::geoValueFor($profile, $geo));
 
             // Progression rapide : niveau Spécialiste+ atteint alors que le
             // profil a moins de 6 mois — heuristique volontairement simple.

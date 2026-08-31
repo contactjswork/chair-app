@@ -368,6 +368,18 @@ export const specialtyProgress = {
   mine: () => api.get<ApiSpecialtyProgressResponse>('/my-specialty-progress'),
 };
 
+/**
+ * Mes classements par spécialité, au périmètre choisi.
+ *
+ * La home reçoit le classement communal dans /profile ; ceci sert à en
+ * changer. Un coiffeur de petite ville est vite « 1er sur 2 », ce qui ne
+ * laisse rien à gravir — le même est 6e sur 9 en France.
+ */
+export const myRankings = {
+  get: (geo: 'city' | 'department' | 'region' | 'country') =>
+    api.get<import('./types').ApiMyRankings>(`/my-rankings?geo=${geo}`),
+};
+
 // ── Leaderboard ──────────────────────────────────────────────────────
 
 export const leaderboard = {

@@ -340,6 +340,48 @@ class LeaderboardController extends Controller
         return response()->json(array_merge(['ranked' => true], $rank));
     }
 
+/**
+     * GET /my-rankings — mes classements par spécialité, au périmètre demandé.
+     *
+     * La home pro reçoit déjà le classement communal dans /profile. Cet
+     * endpoint sert à en CHANGER : un coiffeur de petite ville est vite « 1er
+     * sur 2 », ce qui ne laisse rien à gravir. Le même coiffeur est 6e sur 9
+     * en France, à 10 points du rang au-dessus — c'est ça qui donne un cap.
+     *
+     * On ne renvoie que les périmètres réellement calculables pour ce profil :
+     * sans code postal, le département n'est pas déductible, et le filtre
+     * vide retomberait silencieusement sur la France entière. Annoncer un
+     * classement départemental qui n'en est pas un serait pire que de ne pas
+     * le proposer.
+     */
+    public function myRankings(Request $request)
+    {
+        $profile = $request->user()->hairdresserProfile;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        $request->validate([
+            'geo' => 'nullable|string|in:city,department,region,country',
+        ]);
+
+        $scopes = SpecialtyReputationService::availableScopes($profile);
+        $demande = $request->input('geo', 'city');
+
+        // Un périmètre indisponible ne provoque pas d'erreur : on retombe sur
+        // le plus proche que l'on sait calculer, et on le dit dans la réponse.
+        $dispo = array_column($scopes, 'geo');
+        $geo = in_array($demande, $dispo, true) ? $demande : ($dispo[0] ?? 'country');
+
+        return response()->json([
+            'geo'              => $geo,
+            'geo_value'        => SpecialtyReputationService::geoValueFor($profile, $geo) ?? 'France',
+            'available_scopes' => $scopes,
+            'highlights'       => SpecialtyReputationService::publicHighlights($profile, true, $geo),
+        ]);
+    }
+
+
     private function computeScore(array $row, string $type): int
     {
         switch ($type) {

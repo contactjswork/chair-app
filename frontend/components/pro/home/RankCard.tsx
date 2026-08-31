@@ -1,8 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, TrendingUp } from 'lucide-react';
-import type { ApiSpecialtyHighlight } from '@/lib/types';
+import { myRankings } from '@/lib/api';
+import type { ApiSpecialtyHighlight, ApiMyRankings } from '@/lib/types';
+
+type Perimetre = 'city' | 'department' | 'region' | 'country';
+const MEMOIRE = 'chair_pro_rank_scope';
 
 /**
  * « Où je me situe » — la première chose que voit un coiffeur en ouvrant l'app.
@@ -23,6 +28,16 @@ import type { ApiSpecialtyHighlight } from '@/lib/types';
  *    comprend qu'ils n'étaient que quatre.
  * 2. Quand il est déjà premier, on ne fabrique pas un objectif qui n'existe
  *    pas. On dit ce qu'il en est, et le cap devient de tenir la place.
+ *
+ * Le PÉRIMÈTRE est réglable, et c'est ce qui sauve les petites villes. Être
+ * « 1er sur 2 » à Haguenau ne laisse rien à gravir ; le même coiffeur est
+ * « 6e sur 9 » en France, à 10 points du rang au-dessus. Le choix est
+ * mémorisé : on ne veut pas qu'il le refasse à chaque ouverture.
+ *
+ * Seuls les niveaux réellement calculables sont proposés — sans code postal,
+ * le département est indéductible, et le serveur retomberait sur la France
+ * entière. Un « 6e sur 9 dans le Bas-Rhin » qui serait en fait national
+ * serait pire que pas de bouton du tout.
  */
 
 interface Props {
@@ -31,7 +46,44 @@ interface Props {
 }
 
 export default function RankCard({ highlights, city }: Props) {
-  const classees = highlights.filter((h) => h.local_rank != null && h.local_total != null);
+  // Les classements communaux arrivent avec /profile : le premier rendu est
+  // immédiat, sans attendre un second appel.
+  const [perimetre, setPerimetre] = useState<Perimetre>('city');
+  const [donnees, setDonnees] = useState<ApiMyRankings | null>(null);
+  const [chargement, setChargement] = useState(false);
+
+  // Choix mémorisé, relu au montage seulement.
+  useEffect(() => {
+    let voulu: Perimetre = 'city';
+    try {
+      const m = localStorage.getItem(MEMOIRE) as Perimetre | null;
+      if (m) voulu = m;
+    } catch { /* stockage indisponible : on reste sur la ville */ }
+    if (voulu !== 'city') charger(voulu);
+    else myRankings.get('city').then(setDonnees).catch(() => {});
+  }, []);
+
+  function charger(g: Perimetre) {
+    setPerimetre(g);
+    setChargement(true);
+    try { localStorage.setItem(MEMOIRE, g); } catch { /* sans mémoire, tant pis */ }
+    myRankings
+      .get(g)
+      .then((d) => {
+        setDonnees(d);
+        // Le serveur peut retomber sur un autre niveau si celui demandé
+        // n'est pas calculable : on suit sa décision plutôt que d'afficher
+        // un intitulé qui ne correspond pas aux chiffres.
+        setPerimetre(d.geo);
+      })
+      .catch(() => {})
+      .finally(() => setChargement(false));
+  }
+
+  const actifs = donnees?.highlights ?? highlights;
+  const lieu = donnees?.geo_value ?? city;
+  const niveaux = donnees?.available_scopes ?? [];
+  const classees = actifs.filter((h) => h.local_rank != null && h.local_total != null);
 
   // Rien à montrer : on n'affiche pas une carte vide, mais on ne laisse pas
   // non plus le coiffeur sans direction — il faut des visites vérifiées pour
@@ -67,7 +119,7 @@ export default function RankCard({ highlights, city }: Props) {
       >
         <div className="flex items-start justify-between gap-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
-            {city ? `Votre place à ${city}` : 'Votre place'}
+            {lieu ? `Votre place · ${lieu}` : 'Votre place'}
           </p>
           {premier.fast_progress && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/70">
@@ -90,6 +142,33 @@ export default function RankCard({ highlights, city }: Props) {
 
         <Ecart rank={premier.local_rank!} pointsToNext={premier.points_to_next ?? null} />
       </Link>
+
+      {/* Changer de périmètre. Les libellés sont les LIEUX (« Haguenau »,
+          « France »), pas les niveaux (« Ville », « Pays ») : on lit ce qu'on
+          compare, pas la mécanique. */}
+      {niveaux.length > 1 && (
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {niveaux.map((n) => {
+            const actif = n.geo === perimetre;
+            return (
+              <button
+                key={n.geo}
+                type="button"
+                onClick={() => charger(n.geo)}
+                disabled={chargement}
+                aria-pressed={actif}
+                className={`relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-[''] flex-shrink-0 px-3.5 h-8 rounded-full text-[12.5px] font-semibold transition-colors ${
+                  actif
+                    ? 'bg-neutral-900 text-white'
+                    : 'bg-neutral-100 text-neutral-600 active:bg-neutral-200'
+                }`}
+              >
+                {n.value}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Les autres spécialités, en lignes serrées : on ne répète pas la
           grosse carte cinq fois, sinon plus rien ne domine. */}
