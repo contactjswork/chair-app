@@ -102,12 +102,18 @@ function PickerSheet({
 }
 
 function ExplainSheet({ onClose }: { onClose: () => void }) {
-  const points = [
-    "La qualité et la quantité des avis vérifiés — un avis isolé ne dépasse jamais un profil aux avis constants.",
-    "L'activité récente et la régularité des publications.",
-    'La qualité du profil et du portfolio.',
-    'La pertinence dans la spécialité concernée.',
-    'La zone géographique quand un filtre local est appliqué.',
+  // Les paliers RÉELS du calcul (SpecialtyReputationService, côté serveur).
+  // Chaque ligne est un geste concret et ce qu'il rapporte — pas une
+  // généralité. Si le barème serveur change, cette liste doit suivre.
+  const paliers = [
+    { geste: 'Premier avis vérifié', pts: '+20 pts' },
+    { geste: '5 avis vérifiés à 4,5+', pts: '+70 pts' },
+    { geste: '10 avis vérifiés à 4,8+', pts: '+130 pts' },
+    { geste: 'Première réalisation publiée', pts: '+10 pts' },
+    { geste: '5 réalisations', pts: '+30 pts' },
+    { geste: '20 réalisations', pts: '+70 pts' },
+    { geste: '10 passages confirmés (QR)', pts: '+25 pts' },
+    { geste: '50 passages confirmés', pts: '+70 pts' },
   ];
   return (
     <BottomSheet onClose={onClose}>
@@ -119,18 +125,20 @@ function ExplainSheet({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <p className="text-[13px] text-neutral-500 mb-4 leading-relaxed">
-          Votre position dépend de plusieurs signaux combinés, jamais d&apos;un seul chiffre :
+          Chaque palier atteint dans la spécialité rapporte des points, et le
+          classement compare ces points. Les avis vérifiés pèsent le plus lourd :
         </p>
-        <ul className="space-y-2.5 mb-4">
-          {points.map((p, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-[13px] text-neutral-700 leading-relaxed">
-              <span className="w-1.5 h-1.5 rounded-full bg-neutral-900 mt-1.5 flex-shrink-0" />
-              {p}
+        <ul className="mb-4 divide-y divide-neutral-50 border-y border-neutral-100">
+          {paliers.map((p, i) => (
+            <li key={i} className="flex items-center justify-between gap-3 py-2.5">
+              <span className="text-[13px] text-neutral-700">{p.geste}</span>
+              <span className="text-[13px] font-bold text-neutral-900 tabular-nums shrink-0">{p.pts}</span>
             </li>
           ))}
         </ul>
         <p className="text-[12px] text-neutral-400 leading-relaxed">
-          Une activité forte fait progresser vite : l&apos;ancienneté seule ne garantit aucune place.
+          Les paliers continuent au-delà (50 réalisations, 250 passages…), et
+          l&apos;ancienneté seule ne rapporte rien : seule l&apos;activité compte.
         </p>
       </div>
     </BottomSheet>

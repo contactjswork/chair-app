@@ -30,6 +30,15 @@ class Kernel extends ConsoleKernel
         // planificateur qui rejoue n'ajoute pas une seconde mesure, ce qui
         // fausserait la comparaison suivante.
         $schedule->command('chair:snapshot-specialty-ranks')->weeklyOn(1, '04:30');
+
+        // Le bilan du dimanche soir — le moment ou un coiffeur planifie sa
+        // semaine. Jamais envoye vide, idempotent par jour (voir la commande).
+        $schedule->command('chair:send-weekly-recap')->weeklyOn(0, '19:00')->timezone('Europe/Paris');
+
+        // Le rappel de re-reservation, cale sur le rythme reel de chaque
+        // client. Un seul par rendez-vous termine, jamais si un rendez-vous
+        // futur existe deja.
+        $schedule->command('chair:send-rebook-reminders')->dailyAt('11:00')->timezone('Europe/Paris');
     }
 
     /**

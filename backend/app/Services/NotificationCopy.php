@@ -405,6 +405,44 @@ class NotificationCopy
                 'fallback' => 'Tu as un nouveau message au sujet d\'un fauteuil.',
             ],
         ],
+
+        // =====================================================================
+        // BOUCLES DE RETOUR — le récap qui ramène le coiffeur, le rappel qui
+        // ramène le client. Voir chair:send-weekly-recap, chair:snapshot-
+        // specialty-ranks et chair:send-rebook-reminders.
+        // =====================================================================
+
+        // Bilan hebdomadaire du coiffeur, envoyé le dimanche soir — le moment
+        // où l'on planifie sa semaine. Jamais envoyé vide : la commande saute
+        // les semaines où il n'y a rien à dire.
+        'weekly_recap' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Ta semaine sur CHAIR',
+                'message'  => '{vues} vue(s) de profil, {rdv} rendez-vous. {rang}',
+                'fallback' => 'Ton bilan de la semaine est prêt.',
+            ],
+        ],
+
+        // Le classement a bougé depuis la capture précédente. La montée se
+        // savoure, la descente appelle une réaction — les deux font ouvrir.
+        'rank_moved' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Ton classement a bougé',
+                'message'  => '{delta} en {specialite} : te voilà {rang} sur {total} à {zone}.',
+                'fallback' => 'Ta place dans le classement a changé cette semaine.',
+            ],
+        ],
+
+        // Rappel de re-réservation, calé sur le rythme réel du client. C'est
+        // le seul push commercial de l'app côté client : il doit rester rare
+        // et juste, sinon il grille la permission pour tous les autres.
+        'rebook_reminder' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Un petit rafraîchissement ?',
+                'message'  => 'Ça fait {semaines} semaines depuis ta visite chez {coiffeur}. Un créneau ?',
+                'fallback' => 'Ton coiffeur a des créneaux cette semaine.',
+            ],
+        ],
     ];
 
     /**
