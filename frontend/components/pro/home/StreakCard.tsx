@@ -23,7 +23,10 @@ import type { ApiStreak } from '@/lib/types';
  * désagréable ; l'app dit simplement comment la relancer.
  */
 
-const JOURS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const INITIALES = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+
+/** Rail creuse : le jour non tenu se lit comme un sillon vide, pas comme une barre grise. */
+const CREUX_RAIL = 'shadow-[inset_0_1px_2px_rgba(10,10,10,0.08)]';
 
 export default function StreakCard() {
   const [data, setData] = useState<ApiStreak | null>(null);
@@ -45,20 +48,29 @@ export default function StreakCard() {
   const record = data.longest_streak;
   const actifAujourdhui = data.is_active_today;
 
-  // Position du jour dans la semaine, lundi = 0.
-  const jourSemaine = (new Date().getDay() + 6) % 7;
+  // Les sept derniers jours, du plus ancien a aujourd'hui.
+  const aujourdhui = new Date();
+  const fenetre = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(aujourdhui);
+    d.setDate(d.getDate() - (6 - i));
+    return d;
+  });
 
   return (
     <Link
       href="/pro/badges"
-      className="block rounded-[24px] border border-neutral-100 p-5 active:bg-neutral-50 transition-colors"
+      className="block rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Série</p>
 
       <div className="flex items-baseline gap-2.5 mt-3">
         <Flame
           size={30}
-          className={actifAujourdhui ? 'text-orange-500 fill-orange-500' : 'text-neutral-300'}
+          className={
+            actifAujourdhui
+              ? 'text-orange-500 fill-orange-500 drop-shadow-[0_2px_8px_rgba(249,115,22,0.45)]'
+              : 'text-neutral-300'
+          }
           strokeWidth={2}
         />
         <span className="text-[44px] font-bold leading-none tracking-[-0.03em] tabular-nums text-neutral-900">
@@ -70,20 +82,19 @@ export default function StreakCard() {
       {/* Les sept jours de la semaine. Le jour courant est cerclé : on voit
           immédiatement s'il reste quelque chose à faire avant ce soir. */}
       <div className="flex items-center gap-1.5 mt-4">
-        {JOURS.map((lettre, i) => {
+        {fenetre.map((jour, i) => {
           // La série se termine aujourd'hui si le coiffeur a déjà été actif,
-          // sinon hier. Un jour de la semaine est tenu s'il tombe dans les
+          // sinon hier. Un jour de la fenêtre est tenu s'il tombe dans les
           // `courante` jours qui précèdent cette fin, bornes comprises.
-          // On ne remonte pas avant lundi : cette bande montre la semaine en
-          // cours, pas tout l'historique.
-          const dernierActif = actifAujourdhui ? jourSemaine : jourSemaine - 1;
-          const recul = dernierActif - i;
+          const finSerie = actifAujourdhui ? 6 : 5;
+          const recul = finSerie - i;
           const tenu = recul >= 0 && recul < courante;
-          const estAujourdhui = i === jourSemaine;
+          const estAujourdhui = i === 6;
+          const lettre = INITIALES[jour.getDay()];
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
               <div
-                className={`w-full h-1.5 rounded-full ${tenu ? 'bg-orange-500' : 'bg-neutral-100'}`}
+                className={`w-full h-2 rounded-full ${tenu ? 'bg-orange-500 shadow-[0_1px_4px_rgba(249,115,22,0.5)]' : 'bg-neutral-100 ' + CREUX_RAIL}`}
               />
               <span
                 className={`text-[10px] font-semibold tabular-nums ${

@@ -31,13 +31,13 @@ export default function CompletionCard({ completion }: Props) {
   return (
     <Link
       href={next.href}
-      className="flex items-center gap-4 rounded-[24px] border border-neutral-100 p-5 active:bg-neutral-50 transition-colors"
+      className="flex items-center gap-4 rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
     >
       <div
-        className="w-12 h-12 rounded-full shrink-0 flex items-center justify-center"
+        className="w-12 h-12 rounded-full shrink-0 flex items-center justify-center shadow-[0_2px_8px_-3px_rgba(10,10,10,0.25)]"
         style={{ background: `conic-gradient(#0a0a0a ${pct * 3.6}deg, #f5f5f5 0deg)` }}
       >
-        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center">
+        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-[inset_0_1px_2px_rgba(10,10,10,0.06)]">
           <span className="text-[11px] font-bold text-neutral-900 tabular-nums">{pct}%</span>
         </div>
       </div>

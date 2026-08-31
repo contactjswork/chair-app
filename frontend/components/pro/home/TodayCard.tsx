@@ -41,7 +41,7 @@ export default function TodayCard({ appointments, href = '/pro/agenda' }: Props)
   return (
     <Link
       href={href}
-      className="block rounded-[24px] border border-neutral-100 p-5 active:bg-neutral-50 transition-colors"
+      className="block rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Aujourd&apos;hui</p>

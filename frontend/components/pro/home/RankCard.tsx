@@ -40,7 +40,7 @@ export default function RankCard({ highlights, city }: Props) {
     return (
       <Link
         href="/pro/mon-qr"
-        className="block rounded-[24px] bg-neutral-900 text-white p-6 active:scale-[0.99] transition-transform"
+        className="block rounded-[28px] bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] text-white p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] active:scale-[0.985] transition-transform duration-200"
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">Classement</p>
         <p className="text-[19px] font-bold leading-snug mt-3">
@@ -63,7 +63,7 @@ export default function RankCard({ highlights, city }: Props) {
     <div className="space-y-2">
       <Link
         href="/pro/classements"
-        className="block rounded-[24px] bg-neutral-900 text-white p-6 active:scale-[0.99] transition-transform"
+        className="block rounded-[28px] bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] text-white p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] active:scale-[0.985] transition-transform duration-200"
       >
         <div className="flex items-start justify-between gap-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
@@ -78,15 +78,15 @@ export default function RankCard({ highlights, city }: Props) {
 
         {/* Le rang porte tout l'écran. Chiffres tabulaires : la ligne ne doit
             pas bouger d'un pixel quand on passe de 9e à 10e. */}
-        <div className="flex items-baseline gap-3 mt-4">
-          <span className="text-[64px] font-bold leading-none tracking-[-0.04em] tabular-nums">
-            {premier.local_rank}
-            <span className="text-[26px] align-super">{suffixe(premier.local_rank!)}</span>
-          </span>
-          <span className="text-[15px] text-white/45 tabular-nums pb-2">sur {premier.local_total}</span>
-        </div>
+        <p className="text-[68px] font-bold leading-[0.9] tracking-[-0.045em] tabular-nums mt-3">
+          {premier.local_rank}
+          <span className="text-[26px] align-super">{suffixe(premier.local_rank!)}</span>
+        </p>
 
-        <p className="text-[15px] font-semibold mt-2">{premier.specialty_name}</p>
+        <p className="text-[17px] font-semibold mt-1">{premier.specialty_name}</p>
+        <p className="text-[13px] text-white/45 tabular-nums mt-0.5">
+          sur {premier.local_total} coiffeur{premier.local_total! > 1 ? 's' : ''} classé{premier.local_total! > 1 ? 's' : ''}
+        </p>
 
         <Ecart rank={premier.local_rank!} pointsToNext={premier.points_to_next ?? null} />
       </Link>
@@ -94,7 +94,7 @@ export default function RankCard({ highlights, city }: Props) {
       {/* Les autres spécialités, en lignes serrées : on ne répète pas la
           grosse carte cinq fois, sinon plus rien ne domine. */}
       {autres.length > 0 && (
-        <div className="rounded-[20px] border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
+        <div className="rounded-[22px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] divide-y divide-neutral-50 overflow-hidden">
           {autres.map((h) => (
             <Link
               key={h.specialty_id}

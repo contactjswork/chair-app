@@ -163,7 +163,7 @@ export default function CockpitPage() {
             {isIndependent && pending.length > 0 && (
               <Link
                 href="/pro/agenda"
-                className="flex items-center gap-3.5 bg-amber-50 rounded-[24px] px-5 py-4 active:bg-amber-100/70 transition-colors"
+                className="flex items-center gap-3.5 bg-amber-50 rounded-[28px] ring-1 ring-amber-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(180,83,9,0.18)] px-5 py-4 active:scale-[0.985] transition-transform duration-200"
               >
                 <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
                 <div className="flex-1 min-w-0">

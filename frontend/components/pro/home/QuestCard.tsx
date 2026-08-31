@@ -36,7 +36,7 @@ export default function QuestCard({ nextBadges, unlocked, catalogueTotal }: Prop
   return (
     <Link
       href="/pro/badges"
-      className="block rounded-[24px] border border-neutral-100 p-5 active:bg-neutral-50 transition-colors"
+      className="block rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Prochain palier</p>
@@ -46,15 +46,15 @@ export default function QuestCard({ nextBadges, unlocked, catalogueTotal }: Prop
       {objectif ? (
         <>
           <p className="text-[17px] font-bold text-neutral-900 mt-3 leading-snug">
-            {objectif.type === 'badge' ? objectif.name : objectif.name}
+            {objectif.name}
           </p>
           <p className="text-[13px] text-neutral-500 mt-1.5 leading-relaxed">{resteAFaire(objectif)}</p>
 
           {/* Une barre, pas un anneau : on lit un reste à parcourir, pas une
               part de camembert. */}
-          <div className="mt-4 h-1.5 rounded-full bg-neutral-100 overflow-hidden">
+          <div className="mt-4 h-2 rounded-full bg-neutral-100 shadow-[inset_0_1px_2px_rgba(10,10,10,0.08)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-neutral-900 transition-[width] duration-500"
+              className="h-full rounded-full bg-neutral-900 shadow-[0_1px_3px_rgba(10,10,10,0.35)] transition-[width] duration-500"
               style={{ width: `${Math.min(100, Math.max(2, objectif.pct ?? 0))}%` }}
             />
           </div>
