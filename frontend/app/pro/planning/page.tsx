@@ -1,34 +1,74 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { schedule as scheduleApi } from '@/lib/api';
 import { type ApiScheduleDay, type ApiUnavailability } from '@/lib/types';
-import { Ban, Trash2, Plus } from 'lucide-react';
+import { Ban, Trash2, Plus, CalendarClock, ChevronDown, Copy, Check } from 'lucide-react';
+
+/**
+ * Mes horaires — refonte.
+ *
+ * L'ancienne version empilait 7 cartes de 4 champs heure : 28 champs à
+ * l'écran, aucun résumé, et une « fenêtre de réservation » en pastilles
+ * muettes. Ici :
+ *
+ *  - La fenêtre devient une PHRASE : « Réservations ouvertes jusqu'à
+ *    J+30 » — le coiffeur comprend ce que voient ses clients.
+ *  - La semaine type est une liste compacte : une ligne par jour avec son
+ *    résumé (« 09:00 – 19:00 · pause 12:00 »), l'éditeur ne s'ouvre que
+ *    pour le jour qu'on touche. « Appliquer aux autres jours ouverts »
+ *    règle la semaine en un geste.
+ *  - La barre Enregistrer n'apparaît que s'il y a quelque chose à
+ *    enregistrer.
+ *
+ * Champs heure en 16px : en dessous, Safari iOS zoome la page à la prise
+ * de focus (règle établie sur tout CHAIR PRO).
+ */
 
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+// Lundi d'abord — personne ne pense sa semaine en commençant par dimanche.
+const ORDRE_JOURS = [1, 2, 3, 4, 5, 6, 0];
 
 const WINDOW_OPTIONS: { label: string; value: number | null }[] = [
-  { label: '1 semaine', value: 7 },
-  { label: '2 semaines', value: 14 },
-  { label: '1 mois', value: 30 },
-  { label: '2 mois', value: 60 },
-  { label: '3 mois', value: 90 },
+  { label: 'J+7',      value: 7 },
+  { label: 'J+14',     value: 14 },
+  { label: 'J+30',     value: 30 },
+  { label: 'J+60',     value: 60 },
+  { label: 'J+90',     value: 90 },
   { label: 'Illimité', value: null },
 ];
+
+const INPUT_HEURE =
+  'w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2.5 text-[16px] tabular-nums focus:outline-none focus:ring-neutral-300 transition-all';
 
 function todayLocal(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function normalizeTime(t: string | null | undefined): string | null {
+  if (!t) return null;
+  return t.slice(0, 5);
+}
+
+function normalizeSchedule(sched: ApiScheduleDay[]): ApiScheduleDay[] {
+  return sched.map((d) => ({
+    ...d,
+    start_time:  normalizeTime(d.start_time),
+    end_time:    normalizeTime(d.end_time),
+    break_start: normalizeTime(d.break_start),
+    break_end:   normalizeTime(d.break_end),
+  }));
+}
+
 // ── Fenêtre de réservation ───────────────────────────────────────────────────
 
 function BookingWindowSection() {
-  const [days, setDays]       = useState<number | null | undefined>(undefined);
-  const [saving, setSaving]   = useState(false);
+  const [days, setDays]     = useState<number | null | undefined>(undefined);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     scheduleApi.bookingWindow.get()
@@ -46,25 +86,32 @@ function BookingWindowSection() {
   }
 
   if (days === undefined) {
-    return <div className="h-24 bg-neutral-50 rounded-xl animate-pulse" />;
+    return <div className="h-32 bg-neutral-50 rounded-[24px] animate-pulse" />;
   }
 
   return (
-    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4">
-      <p className="text-sm font-semibold text-neutral-900 mb-1">Fenêtre de réservation</p>
-      <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
-        Jusqu&apos;à combien de temps à l&apos;avance les clients peuvent réserver.
+    <div
+      className="rounded-[24px] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_14px_30px_-14px_rgba(10,10,10,0.5)]"
+      style={{ background: 'radial-gradient(120% 100% at 50% 0%, #1f1f21 0%, #0a0a0a 62%)' }}
+    >
+      <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 flex items-center gap-1.5 mb-2">
+        <CalendarClock size={11} />Fenêtre de réservation
       </p>
-      <div className="flex flex-wrap gap-x-1.5 gap-y-3.5">
+      <p className="text-[17px] font-bold leading-snug mb-4">
+        {days === null
+          ? <>Votre planning est ouvert <span className="text-white">sans limite</span> de date.</>
+          : <>Vos clients peuvent réserver jusqu&apos;à <span className="whitespace-nowrap">J+{days}</span>{days >= 30 ? ` (${Math.round(days / 30)} mois)` : ''}.</>}
+      </p>
+      <div className="flex flex-wrap gap-x-1.5 gap-y-3">
         {WINDOW_OPTIONS.map((opt) => (
           <button
             key={String(opt.value)}
             onClick={() => select(opt.value)}
             disabled={saving}
-            className={`relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-[''] px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors disabled:opacity-50 ${
+            className={`relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition-colors disabled:opacity-50 ${
               days === opt.value
-                ? 'bg-neutral-900 text-white'
-                : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                ? 'bg-white text-neutral-900'
+                : 'bg-white/10 text-white/70 hover:bg-white/15'
             }`}
           >
             {opt.label}
@@ -75,12 +122,113 @@ function BookingWindowSection() {
   );
 }
 
-// ── Blocages ponctuels ───────────────────────────────────────────────────────
+// ── Semaine type ─────────────────────────────────────────────────────────────
+
+function resumeJour(d: ApiScheduleDay): string {
+  if (!d.is_open || !d.start_time || !d.end_time) return 'Fermé';
+  let s = `${d.start_time} – ${d.end_time}`;
+  if (d.break_start && d.break_end) s += `  ·  pause ${d.break_start} – ${d.break_end}`;
+  return s;
+}
+
+function LigneJour({ day, ouvert, onToggle, onOuvrir, onChange, onCopier }: {
+  day: ApiScheduleDay;
+  ouvert: boolean;
+  onToggle: () => void;
+  onOuvrir: () => void;
+  onChange: (field: keyof ApiScheduleDay, value: unknown) => void;
+  onCopier: () => void;
+}) {
+  const avecPause = !!(day.break_start || day.break_end);
+
+  return (
+    <div className={`bg-white rounded-[20px] ring-1 transition-shadow ${ouvert ? 'ring-neutral-200 shadow-[0_8px_24px_-10px_rgba(10,10,10,0.18)]' : 'ring-neutral-100 shadow-[0_3px_12px_-8px_rgba(10,10,10,0.1)]'}`}>
+      {/* La ligne : jour, résumé, interrupteur. Toute la ligne déplie. */}
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <button
+          onClick={day.is_open ? onOuvrir : undefined}
+          className={`flex-1 min-w-0 flex items-center gap-3 text-left ${day.is_open ? '' : 'cursor-default'}`}
+        >
+          <span className={`text-[14px] font-bold w-[4.6rem] flex-shrink-0 ${day.is_open ? 'text-neutral-900' : 'text-neutral-300'}`}>
+            {DAY_NAMES[day.day_of_week]}
+          </span>
+          <span className={`text-[13px] tabular-nums truncate ${day.is_open ? 'text-neutral-500' : 'text-neutral-300'}`}>
+            {resumeJour(day)}
+          </span>
+          {day.is_open && (
+            <ChevronDown size={14} className={`text-neutral-300 flex-shrink-0 ml-auto transition-transform ${ouvert ? 'rotate-180' : ''}`} />
+          )}
+        </button>
+        <div
+          onClick={onToggle}
+          role="switch"
+          aria-checked={day.is_open}
+          aria-label={`${DAY_NAMES[day.day_of_week]} ${day.is_open ? 'ouvert' : 'fermé'}`}
+          className={`relative before:absolute before:-inset-2 before:content-[''] w-11 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${day.is_open ? 'bg-neutral-900' : 'bg-neutral-200'}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${day.is_open ? 'translate-x-5' : ''}`} />
+        </div>
+      </div>
+
+      {/* L'éditeur — seulement pour le jour qu'on touche. */}
+      {ouvert && day.is_open && (
+        <div className="px-4 pb-4 pt-1 border-t border-neutral-50">
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Ouverture</label>
+              <input type="time" value={day.start_time ?? '09:00'}
+                onChange={(e) => onChange('start_time', e.target.value)} className={INPUT_HEURE} />
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Fermeture</label>
+              <input type="time" value={day.end_time ?? '19:00'}
+                onChange={(e) => onChange('end_time', e.target.value)} className={INPUT_HEURE} />
+            </div>
+          </div>
+
+          {/* La pause n'expose ses champs que si elle existe. */}
+          {avecPause ? (
+            <div className="mt-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide">Pause</label>
+                <button
+                  onClick={() => { onChange('break_start', null); onChange('break_end', null); }}
+                  className="relative before:absolute before:-inset-2 before:content-[''] text-[12px] font-semibold text-neutral-400 hover:text-red-500 transition-colors"
+                >
+                  Retirer
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="time" value={day.break_start ?? ''} aria-label="Début de pause"
+                  onChange={(e) => onChange('break_start', e.target.value || null)} className={INPUT_HEURE} />
+                <input type="time" value={day.break_end ?? ''} aria-label="Fin de pause"
+                  onChange={(e) => onChange('break_end', e.target.value || null)} className={INPUT_HEURE} />
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => { onChange('break_start', '12:00'); onChange('break_end', '13:00'); }}
+              className="mt-3 flex items-center gap-1.5 text-[13px] font-semibold text-neutral-500 hover:text-neutral-900 transition-colors py-1"
+            >
+              <Plus size={14} /> Ajouter une pause déjeuner
+            </button>
+          )}
+
+          <button
+            onClick={onCopier}
+            className="mt-3 w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-neutral-50 text-[13px] font-semibold text-neutral-600 hover:bg-neutral-100 transition-colors"
+          >
+            <Copy size={13} /> Appliquer ces horaires aux autres jours ouverts
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Absences ─────────────────────────────────────────────────────────────────
 
 function defaultStartTime(): string {
-  // "09:00" par défaut, sauf si c'est déjà passé aujourd'hui — dans ce cas,
-  // l'heure actuelle arrondie au 1/4 d'heure suivant (sinon la validation
-  // "doit être après maintenant" échoue silencieusement pour l'utilisateur).
   const now = new Date();
   const nineAM = new Date(now); nineAM.setHours(9, 0, 0, 0);
   if (now <= nineAM) return '09:00';
@@ -102,14 +250,8 @@ function BlockCreateForm({ onCreated, onCancel }: { onCreated: () => void; onCan
     setError('');
     const start = `${startDate}T${startTime}:00`;
     const end   = `${endDate}T${endTime}:00`;
-    if (new Date(start) <= new Date()) {
-      setError('Le début doit être dans le futur.');
-      return;
-    }
-    if (new Date(end) <= new Date(start)) {
-      setError('La fin doit être après le début.');
-      return;
-    }
+    if (new Date(start) <= new Date()) { setError('Le début doit être dans le futur.'); return; }
+    if (new Date(end) <= new Date(start)) { setError('La fin doit être après le début.'); return; }
     setSaving(true);
     try {
       await scheduleApi.unavailabilities.create({ start_datetime: start, end_datetime: end, reason: reason || undefined });
@@ -122,46 +264,42 @@ function BlockCreateForm({ onCreated, onCancel }: { onCreated: () => void; onCan
   }
 
   return (
-    <div className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 space-y-3">
+    <div className="bg-white rounded-[20px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-neutral-500 mb-1 block">Du</label>
-          <input type="date" value={startDate} min={today} onChange={(e) => setStartDate(e.target.value)}
-            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
+          <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Du</label>
+          <input type="date" value={startDate} min={today} onChange={(e) => setStartDate(e.target.value)} className={INPUT_HEURE} />
         </div>
         <div>
-          <label className="text-xs text-neutral-500 mb-1 block">Heure de début</label>
-          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
-            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
+          <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">À partir de</label>
+          <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className={INPUT_HEURE} />
         </div>
         <div>
-          <label className="text-xs text-neutral-500 mb-1 block">Au</label>
-          <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)}
-            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
+          <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Au</label>
+          <input type="date" value={endDate} min={startDate} onChange={(e) => setEndDate(e.target.value)} className={INPUT_HEURE} />
         </div>
         <div>
-          <label className="text-xs text-neutral-500 mb-1 block">Heure de fin</label>
-          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-            className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all" />
+          <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Jusqu&apos;à</label>
+          <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className={INPUT_HEURE} />
         </div>
       </div>
       <div>
-        <label className="text-xs text-neutral-500 mb-1 block">Motif (optionnel)</label>
+        <label className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wide mb-1.5 block">Motif (optionnel)</label>
         <input
           type="text"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Ex : congés, formation, rendez-vous perso…"
-          className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all placeholder:text-neutral-300"
+          placeholder="Congés, formation, rendez-vous perso…"
+          className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2.5 text-[16px] focus:outline-none focus:ring-neutral-300 transition-all placeholder:text-neutral-300"
         />
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-neutral-500 bg-neutral-100 hover:bg-neutral-200 transition-colors">
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-neutral-500 bg-neutral-100 hover:bg-neutral-200 transition-colors">
           Annuler
         </button>
-        <button onClick={handleCreate} disabled={saving} className="flex-1 py-2.5 rounded-2xl text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
-          {saving ? 'Création…' : 'Bloquer ce créneau'}
+        <button onClick={handleCreate} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors disabled:opacity-50">
+          {saving ? 'Création…' : 'Bloquer'}
         </button>
       </div>
     </div>
@@ -204,12 +342,8 @@ function UnavailabilitiesSection() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="text-sm font-semibold text-neutral-900">Blocages ponctuels</p>
-          <p className="text-xs text-neutral-400 mt-0.5">Congés, pauses — les clients ne peuvent pas réserver sur ces créneaux.</p>
-        </div>
-      </div>
+      <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-1">Absences</p>
+      <p className="text-xs text-neutral-400 mb-3">Congés, formations — aucune réservation possible sur ces périodes.</p>
 
       {items === null ? (
         <div className="h-16 bg-neutral-50 rounded-2xl animate-pulse" />
@@ -227,6 +361,7 @@ function UnavailabilitiesSection() {
               <button
                 onClick={() => handleDelete(u.id)}
                 disabled={deleting === u.id}
+                aria-label="Supprimer ce blocage"
                 className="w-8 h-8 flex items-center justify-center rounded-full text-neutral-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0 disabled:opacity-50"
               >
                 <Trash2 size={14} />
@@ -234,7 +369,7 @@ function UnavailabilitiesSection() {
             </div>
           ))}
           {items.length === 0 && !showForm && (
-            <p className="text-xs text-neutral-500 italic">Aucun blocage à venir.</p>
+            <p className="text-xs text-neutral-400 italic">Aucune absence prévue.</p>
           )}
         </div>
       )}
@@ -249,7 +384,7 @@ function UnavailabilitiesSection() {
           onClick={() => setShowForm(true)}
           className="w-full flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-dashed border-neutral-300 text-neutral-500 text-sm font-semibold hover:border-neutral-400 hover:text-neutral-700 transition-colors"
         >
-          <Plus size={15} /> Bloquer un créneau
+          <Plus size={15} /> Ajouter une absence
         </button>
       )}
     </div>
@@ -259,43 +394,33 @@ function UnavailabilitiesSection() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function PlanningPage() {
-  // Garde d'accès : useRequireAuth, comme toutes les autres pages pro. La garde
-  // locale précédente testait `user.role !== 'hairdresser'` et renvoyait vers la
-  // connexion CLIENT — un gérant double-identité passé en Mode Coiffeur
-  // (role='salon_owner', has_hairdresser_profile=true) était éjecté de son
-  // propre planning. hasAccess() raisonne sur la capacité, pas sur le rôle.
+  // useRequireAuth : capacité, pas rôle — un gérant double-identité en Mode
+  // Coiffeur garde l'accès à son propre planning.
   const { user, isLoading: authLoading } = useRequireAuth(['hairdresser']);
   const router = useRouter();
 
-  const [schedule,       setSchedule]       = useState<ApiScheduleDay[]>([]);
-  const [loading,        setLoading]        = useState(true);
-  const [saving,         setSaving]         = useState(false);
-  const [error,          setError]          = useState('');
-  const [successMsg,     setSuccessMsg]     = useState('');
+  const [schedule,   setSchedule]   = useState<ApiScheduleDay[]>([]);
+  const [reference,  setReference]  = useState('');   // instantané chargé, pour savoir si ça a bougé
+  const [jourOuvert, setJourOuvert] = useState<number | null>(null);
+  const [loading,    setLoading]    = useState(true);
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
+  const [enregistre, setEnregistre] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) return;
     if (user.hairdresser_profile?.is_independent === false) { router.replace('/pro'); return; }
     scheduleApi.get()
-      .then((sched) => setSchedule(normalizeSchedule(sched as ApiScheduleDay[])))
+      .then((sched) => {
+        const norm = normalizeSchedule(sched as ApiScheduleDay[]);
+        setSchedule(norm);
+        setReference(JSON.stringify(norm));
+      })
       .catch(() => setError('Impossible de charger les horaires.'))
       .finally(() => setLoading(false));
   }, [authLoading, user, router]);
 
-  function normalizeTime(t: string | null | undefined): string | null {
-    if (!t) return null;
-    return t.slice(0, 5);
-  }
-
-  function normalizeSchedule(sched: ApiScheduleDay[]): ApiScheduleDay[] {
-    return sched.map((d) => ({
-      ...d,
-      start_time:  normalizeTime(d.start_time),
-      end_time:    normalizeTime(d.end_time),
-      break_start: normalizeTime(d.break_start),
-      break_end:   normalizeTime(d.break_end),
-    }));
-  }
+  const modifie = useMemo(() => reference !== '' && JSON.stringify(schedule) !== reference, [schedule, reference]);
 
   function toggleDay(dayOfWeek: number) {
     setSchedule((prev) =>
@@ -310,6 +435,7 @@ export default function PlanningPage() {
         };
       })
     );
+    setJourOuvert((prev) => (prev === dayOfWeek ? null : prev));
   }
 
   function updateField(dayOfWeek: number, field: keyof ApiScheduleDay, value: unknown) {
@@ -318,15 +444,31 @@ export default function PlanningPage() {
     );
   }
 
+  /** Recopie les horaires du jour sur tous les autres jours ouverts. */
+  function copierSurOuverts(dayOfWeek: number) {
+    setSchedule((prev) => {
+      const source = prev.find((d) => d.day_of_week === dayOfWeek);
+      if (!source) return prev;
+      return prev.map((d) =>
+        d.day_of_week !== dayOfWeek && d.is_open
+          ? { ...d, start_time: source.start_time, end_time: source.end_time, break_start: source.break_start, break_end: source.break_end }
+          : d
+      );
+    });
+    setJourOuvert(null);
+  }
+
   async function handleSave() {
     setSaving(true);
     setError('');
-    setSuccessMsg('');
     try {
       const updated = await scheduleApi.update(schedule) as ApiScheduleDay[];
-      setSchedule(normalizeSchedule(updated));
-      setSuccessMsg('Horaires enregistrés');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      const norm = normalizeSchedule(updated);
+      setSchedule(norm);
+      setReference(JSON.stringify(norm));
+      setJourOuvert(null);
+      setEnregistre(true);
+      setTimeout(() => setEnregistre(false), 2500);
     } catch {
       setError('Erreur lors de la sauvegarde.');
     } finally {
@@ -342,105 +484,60 @@ export default function PlanningPage() {
     );
   }
 
+  const joursOrdonnes = ORDRE_JOURS
+    .map((n) => schedule.find((d) => d.day_of_week === n))
+    .filter((d): d is ApiScheduleDay => !!d);
+
   return (
-    <div className="min-h-screen bg-white pb-32">
-      <div className="px-4 pt-4">
+    <div className="min-h-screen bg-white pb-36">
+      <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
         <DashboardPageHeader title="Mes horaires" />
-      </div>
 
-      {error && (
-        <div className="mx-4 mb-4 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
-      )}
-      {successMsg && (
-        <div className="mx-4 mb-4 bg-neutral-900 text-white text-sm px-4 py-3 rounded-xl">{successMsg}</div>
-      )}
+        {error && (
+          <div className="mb-4 bg-red-50 text-red-700 text-sm px-4 py-3 rounded-xl">{error}</div>
+        )}
 
-      <div className="px-4 space-y-8">
+        <div className="mt-2 space-y-7">
+          <BookingWindowSection />
 
-        {/* Fenêtre de réservation */}
-        <BookingWindowSection />
-
-        {/* Horaires hebdomadaires */}
-        <div>
-          <p className="text-sm font-semibold text-neutral-900 mb-1">Horaires de travail</p>
-          <p className="text-xs text-neutral-400 mb-4 leading-relaxed">
-            Les créneaux disponibles sont calculés automatiquement.
-          </p>
-
-          <div className="space-y-3">
-            {schedule.map((day) => (
-              <div key={day.day_of_week} className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 bg-neutral-50">
-                  <span className="text-sm font-semibold text-neutral-900 w-28">{DAY_NAMES[day.day_of_week]}</span>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <span className="text-xs text-neutral-500">{day.is_open ? 'Ouvert' : 'Fermé'}</span>
-                    <div
-                      onClick={() => toggleDay(day.day_of_week)}
-                      className={`relative w-10 h-5 rounded-full transition-colors cursor-pointer ${day.is_open ? 'bg-neutral-900' : 'bg-neutral-300'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${day.is_open ? 'translate-x-5' : ''}`} />
-                    </div>
-                  </label>
-                </div>
-
-                {day.is_open && (
-                  <div className="px-4 py-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">Ouverture</label>
-                      <input
-                        type="time"
-                        value={day.start_time ?? '09:00'}
-                        onChange={(e) => updateField(day.day_of_week, 'start_time', e.target.value)}
-                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">Fermeture</label>
-                      <input
-                        type="time"
-                        value={day.end_time ?? '19:00'}
-                        onChange={(e) => updateField(day.day_of_week, 'end_time', e.target.value)}
-                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">Pause début (optionnel)</label>
-                      <input
-                        type="time"
-                        value={day.break_start ?? ''}
-                        onChange={(e) => updateField(day.day_of_week, 'break_start', e.target.value || null)}
-                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-neutral-500 mb-1 block">Pause fin (optionnel)</label>
-                      <input
-                        type="time"
-                        value={day.break_end ?? ''}
-                        onChange={(e) => updateField(day.day_of_week, 'break_end', e.target.value || null)}
-                        className="w-full bg-neutral-50 ring-1 ring-neutral-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-neutral-300 transition-all"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-1">Semaine type</p>
+            <p className="text-xs text-neutral-400 mb-3">
+              Touchez un jour pour régler ses horaires — les créneaux proposés aux clients en découlent.
+            </p>
+            <div className="space-y-2">
+              {joursOrdonnes.map((day) => (
+                <LigneJour
+                  key={day.day_of_week}
+                  day={day}
+                  ouvert={jourOuvert === day.day_of_week}
+                  onToggle={() => toggleDay(day.day_of_week)}
+                  onOuvrir={() => setJourOuvert((prev) => (prev === day.day_of_week ? null : day.day_of_week))}
+                  onChange={(f, v) => updateField(day.day_of_week, f, v)}
+                  onCopier={() => copierSurOuverts(day.day_of_week)}
+                />
+              ))}
+            </div>
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full mt-4 bg-neutral-900 text-white py-3.5 rounded-[22px] font-semibold text-sm disabled:opacity-50 hover:bg-neutral-700 transition-colors"
-          >
-            {saving ? 'Enregistrement...' : 'Enregistrer les horaires'}
-          </button>
+          <UnavailabilitiesSection />
         </div>
-
-        {/* Blocages ponctuels */}
-        <UnavailabilitiesSection />
-
       </div>
 
+      {/* Barre d'enregistrement : n'existe que quand quelque chose a changé. */}
+      {(modifie || enregistre) && (
+        <div className="fixed inset-x-0 bottom-0 z-40 px-4 pb-safe-5 pt-3 bg-gradient-to-t from-white via-white/95 to-transparent">
+          <div className="max-w-2xl mx-auto">
+            <button
+              onClick={handleSave}
+              disabled={saving || enregistre}
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white py-3.5 rounded-2xl font-bold text-[15px] shadow-[0_10px_28px_-10px_rgba(10,10,10,0.5)] disabled:opacity-80 hover:bg-neutral-700 transition-colors"
+            >
+              {enregistre ? (<><Check size={16} /> Horaires enregistrés</>) : saving ? 'Enregistrement…' : 'Enregistrer les horaires'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
