@@ -61,7 +61,7 @@ function Section({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div>
-      <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 w-full text-left mb-3 group">
+      <button onClick={() => setOpen((v) => !v)} className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] flex items-center gap-2 w-full text-left mb-3 group">
         <Icon size={14} className="text-neutral-400" strokeWidth={1.5} />
         <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-500 group-hover:text-neutral-800 transition-colors">
           {title}
@@ -253,7 +253,7 @@ export default function BadgesPage() {
     <div className="min-h-screen bg-neutral-50">
 
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">Badges</span>

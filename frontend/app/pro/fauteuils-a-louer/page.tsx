@@ -112,7 +112,7 @@ export default function FauteuilsALouerPage() {
           </div>
           <button
             onClick={openFilters}
-            className={`relative flex items-center justify-center w-10 h-10 rounded-2xl border transition-colors flex-shrink-0 ${
+            className={`relative before:absolute before:-inset-[2px] before:content-[''] flex items-center justify-center w-10 h-10 rounded-2xl border transition-colors flex-shrink-0 ${
               activeFilterCount > 0 ? 'bg-neutral-900 border-neutral-900 text-white' : 'bg-white border-neutral-200 text-neutral-500'
             }`}
             aria-label="Filtres"
@@ -124,12 +124,12 @@ export default function FauteuilsALouerPage() {
           </button>
           <div className="flex bg-neutral-100 rounded-2xl p-1 gap-1 flex-shrink-0">
             <button onClick={() => setView('list')}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${view === 'list' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'}`}
+              className={`flex items-center justify-center w-11 h-11 rounded-xl transition-colors ${view === 'list' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'}`}
               aria-label="Vue liste">
               <List size={15} />
             </button>
             <button onClick={() => setView('map')}
-              className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${view === 'map' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'}`}
+              className={`flex items-center justify-center w-11 h-11 rounded-xl transition-colors ${view === 'map' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400'}`}
               aria-label="Vue carte — fauteuils uniquement, jamais la carte de recherche client">
               <MapIcon size={15} />
             </button>

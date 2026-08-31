@@ -55,7 +55,7 @@ export default function ProPlusPage() {
                 </div>
                 <button
                   onClick={() => setExpanded(true)}
-                  className="text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors flex-shrink-0"
+                  className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors flex-shrink-0"
                 >
                   Créer
                 </button>

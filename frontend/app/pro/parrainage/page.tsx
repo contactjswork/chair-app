@@ -59,7 +59,7 @@ export default function ParrainagePage() {
     <div className="min-h-screen bg-neutral-50">
 
       <div className="sticky top-0 z-20 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">Parrainage</span>
@@ -86,7 +86,7 @@ export default function ParrainagePage() {
 
               <div className="bg-white/10 rounded-xl px-3.5 py-3 mb-3 flex items-center gap-2">
                 <p className="text-xs text-white/70 truncate flex-1">{data.link}</p>
-                <button onClick={copyLink} className="text-white/80 hover:text-white flex-shrink-0">
+                <button onClick={copyLink} className="relative before:absolute before:-inset-[15px] before:content-[''] text-white/80 hover:text-white flex-shrink-0">
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>
               </div>

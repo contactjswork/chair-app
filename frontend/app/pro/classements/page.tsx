@@ -242,7 +242,7 @@ export default function ProClassementsPage() {
   return (
     <>
       <div className="sticky top-0 z-20 bg-white border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" aria-label="Retour" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+        <Link href="/pro" aria-label="Retour" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">Classement</span>

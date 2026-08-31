@@ -116,7 +116,7 @@ function JoinSalonPanel() {
           { key: 'invitations', label: 'Invitations', icon: Mail },
         ].map(({ key, label, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key as 'search' | 'invitations')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${tab === key ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
+            className={`relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors ${tab === key ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'}`}>
             <Icon size={12} />{label}
             {key === 'invitations' && pendingInvitations.length > 0 && (
               <span className="w-4 h-4 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
@@ -209,7 +209,7 @@ function JoinSalonPanel() {
                           <button
                             onClick={() => handleJoin(salon)}
                             disabled={joiningId === salon.id}
-                            className="w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                            className="relative before:absolute before:-inset-y-[4px] before:inset-x-0 before:content-[''] w-full py-2.5 bg-neutral-900 text-white text-xs font-semibold rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50"
                           >
                             {joiningId === salon.id ? 'Envoi...' : 'Demander à rejoindre'}
                           </button>

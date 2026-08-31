@@ -154,7 +154,7 @@ export default function ChairPlusPage() {
     <div className="min-h-screen bg-white">
 
       <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
@@ -234,7 +234,7 @@ export default function ChairPlusPage() {
 
                   <button
                     onClick={() => setSheetOpen(true)}
-                    className="mt-4 text-[12px] font-semibold text-white/40 underline underline-offset-4 decoration-white/20 hover:text-white/70 transition-colors"
+                    className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/40 underline underline-offset-4 decoration-white/20 hover:text-white/70 transition-colors"
                   >
                     Aperçu rapide des avantages
                   </button>

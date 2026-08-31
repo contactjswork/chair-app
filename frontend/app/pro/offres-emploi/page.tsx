@@ -286,7 +286,7 @@ export default function OffresEmploiPage() {
             {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"><X size={13} /></button>}
           </div>
           <button onClick={() => setShowFilters((p) => !p)}
-            className={`w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors ${showFilters || contract ? 'bg-neutral-900 border-neutral-900 text-white' : 'bg-white border-neutral-200 text-neutral-600'}`}>
+            className={`relative before:absolute before:-inset-[2px] before:content-[''] w-10 h-10 flex items-center justify-center rounded-2xl border transition-colors ${showFilters || contract ? 'bg-neutral-900 border-neutral-900 text-white' : 'bg-white border-neutral-200 text-neutral-600'}`}>
             <Filter size={14} />
           </button>
         </div>

@@ -60,7 +60,7 @@ function NotifCard({
           {isUnread && (
             <button
               onClick={() => onMarkRead(notif.id)}
-              className="shrink-0 mt-0.5 text-neutral-400 hover:text-neutral-700 transition-colors"
+              className="relative before:absolute before:-inset-[15px] before:content-[''] shrink-0 mt-0.5 text-neutral-400 hover:text-neutral-700 transition-colors"
               aria-label="Marquer comme lu"
             >
               <Check size={14} />
@@ -146,7 +146,7 @@ export default function ProNotificationsPage() {
               <button
                 onClick={handleMarkAllRead}
                 disabled={markingAll}
-                className="flex items-center gap-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 transition-colors disabled:opacity-50"
+                className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] flex items-center gap-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 transition-colors disabled:opacity-50"
               >
                 <CheckCheck size={13} />
                 Tout lu

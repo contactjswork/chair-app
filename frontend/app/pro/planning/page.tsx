@@ -55,13 +55,13 @@ function BookingWindowSection() {
       <p className="text-xs text-neutral-400 mb-3 leading-relaxed">
         Jusqu&apos;à combien de temps à l&apos;avance les clients peuvent réserver.
       </p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-x-1.5 gap-y-3.5">
         {WINDOW_OPTIONS.map((opt) => (
           <button
             key={String(opt.value)}
             onClick={() => select(opt.value)}
             disabled={saving}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors disabled:opacity-50 ${
+            className={`relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-[''] px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors disabled:opacity-50 ${
               days === opt.value
                 ? 'bg-neutral-900 text-white'
                 : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'

@@ -325,7 +325,7 @@ export default function DashboardProfilPage() {
                 <Link
                   href={`/app/coiffeur/${user.hairdresser_profile.slug}`}
                   target="_blank"
-                  className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 bg-neutral-50 px-3 py-2 rounded-xl hover:bg-neutral-100 hover:text-neutral-900 transition-colors flex-shrink-0"
+                  className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] mb-1 inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-600 bg-neutral-50 px-3 py-2 rounded-xl hover:bg-neutral-100 hover:text-neutral-900 transition-colors flex-shrink-0"
                 >
                   <Eye size={13} />
                   Profil public
