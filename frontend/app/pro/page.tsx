@@ -13,9 +13,8 @@ import {
   type ApiSpecialtyHighlight, type ApiNextBadge, type ApiChairBadge,
 } from '@/lib/types';
 import {
-  ChevronRight, Gift, Pencil, Sparkles, Eye,
+  ChevronRight, Sparkles,
 } from 'lucide-react';
-import BusinessSnapshotCard from '@/components/ui/BusinessSnapshotCard';
 import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
 import StoryCreateCard from '@/components/ui/StoryCreateCard';
 import RankCard from '@/components/pro/home/RankCard';
@@ -23,9 +22,8 @@ import TodayCard from '@/components/pro/home/TodayCard';
 import StreakCard from '@/components/pro/home/StreakCard';
 import QuestCard from '@/components/pro/home/QuestCard';
 import CompletionCard from '@/components/pro/home/CompletionCard';
+import VisibilityCard from '@/components/pro/home/VisibilityCard';
 import { completionFromProfile } from '@/lib/profileCompletion';
-import ProSection from '@/components/pro/ProSection';
-import { ProGroup, ProGroupRow } from '@/components/pro/ProGroup';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 
 export default function CockpitPage() {
@@ -192,44 +190,52 @@ export default function CockpitPage() {
         )}
       </div>
 
-      {/* ══════════ Ce que je montre ══════════ */}
-      {!dataLoading && (
-        <ProSection title="Ma vitrine" href="/pro/portfolio">
-          <PortfolioSnapshotCard posts={posts} />
-          {/* Stories : la carte "verrouillée CHAIR+" disait exactement la même
-              chose que la ligne CHAIR+ plus bas — un seul upsell sur la page. */}
-          {hasChairPlus(fullProfile) && (
-            <div className="mt-4"><StoryCreateCard profile={fullProfile} /></div>
-          )}
-          {profile?.slug && (
-            <div className="mt-4">
-              <ProGroup>
-                <ProGroupRow href={`/app/coiffeur/${profile.slug}`} external icon={Eye} label="Voir mon profil public" />
-              </ProGroup>
+        {/* ══════════ Ce que je montre ══════════
+            Même langage que les cartes du dessus : micro-titre en capitales,
+            relief, coins à 28. Les gros titres de section pesaient autant que
+            « Bonjour Julien » et écrasaient la hiérarchie. */}
+        {!dataLoading && (
+          <div className="rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5">
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Ma vitrine</p>
+              <Link href="/pro/portfolio" className="relative before:absolute before:-inset-2 before:content-[''] text-neutral-300 active:text-neutral-500 transition-colors">
+                <ChevronRight size={16} />
+              </Link>
             </div>
-          )}
-        </ProSection>
-      )}
-
-      {/* ══════════ Ce que ça rapporte (indépendant uniquement) ══════════ */}
-      {!dataLoading && isIndependent && stats && (
-        <ProSection title="Mon activité" href="/pro/business">
-          <BusinessSnapshotCard stats={stats} />
-        </ProSection>
-      )}
-
-      {/* ══════════ Le reste, groupé ══════════ */}
-      {!dataLoading && (
-        <ProSection title="Aller plus loin">
-          <ProGroup>
-            {!hasChairPlus(fullProfile) && (
-              <ProGroupRow href="/pro/chair-plus" icon={Sparkles} label="CHAIR+" hint="Stories, boost et analytics" />
+            <PortfolioSnapshotCard posts={posts} />
+            {hasChairPlus(fullProfile) && (
+              <div className="mt-4"><StoryCreateCard profile={fullProfile} /></div>
             )}
-            <ProGroupRow href="/pro/parrainage" icon={Gift} label="Parrainer un coiffeur" hint="Points, badges et CHAIR+ offert" />
-            <ProGroupRow href="/pro/profil" icon={Pencil} label="Modifier mon profil" />
-          </ProGroup>
-        </ProSection>
-      )}
+          </div>
+        )}
+
+        {/* ══════════ Ce que ça rapporte ══════════
+            Remplace « 0 · 0 · 0 € ». Le chiffre d'affaires estimé est reparti
+            dans /pro/business : CHAIR ne voit que les rendez-vous pris dans
+            l'app, donc « 0 € » sur l'accueil d'un coiffeur qui travaille
+            était simplement faux. */}
+        {!dataLoading && stats && (
+          <VisibilityCard stats={stats} slug={profile?.slug ?? null} />
+        )}
+
+        {/* ══════════ CHAIR+ ══════════
+            Une seule ligne, discrète, sans argumentaire : l'abonnement doit
+            se savoir, pas se vendre depuis l'écran d'accueil. Le parrainage
+            et « modifier mon profil » sont partis dans l'onglet Plus, où l'on
+            va quand on cherche un réglage — pas quand on ouvre l'app. */}
+        {!dataLoading && !hasChairPlus(fullProfile) && (
+          <Link
+            href="/pro/chair-plus"
+            className="flex items-center gap-3 rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] px-5 min-h-[60px] py-3 active:scale-[0.985] transition-transform duration-200"
+          >
+            <Sparkles size={17} className="text-neutral-400 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-[14px] font-semibold text-neutral-900">CHAIR+</span>
+              <span className="block text-[12px] text-neutral-500">Stories, boost et statistiques détaillées</span>
+            </span>
+            <ChevronRight size={16} className="text-neutral-300 shrink-0" />
+          </Link>
+        )}
 
     </div>
   );
