@@ -1,6 +1,6 @@
 import {
   Home, CalendarDays, Images, TrendingUp, User, Building2, Briefcase, QrCode,
-  Users, Clock, Scissors, Crown, Gift, Sparkles, Armchair, Trophy,
+  Users, Clock, Scissors, Crown, Gift, Sparkles, Armchair, Trophy, Stamp,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,6 +42,7 @@ function salarieNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/business',      label: 'Performance',     icon: TrendingUp },
       { href: '/pro/badges',        label: 'Badges',          icon: Crown },
       { href: '/pro/classements',   label: 'Classement',      icon: Trophy },
+      { href: '/pro/fidelite',      label: 'Carte de fidélité', icon: Stamp },
       { href: '/pro/parrainage',    label: 'Parrainage',      icon: Gift },
       { href: '/pro/chair-plus',    label: 'CHAIR+',          icon: Sparkles },
       { href: '/pro/offres-emploi', label: "Offres d'emploi", icon: Briefcase },
@@ -67,6 +68,7 @@ function independantNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/services',          label: 'Services',          icon: Scissors },
       { href: '/pro/badges',            label: 'Badges',            icon: Crown },
       { href: '/pro/classements',       label: 'Classement',        icon: Trophy },
+      { href: '/pro/fidelite',          label: 'Carte de fidélité', icon: Stamp },
       { href: '/pro/parrainage',        label: 'Parrainage',        icon: Gift },
       { href: '/pro/chair-plus',        label: 'CHAIR+',            icon: Sparkles },
       { href: '/pro/fauteuils-a-louer', label: 'Louer un fauteuil', icon: Armchair },

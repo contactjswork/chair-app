@@ -436,6 +436,20 @@ class NotificationCopy
         // Rappel de re-réservation, calé sur le rythme réel du client. C'est
         // le seul push commercial de l'app côté client : il doit rester rare
         // et juste, sinon il grille la permission pour tous les autres.
+        // La recompense de fidelite est debloquee. Cote client c est une
+        // victoire ; cote coiffeur c est une dette a honorer au comptoir.
+        'loyalty_unlocked' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Récompense débloquée 🎉',
+                'message'  => 'Chez {coiffeur} : {recompense}. Montre cette notification au salon.',
+                'fallback' => 'Ta carte de fidélité est pleine. Ta récompense t attend au salon.',
+            ],
+            self::AUDIENCE_PRO => [
+                'title'    => 'Récompense à honorer',
+                'message'  => 'Un client fidèle a débloqué : {recompense}. À voir dans Fidélité.',
+                'fallback' => 'Un client vient de remplir sa carte de fidélité.',
+            ],
+        ],
         'rebook_reminder' => [
             self::AUDIENCE_CLIENT => [
                 'title'    => 'Un petit rafraîchissement ?',

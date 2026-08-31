@@ -279,6 +279,35 @@ export default function ScanPage() {
               </div>
             </div>
 
+            {/* La carte de fidélité, juste après le scan : le client vient
+                de vivre le geste qui la fait avancer — aucun autre moment
+                ne vaut celui-là. Rien ne s affiche sans programme actif. */}
+            {confirmed.loyalty && (
+              <div className="bg-white ring-1 ring-neutral-100 rounded-2xl p-4 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)]">
+                {confirmed.loyalty.just_unlocked ? (
+                  <p className="text-[14px] text-neutral-900 leading-snug">
+                    🎉 <span className="font-bold">Carte pleine !</span> Récompense débloquée :{' '}
+                    <span className="font-semibold">{confirmed.loyalty.pending_rewards[0]?.reward_label ?? confirmed.loyalty.reward_label}</span>.
+                    Montrez cet écran au salon.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(confirmed.loyalty.visits_required, 12) }).map((_, i) => (
+                        <div key={i} className={`flex-1 h-2 rounded-full ${i < (confirmed.loyalty?.progress ?? 0) ? 'bg-neutral-900' : 'bg-neutral-100 shadow-[inset_0_1px_2px_rgba(10,10,10,0.08)]'}`} />
+                      ))}
+                    </div>
+                    <p className="text-[12.5px] text-neutral-500 mt-2 tabular-nums">
+                      Carte de fidélité : {confirmed.loyalty.progress}/{confirmed.loyalty.visits_required} — encore{' '}
+                      {confirmed.loyalty.visits_required - confirmed.loyalty.progress} avant :{' '}
+                      <span className="font-semibold text-neutral-900">{confirmed.loyalty.reward_label}</span>
+                    </p>
+                  </>
+                )}
+              </div>
+
+            )}
+
             <div>
               <h2 className="text-lg font-bold text-neutral-900 mb-1">
                 Laissez un avis vérifié

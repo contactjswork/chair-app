@@ -28,6 +28,7 @@ class HairdresserProfile extends Model
     ];
 
     protected $casts = [
+        'loyalty_addon_until' => 'datetime',
         'is_independent'       => 'boolean',
         'is_verified'          => 'boolean',
         'identity_verified'    => 'boolean',
@@ -84,6 +85,15 @@ class HairdresserProfile extends Model
      *  3. abonnement CHAIR BUSINESS du salon (couvre toute l'équipe).
      * Rien d'autre dans le code ne doit vérifier ces sources séparément.
      */
+    /**
+     * L add-on Carte de fidelite — distinct de CHAIR+. Paiement a venir
+     * (Stripe) ; en attendant l activation est manuelle cote admin.
+     */
+    public function hasLoyaltyAddon(): bool
+    {
+        return $this->loyalty_addon_until !== null
+            && $this->loyalty_addon_until->isFuture();
+    }
     public function hasChairPlus(): bool
     {
         if ($this->chair_plus_test_mode) {

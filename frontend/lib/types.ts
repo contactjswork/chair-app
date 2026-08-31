@@ -67,6 +67,31 @@ export interface ApiMySpecialtyRank {
   points_to_next?: number | null;
 }
 
+/** La carte de fidélité — add-on CHAIR PRO. Voir LoyaltyController. */
+export interface ApiLoyaltyProgram {
+  id: number;
+  hairdresser_id: number;
+  visits_required: number;
+  reward_label: string;
+  is_active: boolean;
+  counting_since: string;
+}
+
+export interface ApiLoyaltyReward {
+  id: number;
+  reward_label: string;
+  visits_required: number;
+  unlocked_at: string;
+  redeemed_at: string | null;
+  client?: { id: number; name: string; avatar: string | null };
+}
+
+export interface ApiLoyaltyCard {
+  visits_required: number;
+  reward_label: string;
+  progress: number;
+  pending_rewards: { id: number; reward_label: string; unlocked_at: string }[];
+}
 /** Reponse de GET /my-rankings — mes classements au perimetre demande. */
 export interface ApiMyRankings {
   geo: 'city' | 'department' | 'region' | 'country';
@@ -358,6 +383,8 @@ export interface ApiVisitConfirmed {
   hairdresser_slug: string;
   service_type: string | null;
   specialty_id: number | null;
+  /** Etat de la carte de fidelite apres CE scan — null sans programme actif. */
+  loyalty?: (ApiLoyaltyCard & { just_unlocked: boolean }) | null;
 }
 
 export interface ApiVerifiedVisit {

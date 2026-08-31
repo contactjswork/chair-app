@@ -14,6 +14,7 @@ import PublicProfileStickyCTA from '@/components/ui/PublicProfileStickyCTA';
 import BookingResume from '@/components/ui/BookingResume';
 import { ContentMenu } from '@/components/ui/ReportSheet';
 import BlockedProfileNotice from '@/components/ui/BlockedProfileNotice';
+import LoyaltyCard from '@/components/ui/LoyaltyCard';
 import ScrollToTopOnMount from '@/components/ui/ScrollToTopOnMount';
 import type { ApiHairdresserProfile, ApiPost, ApiServiceCategory, PaginatedResponse } from '@/lib/types';
 import { resolveMediaUrl, getAfterImage } from '@/lib/types';
@@ -108,6 +109,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
         {/* Effet visible du blocage sur une fiche ouverte par lien direct
             (App Store Review Guideline 1.2). Ne rend rien si le visiteur
             n'a pas bloqué ce compte. */}
+        {/* La carte de fidelite du visiteur chez CE coiffeur. Ne rend rien
+            sans programme, sans connexion ou sans premier passage — voir
+            components/ui/LoyaltyCard.tsx. */}
+        <LoyaltyCard hairdresserId={hairdresser.id} />
+
         <BlockedProfileNotice
           authorUserId={hairdresser.user.id}
           authorName={hairdresser.user.name}

@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\JobOfferController;
 use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\StreakController;
 use App\Http\Controllers\Api\LeaderboardController;
+use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\ChairRentalController;
 use App\Http\Controllers\Api\JobApplicationController;
@@ -413,6 +414,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // /scan/review AVANT /scan/{token} pour éviter le conflit de route wildcard
     Route::post('/scan/review',          [VisitController::class, 'submitReview']);
     Route::post('/scan/{token}',         [VisitController::class, 'confirmVisit']);
+    // Carte de fidelite — la carte du client connecte chez un coiffeur.
+    Route::get('/loyalty/my-card/{hairdresserId}', [LoyaltyController::class, 'myCard']);
 
     // QR Code coiffeur
     Route::get('/hairdresser/qr-token',          [VisitController::class, 'getQrToken']);
@@ -502,6 +505,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // region, France). Sert a la home pro : « 1er sur 2 » ne laisse rien a
     // gravir, « 6e sur 9 en France » donne un cap.
     Route::get('/my-rankings', [LeaderboardController::class, 'myRankings']);
+    // Carte de fidelite — configuration (add-on requis) et recompenses a honorer.
+    Route::get('/loyalty/program',              [LoyaltyController::class, 'show']);
+    Route::put('/loyalty/program',              [LoyaltyController::class, 'update']);
+    Route::post('/loyalty/rewards/{id}/redeem', [LoyaltyController::class, 'redeem']);
 
     // Réputation par spécialité (voir docs/REPUTATION_ARCHITECTURE.md)
     Route::get('/my-specialty-progress', [SpecialtyProgressController::class, 'mine']);

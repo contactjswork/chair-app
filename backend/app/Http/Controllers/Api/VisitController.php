@@ -228,8 +228,14 @@ class VisitController extends Controller
             $visit->scanned_at ?? now()
         );
 
+        // La carte de fidelite avance ICI — au scan, le seul moment prouve.
+        // Nulle si le coiffeur n a pas de programme actif : rien ne change
+        // au flux existant.
+        $loyalty = \App\Services\LoyaltyService::onVerifiedVisit($token->hairdresser, $clientUserId);
+
         return response()->json([
             'visit_id'         => $visit->id,
+            'loyalty'          => $loyalty,
             'hairdresser_id'   => $token->hairdresser_id,
             'hairdresser_name' => $token->hairdresser->user->name,
             'hairdresser_slug' => $token->hairdresser->slug,

@@ -375,6 +375,17 @@ export const specialtyProgress = {
  * changer. Un coiffeur de petite ville est vite « 1er sur 2 », ce qui ne
  * laisse rien à gravir — le même est 6e sur 9 en France.
  */
+/** Carte de fidélité — add-on CHAIR PRO (config côté pro, carte côté client). */
+export const loyalty = {
+  program: () =>
+    api.get<{ addon_active: boolean; program: import('./types').ApiLoyaltyProgram | null; pending_rewards: import('./types').ApiLoyaltyReward[] }>('/loyalty/program'),
+  saveProgram: (data: { visits_required: number; reward_label: string; is_active: boolean }) =>
+    api.put<import('./types').ApiLoyaltyProgram>('/loyalty/program', data),
+  redeem: (id: number) =>
+    api.post<import('./types').ApiLoyaltyReward>(`/loyalty/rewards/${id}/redeem`, {}),
+  myCard: (hairdresserId: number) =>
+    api.get<{ card: import('./types').ApiLoyaltyCard | null }>(`/loyalty/my-card/${hairdresserId}`),
+};
 export const myRankings = {
   get: (geo: 'city' | 'department' | 'region' | 'country') =>
     api.get<import('./types').ApiMyRankings>(`/my-rankings?geo=${geo}`),
