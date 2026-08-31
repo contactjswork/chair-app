@@ -254,6 +254,9 @@ class VisitController extends Controller
             'visit_id' => 'required|integer|min:1',
             'rating'   => 'required|integer|min:1|max:5',
             'comment'  => 'required|string|min:10|max:1000',
+            // La photo du résultat — optionnelle, une seule. 8 Mo : les
+            // photos d'iPhone récentes dépassent facilement 4.
+            'photo'    => 'nullable|image|max:8192',
         ]);
 
         // Filtrage au dépôt (App Store Review Guideline 1.2 — « a method for
@@ -285,12 +288,26 @@ class VisitController extends Controller
             return response()->json(['message' => 'Un avis a déjà été laissé pour cette visite.'], 422);
         }
 
+        // La photo monte AVANT la création de l'avis : si Cloudinary échoue,
+        // l'avis part sans photo plutôt que de bloquer le dépôt — le texte
+        // vaut plus que l'image.
+        $photoUrl = null;
+        if ($request->hasFile('photo')) {
+            try {
+                $photoUrl = app(\App\Services\CloudinaryService::class)
+                    ->upload($request->file('photo'), 'chair/reviews');
+            } catch (\Throwable $e) {
+                \Log::warning('Photo d\'avis non envoyée', ['visit' => $visit->id, 'err' => $e->getMessage()]);
+            }
+        }
+
         $review = Review::create([
             'hairdresser_id'    => $visit->hairdresser_id,
             'client_id'         => $clientId,
             'verified_visit_id' => $visit->id,
             'rating'            => $request->rating,
             'comment'           => $request->comment,
+            'photo_url'         => $photoUrl,
             'specialty'         => $visit->service_type,
             'specialty_id'      => $visit->specialty_id,
             'is_verified'       => true,

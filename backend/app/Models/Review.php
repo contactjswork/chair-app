@@ -16,6 +16,7 @@ class Review extends Model
         'verified_visit_id',
         'rating',
         'comment',
+        'photo_url',
         'hairdresser_reply',
         'replied_at',
         'specialty',

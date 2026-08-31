@@ -212,6 +212,8 @@ export interface ApiReview {
   id: number;
   rating: number;
   comment: string;
+  /** Photo du resultat jointe a l avis (flux de scan uniquement). */
+  photo_url?: string | null;
   hairdresser_reply: string | null;
   replied_at: string | null;
   is_verified: boolean;

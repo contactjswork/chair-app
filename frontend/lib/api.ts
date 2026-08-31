@@ -530,8 +530,19 @@ export const visits = {
     api.post<ApiVisitConfirmed>(`/scan/${token}`, serviceId != null ? { service_id: serviceId } : { service_name: serviceName }),
 
   /** Auth requis : soumet un avis vérifié */
-  submitReview: (data: { visit_id: number; rating: number; comment: string }) =>
-    api.post('/scan/review', data),
+  submitReview: (data: { visit_id: number; rating: number; comment: string; photo?: File | null }) => {
+    // Multipart seulement quand une photo part : le JSON reste le chemin
+    // simple, et le serveur accepte les deux.
+    if (data.photo) {
+      const form = new FormData();
+      form.append('visit_id', String(data.visit_id));
+      form.append('rating', String(data.rating));
+      form.append('comment', data.comment);
+      form.append('photo', data.photo);
+      return requestMultipart('/scan/review', form);
+    }
+    return api.post('/scan/review', data);
+  },
 
   /** Coiffeur : liste ses visites vérifiées */
   myVisits: () =>

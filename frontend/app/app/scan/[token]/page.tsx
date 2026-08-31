@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { ApiScanInfo, ApiVisitConfirmed } from '@/lib/types';
 import {
   Scissors, CheckCircle2, Star, AlertCircle,
-  ChevronRight, ArrowRight, Loader2, LogIn, UserPlus,
+  ChevronRight, ArrowRight, Loader2, LogIn, UserPlus, Camera,
 } from 'lucide-react';
 
 type Step = 'loading' | 'auth' | 'info' | 'review' | 'done' | 'error';
@@ -28,6 +28,9 @@ export default function ScanPage() {
   const [rating,      setRating]      = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment,     setComment]     = useState('');
+  // La photo du résultat — optionnelle. Elle transforme « c'était bien »
+  // en preuve, et alimente la crédibilité du coiffeur.
+  const [photo,       setPhoto]       = useState<File | null>(null);
   const [submitting,  setSubmitting]  = useState(false);
   const [errorMsg,    setErrorMsg]    = useState('');
 
@@ -86,6 +89,7 @@ export default function ScanPage() {
         visit_id: confirmed.visit_id,
         rating,
         comment: comment.trim(),
+        photo,
       });
       setStep('done');
     } catch (err: unknown) {
@@ -366,6 +370,42 @@ export default function ScanPage() {
                 </span>
                 <span className="text-[10px] text-neutral-400">{comment.length}/1000</span>
               </div>
+            </div>
+
+            {/* La photo du résultat — optionnelle. Un avis avec photo
+                prouve ce que le texte raconte, et personne ne l'offre en
+                France sur les coiffeurs. Une seule : un avis n'est pas une
+                galerie. */}
+            <div>
+              <label className="flex items-center gap-3 w-fit cursor-pointer text-[13px] font-semibold text-neutral-700">
+                <span className="w-11 h-11 rounded-xl bg-neutral-100 flex items-center justify-center">
+                  <Camera size={17} className="text-neutral-500" />
+                </span>
+                {photo ? 'Changer la photo' : 'Ajouter une photo du résultat'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {photo && (
+                <div className="flex items-center gap-2 mt-2">
+                  {/* Aperçu local, jamais uploadé avant l'envoi de l'avis. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={URL.createObjectURL(photo)}
+                    alt="Aperçu de votre photo"
+                    className="w-16 h-20 rounded-lg object-cover border border-neutral-200"
+                  />
+                  <button
+                    onClick={() => setPhoto(null)}
+                    className="text-[12px] font-medium text-neutral-400 active:text-neutral-700 min-h-[44px] px-2"
+                  >
+                    Retirer
+                  </button>
+                </div>
+              )}
             </div>
 
             {errorMsg && (

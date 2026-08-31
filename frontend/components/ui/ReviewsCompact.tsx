@@ -66,6 +66,17 @@ function SimpleReviewCard({ review, isOwner, onReplied }: { review: ApiReview; i
           &ldquo;{review.comment}&rdquo;
         </p>
       )}
+      {/* La photo du résultat — la preuve du texte. Elle reste petite :
+          c'est l'avis qui parle, la photo l'appuie. */}
+      {review.photo_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={review.photo_url}
+          alt="Photo du résultat"
+          loading="lazy"
+          className="mt-2.5 ml-11 w-24 h-32 rounded-xl object-cover border border-neutral-100"
+        />
+      )}
       {review.specialty && (
         <span className="inline-block mt-2 ml-11 text-[10px] bg-neutral-100 text-neutral-500 px-2 py-0.5 rounded-full">
           {review.specialty}
