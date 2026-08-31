@@ -136,6 +136,19 @@ class StoryService
     public static function purgeExpired(): int
     {
         $expired = Story::where('expires_at', '<=', now())->get();
+
+        // La purge est le SEUL moment ou l'usage complet d'une story est connu
+        // (elle meurt avec son compteur de vues). On le consigne : c'est la
+        // matiere de la decision garder/couper les stories — grep
+        // 'stories.usage' dans les logs, ou chair:stories-usage pour le vivant.
+        if ($expired->isNotEmpty()) {
+            Log::info('stories.usage', [
+                'purgees'   => $expired->count(),
+                'createurs' => $expired->pluck('user_id')->unique()->count(),
+                'vues'      => (int) $expired->sum('views_count'),
+            ]);
+        }
+
         $cloudinary = new CloudinaryService();
         foreach ($expired as $story) {
             $cloudinary->deleteOldMedia($story->media_url);

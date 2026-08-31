@@ -6,18 +6,18 @@ import { useEffect, useState } from 'react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import StarRating from '@/components/ui/StarRating';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { appointments as apptApi, analytics as analyticsApi, api, streak as streakApi } from '@/lib/api';
+import { appointments as apptApi, analytics as analyticsApi, api } from '@/lib/api';
 import { resolveMediaUrl } from '@/lib/types';
 import type {
   ApiStats, ApiAppointment, ApiAnalytics, ApiAnalyticsTimeseries,
-  ApiChairLevel, ApiNextBadge, ApiStreak, ApiHairdresserProfile,
+  ApiNextBadge, ApiHairdresserProfile,
 } from '@/lib/types';
 import { BadgeMedallion } from '@/components/ui/ChairBadges';
 import { PremiumLockCard } from '@/components/ui/PremiumLock';
 import {
   Users, Star, Eye, Bookmark, Euro, Percent, TrendingUp, TrendingDown, Minus,
   Crown, ChevronRight, Calendar, CheckCircle2, Clock, ImageIcon, Lightbulb, ArrowRight,
-  Flame, Medal, Scissors, MessageSquare, UserPlus, Heart,
+  Medal, Scissors, MessageSquare, UserPlus, Heart,
 } from 'lucide-react';
 
 // ── Tendance ──────────────────────────────────────────────────────────
@@ -135,9 +135,7 @@ export default function PerformancePage() {
   const [stats,        setStats]        = useState<ApiStats | null>(null);
   const [analyticsData, setAnalytics]   = useState<ApiAnalytics | null>(null);
   const [appointments, setAppointments] = useState<ApiAppointment[]>([]);
-  const [chairLevel,   setChairLevel]   = useState<ApiChairLevel | null>(null);
   const [nextBadges,   setNextBadges]   = useState<ApiNextBadge[]>([]);
-  const [streak,       setStreak]       = useState<ApiStreak | null>(null);
   const [loading,      setLoading]      = useState(true);
   const [chartPeriod,  setChartPeriod]  = useState<'7d' | '30d' | '90d' | '12mo'>('7d');
   const [chartMetric,  setChartMetric]  = useState<typeof CHART_METRICS[number]['key'] | typeof PREMIUM_CHART_METRICS[number]['key']>('appointments');
@@ -152,17 +150,14 @@ export default function PerformancePage() {
       apptApi.getStats(),
       analyticsApi.get(),
       isIndependent ? apptApi.list() : Promise.resolve([]),
-      api.get<ApiHairdresserProfile & { chair_level?: ApiChairLevel; next_badges?: ApiNextBadge[] }>('/profile'),
-      streakApi.get(),
-    ]).then(([st, an, apts, prof, sk]) => {
+      api.get<ApiHairdresserProfile & { next_badges?: ApiNextBadge[] }>('/profile'),
+    ]).then(([st, an, apts, prof]) => {
       if (st.status === 'fulfilled') setStats(st.value);
       if (an.status === 'fulfilled') setAnalytics(an.value);
       if (apts.status === 'fulfilled' && Array.isArray(apts.value)) setAppointments(apts.value as ApiAppointment[]);
-      if (prof.status === 'fulfilled') {
-        if (prof.value.chair_level) setChairLevel(prof.value.chair_level);
-        if (prof.value.next_badges) setNextBadges(prof.value.next_badges);
+      if (prof.status === 'fulfilled' && prof.value.next_badges) {
+        setNextBadges(prof.value.next_badges);
       }
-      if (sk.status === 'fulfilled') setStreak(sk.value as ApiStreak);
     }).finally(() => setLoading(false));
   }, [user, isIndependent]);
 
@@ -204,53 +199,10 @@ export default function PerformancePage() {
         ) : (
           <div className="px-4 pt-2 space-y-7">
 
-            {/* ── Hero : niveau, streak, objectif principal ── */}
-            {chairLevel && (
-              <section className="bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Niveau CHAIR</p>
-                    <p className="text-2xl font-black text-white leading-none">{chairLevel.name}</p>
-                    <p className="text-xs font-semibold text-white/50 mt-1">{chairLevel.points} pts</p>
-                  </div>
-                  {streak && streak.current_streak > 0 && (
-                    <div className="flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1.5">
-                      <Flame size={13} className={streak.is_active_today ? 'text-orange-400' : 'text-white/40'} />
-                      <span className="text-xs font-bold text-white">{streak.current_streak}j</span>
-                    </div>
-                  )}
-                </div>
-                {chairLevel.next && (
-                  <div className="mb-4">
-                    <div className="h-2 bg-white/15 rounded-full overflow-hidden mb-1.5">
-                      <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${chairLevel.progress}%` }} />
-                    </div>
-                    <p className="text-[10px] font-semibold text-white/40">
-                      {chairLevel.next.min - chairLevel.points} pts pour <span className="text-white/70">{chairLevel.next.name}</span>
-                    </p>
-                  </div>
-                )}
-                {nextBadges[0] && (
-                  <Link href="/pro/badges" className="flex items-center gap-3 bg-white/5 hover:bg-white/10 transition-colors rounded-xl px-3.5 py-3">
-                    {nextBadges[0].type === 'badge' ? (
-                      <BadgeMedallion code={nextBadges[0].code} tier={nextBadges[0].tier} size={32} locked />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-                        <Scissors size={14} className="text-white/60" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[9px] font-bold tracking-wide uppercase text-white/30">Objectif principal</p>
-                      <p className="text-[12px] font-semibold text-white truncate">
-                        {nextBadges[0].type === 'badge' ? nextBadges[0].name : nextBadges[0].label}
-                      </p>
-                    </div>
-                    <ChevronRight size={13} className="text-white/30 flex-shrink-0" />
-                  </Link>
-                )}
-              </section>
-            )}
-
+            {/* Un écran nommé « Performance » ouvre sur les chiffres.
+                Le niveau et l objectif vivent sur la page Badges — les
+                redire ici coûtait un écran de scroll avant la première
+                information neuve. */}
             {/* ── Recommandations ── */}
             {analyticsData && analyticsData.recommendations.length > 0 && (
               <section>

@@ -6,7 +6,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useNewlyUnlockedBadges } from '@/hooks/useNewlyUnlockedBadges';
 import { api, specialtyProgress, streak as streakApi } from '@/lib/api';
 import {
-  type ApiHairdresserProfile, type ApiChairBadge, type ApiChairLevel,
+  type ApiHairdresserProfile, type ApiChairBadge,
   type ApiSpecialtyProgress, type ApiStreak, type ApiNextBadge, type ApiRarity,
 } from '@/lib/types';
 import {
@@ -194,7 +194,6 @@ export default function BadgesPage() {
   const [chairBadgesAll, setChairBadgesAll] = useState<ApiChairBadge[]>([]);
   const [catalog,        setCatalog]        = useState<ApiChairBadge[]>([]);
   const [nextBadges,     setNextBadges]     = useState<ApiNextBadge[]>([]);
-  const [chairLevel,     setChairLevel]     = useState<ApiChairLevel | null>(null);
   const [specialties,    setSpecialties]    = useState<ApiSpecialtyProgress[]>([]);
   const [dataLoading,    setDataLoading]    = useState(true);
   const [selectedBadge,  setSelectedBadge]  = useState<ApiChairBadge | null>(null);
@@ -206,7 +205,6 @@ export default function BadgesPage() {
         chair_badges_all?: ApiChairBadge[];
         chair_badges_catalog?: ApiChairBadge[];
         next_badges?: ApiNextBadge[];
-        chair_level?: ApiChairLevel;
       }>('/profile'),
       streakApi.get(),
       specialtyProgress.mine(),
@@ -215,7 +213,6 @@ export default function BadgesPage() {
         if (prof.value.chair_badges_all)     setChairBadgesAll(prof.value.chair_badges_all);
         if (prof.value.chair_badges_catalog) setCatalog(prof.value.chair_badges_catalog);
         if (prof.value.next_badges)          setNextBadges(prof.value.next_badges);
-        if (prof.value.chair_level)          setChairLevel(prof.value.chair_level);
       }
       if (sk.status === 'fulfilled') setStreak(sk.value as ApiStreak);
       if (sp.status === 'fulfilled') setSpecialties(sp.value.specialties);
@@ -246,7 +243,11 @@ export default function BadgesPage() {
   const dominant = nextBadges[0] ?? null;
   const challengeRest = nextBadges.slice(dominant ? 1 : 0, 5);
 
-  const levelColor = chairLevel?.color ?? 'neutral';
+  // La spécialité la plus forte porte le héros — la même identité que la
+  // home et le classement. Une seule échelle, plus de « Expert » ici contre
+  // « Novice » là.
+  const bestSpecialty = specialties[0] ?? null;
+  const levelColor = bestSpecialty?.level_color ?? 'neutral';
   const heroBg = LEVEL_HERO[levelColor] ?? LEVEL_HERO.neutral;
 
   return (
@@ -272,22 +273,34 @@ export default function BadgesPage() {
         {/* ── HERO PROGRESSION ── */}
         {dataLoading ? (
           <div className="h-40 bg-neutral-200 rounded-[28px] animate-pulse" />
-        ) : chairLevel ? (
+        ) : bestSpecialty ? (
           <div className={`rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_4px_-2px_rgba(10,10,10,0.25),0_16px_36px_-14px_rgba(10,10,10,0.35)] p-6 ${heroBg}`}>
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">Niveau CHAIR</p>
-            <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{chairLevel.name}</h2>
-            <p className="text-sm font-semibold text-white/70 mb-4">{chairLevel.points} pts</p>
-            {chairLevel.next ? (
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">
+              {bestSpecialty.specialty_name ?? 'Votre spécialité'}
+            </p>
+            <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{bestSpecialty.level_name}</h2>
+            {bestSpecialty.local_rank != null && bestSpecialty.local_total != null && (
+              <p className="text-sm font-semibold text-white/70 mb-4 tabular-nums">
+                {bestSpecialty.local_rank}
+                {bestSpecialty.local_rank === 1 ? 'er' : 'e'} sur {bestSpecialty.local_total} dans votre ville
+              </p>
+            )}
+            {bestSpecialty.next_step ? (
               <div className="mb-4">
                 <div className="h-2.5 bg-white/15 rounded-full overflow-hidden mb-2">
-                  <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${chairLevel.progress}%` }} />
+                  <div
+                    className="h-full bg-white rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(100, Math.max(4, Math.round((bestSpecialty.score / Math.max(1, bestSpecialty.next_step.next_level_min)) * 100)))}%` }}
+                  />
                 </div>
                 <p className="text-[11px] font-semibold text-white/50">
-                  {chairLevel.next.min - chairLevel.points} pts pour atteindre <span className="text-white/80">{chairLevel.next.name}</span>
+                  Encore {bestSpecialty.next_step.missing} {bestSpecialty.next_step.label}
+                  {bestSpecialty.next_step.missing > 1 ? 's' : ''} pour devenir{' '}
+                  <span className="text-white/80">{bestSpecialty.next_step.next_level_name}</span>
                 </p>
               </div>
             ) : (
-              <p className="text-sm font-bold text-white/60 mb-4">Niveau maximum — vous êtes une légende</p>
+              <p className="text-sm font-bold text-white/60 mb-4">Palier maximal atteint sur cette spécialité</p>
             )}
             <div className="flex items-center gap-4 pt-4 border-t border-white/10">
               <div className="flex items-center gap-1.5">

@@ -29,7 +29,7 @@ interface ProNavConfig {
 // réellement utiliser (vérifié page par page contre les vraies redirections
 // de rôle dans le code) est atteignable depuis l'une des deux listes.
 
-function salarieNav(hasSalon: boolean): ProNavConfig {
+function salarieNav(): ProNavConfig {
   return {
     primary: [
       { href: '/pro',           label: 'Accueil',   icon: Home },
@@ -46,16 +46,13 @@ function salarieNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/fidelite',      label: 'Carte de fidélité', icon: Stamp },
       { href: '/pro/parrainage',    label: 'Parrainage',      icon: Gift },
       { href: '/pro/chair-plus',    label: 'CHAIR+',          icon: Sparkles },
-      { href: '/pro/offres-emploi', label: "Offres d'emploi", icon: Briefcase },
-      ...(hasSalon ? [] : [
-        { href: '/pro/salon', label: 'Rejoindre un salon', icon: Building2 },
-      ]),
+      { href: '/pro/opportunites', label: 'Opportunités', icon: Briefcase },
     ],
     homeHref: '/pro',
   };
 }
 
-function independantNav(hasSalon: boolean): ProNavConfig {
+function independantNav(): ProNavConfig {
   return {
     primary: [
       { href: '/pro',           label: 'Accueil',     icon: Home },
@@ -73,11 +70,7 @@ function independantNav(hasSalon: boolean): ProNavConfig {
       { href: '/pro/fidelite',          label: 'Carte de fidélité', icon: Stamp },
       { href: '/pro/parrainage',        label: 'Parrainage',        icon: Gift },
       { href: '/pro/chair-plus',        label: 'CHAIR+',            icon: Sparkles },
-      { href: '/pro/fauteuils-a-louer', label: 'Louer un fauteuil', icon: Armchair },
-      { href: '/pro/offres-emploi',     label: "Offres d'emploi",   icon: Briefcase },
-      ...(hasSalon ? [] : [
-        { href: '/pro/salon', label: 'Rejoindre un salon', icon: Building2 },
-      ]),
+      { href: '/pro/opportunites',      label: 'Opportunités',      icon: Briefcase },
     ],
     homeHref: '/pro',
   };
@@ -136,11 +129,10 @@ function applyGoalHighlight(nav: ProNavConfig, proGoals: string[] | null | undef
  */
 export function useProNav(): ProNavConfig {
   const { user } = useAuth();
-  const hasSalon = !!user?.hairdresser_profile?.salon_id;
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
   const effectiveMode = user?.active_pro_mode ?? user?.role;
 
   if (effectiveMode === 'salon_owner') return salonOwnerNav();
-  const nav = isIndependent ? independantNav(hasSalon) : salarieNav(hasSalon);
+  const nav = isIndependent ? independantNav() : salarieNav();
   return applyGoalHighlight(nav, user?.hairdresser_profile?.pro_goals);
 }
