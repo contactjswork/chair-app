@@ -12,6 +12,7 @@ import type {
 } from '@/lib/types';
 import BottomSheet from '@/components/ui/BottomSheet';
 import ProSection from '@/components/pro/ProSection';
+import { CARTE, CARTE_TAP, CARTE_SOMBRE } from '@/lib/proStyle';
 
 /**
  * Classement à l'intérieur de CHAIR PRO. Le seul accès existant pointait vers
@@ -32,7 +33,7 @@ function RankRow({ entry, isMe }: { entry: ApiSpecialtyLeaderboardEntry; isMe: b
   return (
     <Link
       href={`/app/coiffeur/${entry.slug}`}
-      className={`flex items-center gap-3 px-4 py-3 transition-colors ${isMe ? 'bg-white' : 'hover:bg-neutral-100/70'}`}
+      className={`flex items-center gap-3 px-4 py-3 transition-colors ${isMe ? 'bg-neutral-50' : 'active:bg-neutral-50'}`}
     >
       <span className={`w-7 flex-shrink-0 text-center text-[13px] tabular-nums ${entry.rank <= 3 ? 'font-bold text-neutral-900' : 'text-neutral-400'}`}>
         {entry.rank}
@@ -80,7 +81,7 @@ function PickerSheet({
             <X size={15} />
           </button>
         </div>
-        <div className="bg-neutral-50 rounded-[20px] overflow-hidden divide-y divide-neutral-200/60">
+        <div className={`${CARTE} overflow-hidden divide-y divide-neutral-50`}>
           {options.map((o) => (
             <button
               key={o.value}
@@ -264,7 +265,7 @@ export default function ProClassementsPage() {
           Où je me situe
         </h2>
 
-        <div className="mt-6 bg-neutral-900 rounded-[24px] px-6 py-7">
+        <div className={`mt-6 ${CARTE_SOMBRE} px-6 py-7`}>
           {loading ? (
             <div className="h-12 flex items-center">
               <div className="h-3 w-32 bg-white/10 rounded-full animate-pulse" />
@@ -282,7 +283,7 @@ export default function ProClassementsPage() {
             <>
               <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-white/40">Votre position</p>
               <div className="mt-2 flex items-end justify-between gap-4">
-                <p className="text-[36px] font-bold text-white tracking-[-0.02em] leading-none tabular-nums">
+                <p className="text-[56px] font-bold text-white tracking-[-0.04em] leading-none tabular-nums">
                   #{myRank.rank}
                 </p>
                 <p className="text-[13px] text-white/40 flex-shrink-0 pb-1.5">
@@ -310,7 +311,7 @@ export default function ProClassementsPage() {
         <div className="mt-4 flex gap-2">
           <button
             onClick={() => setSheet('specialty')}
-            className="flex-1 min-w-0 bg-neutral-50 rounded-[16px] px-4 py-3 text-left hover:bg-neutral-100 transition-colors"
+            className={`flex-1 min-w-0 ${CARTE_TAP} px-4 py-3 text-left`}
           >
             <p className="text-[11px] text-neutral-400">Spécialité</p>
             <p className="text-[14px] font-semibold text-neutral-900 truncate mt-0.5">{specialtyName ?? '—'}</p>
@@ -318,7 +319,7 @@ export default function ProClassementsPage() {
           <button
             onClick={() => setSheet('scope')}
             disabled={!city}
-            className="flex-1 min-w-0 bg-neutral-50 rounded-[16px] px-4 py-3 text-left hover:bg-neutral-100 transition-colors disabled:opacity-60 disabled:hover:bg-neutral-50"
+            className={`flex-1 min-w-0 ${CARTE_TAP} px-4 py-3 text-left disabled:opacity-60`}
           >
             <p className="text-[11px] text-neutral-400">Zone</p>
             <p className="text-[14px] font-semibold text-neutral-900 truncate mt-0.5">{zoneLabel}</p>
@@ -328,7 +329,7 @@ export default function ProClassementsPage() {
         {/* ── Le classement ── */}
         <ProSection title="Le classement">
           {loading ? (
-            <div className="bg-neutral-50 rounded-[20px] divide-y divide-neutral-200/60">
+            <div className={`${CARTE} divide-y divide-neutral-50`}>
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-[58px] flex items-center px-4">
                   <div className="h-3 w-40 bg-neutral-200 rounded-full animate-pulse" />
@@ -336,19 +337,19 @@ export default function ProClassementsPage() {
               ))}
             </div>
           ) : loadError ? (
-            <div className="bg-neutral-50 rounded-[20px] px-5 py-5">
+            <div className={`${CARTE} px-5 py-5`}>
               <p className="text-[15px] text-neutral-900">Classement indisponible</p>
               <p className="text-[13px] text-neutral-400 mt-1">Vérifiez votre connexion et réessayez.</p>
             </div>
           ) : entries.length === 0 ? (
-            <div className="bg-neutral-50 rounded-[20px] px-5 py-5">
+            <div className={`${CARTE} px-5 py-5`}>
               <p className="text-[15px] text-neutral-900">Pas encore de classement ici</p>
               <p className="text-[13px] text-neutral-400 mt-1">
                 Il faut assez d&apos;avis vérifiés sur {specialtyName ?? 'cette spécialité'} à {zoneLabel} pour en établir un.
               </p>
             </div>
           ) : (
-            <div className="bg-neutral-50 rounded-[20px] overflow-hidden divide-y divide-neutral-200/60">
+            <div className={`${CARTE} overflow-hidden divide-y divide-neutral-50`}>
               {entries.map((e) => (
                 <RankRow key={e.id} entry={e} isMe={e.id === myProfileId} />
               ))}
@@ -356,7 +357,7 @@ export default function ProClassementsPage() {
                   même rang réel — se situer ne doit pas dépendre du fait
                   d'être dans les 30 premiers. */}
               {isMine && myRank?.ranked && myProfileId && !visibleIds.has(myProfileId) && (
-                <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                <div className="flex items-center gap-3 px-4 py-3 bg-neutral-50">
                   <span className="w-7 flex-shrink-0 text-center text-[13px] font-bold text-neutral-900 tabular-nums">{myRank.rank}</span>
                   <div className="flex-1 min-w-0">
                     <p className="flex items-center gap-1.5">
@@ -379,7 +380,7 @@ export default function ProClassementsPage() {
         </ProSection>
 
         <ProSection title="Progresser">
-          <div className="bg-neutral-50 rounded-[20px] overflow-hidden divide-y divide-neutral-200/60">
+          <div className={`${CARTE} overflow-hidden divide-y divide-neutral-50`}>
             <Link href="/pro/portfolio" className="flex items-center gap-3 px-4 py-3.5 hover:bg-neutral-100/70 transition-colors">
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] text-neutral-900">Publier une réalisation</p>

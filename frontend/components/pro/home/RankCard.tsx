@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronRight, TrendingUp } from 'lucide-react';
 import { myRankings } from '@/lib/api';
 import type { ApiSpecialtyHighlight, ApiMyRankings } from '@/lib/types';
+import { CARTE, CARTE_SOMBRE_TAP, MICRO_TITRE_SOMBRE } from '@/lib/proStyle';
 
 type Perimetre = 'city' | 'department' | 'region' | 'country';
 const MEMOIRE = 'chair_pro_rank_scope';
@@ -43,9 +44,17 @@ const MEMOIRE = 'chair_pro_rank_scope';
 interface Props {
   highlights: ApiSpecialtyHighlight[];
   city: string | null;
+  /**
+   * Le chemin vers un premier classement n'est pas le même selon le rôle :
+   * un salarié fait scanner son QR en fin de prestation, un indépendant
+   * passe par ses rendez-vous terminés et ses avis. Et /pro/mon-qr REDIRIGE
+   * les indépendants vers la home — y envoyer tout le monde donnait un
+   * bouton qui semblait mort.
+   */
+  isIndependent: boolean;
 }
 
-export default function RankCard({ highlights, city }: Props) {
+export default function RankCard({ highlights, city, isIndependent }: Props) {
   // Les classements communaux arrivent avec /profile : le premier rendu est
   // immédiat, sans attendre un second appel.
   const [perimetre, setPerimetre] = useState<Perimetre>('city');
@@ -91,19 +100,20 @@ export default function RankCard({ highlights, city }: Props) {
   if (classees.length === 0) {
     return (
       <Link
-        href="/pro/mon-qr"
-        className="block rounded-[28px] bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] text-white p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] active:scale-[0.985] transition-transform duration-200"
+        href={isIndependent ? '/pro/portfolio' : '/pro/mon-qr'}
+        className={`block ${CARTE_SOMBRE_TAP} p-6`}
       >
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">Classement</p>
+        <p className={MICRO_TITRE_SOMBRE}>Classement</p>
         <p className="text-[19px] font-bold leading-snug mt-3">
           Pas encore classé{city ? ` à ${city}` : ''}
         </p>
         <p className="text-[13px] text-white/50 leading-relaxed mt-2">
-          Le classement se construit sur les passages confirmés par vos clients.
-          Faites scanner votre QR code en fin de prestation pour y entrer.
+          {isIndependent
+            ? 'Le classement se construit sur vos rendez-vous terminés et les avis qui suivent. Publiez, et chaque client compte.'
+            : 'Le classement se construit sur les passages confirmés par vos clients. Faites scanner votre QR code en fin de prestation pour y entrer.'}
         </p>
         <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-white mt-4">
-          Voir mon QR code <ChevronRight size={15} />
+          {isIndependent ? 'Voir mon portfolio' : 'Voir mon QR code'} <ChevronRight size={15} />
         </span>
       </Link>
     );
@@ -118,7 +128,7 @@ export default function RankCard({ highlights, city }: Props) {
         className="block rounded-[28px] bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] text-white p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] active:scale-[0.985] transition-transform duration-200"
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
+          <p className={MICRO_TITRE_SOMBRE}>
             {lieu ? `Votre place · ${lieu}` : 'Votre place'}
           </p>
           <Mouvement delta={premier.rank_delta ?? null} enProgression={premier.fast_progress} />
@@ -170,7 +180,7 @@ export default function RankCard({ highlights, city }: Props) {
       {/* Les autres spécialités, en lignes serrées : on ne répète pas la
           grosse carte cinq fois, sinon plus rien ne domine. */}
       {autres.length > 0 && (
-        <div className="rounded-[22px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] divide-y divide-neutral-50 overflow-hidden">
+        <div className={`${CARTE} divide-y divide-neutral-50 overflow-hidden`}>
           {autres.map((h) => (
             <Link
               key={h.specialty_id}

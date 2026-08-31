@@ -865,7 +865,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
       {/* Résumé du jour */}
       <div className="flex items-stretch gap-2 px-3 pt-2 pb-1 overflow-x-auto">
         <div className="flex-shrink-0 min-w-[104px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400">{next ? (isToday?'Prochain':'Premier') : 'RDV'}</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400">{isToday ? 'Prochain' : 'Premier'}</p>
           {next ? (
             <p className="text-[12px] font-bold text-neutral-900 truncate">{fmtTime(next.appointment_time)} · {next.client_name}</p>
           ) : (

@@ -25,6 +25,7 @@ import CompletionCard from '@/components/pro/home/CompletionCard';
 import VisibilityCard from '@/components/pro/home/VisibilityCard';
 import { completionFromProfile } from '@/lib/profileCompletion';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
+import { CARTE, CARTE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 
 export default function CockpitPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
@@ -147,7 +148,7 @@ export default function CockpitPage() {
       {dataLoading ? (
         <div className="h-48 bg-neutral-100 rounded-[24px] animate-pulse" />
       ) : (
-        <RankCard highlights={specialtyHighlights} city={profile?.city ?? null} />
+        <RankCard highlights={specialtyHighlights} city={profile?.city ?? null} isIndependent={isIndependent} />
       )}
 
       {/* ══════════ Ma journée ══════════ */}
@@ -195,9 +196,9 @@ export default function CockpitPage() {
             relief, coins à 28. Les gros titres de section pesaient autant que
             « Bonjour Julien » et écrasaient la hiérarchie. */}
         {!dataLoading && (
-          <div className="rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5">
+          <div className={`${CARTE} p-5`}>
             <div className="flex items-center justify-between gap-3 mb-1">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Ma vitrine</p>
+              <p className={MICRO_TITRE}>Ma vitrine</p>
               <Link href="/pro/portfolio" className="relative before:absolute before:-inset-2 before:content-[''] text-neutral-300 active:text-neutral-500 transition-colors">
                 <ChevronRight size={16} />
               </Link>
@@ -226,7 +227,7 @@ export default function CockpitPage() {
         {!dataLoading && !hasChairPlus(fullProfile) && (
           <Link
             href="/pro/chair-plus"
-            className="flex items-center gap-3 rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] px-5 min-h-[60px] py-3 active:scale-[0.985] transition-transform duration-200"
+            className={`flex items-center gap-3 ${CARTE_TAP} px-5 min-h-[60px] py-3`}
           >
             <Sparkles size={17} className="text-neutral-400 shrink-0" />
             <span className="flex-1 min-w-0">

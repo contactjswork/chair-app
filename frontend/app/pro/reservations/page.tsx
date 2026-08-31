@@ -12,10 +12,10 @@ import { Calendar, Clock, CheckCircle2, XCircle, AlertCircle, Copy, Check } from
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; color: string }> = {
   pending:         { label: 'En attente',           color: 'text-amber-600 bg-amber-50' },
   pending_payment: { label: 'Paiement en attente',  color: 'text-blue-700 bg-blue-50' },
-  confirmed:       { label: 'Confirme',             color: 'text-green-700 bg-green-50' },
-  completed:       { label: 'Termine',              color: 'text-neutral-600 bg-neutral-100' },
-  declined:        { label: 'Refuse',               color: 'text-red-600 bg-red-50' },
-  cancelled:       { label: 'Annule',               color: 'text-neutral-400 bg-neutral-50' },
+  confirmed:       { label: 'Confirmé',             color: 'text-green-700 bg-green-50' },
+  completed:       { label: 'Terminé',              color: 'text-neutral-600 bg-neutral-100' },
+  declined:        { label: 'Refusé',               color: 'text-red-600 bg-red-50' },
+  cancelled:       { label: 'Annulé',               color: 'text-neutral-400 bg-neutral-50' },
   no_show:         { label: 'Absent',               color: 'text-orange-600 bg-orange-50' },
 };
 

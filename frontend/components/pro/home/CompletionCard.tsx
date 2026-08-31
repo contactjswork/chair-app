@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { CompletionResult } from '@/lib/profileCompletion';
+import { CARTE_TAP } from '@/lib/proStyle';
 
 /**
  * La complétion du profil.
@@ -31,7 +32,7 @@ export default function CompletionCard({ completion }: Props) {
   return (
     <Link
       href={next.href}
-      className="flex items-center gap-4 rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
+      className={`flex items-center gap-4 ${CARTE_TAP} p-5`}
     >
       <div
         className="w-12 h-12 rounded-full shrink-0 flex items-center justify-center shadow-[0_2px_8px_-3px_rgba(10,10,10,0.25)]"

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import type { ApiAppointment } from '@/lib/types';
+import { CARTE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 
 /**
  * La journée, en un coup d'œil.
@@ -41,10 +42,10 @@ export default function TodayCard({ appointments, href = '/pro/agenda' }: Props)
   return (
     <Link
       href={href}
-      className="block rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
+      className={`block ${CARTE_TAP} p-5`}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Aujourd&apos;hui</p>
+        <p className={MICRO_TITRE}>Aujourd&apos;hui</p>
         <ChevronRight size={16} className="text-neutral-300 shrink-0" />
       </div>
 

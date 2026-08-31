@@ -10,7 +10,6 @@ import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
 import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
-import { PremiumBadge } from '@/components/ui/PremiumLock';
 import PremiumUpsellSheet from '@/components/ui/PremiumUpsellSheet';
 import {
   ArrowLeft, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
@@ -158,7 +157,7 @@ export default function ChairPlusPage() {
           <ArrowLeft size={18} />
         </Link>
         <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5">
-          CHAIR+ <PremiumBadge />
+          CHAIR+
         </span>
       </div>
 
@@ -167,7 +166,7 @@ export default function ChairPlusPage() {
           <ArrowLeft size={16} />
         </Link>
         <span className="text-neutral-200">/</span>
-        <h1 className="text-lg font-bold text-neutral-900 flex items-center gap-1.5">CHAIR+ <PremiumBadge /></h1>
+        <h1 className="text-lg font-bold text-neutral-900 flex items-center gap-1.5">CHAIR+</h1>
       </div>
 
       {showComingSoon ? (

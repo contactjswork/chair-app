@@ -206,7 +206,7 @@ export default function PerformancePage() {
 
             {/* ── Hero : niveau, streak, objectif principal ── */}
             {chairLevel && (
-              <section className="bg-neutral-900 rounded-2xl p-5">
+              <section className="bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)] p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Niveau CHAIR</p>

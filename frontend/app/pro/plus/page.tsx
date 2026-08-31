@@ -50,7 +50,7 @@ export default function ProPlusPage() {
                   <Building2 size={16} className="text-neutral-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-neutral-900">Vous gérez aussi un salon ?</p>
+                  <p className="text-sm font-bold text-neutral-900">Vous gérez aussi un salon ?</p>
                   <p className="text-xs text-neutral-400">Créez sa page sur CHAIR, sans quitter votre compte.</p>
                 </div>
                 <button

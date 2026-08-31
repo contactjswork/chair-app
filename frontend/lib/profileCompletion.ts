@@ -52,7 +52,7 @@ export function computeCompletion(c: Champs): CompletionResult {
     ...(!c.isIndependent
       ? [{ label: 'Lien de réservation', done: c.bookingUrl.trim().length > 0, pts: 15, href: '/pro/profil' }]
       : []),
-    { label: "Années d'expérience", done: c.yearsExp.trim().length > 0 && c.yearsExp !== '0', pts: 15, href: '/pro/profil' },
+    { label: "Années d'expérience", done: c.yearsExp.trim().length > 0 && c.yearsExp !== '0', pts: 5, href: '/pro/profil' },
   ];
 
   const total = items.reduce((s, i) => s + i.pts, 0);

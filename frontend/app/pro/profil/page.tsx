@@ -14,6 +14,7 @@ import {
   Clock, ShieldCheck, Upload, Loader, X, ChevronDown, Sparkles, LogOut, Trash2,
 } from 'lucide-react';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
+import { computeCompletion } from '@/lib/profileCompletion';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -43,33 +44,7 @@ type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 // ── Score de complétion ──────────────────────────────────────────────
 
-interface CompletionItem { label: string; done: boolean; pts: number }
 
-function computeCompletion(
-  avatarUrl: string | null,
-  bio: string,
-  tagline: string,
-  city: string,
-  postalCode: string,
-  selectedSpecialties: number[],
-  bookingUrl: string,
-  yearsExp: string,
-  isIndependent: boolean,
-): { score: number; total: number; items: CompletionItem[] } {
-  const items: CompletionItem[] = [
-    { label: 'Photo de profil',         done: !!avatarUrl,                         pts: 20 },
-    { label: 'Bio (100 caractères min)', done: bio.trim().length >= 100,            pts: 20 },
-    { label: 'Accroche (tagline)',       done: tagline.trim().length >= 10,          pts: 15 },
-    { label: 'Ville',                   done: city.trim().length > 0,              pts: 10 },
-    { label: 'Code postal',             done: postalCode.trim().length > 0,        pts: 5  },
-    { label: 'Spécialités (min 2)',      done: selectedSpecialties.length >= 2,     pts: 15 },
-    ...(!isIndependent ? [{ label: 'Lien de réservation', done: bookingUrl.trim().length > 0, pts: 15 }] : []),
-    { label: "Années d'expérience",      done: yearsExp.trim().length > 0 && yearsExp !== '0', pts: 5 },
-  ];
-  const total = items.reduce((s, i) => s + i.pts, 0);
-  const score = items.filter((i) => i.done).reduce((s, i) => s + i.pts, 0);
-  return { score, total, items };
-}
 
 // ── Composant principal ──────────────────────────────────────────────
 
@@ -242,7 +217,13 @@ export default function DashboardProfilPage() {
 
   // Score de complétion
   const isIndependent = profile?.profile.is_independent ?? true;
-  const completion = computeCompletion(avatarUrl, bio, tagline, city, postalCode, selectedSpecialties, bookingUrl, yearsExp, isIndependent);
+  // Même calcul que la home (lib/profileCompletion) : les deux écrans
+  // annonçaient 78 % et 80 % pour le même profil, chacun avec sa copie.
+  const completion = computeCompletion({
+    avatarUrl, bio, tagline, city, postalCode,
+    specialtyCount: selectedSpecialties.length,
+    bookingUrl, yearsExp, isIndependent,
+  });
   const completionPct = Math.round((completion.score / completion.total) * 100);
   const missing = completion.items.filter((i) => !i.done);
 

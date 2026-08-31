@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Flame } from 'lucide-react';
 import { streak as streakApi } from '@/lib/api';
 import type { ApiStreak } from '@/lib/types';
+import { CARTE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 
 /**
  * La série d'activité.
@@ -59,9 +60,9 @@ export default function StreakCard() {
   return (
     <Link
       href="/pro/badges"
-      className="block rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] p-5 active:scale-[0.985] transition-transform duration-200"
+      className={`block ${CARTE_TAP} p-5`}
     >
-      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Série</p>
+      <p className={MICRO_TITRE}>Série</p>
 
       <div className="flex items-baseline gap-2.5 mt-3">
         <Flame

@@ -80,7 +80,7 @@ export default function ParrainagePage() {
         ) : data ? (
           <>
             {/* ── Hero code + lien ── */}
-            <div className="bg-neutral-900 rounded-[24px] p-6 shadow-[0_10px_30px_-14px_rgba(10,10,10,0.4)]">
+            <div className="bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] rounded-[28px] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_16px_40px_-18px_rgba(10,10,10,0.55)]">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">Votre code de parrainage</p>
               <h2 className="text-3xl font-black text-white tracking-tight mb-4">{data.code}</h2>
 
@@ -92,7 +92,7 @@ export default function ParrainagePage() {
               </div>
 
               <PrimaryButton onClick={() => setShareOpen(true)} icon={<Share2 size={15} />} fullWidth className="!bg-white !text-neutral-900 hover:!bg-neutral-100">
-                Partager mon profil
+                Partager mon lien
               </PrimaryButton>
             </div>
 
@@ -172,7 +172,7 @@ export default function ParrainagePage() {
         <ShareSheet
           open={shareOpen}
           onClose={() => setShareOpen(false)}
-          title="Partager mon profil"
+          title="Partager mon lien"
           shareUrl={data.link}
           shareText={getSharePayload('referral', { url: data.link }, { audience: 'pro' }).text}
           actionType="share_profile"

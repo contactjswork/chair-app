@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronRight, Eye } from 'lucide-react';
 import type { ApiStats } from '@/lib/types';
+import { CARTE, MICRO_TITRE } from '@/lib/proStyle';
 
 /**
  * Ce que CHAIR lui rapporte, mesuré honnêtement.
@@ -40,10 +41,10 @@ export default function VisibilityCard({ stats, slug }: Props) {
   const rienEncore = vues === 0 && abonnes === 0 && avis === 0;
 
   return (
-    <div className="rounded-[28px] bg-white ring-1 ring-neutral-100 shadow-[0_1px_2px_rgba(10,10,10,0.04),0_10px_26px_-14px_rgba(10,10,10,0.14)] overflow-hidden">
+    <div className={`${CARTE} overflow-hidden`}>
       <Link href="/pro/business" className="block p-5 active:bg-neutral-50 transition-colors">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">Ma visibilité</p>
+          <p className={MICRO_TITRE}>Ma visibilité</p>
           <ChevronRight size={16} className="text-neutral-300 shrink-0" />
         </div>
 

@@ -273,7 +273,7 @@ export default function BadgesPage() {
         {dataLoading ? (
           <div className="h-40 bg-neutral-200 rounded-[28px] animate-pulse" />
         ) : chairLevel ? (
-          <div className={`rounded-[28px] shadow-[0_10px_28px_-10px_rgba(10,10,10,0.28)] p-6 ${heroBg}`}>
+          <div className={`rounded-[28px] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_2px_4px_-2px_rgba(10,10,10,0.25),0_16px_36px_-14px_rgba(10,10,10,0.35)] p-6 ${heroBg}`}>
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/50 mb-1">Niveau CHAIR</p>
             <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{chairLevel.name}</h2>
             <p className="text-sm font-semibold text-white/70 mb-4">{chairLevel.points} pts</p>
@@ -311,7 +311,7 @@ export default function BadgesPage() {
         {/* ── PROCHAIN BADGE — carte dominante ── */}
         {!dataLoading && dominant && (
           dominant.type === 'badge' ? (
-            <div className="bg-neutral-900 rounded-[22px] shadow-[0_6px_18px_-8px_rgba(10,10,10,0.3)] p-4 flex items-center gap-3.5">
+            <div className="bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] rounded-[22px] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_14px_32px_-16px_rgba(10,10,10,0.5)] p-4 flex items-center gap-3.5">
               <BadgeMedallion code={dominant.code} tier={dominant.tier} size={44} locked />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold tracking-[0.15em] uppercase text-white/40 mb-0.5">Prochain badge</p>
@@ -323,7 +323,7 @@ export default function BadgesPage() {
               <span className="text-[11px] font-bold text-white/60 flex-shrink-0">{dominant.current}/{dominant.target}</span>
             </div>
           ) : (
-            <div className="bg-neutral-900 rounded-[22px] shadow-[0_6px_18px_-8px_rgba(10,10,10,0.3)] p-4 flex items-center gap-3.5">
+            <div className="bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#1f1f21_0%,#0a0a0a_62%)] rounded-[22px] shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_2px_4px_-2px_rgba(10,10,10,0.4),0_14px_32px_-16px_rgba(10,10,10,0.5)] p-4 flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
                 <Scissors size={18} className="text-white/70" />
               </div>
