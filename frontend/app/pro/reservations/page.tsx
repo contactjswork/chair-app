@@ -136,14 +136,14 @@ function AppointmentCard({
           <>
             <button
               onClick={() => onStatusChange(appt.id, 'confirmed')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-neutral-900 px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
+              className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-xs font-semibold text-white bg-neutral-900 px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
             >
               <CheckCircle2 size={13} />
               Confirmer
             </button>
             <button
               onClick={() => onStatusChange(appt.id, 'declined')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 bg-neutral-100 px-3 py-2 rounded-xl hover:bg-neutral-200 transition-colors"
+              className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-xs font-semibold text-neutral-600 bg-neutral-100 px-3 py-2 rounded-xl hover:bg-neutral-200 transition-colors"
             >
               <XCircle size={13} />
               Refuser
@@ -154,7 +154,7 @@ function AppointmentCard({
           <>
             <button
               onClick={() => onStatusChange(appt.id, 'completed')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-neutral-900 px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
+              className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-xs font-semibold text-white bg-neutral-900 px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
             >
               <CheckCircle2 size={13} />
               Marquer terminé
@@ -166,7 +166,7 @@ function AppointmentCard({
               return isPast ? (
                 <button
                   onClick={() => onStatusChange(appt.id, 'no_show')}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-orange-700 bg-orange-50 px-3 py-2 rounded-xl hover:bg-orange-100 transition-colors"
+                  className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-xs font-semibold text-orange-700 bg-orange-50 px-3 py-2 rounded-xl hover:bg-orange-100 transition-colors"
                 >
                   <AlertCircle size={13} />
                   Client absent
@@ -175,7 +175,7 @@ function AppointmentCard({
             })()}
             <button
               onClick={() => onStatusChange(appt.id, 'cancelled')}
-              className="flex items-center gap-1.5 text-xs font-semibold text-neutral-500 bg-neutral-100 px-3 py-2 rounded-xl hover:bg-neutral-200 transition-colors"
+              className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-xs font-semibold text-neutral-500 bg-neutral-100 px-3 py-2 rounded-xl hover:bg-neutral-200 transition-colors"
             >
               Annuler
             </button>
@@ -304,7 +304,7 @@ export default function ReservationsPage() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`flex-1 text-sm font-medium py-2 rounded-xl transition-all ${
+                  className={`relative before:absolute before:-inset-y-[4px] before:inset-x-0 before:content-[''] flex-1 text-sm font-medium py-2 rounded-xl transition-all ${
                     tab === t ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
                   }`}
                 >

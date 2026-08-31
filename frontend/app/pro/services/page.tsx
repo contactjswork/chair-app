@@ -150,7 +150,7 @@ function ServiceRow({
         )}
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        <button onClick={() => setActionsOpen(true)} className="p-1.5 hover:bg-neutral-100 rounded-lg" title="Actions">
+        <button onClick={() => setActionsOpen(true)} className="relative before:absolute before:-inset-2 before:content-[''] p-1.5 hover:bg-neutral-100 rounded-lg" title="Actions">
           <MoreHorizontal size={16} className="text-neutral-400" />
         </button>
       </div>
@@ -473,7 +473,7 @@ export default function DashboardServicesPage() {
                 <button
                   key={catId}
                   onClick={() => handleDeleteOrphanCategory(catId)}
-                  className="flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-600 transition-colors"
+                  className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] flex items-center gap-1.5 text-[11px] text-red-400 hover:text-red-600 transition-colors"
                 >
                   <Trash2 size={11} />
                   Supprimer la catégorie &quot;{categories.find((c) => c.id === catId)?.name}&quot;

@@ -33,7 +33,7 @@ export default function DashboardPageHeader({
     <header className="relative flex items-center justify-between h-12 mb-1 md:hidden">
       <button
         onClick={handleBack}
-        className="flex items-center text-neutral-700 hover:text-neutral-900 transition-colors -ml-1 p-1.5 rounded-lg"
+        className="flex items-center justify-center w-11 h-11 text-neutral-700 hover:text-neutral-900 transition-colors -ml-2.5 rounded-lg"
         aria-label="Retour"
       >
         <ArrowLeft size={20} strokeWidth={2} />

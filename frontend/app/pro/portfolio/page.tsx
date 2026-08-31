@@ -12,10 +12,11 @@ import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS } from '@/lib/specialties';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import {
-  Plus, Trash2, Edit2, X, Check, Camera, Loader, ImageIcon,
-  Eye, Star, TrendingUp, Archive, ArchiveRestore, Award, Scissors,
-  Pin, PinOff, GripVertical, Move, Bookmark, Sparkles, Film, Play, ChevronLeft,
+  Plus, X, Check, Camera, Loader, ImageIcon,
+  Eye, Star, TrendingUp, Award, Scissors,
+  Pin, GripVertical, Move, Bookmark, Sparkles, Film, Play, ChevronLeft, MoreHorizontal,
 } from 'lucide-react';
+import PostActionsSheet from '@/components/pro/PostActionsSheet';
 
 const MAX_VIDEO_MB = 25;
 const MAX_VIDEO_SECONDS = 15;
@@ -403,9 +404,9 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
   const [tagIds, setTagIds] = useState<number[]>((post.tags ?? []).map((t) => t.id));
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pinning, setPinning] = useState(false);
   const [pinError, setPinError] = useState('');
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   const allImages = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const coverImg = allImages[0] ?? null;
@@ -555,41 +556,32 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
         ) : (
           <>
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all" />
-            <div className="absolute top-2 left-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button onClick={handleTogglePin} disabled={pinning}
-                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50"
-                title={post.is_pinned ? 'Désépingler' : 'Épingler en tête de portfolio'}
-              >
-                {post.is_pinned ? <PinOff size={12} className="text-neutral-700" /> : <Pin size={12} className="text-neutral-700" />}
-              </button>
-              <button onClick={() => setEditing(true)}
-                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors">
-                <Edit2 size={12} className="text-neutral-700" />
-              </button>
-              <button onClick={handleToggleArchive} disabled={archiving}
-                className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors disabled:opacity-50"
-                title={post.is_published ? 'Archiver' : 'Republier'}
-              >
-                {post.is_published ? <Archive size={12} className="text-neutral-700" /> : <ArchiveRestore size={12} className="text-neutral-700" />}
-              </button>
-              {!confirmDelete ? (
-                <button onClick={() => setConfirmDelete(true)}
-                  className="w-7 h-7 bg-white/90 rounded-lg flex items-center justify-center hover:bg-red-50 transition-colors">
-                  <Trash2 size={12} className="text-neutral-500 hover:text-red-500" />
-                </button>
-              ) : (
-                <div className="flex gap-1">
-                  <button onClick={handleDelete}
-                    className="text-[10px] font-bold bg-red-500 text-white px-2 py-1 rounded-lg">
-                    Suppr.
-                  </button>
-                  <button onClick={() => setConfirmDelete(false)}
-                    className="text-[10px] font-bold bg-white/90 text-neutral-600 px-2 py-1 rounded-lg">
-                    Non
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Un seul point d'entrée, à 44 px de zone tactile.
+
+                Avant : quatre boutons de 28 px en `opacity-0`, révélés au
+                survol. Or il n'y a pas de survol sur un téléphone — ils
+                restaient invisibles ET cliquables. On pouvait archiver ou
+                supprimer une réalisation sans avoir vu le bouton touché.
+                Voir components/pro/PostActionsSheet.tsx. */}
+            <button
+              onClick={() => setActionsOpen(true)}
+              aria-label="Actions de cette réalisation"
+              className="absolute top-2 left-2 w-8 h-8 before:absolute before:-inset-1.5 before:content-[''] bg-white/90 rounded-lg flex items-center justify-center hover:bg-white transition-colors"
+            >
+              <MoreHorizontal size={15} className="text-neutral-700" />
+            </button>
+            {actionsOpen && (
+              <PostActionsSheet
+                onClose={() => setActionsOpen(false)}
+                isPinned={!!post.is_pinned}
+                isPublished={post.is_published}
+                busy={pinning || archiving}
+                onTogglePin={handleTogglePin}
+                onEdit={() => setEditing(true)}
+                onToggleArchive={handleToggleArchive}
+                onDelete={handleDelete}
+              />
+            )}
           </>
         )}
         {pinError && (
@@ -739,13 +731,13 @@ export default function PortfolioPage() {
               <div className="flex items-center gap-3">
                 {!showForm && posts.length > 1 && (
                   <button onClick={() => setReorderMode(true)}
-                    className="flex items-center gap-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
+                    className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] flex items-center gap-1 text-[12px] font-medium text-neutral-500 hover:text-neutral-900 transition-colors">
                     <Move size={13} />Réorganiser
                   </button>
                 )}
                 {!showForm && (
                   <button onClick={() => setShowForm(true)} aria-label="Ajouter une réalisation"
-                    className="w-8 h-8 rounded-full bg-neutral-900 text-white flex items-center justify-center hover:bg-neutral-700 transition-colors flex-shrink-0">
+                    className="relative before:absolute before:-inset-1.5 before:content-[''] w-8 h-8 rounded-full bg-neutral-900 text-white flex items-center justify-center hover:bg-neutral-700 transition-colors flex-shrink-0">
                     <Plus size={16} strokeWidth={2.25} />
                   </button>
                 )}
