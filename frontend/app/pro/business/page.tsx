@@ -199,10 +199,31 @@ export default function PerformancePage() {
         ) : (
           <div className="px-4 pt-2 space-y-7">
 
-            {/* Un écran nommé « Performance » ouvre sur les chiffres.
-                Le niveau et l objectif vivent sur la page Badges — les
-                redire ici coûtait un écran de scroll avant la première
-                information neuve. */}
+            {/* ── Classement & badges — demande de Julien : en tête. Deux
+                portes compactes, les chiffres arrivent juste après. ── */}
+            <section className="grid grid-cols-2 gap-3">
+              <Link href="/pro/classements"
+                className="flex flex-col gap-2.5 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center">
+                  <Medal size={17} className="text-white" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-neutral-900">Classement</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">Votre place par spécialité</p>
+                </div>
+              </Link>
+              <Link href="/pro/badges"
+                className="flex flex-col gap-2.5 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <Crown size={17} className="text-amber-600" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-neutral-900">Badges</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">Niveau et prochains paliers</p>
+                </div>
+              </Link>
+            </section>
+
             {/* ── Recommandations ── */}
             {analyticsData && analyticsData.recommendations.length > 0 && (
               <section>
@@ -567,24 +588,10 @@ export default function PerformancePage() {
               </section>
             )}
 
-            {/* ── Progression ── */}
+            {/* ── Le récap annuel : les mêmes chiffres, racontés. ── */}
             <section>
-              <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Progression</p>
-              <Link href="/pro/badges"
-                className="flex items-center gap-4 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-50 p-4 hover:shadow-[0_8px_22px_-8px_rgba(10,10,10,0.16)] transition-all group">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                  <Crown size={17} className="text-amber-600" strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-neutral-900">Mes badges</p>
-                  <p className="text-xs text-neutral-400 mt-0.5">Niveau, récompenses et objectifs CHAIR</p>
-                </div>
-                <ChevronRight size={14} className="text-neutral-300 group-hover:text-neutral-700 flex-shrink-0" />
-              </Link>
-
-              {/* Le récap annuel : les mêmes chiffres, racontés. */}
               <Link href="/pro/retrospective"
-                className="flex items-center gap-4 rounded-[22px] p-4 mt-3 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_22px_-10px_rgba(10,10,10,0.5)] hover:shadow-[0_10px_26px_-10px_rgba(10,10,10,0.6)] transition-all group"
+                className="flex items-center gap-4 rounded-[22px] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_22px_-10px_rgba(10,10,10,0.5)] hover:shadow-[0_10px_26px_-10px_rgba(10,10,10,0.6)] transition-all group"
                 style={{ background: 'radial-gradient(120% 100% at 50% 0%, #1f1f21 0%, #0a0a0a 62%)' }}>
                 <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
                   <Sparkles size={17} className="text-white/80" strokeWidth={1.5} />
