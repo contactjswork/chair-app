@@ -66,7 +66,7 @@ function Section({
         <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-500 group-hover:text-neutral-800 transition-colors">
           {title}
         </p>
-        {count && <span className="text-[10px] font-bold text-neutral-300">{count}</span>}
+        {count && <span className="text-[10px] font-bold text-neutral-500">{count}</span>}
         <ChevronDown size={14} className={`ml-auto text-neutral-300 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && children}
@@ -394,7 +394,7 @@ export default function BadgesPage() {
           <div className="bg-white rounded-[24px] shadow-[0_4px_16px_-6px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 px-5 py-10 text-center">
             <Award size={28} className="text-neutral-200 mx-auto mb-2" />
             <p className="text-sm font-semibold text-neutral-400">Aucun badge encore</p>
-            <p className="text-[12px] text-neutral-300 mt-1">Complétez votre profil et publiez vos premières réalisations pour progresser.</p>
+            <p className="text-[12px] text-neutral-500 mt-1">Complétez votre profil et publiez vos premières réalisations pour progresser.</p>
             <Link href="/pro/profil" className="inline-flex items-center gap-1.5 mt-4 text-xs font-bold bg-neutral-900 text-white px-4 py-2.5 rounded-xl">
               Compléter mon profil <ArrowRight size={12} />
             </Link>

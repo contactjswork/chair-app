@@ -234,7 +234,7 @@ function UnavailabilitiesSection() {
             </div>
           ))}
           {items.length === 0 && !showForm && (
-            <p className="text-xs text-neutral-300 italic">Aucun blocage à venir.</p>
+            <p className="text-xs text-neutral-500 italic">Aucun blocage à venir.</p>
           )}
         </div>
       )}

@@ -145,7 +145,7 @@ function ServiceRow({
           <div className="flex items-center gap-3 mt-1">
             {svc.price != null && <span className="text-xs font-semibold text-neutral-900">{parseFloat(String(svc.price)).toFixed(0)} €</span>}
             {svc.duration_minutes != null && <span className="text-xs text-neutral-400">{svc.duration_minutes} min</span>}
-            <span className="text-xs text-neutral-300">{svc.visits_count} réservation{svc.visits_count !== 1 ? 's' : ''}</span>
+            <span className="text-xs text-neutral-500">{svc.visits_count} réservation{svc.visits_count !== 1 ? 's' : ''}</span>
           </div>
         )}
       </div>

@@ -27,7 +27,7 @@ export default function ProSection({
         {href && (
           <Link
             href={href}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 transition-all"
+            className="relative before:absolute before:-inset-1.5 before:content-[''] flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 transition-all"
           >
             <ChevronRight size={16} strokeWidth={2.5} className="text-neutral-900" />
           </Link>

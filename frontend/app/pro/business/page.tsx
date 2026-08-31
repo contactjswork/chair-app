@@ -364,7 +364,7 @@ export default function PerformancePage() {
                         <div className="space-y-2">
                           {analyticsData.premium!.top_services.map((s, i) => (
                             <div key={s.id} className="flex items-center gap-3">
-                              <span className="text-[11px] font-bold text-neutral-300 w-4 flex-shrink-0">{i + 1}</span>
+                              <span className="text-[11px] font-bold text-neutral-500 w-4 flex-shrink-0">{i + 1}</span>
                               <p className="flex-1 text-[13px] font-medium text-neutral-800 truncate">{s.name}</p>
                               <span className="text-[11px] text-neutral-400 flex-shrink-0">{s.bookings_count} RDV</span>
                               <span className="text-[12px] font-semibold text-neutral-900 flex-shrink-0">{s.revenue.toFixed(0)}€</span>
@@ -557,7 +557,7 @@ export default function PerformancePage() {
                         {done ? <CheckCircle2 size={14} className="text-white" /> : <Icon size={13} className="text-neutral-400" />}
                       </div>
                       <p className={`flex-1 text-[13px] font-medium ${done ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>{label}</p>
-                      <span className="text-[11px] font-bold text-neutral-300 flex-shrink-0">{progress}</span>
+                      <span className="text-[11px] font-bold text-neutral-500 flex-shrink-0">{progress}</span>
                     </div>
                   ))}
                 </div>

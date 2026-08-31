@@ -390,7 +390,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
               {data.photos[0] ? (
                 <Image src={resolveMediaUrl(data.photos[0]) ?? data.photos[0]} alt="" fill className="object-cover" sizes="400px" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-neutral-300 text-sm">Aucune photo</div>
+                <div className="w-full h-full flex items-center justify-center text-neutral-500 text-sm">Aucune photo</div>
               )}
             </div>
             <div className="p-4 space-y-3">

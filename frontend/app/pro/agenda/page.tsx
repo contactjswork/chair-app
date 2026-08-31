@@ -190,7 +190,7 @@ function AppointmentSheet({
               </p>
             )}
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
+          <button onClick={onClose} className="relative before:absolute before:-inset-1.5 before:content-[''] w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
             <X size={15} />
           </button>
         </div>
@@ -869,7 +869,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
           {next ? (
             <p className="text-[12px] font-bold text-neutral-900 truncate">{fmtTime(next.appointment_time)} · {next.client_name}</p>
           ) : (
-            <p className="text-[12px] font-semibold text-neutral-300">Aucun</p>
+            <p className="text-[12px] font-semibold text-neutral-500">Aucun</p>
           )}
         </div>
         <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
@@ -904,7 +904,7 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
         {/* Hour labels */}
         <div className="flex-shrink-0 w-12 relative select-none pointer-events-none" style={{height:totalHeight}}>
           {hours.map(h=>(
-            <div key={h} className="absolute right-2 text-[10px] text-neutral-300 font-medium -translate-y-2" style={{top:(h-START_HOUR)*hourHeight}}>
+            <div key={h} className="absolute right-2 text-[10px] text-neutral-500 font-medium -translate-y-2" style={{top:(h-START_HOUR)*hourHeight}}>
               {String(h).padStart(2,'0')}h
             </div>
           ))}
@@ -994,8 +994,8 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
           {dayApts.length===0 && dayUnavail.length===0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <CalendarDays size={32} className="text-neutral-100 mb-2" />
-              <p className="text-[13px] text-neutral-300 font-medium">Aucun rendez-vous</p>
-              <p className="text-[11px] text-neutral-200 mt-1">Maintenez appuyé pour créer un créneau</p>
+              <p className="text-[13px] text-neutral-500 font-medium">Aucun rendez-vous</p>
+              <p className="text-[11px] text-neutral-500 mt-1">Maintenez appuyé pour créer un créneau</p>
             </div>
           )}
         </div>
@@ -1162,7 +1162,7 @@ function ListView({ appointments, onSelectApt }: { appointments:ApiAppointment[]
     return (
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center" style={{height:'calc(100vh - 160px)'}}>
         <List size={32} className="text-neutral-100 mb-2" />
-        <p className="text-[13px] text-neutral-300 font-medium">Aucun rendez-vous à venir</p>
+        <p className="text-[13px] text-neutral-500 font-medium">Aucun rendez-vous à venir</p>
       </div>
     );
   }
@@ -1426,7 +1426,7 @@ export default function AgendaPage() {
       <div className="sticky top-content-mobile-pro md:top-0 z-30 bg-white/95 backdrop-blur-md border-b border-neutral-100">
         <div className="flex items-center gap-1 px-3 h-12">
           {view!=='list' && (
-            <button onClick={()=>navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+            <button onClick={()=>navigate(-1)} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
               <ChevronLeft size={17}/>
             </button>
           )}
@@ -1437,23 +1437,23 @@ export default function AgendaPage() {
             {view==='list'  && 'Rendez-vous à venir'}
           </span>
           {view!=='list' && (
-            <button onClick={()=>navigate(1)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+            <button onClick={()=>navigate(1)} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
               <ChevronRight size={17}/>
             </button>
           )}
           {view==='day'&&<>
-            <button onClick={()=>setHourH(h=>Math.max(48,h-16))} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomOut size={13} className="text-neutral-400"/></button>
-            <button onClick={()=>setHourH(h=>Math.min(120,h+16))} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomIn size={13} className="text-neutral-400"/></button>
+            <button onClick={()=>setHourH(h=>Math.max(48,h-16))} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomOut size={13} className="text-neutral-400"/></button>
+            <button onClick={()=>setHourH(h=>Math.min(120,h+16))} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100"><ZoomIn size={13} className="text-neutral-400"/></button>
           </>}
-          <Link href="/pro/planning" className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-neutral-100 ml-0.5">
+          <Link href="/pro/planning" className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 ml-0.5">
             <Settings size={13} className="text-neutral-400"/>
           </Link>
         </div>
-        <div className="flex items-center px-3 pb-2.5 gap-1.5">
+        <div className="flex items-center px-3 pb-3 gap-1.5">
           <div className="flex items-center gap-0.5 bg-neutral-100 rounded-full p-0.5">
             {(['day','week','month','list'] as ViewMode[]).map(v=>(
               <button key={v} onClick={()=>setView(v)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${view===v?'bg-white text-neutral-900 shadow-sm':'text-neutral-500'}`}>
+                className={`relative before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] px-3 py-2.5 rounded-full text-[11px] font-semibold transition-all flex items-center gap-1 ${view===v?'bg-white text-neutral-900 shadow-sm':'text-neutral-500'}`}>
                 {v==='list' && <List size={11}/>}
                 {v==='day'?'Jour':v==='week'?'Semaine':v==='month'?'Mois':'Liste'}
               </button>
@@ -1461,7 +1461,7 @@ export default function AgendaPage() {
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             {view!=='list' && (
-              <button onClick={()=>setCurrent(new Date())} className="text-[11px] font-semibold text-neutral-900 px-3 py-1.5 rounded-full hover:bg-neutral-100 transition-colors">Auj.</button>
+              <button onClick={()=>setCurrent(new Date())} className="relative before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] text-[11px] font-semibold text-neutral-900 px-3 py-2.5 rounded-full hover:bg-neutral-100 transition-colors">Auj.</button>
             )}
             {pending.length>0&&(
               <div className="relative">
