@@ -37,7 +37,7 @@ export default function TopNav() {
         <div className="flex items-center justify-between px-4 h-14">
           <ChairLogo href="/app" size="md" />
           {!isLoading && (
-            <Link href="/app/notifications" className="relative w-9 h-9 flex items-center justify-center rounded-full -mr-2">
+            <Link href="/app/notifications" className="relative w-11 h-11 flex items-center justify-center rounded-full -mr-2">
               <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
               {user && unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />

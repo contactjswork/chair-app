@@ -63,7 +63,7 @@ export default function PublicProfileTabs({ tabs, defaultTab, stickyCta, hideSti
               >
                 {tab.label}
                 {tab.count != null && tab.count > 0 && (
-                  <span className={`hidden min-[400px]:inline text-[11px] font-normal tabular-nums ${isActive ? 'text-neutral-400' : 'text-neutral-300'}`}>
+                  <span className={`hidden min-[400px]:inline text-[11px] font-normal tabular-nums ${isActive ? 'text-neutral-400' : 'text-neutral-400'}`}>
                     {tab.count}
                   </span>
                 )}

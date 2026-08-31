@@ -78,7 +78,7 @@ export default function PublicProfileBadges({ badges, level, coiffeurName }: Pro
                 {RARITY_LABELS[g.rarity]}
               </p>
               <span className="h-px flex-1 bg-neutral-100" />
-              <span className="text-[11px] text-neutral-300 tabular-nums">{g.items.length}</span>
+              <span className="text-[11px] text-neutral-500 tabular-nums">{g.items.length}</span>
             </div>
             <div className="grid grid-cols-4 gap-x-2 gap-y-5">
               {g.items.map((b) => (

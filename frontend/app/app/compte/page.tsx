@@ -354,7 +354,7 @@ export default function ComptePage() {
                   <div className="text-center py-8 border border-dashed border-neutral-200 rounded-2xl">
                     <CalendarDays size={26} className="mx-auto text-neutral-300 mb-2" />
                     <p className="text-sm text-neutral-400">Aucune réservation</p>
-                    <p className="text-xs text-neutral-300 mt-1">Tes prochains rendez-vous apparaîtront ici</p>
+                    <p className="text-xs text-neutral-500 mt-1">Tes prochains rendez-vous apparaîtront ici</p>
                   </div>
                 ) : (
                   <div className="space-y-3">

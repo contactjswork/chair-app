@@ -59,7 +59,7 @@ function OfferCard({ offer }: { offer: ApiJobOffer }) {
         {logoUrl ? (
           <Image src={logoUrl} alt={offer.salon?.name ?? ''} width={44} height={44} className="object-cover" />
         ) : (
-          <span className="text-base font-bold text-neutral-300">
+          <span className="text-base font-bold text-neutral-500">
             {offer.salon?.name?.[0] ?? 'S'}
           </span>
         )}

@@ -100,7 +100,7 @@ export default function SupprimerComptePage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 px-4 pt-5 pb-6">
-          <button onClick={() => router.back()} className="w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-neutral-900 active:text-neutral-900 active:scale-90 transition-all">
+          <button onClick={() => router.back()} className="w-11 h-11 flex items-center justify-center text-neutral-400 hover:text-neutral-900 active:text-neutral-900 active:scale-90 transition-all">
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-[18px] font-bold text-neutral-900">Supprimer mon compte</h1>
@@ -190,7 +190,7 @@ export default function SupprimerComptePage() {
         {/* La suppression se fait entièrement ici, sans contacter personne
             (5.1.1(v)). Cette adresse n'est qu'un recours en cas de question —
             elle sert aussi de contact publié au sens de la guideline 1.2. */}
-        <p className="text-center text-[11px] text-neutral-300 mt-6 px-4 leading-relaxed">
+        <p className="text-center text-[11px] text-neutral-500 mt-6 px-4 leading-relaxed">
           Une question avant de te décider ? Écris-nous à{' '}
           <a href={SUPPORT_MAILTO} className="underline">{SUPPORT_EMAIL}</a>
         </p>

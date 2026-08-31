@@ -183,7 +183,7 @@ export default function ReportSheet({ type, contentId, onClose }: ReportSheetPro
               placeholder="Explique en quelques mots ce qui pose problème."
               className="w-full rounded-2xl border border-neutral-200 px-4 py-3 text-[14px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 resize-none"
             />
-            <p className="text-[11px] text-neutral-300 text-right mt-1">{details.length}/1000</p>
+            <p className="text-[11px] text-neutral-500 text-right mt-1">{details.length}/1000</p>
 
             {error && (
               <p className="mt-3 text-[13px] text-red-600 bg-red-50 rounded-xl px-3 py-2.5">{error}</p>

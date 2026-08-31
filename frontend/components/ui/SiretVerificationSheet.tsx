@@ -61,7 +61,7 @@ export default function SiretVerificationSheet({ open, onClose, onVerified, acti
           <div className="w-11 h-11 rounded-2xl bg-neutral-900 flex items-center justify-center">
             <ShieldCheck size={19} className="text-white" />
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+          <button onClick={onClose} className="w-8 h-8 relative before:absolute before:-inset-1.5 before:content-[''] flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
             <X size={15} />
           </button>
         </div>

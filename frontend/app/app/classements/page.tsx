@@ -277,7 +277,7 @@ function ExplainSheet({ onClose }: { onClose: () => void }) {
       <div className="p-5 pb-8">
         <div className="flex items-center justify-between mb-3">
           <p className="text-[16px] font-bold text-neutral-900">Comment fonctionne le classement ?</p>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
+          <button onClick={onClose} className="w-8 h-8 relative before:absolute before:-inset-1.5 before:content-[''] flex items-center justify-center rounded-full bg-neutral-100 flex-shrink-0">
             <X size={15} />
           </button>
         </div>

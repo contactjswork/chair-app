@@ -17,7 +17,7 @@ export default function ProTopBar() {
       <div className="h-14 flex items-center justify-between px-4">
         <div className="w-9" />
         <ChairLogo href={homeHref} size="md" pro />
-        <Link href="/pro/notifications" className="relative w-9 h-9 flex items-center justify-center">
+        <Link href="/pro/notifications" className="relative w-11 h-11 flex items-center justify-center">
           <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
           {unreadCount > 0 && (
             <span className="absolute top-1.5 right-1.5 w-3 h-3 bg-red-500 rounded-full text-[7px] text-white font-bold flex items-center justify-center">

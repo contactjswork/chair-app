@@ -746,7 +746,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       Créer un compte
                     </SecondaryButton>
                   </div>
-                  <p className="text-[12px] text-neutral-300 mt-4 max-w-xs">
+                  <p className="text-[12px] text-neutral-500 mt-4 max-w-xs">
                     Ta sélection est gardée en mémoire, tu reprendras exactement où tu en étais.
                   </p>
                 </div>

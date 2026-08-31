@@ -255,7 +255,7 @@ export default function SearchFiltersSheet({
                 if (!slugs.length) return null;
                 return (
                   <div key={gender}>
-                    <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-300 mb-1.5">
+                    <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-neutral-500 mb-1.5">
                       {gender === 'homme' ? 'Homme' : 'Femme'}
                     </p>
                     <div className="flex gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">

@@ -161,7 +161,7 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
             >
               <span className="flex-shrink-0">{TYPE_ICON[s.type] ?? <Search size={13} className="text-neutral-400" />}</span>
               <span className="text-neutral-900 font-medium">{s.label}</span>
-              <span className="ml-auto text-[10px] font-semibold tracking-wider uppercase text-neutral-300">
+              <span className="ml-auto text-[10px] font-semibold tracking-wider uppercase text-neutral-500">
                 {s.type === 'specialty' ? 'Spécialité' :
                  s.type === 'hairdresser' ? 'Coiffeur' :
                  s.type === 'city' ? 'Ville' :

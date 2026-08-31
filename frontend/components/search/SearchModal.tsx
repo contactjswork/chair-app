@@ -245,7 +245,7 @@ export default function SearchModal({ open, initial, hasGeolocation, onRequestGe
                       {s.type === 'specialty' || s.type === 'service' ? <Scissors size={13} /> : s.type === 'hairdresser' ? <User size={13} /> : <MapPin size={13} />}
                     </span>
                     <span className="text-[13px] font-medium text-neutral-900 truncate">{s.label}</span>
-                    <span className="ml-auto text-[9px] font-bold tracking-wider uppercase text-neutral-300 flex-shrink-0">
+                    <span className="ml-auto text-[9px] font-bold tracking-wider uppercase text-neutral-500 flex-shrink-0">
                       {SUGGESTION_TAG[s.type] ?? ''}
                     </span>
                   </button>

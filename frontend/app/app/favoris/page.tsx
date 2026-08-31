@@ -80,7 +80,7 @@ function SavedHairdresserRow({ h, onUnsave }: { h: SavedHairdresser; onUnsave: (
         >
           <Heart size={13} className="fill-neutral-300 stroke-none group-hover:fill-red-400 transition-colors" />
         </button>
-        <Link href={`/app/coiffeur/${h.slug}`} className="w-8 h-8 rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 flex items-center justify-center transition-all">
+        <Link href={`/app/coiffeur/${h.slug}`} className="w-8 h-8 relative before:absolute before:-inset-1.5 before:content-[''] rounded-full bg-neutral-100 hover:bg-neutral-200 active:scale-90 flex items-center justify-center transition-all">
           <ChevronRight size={14} strokeWidth={2.5} className="text-neutral-900" />
         </Link>
       </div>

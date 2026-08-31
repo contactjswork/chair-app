@@ -100,7 +100,7 @@ export default function ImageUpload({
           className="object-cover"
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-300">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-neutral-500">
           <Upload size={isHero ? 18 : 24} />
         </div>
       )}

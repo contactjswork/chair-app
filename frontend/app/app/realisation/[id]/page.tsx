@@ -122,7 +122,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
               </p>
             )}
 
-            <p className="text-[11px] text-neutral-300 mt-3">{formatDate(post.created_at)}</p>
+            <p className="text-[11px] text-neutral-500 mt-3">{formatDate(post.created_at)}</p>
           </div>
 
           {/* ── Actions ──────────────────────────────────────────────── */}
@@ -188,7 +188,7 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
                 </Link>
               ) : <span />}
 
-              <span className="text-[11px] text-neutral-300 font-medium tabular-nums">
+              <span className="text-[11px] text-neutral-500 font-medium tabular-nums">
                 {currentIndex + 1} / {allPosts.length}
               </span>
 

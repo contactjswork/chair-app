@@ -162,7 +162,7 @@ export default function ShareSheet({ open, onClose, title, shareUrl, shareText, 
       <div className="px-5 pb-8">
         <div className="flex items-center justify-between mb-1">
           <p className="text-[16px] font-bold text-neutral-900">{title}</p>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
+          <button onClick={onClose} className="w-8 h-8 relative before:absolute before:-inset-1.5 before:content-[''] flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 transition-colors">
             <X size={15} />
           </button>
         </div>

@@ -244,12 +244,12 @@ export function BadgeExplainSheet({
           <BadgeMedallion code={badge.code} tier={badge.tier} size={52} locked={isLocked} />
           <div>
             <p className={`text-[15px] font-bold ${isLocked ? 'text-neutral-400' : 'text-neutral-900'}`}>{badge.name}</p>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-300">{medal.label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">{medal.label}</span>
           </div>
         </div>
         <p className="text-[13px] text-neutral-500 leading-relaxed">{story}</p>
         {badge.unlocked_at && (
-          <p className="text-[11px] text-neutral-300 mt-3">
+          <p className="text-[11px] text-neutral-500 mt-3">
             Débloqué le {new Date(badge.unlocked_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         )}

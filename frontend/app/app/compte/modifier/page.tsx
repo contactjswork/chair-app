@@ -177,7 +177,7 @@ export default function ModifierProfilPage() {
 
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-neutral-100 active:bg-neutral-200 transition-colors">
+          <button onClick={() => router.back()} className="w-11 h-11 rounded-full flex items-center justify-center hover:bg-neutral-100 active:bg-neutral-200 transition-colors">
             <ChevronLeft size={20} />
           </button>
           <h1 className="text-xl font-bold text-neutral-900">Modifier mon profil</h1>

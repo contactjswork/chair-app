@@ -90,7 +90,7 @@ export default function StoryViewer({
         <div className="flex items-center gap-2 text-white text-xs font-semibold">
           <Eye size={13} />{current?.views_count ?? 0}
         </div>
-        <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10">
+        <button onClick={onClose} className="w-8 h-8 relative before:absolute before:-inset-1.5 before:content-[''] flex items-center justify-center rounded-full bg-white/10">
           <X size={16} className="text-white" />
         </button>
       </div>

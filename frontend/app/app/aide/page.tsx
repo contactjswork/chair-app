@@ -177,7 +177,7 @@ export default function AidePage() {
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-neutral-300 mt-8">
+        <p className="text-center text-[11px] text-neutral-500 mt-8">
           CHAIR · Version 1.0
         </p>
 

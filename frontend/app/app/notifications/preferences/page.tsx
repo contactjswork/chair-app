@@ -333,7 +333,7 @@ export default function NotifPrefsPage() {
             />
           </Section>
 
-          <p className="text-[11px] text-neutral-300 text-center mt-2 leading-relaxed">
+          <p className="text-[11px] text-neutral-500 text-center mt-2 leading-relaxed">
             Chaque interrupteur s&apos;applique aux notifications dans l&apos;app
             et aux notifications push envoyées sur ton téléphone.
             Tu peux aussi couper toutes les push dans les Réglages de ton téléphone.

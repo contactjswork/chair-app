@@ -94,7 +94,7 @@ export default function LocationBar() {
           <div className="px-5 pb-8">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-[17px] font-bold text-neutral-900">Ta ville</h2>
-              <button onClick={() => setOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
+              <button onClick={() => setOpen(false)} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-neutral-100 transition-colors">
                 <X size={16} className="text-neutral-500" />
               </button>
             </div>
@@ -114,7 +114,7 @@ export default function LocationBar() {
 
             <div className="flex items-center gap-3 my-4">
               <div className="h-px flex-1 bg-neutral-100" />
-              <span className="text-[11px] font-semibold text-neutral-300 uppercase tracking-wider">ou</span>
+              <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">ou</span>
               <div className="h-px flex-1 bg-neutral-100" />
             </div>
 
