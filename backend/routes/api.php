@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\StreakController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LoyaltyController;
+use App\Http\Controllers\Api\ClientBookController;
 use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\ChairRentalController;
@@ -419,6 +420,13 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/loyalty/my-card/{hairdresserId}', [LoyaltyController::class, 'myCard']);
     // Liste d attente : « prevenez-moi si ca se libere » sur un jour complet.
     Route::post('/waitlist', [WaitlistController::class, 'join']);
+    // Le coiffeur a imprime son QR — alimente la checklist des premiers pas.
+    Route::post('/hairdresser/qr-printed', function (IlluminateHttpRequest $request) {
+        $p = $request->user()->hairdresserProfile;
+        if (!$p) return response()->json(['message' => 'Profil introuvable'], 404);
+        if (!$p->qr_printed_at) $p->forceFill(['qr_printed_at' => now()])->save();
+        return response()->json(['printed' => true]);
+    });
 
     // QR Code coiffeur
     Route::get('/hairdresser/qr-token',          [VisitController::class, 'getQrToken']);
@@ -508,6 +516,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // region, France). Sert a la home pro : « 1er sur 2 » ne laisse rien a
     // gravir, « 6e sur 9 en France » donne un cap.
     Route::get('/my-rankings', [LeaderboardController::class, 'myRankings']);
+    // Le carnet de clients : historique, formule habituelle, note privee.
+    Route::get('/my-clients',                 [ClientBookController::class, 'index']);
+    Route::get('/my-clients/{userId}',        [ClientBookController::class, 'show']);
+    Route::put('/my-clients/{userId}/note',   [ClientBookController::class, 'saveNote']);
     // Carte de fidelite — configuration (add-on requis) et recompenses a honorer.
     Route::get('/loyalty/program',              [LoyaltyController::class, 'show']);
     Route::put('/loyalty/program',              [LoyaltyController::class, 'update']);

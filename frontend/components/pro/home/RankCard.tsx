@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, TrendingUp } from 'lucide-react';
 import { myRankings } from '@/lib/api';
+import { hapticSuccess } from '@/lib/haptics';
 import type { ApiSpecialtyHighlight, ApiMyRankings } from '@/lib/types';
 import { CARTE, CARTE_SOMBRE_TAP, MICRO_TITRE_SOMBRE } from '@/lib/proStyle';
 
@@ -93,6 +94,21 @@ export default function RankCard({ highlights, city, isIndependent }: Props) {
   const lieu = donnees?.geo_value ?? city;
   const niveaux = donnees?.available_scopes ?? [];
   const classees = actifs.filter((h) => h.local_rank != null && h.local_total != null);
+
+  // La montée fait vibrer — une fois par jour, pas à chaque retour sur la
+  // home : la récompense répétée cesse d'en être une. AVANT tout return
+  // conditionnel : c'est un hook.
+  const deltaHaptic = classees[0]?.rank_delta ?? 0;
+  useEffect(() => {
+    if (deltaHaptic <= 0) return;
+    try {
+      const cle = 'chair_pro_rank_haptic';
+      const jour = new Date().toDateString();
+      if (localStorage.getItem(cle) === jour) return;
+      localStorage.setItem(cle, jour);
+      void hapticSuccess();
+    } catch { /* stockage indisponible : pas de vibration, pas de drame */ }
+  }, [deltaHaptic]);
 
   // Rien à montrer : on n'affiche pas une carte vide, mais on ne laisse pas
   // non plus le coiffeur sans direction — il faut des visites vérifiées pour

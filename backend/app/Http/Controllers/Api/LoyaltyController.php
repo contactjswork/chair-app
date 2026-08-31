@@ -29,9 +29,28 @@ class LoyaltyController extends Controller
 
         $program = LoyaltyProgram::where('hairdresser_id', $profile->id)->first();
 
+        // Les chiffres qui prouvent que l'add-on travaille : combien de
+        // clients jouent, ce qui a été promis, ce qui a été honoré. C'est
+        // la réponse à « est-ce que ça vaut son prix ? » — sans elle,
+        // l'add-on est un acte de foi renouvelé chaque mois.
+        $stats = null;
+        if ($program) {
+            $stats = [
+                'passages'         => \App\Models\VerifiedVisit::where('hairdresser_id', $profile->id)
+                    ->where('scanned_at', '>', $program->counting_since)->count(),
+                'clients_en_cours' => \App\Models\VerifiedVisit::where('hairdresser_id', $profile->id)
+                    ->where('scanned_at', '>', $program->counting_since)
+                    ->distinct('client_user_id')->count('client_user_id'),
+                'debloquees'       => LoyaltyReward::where('hairdresser_id', $profile->id)->count(),
+                'honorees'         => LoyaltyReward::where('hairdresser_id', $profile->id)
+                    ->whereNotNull('redeemed_at')->count(),
+            ];
+        }
+
         return response()->json([
             'addon_active'    => $profile->hasLoyaltyAddon(),
             'program'         => $program,
+            'stats'           => $stats,
             'pending_rewards' => LoyaltyReward::with('client:id,name,avatar')
                 ->where('hairdresser_id', $profile->id)
                 ->whereNull('redeemed_at')

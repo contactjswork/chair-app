@@ -9,9 +9,9 @@ import type { ApiQrTokenResponse } from '@/lib/types';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft, RefreshCw, Clock, Shield, CheckCircle2,
-  Smartphone, Copy, Check, Scissors,
+  Smartphone, Copy, Check, Scissors, Printer,
 } from 'lucide-react';
-import { SecondaryButton } from '@/components/ui/Button';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/Button';
 import { FilterChip } from '@/components/ui/Badge';
 
 export default function MonQrPage() {
@@ -56,17 +56,12 @@ export default function MonQrPage() {
     await fetchToken(true, true, id);
   }
 
-  // Guard: QR Code is only for salon hairdressers
-  useEffect(() => {
-    if (!user) return;
-    if (user.hairdresser_profile?.is_independent !== false) {
-      router.replace('/pro');
-    }
-  }, [user, router]);
+  // Ouvert a TOUS les coiffeurs : la fidelite et le classement reposent
+  // sur les passages verifies, pour les independants comme pour les salaries.
 
   // Premier chargement
   useEffect(() => {
-    if (!user || user.hairdresser_profile?.is_independent !== false) return;
+    if (!user) return;
     fetchToken();
   }, [user, fetchToken, router]);
 
@@ -248,6 +243,13 @@ export default function MonQrPage() {
                   {copied ? 'Copié !' : 'Copier le lien'}
                 </SecondaryButton>
               </div>
+
+              {/* Le chevalet imprimable : le QR ne sert que s'il est SUR le
+                  comptoir. La version imprimée pointe vers l'URL permanente,
+                  pas ce token tournant — voir /pro/mon-qr/imprimer. */}
+              <PrimaryButton fullWidth href="/pro/mon-qr/imprimer" icon={<Printer size={15} />}>
+                Imprimer pour le comptoir
+              </PrimaryButton>
             </div>
           </div>
         ) : null}

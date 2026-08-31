@@ -22,6 +22,7 @@ import TodayCard from '@/components/pro/home/TodayCard';
 import StreakCard from '@/components/pro/home/StreakCard';
 import QuestCard from '@/components/pro/home/QuestCard';
 import CompletionCard from '@/components/pro/home/CompletionCard';
+import FirstStepsCard, { type Geste } from '@/components/pro/home/FirstStepsCard';
 import VisibilityCard from '@/components/pro/home/VisibilityCard';
 import { completionFromProfile } from '@/lib/profileCompletion';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
@@ -101,6 +102,19 @@ export default function CockpitPage() {
   // qui annoncent deux pourcentages differents pour le meme profil, c est
   // le genre d incoherence qui fait douter du reste.
   const completion = completionFromProfile(fullProfile);
+
+  // Les cinq gestes qui lancent un profil. La complétion dit si la FICHE est
+  // prête ; ceux-ci disent si le MÉTIER a commencé. Tant qu'ils ne sont pas
+  // tous faits, cette checklist remplace la carte de complétion — deux
+  // cartes « à faire » côte à côte se neutralisent.
+  const gestes: Geste[] = [
+    { libelle: 'Ajouter votre photo de profil', fait: !!user.avatar, href: '/pro/profil' },
+    { libelle: 'Compléter votre profil', fait: (completion?.pct ?? 0) >= 100, href: '/pro/profil' },
+    { libelle: 'Publier 3 réalisations', fait: posts.length >= 3, href: '/pro/portfolio' },
+    { libelle: 'Imprimer votre QR pour le comptoir', fait: !!fullProfile?.qr_printed_at, href: '/pro/mon-qr' },
+    { libelle: 'Décrocher un premier avis vérifié', fait: (stats?.reviews_count ?? 0) >= 1, href: '/pro/mon-qr' },
+  ];
+  const lancementFini = gestes.every((g) => g.fait);
   const firstName = user.name.split(' ')[0];
 
 
@@ -186,7 +200,10 @@ export default function CockpitPage() {
               catalogueTotal={badgeCatalogueTotal}
             />
 
-            {completion && <CompletionCard completion={completion} />}
+            {/* Lancement d'abord ; la complétion fine ne prend le relais
+                qu'une fois les cinq gestes faits. */}
+            {!lancementFini && <FirstStepsCard gestes={gestes} />}
+            {lancementFini && completion && <CompletionCard completion={completion} />}
           </>
         )}
       </div>
@@ -216,7 +233,7 @@ export default function CockpitPage() {
             l'app, donc « 0 € » sur l'accueil d'un coiffeur qui travaille
             était simplement faux. */}
         {!dataLoading && stats && (
-          <VisibilityCard stats={stats} slug={profile?.slug ?? null} />
+          <VisibilityCard stats={stats} slug={profile?.slug ?? null} name={firstName} />
         )}
 
         {/* ══════════ CHAIR+ ══════════

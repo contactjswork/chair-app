@@ -53,3 +53,27 @@ Route::get('/scheduler/run', function (\Illuminate\Http\Request $request) {
 
     return response()->json(['ok' => true], 200);
 });
+
+/*
+|--------------------------------------------------------------------------
+| QR imprimé — /q/{slug}
+|--------------------------------------------------------------------------
+| La cible du chevalet de comptoir. Un QR imprimé ne peut pas porter le
+| token tournant (TTL 8 min) : cette URL permanente émet le token courant
+| et redirige vers l'écran de scan.
+|
+| Sécurité : le TTL n'était que la troisième serrure. Les deux vraies
+| tiennent toujours au scan — un seul scan par client et par coiffeur
+| toutes les 12 h, et le plafond quotidien par coiffeur. L'anti auto-scan
+| aussi. Un chevalet physique exige ce compromis, il ne l'affaiblit
+| qu'à la marge.
+*/
+Route::get('/q/{slug}', function (string $slug) {
+    $profile = \App\Models\HairdresserProfile::where('slug', $slug)->first();
+    if (!$profile) {
+        abort(404);
+    }
+    $token = \App\Services\QrTokenService::getOrCreateToken($profile, null);
+    $frontendUrl = rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
+    return redirect()->away($frontendUrl . '/scan/' . $token->token_hash);
+});

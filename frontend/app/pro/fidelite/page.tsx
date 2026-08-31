@@ -31,6 +31,7 @@ export default function ProFidelitePage() {
   const [addonActive, setAddonActive] = useState(false);
   const [program, setProgram] = useState<ApiLoyaltyProgram | null>(null);
   const [rewards, setRewards] = useState<ApiLoyaltyReward[]>([]);
+  const [stats, setStats] = useState<{ passages: number; clients_en_cours: number; debloquees: number; honorees: number } | null>(null);
   const [chargement, setChargement] = useState(true);
 
   // Brouillon de configuration.
@@ -49,6 +50,7 @@ export default function ProFidelitePage() {
         setAddonActive(d.addon_active);
         setProgram(d.program);
         setRewards(d.pending_rewards);
+        setStats(d.stats);
         if (d.program) {
           setPassages(d.program.visits_required);
           setRecompense(d.program.reward_label);
@@ -147,6 +149,20 @@ export default function ProFidelitePage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Ce que l add-on rapporte — la reponse a « est-ce que ca vaut
+              son prix ? ». Sans ces chiffres, l abonnement est un acte de foi
+              renouvele chaque mois. ── */}
+          {stats && (stats.passages > 0 || stats.debloquees > 0) && (
+            <div className={`${CARTE} p-5`}>
+              <p className={MICRO_TITRE}>Depuis l&apos;activation</p>
+              <div className="flex items-start gap-6 mt-4">
+                <div><p className="text-[28px] font-bold leading-none tabular-nums text-neutral-900">{stats.clients_en_cours}</p><p className="text-[12px] text-neutral-500 mt-1.5">{stats.clients_en_cours > 1 ? 'clients avec carte' : 'client avec carte'}</p></div>
+                <div><p className="text-[28px] font-bold leading-none tabular-nums text-neutral-900">{stats.passages}</p><p className="text-[12px] text-neutral-500 mt-1.5">{stats.passages > 1 ? 'passages' : 'passage'}</p></div>
+                <div><p className="text-[28px] font-bold leading-none tabular-nums text-neutral-900">{stats.honorees}<span className="text-[15px] text-neutral-400">/{stats.debloquees}</span></p><p className="text-[12px] text-neutral-500 mt-1.5">récompenses honorées</p></div>
               </div>
             </div>
           )}

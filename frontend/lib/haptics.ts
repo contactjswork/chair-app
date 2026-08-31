@@ -11,10 +11,13 @@
 // Imports dynamiques : le plugin ne pèse rien dans le bundle web tant
 // qu'aucun retour haptique n'est déclenché.
 //
-// SOBRIÉTÉ — quatre points de contact seulement, choisis en réunion :
+// SOBRIÉTÉ — six points de contact seulement, chacun décidé explicitement :
 // changement d'onglet (léger), réservation confirmée (succès), annulation
-// confirmée (avertissement), like (léger). L'haptique partout est pire que
-// pas d'haptique : ne pas en ajouter sans décision explicite.
+// confirmée (avertissement), like (léger), récompense de fidélité débloquée
+// (succès) et montée au classement (succès, une fois par jour) — ces deux
+// derniers ajoutés à la demande de Julien : « le téléphone doit vibrer
+// quand c'est mérité ». L'haptique partout est pire que pas d'haptique :
+// ne pas en ajouter sans décision explicite.
 
 async function hapticsIfAvailable() {
   if (typeof window === 'undefined') return null;

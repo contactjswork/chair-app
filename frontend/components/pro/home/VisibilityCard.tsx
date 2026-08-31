@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Eye } from 'lucide-react';
+import { ChevronRight, Eye, Share2 } from 'lucide-react';
+import ShareSheet from '@/components/ui/ShareSheet';
+import { getSharePayload } from '@/lib/share';
 import type { ApiStats } from '@/lib/types';
 import { CARTE, MICRO_TITRE } from '@/lib/proStyle';
 
@@ -30,9 +33,12 @@ interface Props {
   stats: ApiStats;
   /** Slug du profil public — pour aller voir ce que le client voit. */
   slug?: string | null;
+  /** Prénom du coiffeur, pour personnaliser le message d'invitation. */
+  name?: string | null;
 }
 
-export default function VisibilityCard({ stats, slug }: Props) {
+export default function VisibilityCard({ stats, slug, name }: Props) {
+  const [inviteOuvert, setInviteOuvert] = useState(false);
   const vues = stats.profile_views_count ?? 0;
   const abonnes = stats.followers_count ?? 0;
   const avis = stats.reviews_count ?? 0;
@@ -80,6 +86,35 @@ export default function VisibilityCard({ stats, slug }: Props) {
           <span className="flex-1 text-[14px] font-semibold text-neutral-900">Voir mon profil public</span>
           <ChevronRight size={16} className="text-neutral-300 shrink-0" />
         </Link>
+      )}
+
+      {/* Le coiffeur est le meilleur canal d'acquisition de l'app : chaque
+          client invité arrive avec un coiffeur déjà choisi. L'invitation vit
+          au contact du compteur de vues — c'est la même question, « qui me
+          voit ? », avec la réponse actionnable juste dessous. */}
+      {slug && (
+        <button
+          onClick={() => setInviteOuvert(true)}
+          className="w-full flex items-center gap-3 px-5 min-h-[52px] border-t border-neutral-50 active:bg-neutral-50 transition-colors text-left"
+        >
+          <Share2 size={16} className="text-neutral-400 shrink-0" />
+          <span className="flex-1 text-[14px] font-semibold text-neutral-900">Inviter vos clients sur CHAIR</span>
+          <ChevronRight size={16} className="text-neutral-300 shrink-0" />
+        </button>
+      )}
+
+      {slug && (
+        <ShareSheet
+          open={inviteOuvert}
+          onClose={() => setInviteOuvert(false)}
+          title="Inviter vos clients"
+          shareUrl={`https://www.getchair.app/app/coiffeur/${slug}`}
+          shareText={getSharePayload('own-profile', {
+            url: `https://www.getchair.app/app/coiffeur/${slug}`,
+            name: name ?? undefined,
+          }).text}
+          actionType="share_profile"
+        />
       )}
     </div>
   );

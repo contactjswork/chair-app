@@ -384,7 +384,7 @@ export const waitlist = {
 /** Carte de fidélité — add-on CHAIR PRO (config côté pro, carte côté client). */
 export const loyalty = {
   program: () =>
-    api.get<{ addon_active: boolean; program: import('./types').ApiLoyaltyProgram | null; pending_rewards: import('./types').ApiLoyaltyReward[] }>('/loyalty/program'),
+    api.get<{ addon_active: boolean; program: import('./types').ApiLoyaltyProgram | null; stats: { passages: number; clients_en_cours: number; debloquees: number; honorees: number } | null; pending_rewards: import('./types').ApiLoyaltyReward[] }>('/loyalty/program'),
   saveProgram: (data: { visits_required: number; reward_label: string; is_active: boolean }) =>
     api.put<import('./types').ApiLoyaltyProgram>('/loyalty/program', data),
   redeem: (id: number) =>

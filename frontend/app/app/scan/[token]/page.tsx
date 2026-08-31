@@ -12,6 +12,7 @@ import {
   Scissors, CheckCircle2, Star, AlertCircle,
   ChevronRight, ArrowRight, Loader2, LogIn, UserPlus, Camera,
 } from 'lucide-react';
+import { hapticSuccess } from '@/lib/haptics';
 
 type Step = 'loading' | 'auth' | 'info' | 'review' | 'done' | 'error';
 
@@ -71,6 +72,12 @@ export default function ScanPage() {
     try {
       const data = await visits.confirmVisit(token, hasServices ? selectedServiceId : null, freeTextService);
       setConfirmed(data);
+      // La carte de fidélité pleine fait vibrer : « le téléphone doit
+      // vibrer quand c'est mérité » — et rien n'est plus mérité qu'une
+      // récompense gagnée passage par passage.
+      if ((data as { loyalty?: { just_unlocked?: boolean } | null }).loyalty?.just_unlocked) {
+        void hapticSuccess();
+      }
       setStep('review');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Erreur lors de la validation.');

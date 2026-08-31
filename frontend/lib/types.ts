@@ -492,6 +492,8 @@ export interface ApiHairdresserProfile {
   instagram_url: string | null;
   tiktok_url: string | null;
   booking_url: string | null;
+  /** Date d impression du QR chevalet — alimente la checklist des premiers pas. */
+  qr_printed_at?: string | null;
   keywords: string | null;
   work_status: 'home' | 'private_salon' | 'rented_chair' | 'studio' | null;
   work_address: string | null;
