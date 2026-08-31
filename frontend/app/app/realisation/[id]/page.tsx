@@ -3,12 +3,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import PostCarousel from '@/components/ui/PostCarousel';
+import BeforeAfterSlider from '@/components/ui/BeforeAfterSlider';
 import LikeButton from '@/components/ui/LikeButton';
 import ShareButton from '@/components/ui/ShareButton';
 import BackButton from '@/components/ui/BackButton';
 import { ContentMenu } from '@/components/ui/ReportSheet';
 import type { ApiPost, ApiHairdresserProfile, PaginatedResponse } from '@/lib/types';
-import { resolveMediaUrl, getAllImagesRaw, formatDate } from '@/lib/types';
+import { resolveMediaUrl, getAllImagesRaw, getBeforeImage, getAfterImage, formatDate } from '@/lib/types';
 import { ChevronLeft, ChevronRight, MapPin, Star } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -56,6 +57,10 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
   const images    = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const avatarUrl = resolveMediaUrl(hairdresser.user.avatar);
   const videoUrl  = post.type === 'video' ? resolveMediaUrl(post.video_url) : null;
+  // Transformation : le curseur avant/après remplace le carrousel — le geste
+  // de révéler vaut mieux que deux vignettes figées.
+  const beforeUrl = post.type === 'before_after' ? resolveMediaUrl(getBeforeImage(post)) : null;
+  const afterUrl  = post.type === 'before_after' ? resolveMediaUrl(getAfterImage(post)) : null;
   const videoPoster = resolveMediaUrl(post.video_thumbnail_url) ?? undefined;
   const rating    = hairdresser.reviews_count > 0 ? parseFloat(String(hairdresser.avg_rating)) : null;
 
@@ -81,6 +86,13 @@ export default async function RealisationPage({ params }: { params: Promise<{ id
                 className="w-full h-full object-contain"
               />
             </div>
+          ) : beforeUrl && afterUrl ? (
+            <BeforeAfterSlider
+              before={beforeUrl}
+              after={afterUrl}
+              alt={post.description || hairdresser.user.name}
+              aspectClass="aspect-[4/5]"
+            />
           ) : (
             <PostCarousel
               images={images}

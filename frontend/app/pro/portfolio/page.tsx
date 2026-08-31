@@ -97,6 +97,45 @@ function PhotoGrid({ photos, onAdd, onRemove }: {
 }
 
 /**
+ * Photo « avant » optionnelle : avec elle, la réalisation devient une
+ * transformation et les clients ont droit au curseur avant/après sur la
+ * page publique — l'argument de vente le plus parlant d'un coiffeur.
+ */
+function AvantPicker({ avant, onPick, onRemove }: {
+  avant: PhotoFile | null;
+  onPick: (f: File) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 border border-neutral-100">
+      {avant ? (
+        <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-neutral-100 flex-shrink-0">
+          <Image src={avant.preview} alt="Photo avant" fill className="object-cover" />
+          <button type="button" onClick={onRemove}
+            className="absolute top-0.5 right-0.5 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center text-white hover:bg-black/80">
+            <X size={10} />
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => inputRef.current?.click()}
+          className="w-14 h-14 rounded-lg border-2 border-dashed border-neutral-200 flex items-center justify-center text-neutral-300 hover:border-neutral-400 hover:text-neutral-500 transition-colors flex-shrink-0">
+          <Camera size={18} />
+        </button>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-neutral-700">Photo avant <span className="font-normal text-neutral-400">(optionnel)</span></p>
+        <p className="text-[11px] text-neutral-400 leading-snug mt-0.5">
+          Ajoutez l&apos;avant : les clients glissent pour révéler la transformation.
+        </p>
+      </div>
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onPick(f); e.target.value = ''; }} />
+    </div>
+  );
+}
+
+/**
  * Pastille photo d'une spécialité — même chaîne de priorité que partout
  * ailleurs dans l'app (vraie photo > illustration locale > rien) : retour de
  * Julien, le portfolio ne montrait que des pastilles de texte nu pendant que
@@ -223,6 +262,7 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
 }) {
   const [mode, setMode] = useState<'photos' | 'video'>('photos');
   const [photos, setPhotos] = useState<PhotoFile[]>([]);
+  const [avant, setAvant] = useState<PhotoFile | null>(null);
   const [video, setVideo] = useState<VideoFile | null>(null);
   const [description, setDescription] = useState('');
   const [gender, setGender] = useState<'homme' | 'femme' | ''>('');
@@ -278,6 +318,7 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
       if (video.durationSeconds != null) form.append('video_duration_seconds', String(video.durationSeconds));
     } else {
       photos.forEach((p) => form.append('images[]', p.file));
+      if (avant) form.append('before_image', avant.file);
     }
     if (description) form.append('description', description);
     if (gender) form.append('gender', gender);
@@ -328,6 +369,14 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
         {mode === 'video'
           ? <VideoPicker video={video} onPick={setVideo} onRemove={() => { if (video) URL.revokeObjectURL(video.preview); setVideo(null); }} />
           : <PhotoGrid photos={photos} onAdd={addPhotos} onRemove={removePhoto} />}
+
+        {mode === 'photos' && (
+          <AvantPicker
+            avant={avant}
+            onPick={(f) => setAvant({ file: f, preview: URL.createObjectURL(f) })}
+            onRemove={() => { if (avant) URL.revokeObjectURL(avant.preview); setAvant(null); }}
+          />
+        )}
         <div>
           <label className="block text-xs font-semibold text-neutral-600 mb-2">Genre</label>
           <div className="flex gap-2">

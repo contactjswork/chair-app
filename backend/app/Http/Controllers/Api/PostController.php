@@ -161,6 +161,7 @@ class PostController extends Controller
             $request->validate([
                 'images'       => 'required|array|min:1|max:10',
                 'images.*'     => 'image|mimes:jpeg,png,webp|max:5120',
+                'before_image' => 'nullable|image|mimes:jpeg,png,webp|max:5120',
                 'description'  => 'nullable|string|max:1000',
                 'gender'       => 'nullable|string|in:homme,femme',
                 'specialty_id' => 'nullable|integer|exists:specialties,id',
@@ -178,7 +179,7 @@ class PostController extends Controller
                 'hairdresser_id'   => $profile->id,
                 'specialty_id'     => $request->input('specialty_id'),
                 'gender'           => $request->input('gender'),
-                'type'             => 'result',
+                'type'             => $request->hasFile('before_image') ? 'before_after' : 'result',
                 'description'      => $request->input('description'),
                 'duration_minutes' => null,
                 'price_indication' => null,
@@ -187,6 +188,19 @@ class PostController extends Controller
                 'views_count'      => 0,
                 'likes_count'      => 0,
             ]);
+
+            // La photo « avant » vient en premier (order 0), comme dans l'ancien
+            // format before_after — le résultat garde la couverture.
+            $decalage = 0;
+            if ($request->hasFile('before_image')) {
+                PostImage::create([
+                    'post_id' => $post->id,
+                    'url'     => $cloudinary->upload($request->file('before_image'), 'chair/posts'),
+                    'type'    => 'before',
+                    'order'   => 0,
+                ]);
+                $decalage = 1;
+            }
 
             foreach ($request->file('images') as $index => $file) {
                 $url = $cloudinary->upload($file, 'chair/posts');
@@ -197,7 +211,7 @@ class PostController extends Controller
                     'post_id' => $post->id,
                     'url'     => $url,
                     'type'    => 'result',
-                    'order'   => $index,
+                    'order'   => $index + $decalage,
                 ]);
             }
 
