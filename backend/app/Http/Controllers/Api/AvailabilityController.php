@@ -182,7 +182,10 @@ class AvailabilityController extends Controller
             ->where('is_active', true)
             ->firstOrFail();
 
-        $monthStart = Carbon::createFromFormat('Y-m', $request->month, self::TZ)->startOfMonth();
+        // Jamais createFromFormat('Y-m', ...) : Carbon complète le jour manquant
+        // avec le jour COURANT. Le 31 du mois, « 2026-09 » devenait 31/09, qui
+        // déborde sur le 1er octobre — tout le calendrier glissait d'un mois.
+        $monthStart = Carbon::createFromFormat('Y-m-d', $request->month . '-01', self::TZ)->startOfDay();
         $monthEnd   = $monthStart->copy()->endOfMonth();
 
         $now = Carbon::now(self::TZ);
