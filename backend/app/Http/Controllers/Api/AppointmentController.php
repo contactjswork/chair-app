@@ -373,6 +373,13 @@ class AppointmentController extends Controller
 
         $appointment->refresh();
 
+        // Un créneau vient de se libérer : la liste d'attente de ce jour est
+        // prévenue. Après l'écriture conditionnée — les effets de bord ne
+        // partent que depuis la requête qui a réellement appliqué le statut.
+        if (in_array($newStatus, self::SLOT_FREEING_STATUSES, true)) {
+            \App\Services\WaitlistService::onSlotFreed($appointment);
+        }
+
         // Visite réelle : 1 RDV terminé = 1 visite sur le profil public.
         // Atteignable uniquement depuis 'confirmed', une seule fois.
         if ($newStatus === 'completed') {
@@ -928,6 +935,9 @@ class AppointmentController extends Controller
         }
 
         $appointment->refresh();
+
+        // Le créneau annulé par le client sert la liste d'attente du jour.
+        \App\Services\WaitlistService::onSlotFreed($appointment);
 
         // Le coiffeur est prévenu par le canal existant (notification interne
         // + push OneSignal + préférences du destinataire), avec le texte du

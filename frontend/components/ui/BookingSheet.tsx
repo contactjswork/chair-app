@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi, savedPosts as savedPostsApi } from '@/lib/api';
+import { services as servicesApi, availability as availabilityApi, appointments as appointmentsApi, savedPosts as savedPostsApi, waitlist as waitlistApi } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { saveBookingIntent } from '@/lib/bookingIntent';
 import { hapticSuccess } from '@/lib/haptics';
@@ -121,6 +121,9 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const [refPosts, setRefPosts] = useState<ApiPost[]>([]);
   const [refPostsLoaded, setRefPostsLoaded] = useState(false);
   const [referencePostId, setReferencePostId] = useState<number | null>(null);
+  // Liste d'attente : 'idle' tant qu'on n'a rien demandé pour CE jour,
+  // 'joined' après l'inscription. Réinitialisée à chaque changement de date.
+  const [waitlisted, setWaitlisted] = useState(false);
   const referencePost = refPosts.find((p) => p.id === referencePostId) ?? null;
   const referenceImage = referencePost ? getAfterImage(referencePost) : null;
   const [submitting, setSubmitting] = useState(false);
@@ -645,7 +648,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                               key={dayNum}
                               onClick={() => {
                                 if (isAvailable && !isPast) {
-                                  setSelectedDate(dateStr);
+                                  setSelectedDate(dateStr); setWaitlisted(false);
                                   setSelectedSlot('');
                                   setNotice('');
                                   setStep('slot');
@@ -705,11 +708,31 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                       compact
                       icon={CalendarX2}
                       title="Complet ce jour-là"
-                      subtitle="Tous les créneaux de cette journée sont déjà pris."
+                      subtitle={
+                        waitlisted
+                          ? 'C\'est noté : si une place se libère ce jour-là, vous serez prévenu(e) en premier.'
+                          : 'Tous les créneaux de cette journée sont déjà pris.'
+                      }
                       action={
-                        <SecondaryButton size="sm" onClick={() => setStep('date')}>
-                          Choisir une autre date
-                        </SecondaryButton>
+                        <div className="flex flex-col items-center gap-2">
+                          {/* Un jour complet n'est plus une impasse : l'annulation
+                              de quelqu'un d'autre devient une place pour ce
+                              client — et le coiffeur ne perd plus l'annulation. */}
+                          {user && !waitlisted && (
+                            <PrimaryButton
+                              size="sm"
+                              onClick={() => {
+                                setWaitlisted(true);
+                                waitlistApi.join(selectedService.hairdresser_id, selectedDate).catch(() => setWaitlisted(false));
+                              }}
+                            >
+                              Prévenez-moi si ça se libère
+                            </PrimaryButton>
+                          )}
+                          <SecondaryButton size="sm" onClick={() => setStep('date')}>
+                            Choisir une autre date
+                          </SecondaryButton>
+                        </div>
                       }
                     />
                   ) : (

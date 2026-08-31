@@ -433,6 +433,17 @@ class NotificationCopy
             ],
         ],
 
+        // Un créneau s'est libéré chez un coiffeur complet où le client
+        // s'était inscrit en liste d'attente. Premier arrivé, premier servi —
+        // le texte le dit pour créer l'urgence sans mentir.
+        'slot_freed' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Un créneau s\'est libéré',
+                'message'  => 'Chez {coiffeur}, {date} : une place vient de se libérer. Premier arrivé…',
+                'fallback' => 'Une place s\'est libérée chez un coiffeur que tu attendais.',
+            ],
+        ],
+
         // Rappel de re-réservation, calé sur le rythme réel du client. C'est
         // le seul push commercial de l'app côté client : il doit rester rare
         // et juste, sinon il grille la permission pour tous les autres.

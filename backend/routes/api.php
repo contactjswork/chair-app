@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\TrainingController;
 use App\Http\Controllers\Api\StreakController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\LoyaltyController;
+use App\Http\Controllers\Api\WaitlistController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\ChairRentalController;
 use App\Http\Controllers\Api\JobApplicationController;
@@ -416,6 +417,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::post('/scan/{token}',         [VisitController::class, 'confirmVisit']);
     // Carte de fidelite — la carte du client connecte chez un coiffeur.
     Route::get('/loyalty/my-card/{hairdresserId}', [LoyaltyController::class, 'myCard']);
+    // Liste d attente : « prevenez-moi si ca se libere » sur un jour complet.
+    Route::post('/waitlist', [WaitlistController::class, 'join']);
 
     // QR Code coiffeur
     Route::get('/hairdresser/qr-token',          [VisitController::class, 'getQrToken']);

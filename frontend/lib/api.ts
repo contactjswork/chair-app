@@ -375,6 +375,12 @@ export const specialtyProgress = {
  * changer. Un coiffeur de petite ville est vite « 1er sur 2 », ce qui ne
  * laisse rien à gravir — le même est 6e sur 9 en France.
  */
+/** Liste d'attente : « prévenez-moi si ça se libère » sur un jour complet. */
+export const waitlist = {
+  join: (hairdresserId: number, date: string) =>
+    api.post<{ joined: boolean }>('/waitlist', { hairdresser_id: hairdresserId, date }),
+};
+
 /** Carte de fidélité — add-on CHAIR PRO (config côté pro, carte côté client). */
 export const loyalty = {
   program: () =>
