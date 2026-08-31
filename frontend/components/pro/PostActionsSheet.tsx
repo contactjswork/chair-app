@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Pin, PinOff, Edit2, Archive, ArchiveRestore, Trash2, ChevronLeft } from 'lucide-react';
+import { Pin, PinOff, Edit2, Archive, ArchiveRestore, Trash2, ChevronLeft, Share2 } from 'lucide-react';
 import BottomSheet from '@/components/ui/BottomSheet';
 
 /**
@@ -34,6 +34,8 @@ interface Props {
   onEdit: () => void;
   onToggleArchive: () => void;
   onDelete: () => void;
+  /** Story Instagram formatée — absent quand la réalisation n'a pas de photo (vidéo). */
+  onShareStory?: () => void;
 }
 
 const rowCls =
@@ -41,7 +43,7 @@ const rowCls =
 
 export default function PostActionsSheet({
   onClose, isPinned, isPublished, busy = false,
-  onTogglePin, onEdit, onToggleArchive, onDelete,
+  onTogglePin, onEdit, onToggleArchive, onDelete, onShareStory,
 }: Props) {
   const [step, setStep] = useState<'menu' | 'delete-confirm'>('menu');
 
@@ -50,6 +52,12 @@ export default function PostActionsSheet({
       <div className="px-1 pb-6">
         {step === 'menu' && (
           <div className="divide-y divide-neutral-50">
+            {onShareStory && (
+              <button className={rowCls} disabled={busy} onClick={() => { onShareStory(); onClose(); }}>
+                <Share2 size={17} className="text-neutral-500" />
+                Partager en story
+              </button>
+            )}
             <button className={rowCls} disabled={busy} onClick={() => { onTogglePin(); onClose(); }}>
               {isPinned ? <PinOff size={17} className="text-neutral-500" /> : <Pin size={17} className="text-neutral-500" />}
               {isPinned ? 'Retirer de la une' : 'Épingler en tête de portfolio'}

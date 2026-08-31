@@ -6,7 +6,8 @@ import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
 import type { ApiPost, ApiSpecialty } from '@/lib/types';
-import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
+import { getAllImagesRaw, getAfterImage, getBeforeImage, resolveMediaUrl } from '@/lib/types';
+import { partagerStory } from '@/lib/storyImage';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS } from '@/lib/specialties';
@@ -442,10 +443,11 @@ function AddPostForm({ specialties, isPremium, onSuccess, onCancel }: {
   );
 }
 
-function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpdate, onTogglePin, dragHandlers }: {
+function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpdate, onTogglePin, dragHandlers, storyMeta }: {
   post: ApiPost; specialties: ApiSpecialty[]; reorderMode: boolean; pinnedCount: number;
   onDelete: () => void; onUpdate: (updated: ApiPost) => void; onTogglePin: () => void;
   dragHandlers?: { onPointerDown: (e: React.PointerEvent) => void };
+  storyMeta: { name: string; city: string | null; slug: string | null };
 }) {
   const [editing, setEditing] = useState(false);
   const [description, setDescription] = useState(post.description ?? '');
@@ -459,6 +461,25 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
 
   const allImages = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const coverImg = allImages[0] ?? null;
+
+  // Story Instagram : seulement pour les réalisations photo (une vidéo ne se
+  // compose pas dans un canvas). Échec silencieux impossible : on affiche
+  // l'erreur réseau éventuelle dans le bandeau pinError déjà en place.
+  const storyImage = post.type !== 'video' ? resolveMediaUrl(getAfterImage(post)) : null;
+  function handleShareStory() {
+    if (!storyImage) return;
+    partagerStory({
+      imageUrl: storyImage,
+      beforeImageUrl: post.type === 'before_after' ? resolveMediaUrl(getBeforeImage(post)) : null,
+      name: storyMeta.name,
+      city: storyMeta.city,
+      specialty: (post.specialty ?? post.tags?.[0])?.name ?? null,
+      slug: storyMeta.slug,
+    }).catch(() => {
+      setPinError('Impossible de générer la story — réessayez.');
+      setTimeout(() => setPinError(''), 3000);
+    });
+  }
 
   async function handleTogglePin() {
     // Garde côté client — évite l'aller-retour réseau pour le cas courant.
@@ -629,6 +650,7 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
                 onEdit={() => setEditing(true)}
                 onToggleArchive={handleToggleArchive}
                 onDelete={handleDelete}
+                onShareStory={storyImage ? handleShareStory : undefined}
               />
             )}
           </>
@@ -888,6 +910,11 @@ export default function PortfolioPage() {
             {posts.map((post) => (
               <PostCard key={post.id} post={post} specialties={specialties} reorderMode={reorderMode}
                 pinnedCount={posts.filter((p) => p.is_pinned).length}
+                storyMeta={{
+                  name: user.name,
+                  city: user.hairdresser_profile?.city ?? null,
+                  slug: user.hairdresser_profile?.slug ?? null,
+                }}
                 onDelete={() => setPosts((prev) => prev.filter((p) => p.id !== post.id))}
                 onUpdate={(updated) => setPosts((prev) => prev.map((p) => p.id === updated.id ? updated : p))}
                 onTogglePin={() => setPosts((prev) => {
