@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\HairdresserProfile;
 use App\Models\HairdresserSpecialtyProgress;
+use App\Models\SpecialtyRankSnapshot;
 use App\Services\GeoLookupService;
 use Illuminate\Support\Facades\DB;
 
@@ -731,6 +732,46 @@ class SpecialtyReputationService
     }
 
     /**
+     * Combien de places gagnées (ou perdues) depuis la dernière capture.
+     *
+     * Positif = il est monté. On compare le rang courant, recalculé à la
+     * volée, à la mesure figée la plus récente qui n'est pas d'aujourd'hui —
+     * autrement dit celle de la semaine dernière.
+     *
+     * Renvoie null quand il n'y a pas de point de comparaison : un coiffeur
+     * qui vient d'entrer dans un classement n'a rien gagné ni perdu, et
+     * afficher « +0 » lui ferait croire qu'il stagne alors qu'il démarre.
+     *
+     * Un écart négatif est montré tel quel. Il peut venir de l'arrivée de
+     * confrères au-dessus de lui plutôt que d'un relâchement de sa part —
+     * mais le masquer reviendrait à ne montrer que les bonnes nouvelles, et
+     * un compteur qui ne descend jamais ne veut plus rien dire.
+     */
+    public static function rankDelta(
+        HairdresserProfile $profile,
+        int $specialtyId,
+        string $geo,
+        ?string $geoValue,
+        int $rangActuel
+    ): ?int {
+        $precedent = SpecialtyRankSnapshot::query()
+            ->where('hairdresser_id', $profile->id)
+            ->where('specialty_id', $specialtyId)
+            ->where('geo', $geo)
+            ->where('geo_value', $geoValue ?? SpecialtyRankSnapshot::PAYS)
+            ->whereDate('captured_on', '<', now('Europe/Paris')->toDateString())
+            ->orderByDesc('captured_on')
+            ->first();
+
+        if (!$precedent) {
+            return null;
+        }
+
+        // Rang 6 la semaine dernière, 4 aujourd'hui => +2 places gagnées.
+        return $precedent->rank - $rangActuel;
+    }
+
+    /**
      * Le périmètre géographique d'un coiffeur, pour un niveau donné.
      *
      * Renvoie null quand le niveau n'est pas calculable — et c'est important :
@@ -806,6 +847,11 @@ class SpecialtyReputationService
                 // sur le profil public, ou il ne dirait rien a un client et
                 // reviendrait a publier la mecanique de classement.
                 'points_to_next'  => $includePrivate ? ($rank['points_to_next'] ?? null) : null,
+                // Le mouvement depuis la derniere capture. Prive : un client
+                // n'a que faire de savoir qu'un coiffeur a perdu deux places.
+                'rank_delta'      => ($includePrivate && $rank && isset($rank['rank']))
+                    ? self::rankDelta($profile, $row->specialty_id, $geo, self::geoValueFor($profile, $geo), $rank['rank'])
+                    : null,
                 'fast_progress'   => $fastProgress,
                 'visits_count'    => $row->visits_count,
             ];

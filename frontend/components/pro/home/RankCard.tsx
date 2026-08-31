@@ -121,11 +121,7 @@ export default function RankCard({ highlights, city }: Props) {
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
             {lieu ? `Votre place · ${lieu}` : 'Votre place'}
           </p>
-          {premier.fast_progress && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/70">
-              <TrendingUp size={12} />En progression
-            </span>
-          )}
+          <Mouvement delta={premier.rank_delta ?? null} enProgression={premier.fast_progress} />
         </div>
 
         {/* Le rang porte tout l'écran. Chiffres tabulaires : la ligne ne doit
@@ -138,6 +134,7 @@ export default function RankCard({ highlights, city }: Props) {
         <p className="text-[17px] font-semibold mt-1">{premier.specialty_name}</p>
         <p className="text-[13px] text-white/45 tabular-nums mt-0.5">
           sur {premier.local_total} coiffeur{premier.local_total! > 1 ? 's' : ''} classé{premier.local_total! > 1 ? 's' : ''}
+          {premier.rank_delta != null && premier.rank_delta !== 0 && ' · cette semaine'}
         </p>
 
         <Ecart rank={premier.local_rank!} pointsToNext={premier.points_to_next ?? null} />
@@ -226,6 +223,45 @@ function Ecart({ rank, pointsToNext }: { rank: number; pointsToNext: number | nu
       {suffixe(rank - 1)}
     </p>
   );
+}
+
+/**
+ * Le mouvement depuis la semaine dernière.
+ *
+ * C'est la seule chose de cette carte qui CHANGE d'une semaine à l'autre.
+ * Un rang seul est une photo : « 6e sur 9 » se lit une fois et n'a plus rien
+ * à dire le lendemain. « +2 places » donne une raison de revenir voir.
+ *
+ * La baisse est montrée telle quelle. Elle peut venir de l'arrivée de
+ * confrères au-dessus de lui plutôt que d'un relâchement — mais un compteur
+ * qui ne descend jamais cesse vite de vouloir dire quelque chose.
+ *
+ * Sans point de comparaison (première semaine dans le classement), on
+ * retombe sur le signal d'activité existant plutôt que d'afficher « +0 »,
+ * qui donnerait l'impression de stagner alors qu'il vient d'arriver.
+ */
+function Mouvement({ delta, enProgression }: { delta: number | null; enProgression: boolean }) {
+  if (delta != null && delta !== 0) {
+    const monte = delta > 0;
+    return (
+      <span
+        className={`inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider shrink-0 ${
+          monte ? 'text-white' : 'text-white/50'
+        }`}
+      >
+        <TrendingUp size={12} className={monte ? '' : 'rotate-180'} />
+        {monte ? '+' : ''}{delta} {Math.abs(delta) > 1 ? 'places' : 'place'}
+      </span>
+    );
+  }
+  if (enProgression) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-white/70 shrink-0">
+        <TrendingUp size={12} />En progression
+      </span>
+    );
+  }
+  return null;
 }
 
 function suffixe(rang: number): string {

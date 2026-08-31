@@ -87,6 +87,8 @@ export interface ApiSpecialtyHighlight {
   local_total: number | null;
   /** Ecart de points avec le rang juste au-dessus. Prive : toujours null sur le profil public. */
   points_to_next?: number | null;
+  /** Places gagnees (+) ou perdues (-) depuis la capture precedente. Prive ; null sans point de comparaison. */
+  rank_delta?: number | null;
   fast_progress: boolean;
   visits_count: number;
 }

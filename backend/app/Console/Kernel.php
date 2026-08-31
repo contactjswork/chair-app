@@ -23,6 +23,13 @@ class Kernel extends ConsoleKernel
         // passes. Idempotent (reminded_24h_at / reminded_1h_at) : un cron qui
         // rejoue ne double jamais un rappel.
         $schedule->command('chair:send-appointment-reminders')->everyFifteenMinutes();
+
+        // Capture hebdomadaire des classements. Le lundi tôt : la phrase
+        // affichée est « cette semaine », il faut donc un repère par semaine,
+        // pris au même moment. Idempotente (updateOrCreate sur le jour) : un
+        // planificateur qui rejoue n'ajoute pas une seconde mesure, ce qui
+        // fausserait la comparaison suivante.
+        $schedule->command('chair:snapshot-specialty-ranks')->weeklyOn(1, '04:30');
     }
 
     /**
