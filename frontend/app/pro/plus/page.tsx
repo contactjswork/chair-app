@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronRight, Building2 } from 'lucide-react';
+import { ChevronRight, Building2, Moon } from 'lucide-react';
+import { applyThemeChoice, getThemeChoice, type ThemeChoice } from '@/lib/theme';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ export default function ProPlusPage() {
   const { secondary } = useProNav();
 
   const [expanded, setExpanded] = useState(false);
+  const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice());
   const [salonName, setSalonName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
@@ -111,6 +113,34 @@ export default function ProPlusPage() {
               <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
             </Link>
           ))}
+        </div>
+
+        {/* Apparence : clair / sombre / réglage système. La préférence vaut
+            pour CHAIR et CHAIR PRO (même appareil, même œil). */}
+        <div className="mt-4 bg-white rounded-[22px] shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-4">
+          <div className="flex items-center gap-3.5 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+              <Moon size={16} className="text-neutral-600" strokeWidth={1.5} />
+            </div>
+            <span className="text-sm font-medium text-neutral-900">Apparence</span>
+          </div>
+          <div className="flex gap-2">
+            {([
+              { valeur: 'system', libelle: 'Système' },
+              { valeur: 'light',  libelle: 'Clair' },
+              { valeur: 'dark',   libelle: 'Sombre' },
+            ] as const).map(({ valeur, libelle }) => (
+              <button key={valeur}
+                onClick={() => { applyThemeChoice(valeur); setTheme(valeur); }}
+                className={`flex-1 py-2.5 text-[13px] font-semibold rounded-xl border transition-all ${
+                  theme === valeur
+                    ? 'bg-neutral-900 text-white border-neutral-900'
+                    : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                }`}>
+                {libelle}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

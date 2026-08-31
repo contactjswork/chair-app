@@ -229,3 +229,87 @@ img { transition: transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94); }
   color: #a3a3a3 !important;
 }
 .leaflet-control-attribution a { color: #737373 !important; }
+
+/* ── Mode sombre ──────────────────────────────────────────────────────────
+   La DA CHAIR est monochrome (échelle neutral-*) : plutôt que d'éditer
+   chaque écran, on remappe la palette sous html.dark. Deux familles :
+
+   1. Variables : tout ce qui n'a qu'UN sens (textes, filets, anneaux,
+      fonds gris clairs) suit l'échelle inversée automatiquement — les
+      utilitaires Tailwind v4 compilent en var(--color-*).
+
+   2. Réparations ciblées (règles NON @layer : elles battent les couches) :
+      les classes au sens double. bg-white est tantôt page, tantôt carte ;
+      neutral-800/900/950 sont des fonds de CTA et de panneaux SOMBRES qui
+      doivent le rester (641 text-white s'appuient dessus) — on les élève
+      juste assez pour se détacher du fond. Les bg-white/80-95 sont les
+      barres sticky en verre dépoli → verre sombre. Les bg-white/5-40
+      (reflets sur cartes sombres) restent blancs, voulu.
+
+   La classe est posée avant le premier paint par THEME_BOOTSTRAP
+   (lib/theme.ts) — préférence chair_theme : system | light | dark. */
+html.dark {
+  color-scheme: dark;
+  --background: #101013;
+  --foreground: #f6f6f7;
+  --muted: #a6a6ae;
+  --border: #2b2b30;
+  --surface: #17171a;
+  --accent: #f6f6f7;
+
+  --color-neutral-50:  #101013;
+  --color-neutral-100: #1e1e22;
+  --color-neutral-200: #2b2b30;
+  --color-neutral-300: #43434a;
+  --color-neutral-400: #8e8e97;
+  --color-neutral-500: #a6a6ae;
+  --color-neutral-600: #c4c4cb;
+  --color-neutral-700: #dadade;
+  --color-neutral-800: #e9e9ec;
+  --color-neutral-900: #f6f6f7;
+  --color-neutral-950: #ffffff;
+
+  /* Teintes sémantiques : fonds pâles → teintes sombres, textes foncés →
+     tons clairs. Les 400/500 (icônes, accents) ne bougent pas. */
+  --color-amber-50:  #2a2008;
+  --color-amber-100: #3a2d0b;
+  --color-amber-200: #4c3b10;
+  --color-amber-600: #fbbf24;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fde68a;
+  --color-red-50:  #2c1214;
+  --color-red-100: #3e161a;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-green-50:  #0f2517;
+  --color-green-100: #153520;
+  --color-green-600: #4ade80;
+  --color-green-700: #86efac;
+  --color-green-800: #bbf7d0;
+  --color-emerald-50:  #0e2419;
+  --color-emerald-100: #143423;
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-blue-50:  #131f38;
+  --color-blue-100: #1a2b4d;
+  --color-blue-600: #60a5fa;
+  --color-blue-700: #93c5fd;
+}
+
+/* Réparations ciblées — voir le commentaire de tête. */
+html.dark .bg-white { background-color: #17171a; }
+html.dark .hover\:bg-white:hover { background-color: #1f1f23; }
+html.dark .bg-neutral-900 { background-color: #26262b; }
+html.dark .bg-neutral-800 { background-color: #2f2f35; }
+html.dark .bg-neutral-950 { background-color: #1c1c20; }
+html.dark .hover\:bg-neutral-700:hover { background-color: #33333a; }
+html.dark .hover\:bg-neutral-800:hover { background-color: #33333a; }
+html.dark .bg-white\/80 { background-color: rgba(19, 19, 22, 0.8); }
+html.dark .bg-white\/90 { background-color: rgba(19, 19, 22, 0.9); }
+html.dark .bg-white\/95 { background-color: rgba(19, 19, 22, 0.95); }
+/* Fondus de bord de zone défilante : le voile suit la surface. */
+html.dark .from-white { --tw-gradient-from: #17171a; }
+html.dark .via-white  { --tw-gradient-via: #17171a; }
+html.dark .to-white   { --tw-gradient-to: #17171a; }
+html.dark .via-white\/95 { --tw-gradient-via: rgba(23, 23, 26, 0.95); }

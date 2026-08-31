@@ -6,6 +6,7 @@ import AppBanner from "@/components/ui/AppBanner";
 import PwaManifest from "@/components/ui/PwaManifest";
 import SiteIntro from "@/components/ui/SiteIntro";
 import { NATIVE_CLASS_BOOTSTRAP } from "@/lib/native";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -55,7 +56,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    // suppressHydrationWarning : THEME_BOOTSTRAP pose .dark avant
+    // l'hydratation, le HTML serveur ne peut pas la connaître.
+    <html lang="fr" suppressHydrationWarning className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <head>
         {/* Pose .chair-native sur <html> AVANT le premier paint quand la page
             tourne dans un shell Capacitor (CHAIR ou CHAIR PRO) — voir
@@ -63,6 +66,10 @@ export default function RootLayout({
             le comportement app (sélection, rebond, scrollbars) uniquement en
             natif, sans dégrader le site web. */}
         <script dangerouslySetInnerHTML={{ __html: NATIVE_CLASS_BOOTSTRAP }} />
+        {/* Pose .dark AVANT le premier paint selon la préférence chair_theme
+            (system | light | dark) — voir lib/theme.ts et le bloc mode
+            sombre de globals.css. Évite le flash blanc au lancement. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
         {/* Carte Apple : DNS + TLS établis d'avance vers les hôtes MapKit —
             la poignée de main réseau ne s'ajoute plus au temps d'affichage
             de la carte quand l'utilisateur ouvre la recherche. */}
