@@ -242,7 +242,7 @@ export default function ComptePage() {
               <div className="flex justify-center gap-3">
                 <Link
                   href="/app/compte/modifier"
-                  className="flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-700 active:scale-[0.97] transition-all"
+                  className="relative before:absolute before:-inset-y-[2px] before:inset-x-0 before:content-[''] flex items-center gap-2 px-5 py-2.5 bg-neutral-900 text-white rounded-xl text-sm font-semibold hover:bg-neutral-700 active:scale-[0.97] transition-all"
                 >
                   <Edit3 size={14} />
                   Modifier mon profil

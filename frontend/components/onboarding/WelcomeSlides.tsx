@@ -83,7 +83,7 @@ export default function WelcomeSlides({ onDone }: Props) {
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between px-5 pt-safe-5 pb-2">
         <ChairLogo href="/pro" size="sm" pro dark />
-        <button onClick={onDone} className="text-[13px] font-medium text-neutral-500 hover:text-neutral-300 transition-colors">
+        <button onClick={onDone} className="relative before:absolute before:-inset-y-[6px] before:inset-x-0 before:content-[''] text-[13px] font-medium text-neutral-500 hover:text-neutral-300 transition-colors">
           Passer
         </button>
       </div>

@@ -255,7 +255,7 @@ export default function FavorisPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`flex-1 py-2 rounded-lg text-[13px] font-semibold active:scale-[0.97] transition-all duration-150 ${
+              className={`relative before:absolute before:-inset-y-1 before:inset-x-0 before:content-[''] flex-1 py-2 rounded-lg text-[13px] font-semibold active:scale-[0.97] transition-all duration-150 ${
                 tab === t ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-400 hover:text-neutral-700'
               }`}
             >

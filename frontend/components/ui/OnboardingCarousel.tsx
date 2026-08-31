@@ -63,7 +63,7 @@ export default function OnboardingCarousel({
     <div className={`fixed inset-0 z-[100] flex flex-col ${bg} pt-safe pb-safe`}>
       {/* Skip */}
       <div className="flex justify-end px-5 pt-3">
-        <button onClick={onSkip} className={`text-[13px] font-medium px-3 py-2 transition-colors ${skipCls}`}>
+        <button onClick={onSkip} className={`relative before:absolute before:-inset-y-[4px] before:inset-x-0 before:content-[''] text-[13px] font-medium px-3 py-2 transition-colors ${skipCls}`}>
           Passer
         </button>
       </div>
@@ -92,7 +92,7 @@ export default function OnboardingCarousel({
             key={i}
             onClick={() => goTo(i)}
             aria-label={`Slide ${i + 1}`}
-            className={`h-1.5 rounded-full transition-all ${i === index ? `w-6 ${dark ? 'bg-white' : 'bg-neutral-900'}` : `w-1.5 ${dotIdle}`}`}
+            className={`relative before:absolute before:-inset-y-[19px] before:-inset-x-1 before:content-[''] h-1.5 rounded-full transition-all ${i === index ? `w-6 ${dark ? 'bg-white' : 'bg-neutral-900'}` : `w-1.5 ${dotIdle}`}`}
           />
         ))}
       </div>

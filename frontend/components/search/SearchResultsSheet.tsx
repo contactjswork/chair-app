@@ -140,7 +140,7 @@ export default function SearchResultsSheet({ position, onPositionChange, header,
             <button
               aria-label="Déplier les résultats"
               onClick={() => onPositionChange(position === 'peek' ? 'half' : position === 'half' ? 'full' : 'half')}
-              className="flex items-center justify-center w-16 h-9"
+              className="flex items-center justify-center w-16 h-11"
             >
               <span className="block w-9 h-1 bg-neutral-200 rounded-full" />
             </button>

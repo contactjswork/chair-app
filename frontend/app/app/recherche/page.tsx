@@ -415,7 +415,7 @@ function RechercheContent() {
         <div
           data-sheet-nodrag
           style={{ touchAction: 'pan-x' }}
-          className="flex gap-2 overflow-x-auto no-scrollbar -mr-4 pr-4"
+          className="flex gap-2 overflow-x-auto no-scrollbar -mr-4 pr-4 py-1"
         >
           {typeChips.map((c) => (
             <FilterChip

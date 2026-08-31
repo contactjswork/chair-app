@@ -26,7 +26,7 @@ export function Badge({ tone = 'neutral', children }: { tone?: BadgeTone; childr
 export function FilterChip({ active, className = '', children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean; children: ReactNode }) {
   return (
     <button
-      className={`flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[13px] font-semibold transition-colors ${
+      className={`relative before:absolute before:-inset-y-1 before:inset-x-0 before:content-[''] flex-shrink-0 inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[13px] font-semibold transition-colors ${
         active ? 'bg-neutral-900 text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
       } ${className}`}
       {...rest}

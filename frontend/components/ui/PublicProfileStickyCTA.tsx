@@ -30,8 +30,8 @@ export default function PublicProfileStickyCTA({ slug, isIndependent, bookingUrl
     >
       {/* Voile blanc court : il doit juste détacher le bouton du contenu qui
           défile dessous, pas peindre un dégradé sur un tiers de l'écran. */}
-      <div className="bg-gradient-to-t from-white via-white to-transparent pt-6 pb-3 px-4 pointer-events-auto">
-        <div className="max-w-2xl mx-auto">
+      <div className="bg-gradient-to-t from-white via-white to-transparent pt-6 pb-3 px-4">
+        <div className="max-w-2xl mx-auto pointer-events-auto">
           <BookingCTA slug={slug} isIndependent={isIndependent} bookingUrl={bookingUrl ?? null} />
         </div>
       </div>

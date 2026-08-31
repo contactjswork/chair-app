@@ -168,7 +168,7 @@ export default function SearchResultCard({ result: r, selected = false, isFavori
         <button
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFavorite!(r); }}
           aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-transform active:scale-90"
+          className="absolute top-2 right-2 w-8 h-8 before:absolute before:-inset-1.5 before:content-[''] rounded-full flex items-center justify-center transition-transform active:scale-90"
         >
           <Heart
             size={16}

@@ -26,7 +26,10 @@ interface Props {
 }
 
 const SIZE_CLS: Record<ButtonSize, string> = {
-  sm: 'h-9 px-3.5 text-[13px] gap-1.5 rounded-xl',
+  // La zone tactile est etendue a 44 px sans changer la hauteur dessinee :
+  // 36 px est sous le minimum tactile, mais grossir le bouton changerait
+  // l'aspect de toute l'app.
+  sm: "relative before:absolute before:-inset-y-1 before:inset-x-0 before:content-[''] h-9 px-3.5 text-[13px] gap-1.5 rounded-xl",
   md: 'h-[46px] px-5 text-[14px] gap-2 rounded-2xl',
 };
 

@@ -23,7 +23,7 @@ export default function BackButton({ fallbackHref = '/', className }: BackButton
     <button
       onClick={handleClick}
       aria-label="Retour"
-      className={className ?? 'absolute top-4 left-4 w-9 h-9 flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors md:hidden'}
+      className={className ?? 'absolute top-4 left-4 w-9 h-9 before:absolute before:-inset-1 before:content-[""] flex items-center justify-center rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50 transition-colors md:hidden'}
     >
       <ChevronLeft size={19} />
     </button>

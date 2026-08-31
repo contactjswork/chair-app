@@ -103,7 +103,7 @@ function CardLikeButton({
   }
 
   return (
-    <button onClick={toggle} disabled={pending} className="flex flex-col items-center gap-1">
+    <button onClick={toggle} disabled={pending} className="relative before:absolute before:-inset-[9px] before:content-[''] flex flex-col items-center gap-1">
       <div className={`transition-transform duration-200 ${pop ? 'scale-[1.4]' : 'scale-100'}`}>
         <Heart
           size={32} strokeWidth={1.5}
@@ -146,7 +146,7 @@ function CardSaveButton({
   }
 
   return (
-    <button onClick={toggle} disabled={pending} className="flex flex-col items-center gap-1">
+    <button onClick={toggle} disabled={pending} className="relative before:absolute before:-inset-[9px] before:content-[''] flex flex-col items-center gap-1">
       <div className={`transition-transform duration-200 ${pop ? 'scale-[1.4]' : 'scale-100'}`}>
         <Bookmark
           size={30} strokeWidth={1.5}
@@ -186,7 +186,7 @@ function CardShareButton({
   }
 
   return (
-    <button onClick={share} className="flex flex-col items-center gap-1">
+    <button onClick={share} className="relative before:absolute before:-inset-[9px] before:content-[''] flex flex-col items-center gap-1">
       <Share2
         size={26} strokeWidth={1.5}
         className={`drop-shadow-md transition-colors ${copied ? 'stroke-green-400' : 'stroke-white'}`}
@@ -287,7 +287,7 @@ function FeedCard({ post, onNeedAuth }: { post: ApiPost; onNeedAuth: () => void 
           <div className="absolute bottom-10 left-3 right-16 flex items-center gap-2.5 z-10">
             <Link
               href={`/app/coiffeur/${hd.slug}`}
-              className="flex-shrink-0"
+              className="relative before:absolute before:-inset-[2px] before:content-[''] flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative w-10 h-10 rounded-full overflow-hidden bg-neutral-700 ring-1 ring-white/20">
@@ -554,7 +554,7 @@ function FeedContent() {
                     containerRef.current?.scrollTo({ top: 0 });
                   }
                 }}
-                className={`text-[13px] font-bold transition-all pb-1 px-1 active:scale-95 ${
+                className={`relative before:absolute before:-inset-y-[9px] before:inset-x-0 before:content-[''] text-[13px] font-bold transition-all pb-1 px-1 active:scale-95 ${
                   activeTab === tab.id
                     ? 'text-white border-b-2 border-white'
                     : 'text-white/45 border-b-2 border-transparent'

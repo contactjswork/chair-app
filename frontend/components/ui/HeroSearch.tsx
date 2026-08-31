@@ -138,7 +138,7 @@ export default function HeroSearch({ compact = false }: { compact?: boolean }) {
           />
           <button
             type="submit"
-            className={`flex-shrink-0 bg-neutral-900 text-white font-semibold rounded-xl hover:bg-neutral-700 active:scale-95 transition-all ${
+            className={`relative before:absolute before:-inset-y-[5px] before:inset-x-0 before:content-[''] flex-shrink-0 bg-neutral-900 text-white font-semibold rounded-xl hover:bg-neutral-700 active:scale-95 transition-all ${
               compact ? 'm-1.5 px-4 py-2.5 text-xs' : 'm-2 px-5 py-2.5 text-sm'
             }`}
           >

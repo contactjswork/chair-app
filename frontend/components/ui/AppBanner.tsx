@@ -76,11 +76,11 @@ export default function AppBanner() {
         </div>
         <button
           onClick={open}
-          className="flex-shrink-0 bg-white text-neutral-900 text-[12px] font-bold px-3.5 py-1.5 rounded-lg"
+          className="relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-[''] flex-shrink-0 bg-white text-neutral-900 text-[12px] font-bold px-3.5 py-1.5 rounded-lg"
         >
           Ouvrir
         </button>
-        <button onClick={dismiss} aria-label="Fermer" className="flex-shrink-0 text-white/30 p-1">
+        <button onClick={dismiss} aria-label="Fermer" className="relative before:absolute before:-inset-[10px] before:content-[''] flex-shrink-0 text-white/30 p-1">
           <X size={16} />
         </button>
       </div>

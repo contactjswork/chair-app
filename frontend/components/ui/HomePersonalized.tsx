@@ -169,7 +169,7 @@ export default function HomePersonalized({
       {noGeo && user && (
         <Link
           href="/app/compte/modifier"
-          className="mx-4 md:mx-8 mt-3 flex items-center gap-2 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors w-fit"
+          className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mx-4 md:mx-8 mt-3 flex items-center gap-2 text-[12px] text-neutral-500 hover:text-neutral-700 transition-colors w-fit"
         >
           <MapPin size={12} />Ajoute ta ville pour affiner ces résultats
         </Link>

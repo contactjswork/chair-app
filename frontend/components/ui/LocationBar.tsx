@@ -81,7 +81,7 @@ export default function LocationBar() {
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto pt-4">
         <button
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 text-[12.5px] font-bold text-neutral-700 hover:shadow-[0_4px_14px_-4px_rgba(10,10,10,0.14)] hover:ring-neutral-200 active:scale-[0.97] transition-all"
+          className="relative before:absolute before:-inset-y-[3px] before:inset-x-0 before:content-[''] inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-white shadow-[0_2px_10px_-4px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 text-[12.5px] font-bold text-neutral-700 hover:shadow-[0_4px_14px_-4px_rgba(10,10,10,0.14)] hover:ring-neutral-200 active:scale-[0.97] transition-all"
         >
           <MapPin size={13} className="text-neutral-400" />
           {user.city ?? 'Ajouter ma ville'}
