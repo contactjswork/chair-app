@@ -27,6 +27,7 @@ export default function ScanPage() {
   const [freeTextService,  setFreeTextService]  = useState('');
   const [confirming,  setConfirming]  = useState(false);
   const [rating,      setRating]      = useState(0);
+  const [avisCopie,   setAvisCopie]   = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment,     setComment]     = useState('');
   // La photo du résultat — optionnelle. Elle transforme « c'était bien »
@@ -446,6 +447,37 @@ export default function ScanPage() {
                 {' '}Votre avis vérifié est maintenant visible sur son profil.
               </p>
             </div>
+            {/* Le pont vers l'avis Google : seulement après un 5 étoiles, et
+                seulement si le coiffeur a renseigné sa fiche. Le texte de
+                l'avis est copié pour être recollé en deux gestes. */}
+            {rating === 5 && info?.google_review_url && (
+              <div className="w-full bg-white ring-1 ring-neutral-100 rounded-2xl p-4 text-left shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)]">
+                <p className="text-[14px] font-bold text-neutral-900">Publiez-le aussi sur Google ?</p>
+                <p className="text-[12px] text-neutral-500 leading-relaxed mt-1">
+                  Votre avis aide {confirmed?.hairdresser_name ?? 'ce coiffeur'} à être
+                  trouvé — copiez-le, Google s&apos;ouvre, collez.
+                </p>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={async () => {
+                      try { await navigator.clipboard.writeText(comment.trim()); setAvisCopie(true); } catch {}
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border border-neutral-200 text-neutral-700 hover:border-neutral-400 transition-colors"
+                  >
+                    {avisCopie ? 'Copié ✓' : 'Copier mon avis'}
+                  </button>
+                  <a
+                    href={info.google_review_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-2.5 rounded-xl text-[12.5px] font-bold bg-neutral-900 text-white text-center hover:bg-neutral-700 transition-colors"
+                  >
+                    Ouvrir Google
+                  </a>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 w-full">
               {confirmed?.hairdresser_slug && (
                 <Link

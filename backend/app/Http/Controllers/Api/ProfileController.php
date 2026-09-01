@@ -92,6 +92,9 @@ class ProfileController extends Controller
             'work_address'      => 'nullable|string|max:255',
             'instagram_url'     => 'nullable|url|max:255',
             'booking_url'       => 'nullable|url|max:500|starts_with:https://',
+            // Le pont vers l'avis Google : le lien « Laisser un avis » de SA
+            // fiche Google Business (g.page/... ou search.google.com/...).
+            'google_review_url' => 'nullable|url|max:500|starts_with:https://',
             'years_experience'  => 'nullable|integer|min:0|max:50',
             'work_availability' => 'nullable|in:employed,looking_salon,looking_gig,not_available',
             'specialties'       => 'nullable|array',
@@ -140,6 +143,7 @@ class ProfileController extends Controller
             'work_address'      => array_key_exists('work_address',      $validated) ? $validated['work_address']      : $profile->work_address,
             'instagram_url'     => array_key_exists('instagram_url',     $validated) ? $validated['instagram_url']     : $profile->instagram_url,
             'booking_url'       => array_key_exists('booking_url',       $validated) ? $validated['booking_url']       : $profile->booking_url,
+            'google_review_url' => array_key_exists('google_review_url', $validated) ? $validated['google_review_url'] : $profile->google_review_url,
             'years_experience'  => array_key_exists('years_experience',  $validated) ? $validated['years_experience']  : $profile->years_experience,
             'work_availability' => array_key_exists('work_availability', $validated) ? $validated['work_availability'] : $profile->work_availability,
             'pro_goals'         => array_key_exists('pro_goals',         $validated) ? $validated['pro_goals']         : $profile->pro_goals,

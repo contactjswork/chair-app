@@ -138,6 +138,9 @@ class VisitController extends Controller
             'salon_name'            => $hairdresser->salon?->name,
             'city'                  => $hairdresser->city,
             'verified_visits_count' => $hairdresser->verified_visits_count,
+            // Le pont vers l'avis Google : proposé au client après un 5
+            // étoiles vérifié, seulement si le coiffeur a renseigné SA fiche.
+            'google_review_url'     => $hairdresser->google_review_url,
             'token_valid_until'     => $token->valid_until->toIso8601String(),
             'services'              => $services,
         ]);

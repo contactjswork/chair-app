@@ -26,7 +26,7 @@ class HairdresserProfile extends Model
         'department', 'region',
         'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'work_availability', 'is_verified',
         'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
-        'instagram_url', 'tiktok_url', 'booking_url', 'keywords',
+        'instagram_url', 'tiktok_url', 'booking_url', 'google_review_url', 'keywords',
         'identity_verified', 'pro_active_badge', 'booking_window_days',
         'featured_until', 'chair_plus_until', 'chair_pick_until', 'chair_plus_test_mode',
         'siret', 'siret_verification_status', 'pro_goals',

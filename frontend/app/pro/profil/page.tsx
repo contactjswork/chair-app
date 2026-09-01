@@ -29,6 +29,7 @@ interface ProfileData {
     department: string | null;
     work_address: string | null;
     booking_url: string | null;
+    google_review_url?: string | null;
     years_experience: number | null;
     diploma: string | null;
     diploma_document_url: string | null;
@@ -68,6 +69,7 @@ export default function DashboardProfilPage() {
   const [regionsList, setRegionsList]         = useState<string[]>([]);
   const [departmentsList, setDepartmentsList] = useState<Array<{ code: string; name: string }>>([]);
   const [bookingUrl, setBookingUrl]           = useState('');
+  const [googleReviewUrl, setGoogleReviewUrl] = useState('');
   const [yearsExp, setYearsExp]               = useState('');
   const [selectedSpecialties, setSelectedSpecialties] = useState<number[]>([]);
   const [workAvailability, setWorkAvailability] = useState<string>('employed');
@@ -110,6 +112,7 @@ export default function DashboardProfilPage() {
         setDepartment(profileData.profile.department ?? '');
         setAddress(profileData.profile.work_address ?? '');
         setBookingUrl(profileData.profile.booking_url ?? '');
+        setGoogleReviewUrl(profileData.profile.google_review_url ?? '');
         setYearsExp(String(profileData.profile.years_experience ?? ''));
         setDiplomaType(profileData.profile.diploma ?? '');
         setDiplomaStatus(profileData.profile.diploma_status ?? 'none');
@@ -158,6 +161,7 @@ export default function DashboardProfilPage() {
         department: department || null,
         work_address: address || null,
         booking_url: bookingUrl || null,
+        google_review_url: googleReviewUrl || null,
         years_experience: yearsExp ? parseInt(yearsExp) : null,
         work_availability: workAvailability,
         specialties: selectedSpecialties,
@@ -618,6 +622,27 @@ export default function DashboardProfilPage() {
                 )}
               </div>
             )}
+
+            {/* Le pont vers l'avis Google : après un 5 étoiles vérifié sur
+                CHAIR, le client se voit proposer de le publier aussi sur
+                votre fiche Google — seulement si ce lien est renseigné. */}
+            <div>
+              <label className="block text-xs font-semibold text-neutral-600 mb-1.5">
+                Lien « Laisser un avis Google » <span className="text-neutral-400 font-normal">— optionnel</span>
+              </label>
+              <input
+                type="url"
+                value={googleReviewUrl}
+                onChange={(e) => { setGoogleReviewUrl(e.target.value); markDirty(); }}
+                placeholder="https://g.page/r/…/review"
+                className="w-full px-4 py-3 bg-neutral-50 rounded-xl text-[16px] focus:outline-none focus:ring-2 focus:ring-neutral-300 transition-all"
+              />
+              <p className="text-[11px] text-neutral-400 mt-1.5 leading-relaxed">
+                Vos clients 5 étoiles se verront proposer de republier leur avis
+                sur Google. Trouvez ce lien dans votre fiche Google Business →
+                « Demander des avis ».
+              </p>
+            </div>
           </div>
         </section>
 

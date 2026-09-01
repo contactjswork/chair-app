@@ -376,6 +376,8 @@ export interface ApiScanInfo {
   salon_name: string | null;
   city: string | null;
   verified_visits_count: number;
+  /** Pont avis Google — proposé après un 5 étoiles vérifié. */
+  google_review_url?: string | null;
   token_valid_until: string;
   services: { id: number; name: string; specialty_id: number | null; specialty_name: string | null }[];
 }
