@@ -7,7 +7,8 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
 import type { ApiPost, ApiSpecialty } from '@/lib/types';
 import { getAllImagesRaw, getAfterImage, getBeforeImage, resolveMediaUrl } from '@/lib/types';
-import { partagerStory } from '@/lib/storyImage';
+import { genererStory } from '@/lib/storyImage';
+import StoryShareSheet from '@/components/pro/StoryShareSheet';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS } from '@/lib/specialties';
@@ -463,23 +464,19 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
   const coverImg = allImages[0] ?? null;
 
   // Story Instagram : seulement pour les réalisations photo (une vidéo ne se
-  // compose pas dans un canvas). Échec silencieux impossible : on affiche
-  // l'erreur réseau éventuelle dans le bandeau pinError déjà en place.
+  // compose pas dans un canvas). Le partage passe par StoryShareSheet —
+  // génération à l'ouverture, partage au tap suivant : iOS refuse
+  // navigator.share hors geste utilisateur, le partage direct échouait.
+  const [storyOpen, setStoryOpen] = useState(false);
   const storyImage = post.type !== 'video' ? resolveMediaUrl(getAfterImage(post)) : null;
-  function handleShareStory() {
-    if (!storyImage) return;
-    partagerStory({
-      imageUrl: storyImage,
-      beforeImageUrl: post.type === 'before_after' ? resolveMediaUrl(getBeforeImage(post)) : null,
-      name: storyMeta.name,
-      city: storyMeta.city,
-      specialty: (post.specialty ?? post.tags?.[0])?.name ?? null,
-      slug: storyMeta.slug,
-    }).catch(() => {
-      setPinError('Impossible de générer la story — réessayez.');
-      setTimeout(() => setPinError(''), 3000);
-    });
-  }
+  const genererStoryPost = useCallback(() => genererStory({
+    imageUrl: storyImage!,
+    beforeImageUrl: post.type === 'before_after' ? resolveMediaUrl(getBeforeImage(post)) : null,
+    name: storyMeta.name,
+    city: storyMeta.city,
+    specialty: (post.specialty ?? post.tags?.[0])?.name ?? null,
+    slug: storyMeta.slug,
+  }), [storyImage, post, storyMeta]);
 
   async function handleTogglePin() {
     // Garde côté client — évite l'aller-retour réseau pour le cas courant.
@@ -650,8 +647,11 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
                 onEdit={() => setEditing(true)}
                 onToggleArchive={handleToggleArchive}
                 onDelete={handleDelete}
-                onShareStory={storyImage ? handleShareStory : undefined}
+                onShareStory={storyImage ? () => setStoryOpen(true) : undefined}
               />
+            )}
+            {storyOpen && storyImage && (
+              <StoryShareSheet generer={genererStoryPost} onClose={() => setStoryOpen(false)} />
             )}
           </>
         )}

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import BottomSheet from '@/components/ui/BottomSheet';
+import StoryShareSheet from '@/components/pro/StoryShareSheet';
+import { genererStoryCreneau } from '@/lib/storyImage';
 import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
 import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl, getAfterImage } from '@/lib/types';
@@ -13,7 +15,7 @@ import {
   CalendarDays, Clock, ChevronLeft, ChevronRight, Settings,
   Bell, ZoomIn, ZoomOut, User, X, Check, Phone, Mail,
   Calendar, AlertTriangle, CheckCircle2, Ban, UserX, Trash2,
-  List, Euro, Users, Zap,
+  List, Euro, Users, Zap, Share2,
 } from 'lucide-react';
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -74,6 +76,15 @@ function fromMin(m: number): string {
 function fmtTime(t?: string|null) { return t ? t.slice(0,5) : '—'; }
 function nowMs(): number { return Date.now(); }
 function isoDate(d: Date): string { return d.toISOString().slice(0,10); }
+/** « Aujourd'hui » / « Demain » / « mardi 2 sept. » — pour la story créneau. */
+function libelleJourStory(ds: string): string {
+  const d = new Date(ds+'T12:00:00');
+  const aujourdhui = new Date(); aujourdhui.setHours(12,0,0,0);
+  const ecart = Math.round((d.getTime()-aujourdhui.getTime())/86400000);
+  if (ecart === 0) return "Aujourd'hui";
+  if (ecart === 1) return 'Demain';
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'});
+}
 function addDays(d: Date, n: number): Date { const r=new Date(d); r.setDate(r.getDate()+n); return r; }
 function getWeekStart(d: Date): Date {
   const r=new Date(d); r.setDate(d.getDate()-((d.getDay()+6)%7)); r.setHours(0,0,0,0); return r;
@@ -624,6 +635,8 @@ interface DayViewProps {
   /** Promo flash du jour affiché (null = aucune) et ouverture de la feuille. */
   promoPct?: number|null;
   onPromoTap?: () => void;
+  /** Story « créneau libéré » depuis la pastille Libre. */
+  onStoryCreneau?: (time: string) => void;
 }
 
 interface FlashPromoDto { id:number; date:string; discount_percent:number; }
@@ -647,7 +660,7 @@ function nextFreeSlot(dayApts: ApiAppointment[], dayUnavail: ApiUnavailability[]
   return cursor < END_HOUR*60 ? cursor : null;
 }
 
-function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate, onStatusChange, promoPct, onPromoTap }: DayViewProps) {
+function DayView({ date, appointments, unavailabilities, hourHeight, loading, onMove, onSelectApt, onSelectUnavailability, onQuickCreate, onStatusChange, promoPct, onPromoTap, onStoryCreneau }: DayViewProps) {
   const dateStr      = isoDate(date);
   const dayApts      = aptsForDate(appointments, dateStr);
   const dayUnavail   = unavailForDate(unavailabilities, dateStr);
@@ -885,10 +898,19 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
           <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Euro size={9}/>CA</p>
           <p className="text-[14px] font-bold text-neutral-900">{revenue}€</p>
         </div>
-        <div className="flex-shrink-0 min-w-[90px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Clock size={9}/>Libre</p>
+        {/* Un créneau libre est une story à poster : toucher la pastille
+            génère « Créneau libéré · demain 14:00 » prête pour Instagram. */}
+        <button
+          onClick={freeSlot !== null && onStoryCreneau ? () => onStoryCreneau(fromMin(freeSlot)) : undefined}
+          disabled={freeSlot === null || !onStoryCreneau}
+          className="flex-shrink-0 min-w-[90px] bg-neutral-50 rounded-2xl px-3 py-2 text-left shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)] disabled:cursor-default"
+        >
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1">
+            <Clock size={9}/>Libre
+            {freeSlot !== null && onStoryCreneau && <Share2 size={9} className="text-neutral-300"/>}
+          </p>
           <p className="text-[12px] font-bold text-neutral-900">{freeSlot!==null ? fromMin(freeSlot) : '—'}</p>
-        </div>
+        </button>
         {late>0 && (
           <div className="flex-shrink-0 min-w-[80px] bg-red-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(220,38,38,0.15)]">
             <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-red-400 flex items-center gap-1"><AlertTriangle size={9}/>Retard</p>
@@ -1332,6 +1354,7 @@ export default function AgendaPage() {
   const [selectedUnavail, setSelectedUnavail] = useState<ApiUnavailability|null>(null);
   const [flashPromos, setFlashPromos] = useState<FlashPromoDto[]>([]);
   const [promoSheetOpen, setPromoSheetOpen] = useState(false);
+  const [storyCreneau, setStoryCreneau] = useState<{date:string; time:string}|null>(null);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
   const weekStart = getWeekStart(current);
@@ -1529,6 +1552,7 @@ export default function AgendaPage() {
           onStatusChange={updateStatus}
           promoPct={flashPromos.find(p=>p.date===isoDate(current))?.discount_percent ?? null}
           onPromoTap={()=>setPromoSheetOpen(true)}
+          onStoryCreneau={(time)=>setStoryCreneau({date: isoDate(current), time})}
         />
       )}
       {view==='week'&&(
@@ -1588,6 +1612,21 @@ export default function AgendaPage() {
           unavail={selectedUnavail}
           onClose={()=>setSelectedUnavail(null)}
           onDeleted={(id)=>{ setUnavailabilities(prev=>prev.filter(u=>u.id!==id)); setSelectedUnavail(null); }}
+        />
+      )}
+
+      {/* Story « créneau libéré » — génération à l'ouverture, partage au tap
+          suivant (voir StoryShareSheet : iOS refuse le partage hors geste). */}
+      {storyCreneau&&(
+        <StoryShareSheet
+          generer={()=>genererStoryCreneau({
+            dateLabel: libelleJourStory(storyCreneau.date),
+            timeLabel: storyCreneau.time,
+            name: user?.name ?? '',
+            city: user?.hairdresser_profile?.city ?? null,
+            slug: user?.hairdresser_profile?.slug ?? null,
+          })}
+          onClose={()=>setStoryCreneau(null)}
         />
       )}
 
