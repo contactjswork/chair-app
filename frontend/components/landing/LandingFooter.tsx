@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import ChairLogo from '@/components/ui/ChairLogo';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 import { SUPPORT_EMAIL, SUPPORT_MAILTO, SOCIAL_LINKS } from '@/lib/contact';
 
 // Les icônes réseaux sociaux pointaient vers https://instagram.com et
@@ -111,9 +112,12 @@ export default function LandingFooter() {
         </div>
 
         <div className="border-t border-white/8 pt-6 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-neutral-600 text-[13px]">
-            © 2026 CHAIR. Tous droits réservés.
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-neutral-600 text-[13px]">
+              © 2026 CHAIR. Tous droits réservés.
+            </p>
+            <ThemeToggle />
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[13px] text-neutral-600">
             <Link href="/confidentialite" className="hover:text-neutral-400 transition-colors">Confidentialité</Link>
             <Link href="/cgu" className="hover:text-neutral-400 transition-colors">CGU</Link>
