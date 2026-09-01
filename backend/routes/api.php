@@ -419,6 +419,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::post('/scan/{token}',         [VisitController::class, 'confirmVisit']);
     // Carte de fidelite — la carte du client connecte chez un coiffeur.
     Route::get('/loyalty/my-card/{hairdresserId}', [LoyaltyController::class, 'myCard']);
+    // Les conseils laisses par mes coiffeurs (fiche client, cote client).
+    Route::get('/my-advices', [ClientBookController::class, 'myAdvices']);
     // Liste d attente : « prevenez-moi si ca se libere » sur un jour complet.
     Route::post('/waitlist', [WaitlistController::class, 'join']);
     // Le coiffeur a imprime son QR — alimente la checklist des premiers pas.
@@ -521,6 +523,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/my-clients',                 [ClientBookController::class, 'index']);
     Route::get('/my-clients/{userId}',        [ClientBookController::class, 'show']);
     Route::put('/my-clients/{userId}/note',   [ClientBookController::class, 'saveNote']);
+    // Conseil post-visite (visible client), rythme de rappel, relance manuelle.
+    Route::put('/my-clients/{userId}/advice',  [ClientBookController::class, 'saveAdvice']);
+    Route::put('/my-clients/{userId}/rhythm',  [ClientBookController::class, 'saveRhythm']);
+    Route::post('/my-clients/{userId}/relance', [ClientBookController::class, 'relance']);
     // « Votre annee CHAIR » — recap annuel du coiffeur.
     Route::get('/my-year-recap', [\App\Http\Controllers\Api\YearRecapController::class, 'mine']);
     // Promo flash : brader un jour creux pour le remplir.

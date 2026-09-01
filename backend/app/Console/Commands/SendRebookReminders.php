@@ -112,6 +112,19 @@ class SendRebookReminders extends Command
      */
     private function rythmeJours(int $clientId, int $hairdresserId): int
     {
+        // Le rythme réglé PAR le coiffeur pour ce client (fiche client,
+        // 01/09/2026) est prioritaire sur la moyenne calculée : « ses
+        // racines, c'est toutes les 6 semaines » sait mieux qu'une moyenne.
+        // Volontairement hors bornes MIN/MAX automatiques : un choix humain
+        // explicite (2 à 26 semaines validées à l'écriture) n'a pas à être
+        // corrigé par la machine.
+        $regle = \App\Models\ClientNote::where('hairdresser_id', $hairdresserId)
+            ->where('client_user_id', $clientId)
+            ->value('rebook_weeks');
+        if ($regle) {
+            return (int) $regle * 7;
+        }
+
         $dates = Appointment::where('client_id', $clientId)
             ->where('hairdresser_id', $hairdresserId)
             ->where('status', 'completed')

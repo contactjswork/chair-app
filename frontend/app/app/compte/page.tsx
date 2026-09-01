@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl, getAfterImage, formatApptDate, type ApiAppointment } from '@/lib/types';
-import { appointments as appointmentsApi, interactions } from '@/lib/api';
+import { api, appointments as appointmentsApi, interactions } from '@/lib/api';
+import { applyThemeChoice, getThemeChoice, type ThemeChoice } from '@/lib/theme';
 import { hapticWarning } from '@/lib/haptics';
 import type { SavedHairdresser } from '@/lib/api';
 import { useEffect, useState } from 'react';
@@ -13,7 +14,7 @@ import {
   User, LogIn, UserPlus, LayoutDashboard, ChevronRight, LogOut,
   Clock, CalendarDays, Bell, HelpCircle, Scissors, Trash2,
   MapPin, Edit3, FileText, Shield, CalendarX, CalendarPlus, Loader2, X,
-  ShieldOff, ScrollText, ChevronDown, Scale,
+  ShieldOff, ScrollText, ChevronDown, Scale, MessageCircleHeart, Moon,
 } from 'lucide-react';
 import { BlockedAccountsList } from '@/components/ui/BlockConfirmSheet';
 import BottomSheet from '@/components/ui/BottomSheet';
@@ -467,8 +468,22 @@ export default function ComptePage() {
             {/* ══════════════════════════════════════
                 PARAMÈTRES
             ══════════════════════════════════════ */}
+            {/* Les conseils laissés par vos coiffeurs — l'ordonnance du pro,
+                visible ici et nulle part ailleurs. Section absente si vide. */}
+            <ConseilsSection />
+
             <section className="mt-6 px-4">
               <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Paramètres</p>
+
+              {/* Apparence : même réglage que CHAIR PRO (chair_theme, partagé). */}
+              <div className="bg-white rounded-2xl border border-neutral-100 p-4 mb-3">
+                <div className="flex items-center gap-3 mb-3">
+                  <Moon size={17} className="text-neutral-400" />
+                  <span className="font-medium text-[14px] text-neutral-900">Apparence</span>
+                </div>
+                <ThemePicker />
+              </div>
+
               <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
                 {/* Pas de badge non-lu ici : cette entrée mène aux PARAMÈTRES
                     de notifications — le compteur vit sur la cloche du header
@@ -602,6 +617,86 @@ export default function ComptePage() {
  * montage, on ne le monte donc qu'à l'ouverture pour ne pas alourdir chaque
  * visite de la page Compte.
  */
+/** Sélecteur d'apparence — même préférence chair_theme que CHAIR PRO. */
+function ThemePicker() {
+  const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice());
+  return (
+    <div className="flex gap-2">
+      {([
+        { valeur: 'system', libelle: 'Système' },
+        { valeur: 'light',  libelle: 'Clair' },
+        { valeur: 'dark',   libelle: 'Sombre' },
+      ] as const).map(({ valeur, libelle }) => (
+        <button key={valeur}
+          onClick={() => { applyThemeChoice(valeur); setTheme(valeur); }}
+          className={`flex-1 py-2.5 text-[13px] font-semibold rounded-xl border transition-all ${
+            theme === valeur
+              ? 'bg-neutral-900 text-white border-neutral-900'
+              : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+          }`}>
+          {libelle}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+interface ConseilCoiffeur {
+  hairdresser_name: string;
+  hairdresser_avatar: string | null;
+  hairdresser_slug: string;
+  advice: string;
+  updated_at: string | null;
+}
+
+/** Les conseils post-visite laissés par les coiffeurs du client. */
+function ConseilsSection() {
+  const [conseils, setConseils] = useState<ConseilCoiffeur[]>([]);
+
+  useEffect(() => {
+    api.get<{ advices: ConseilCoiffeur[] }>('/my-advices')
+      .then((d) => setConseils(d.advices))
+      .catch(() => {});
+  }, []);
+
+  if (conseils.length === 0) return null;
+
+  return (
+    <section className="mt-6 px-4">
+      <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Conseils de vos coiffeurs</p>
+      <div className="space-y-3">
+        {conseils.map((c) => (
+          <div key={c.hairdresser_slug} className="bg-white rounded-2xl border border-neutral-100 p-4">
+            <Link href={`/app/coiffeur/${c.hairdresser_slug}`} className="flex items-center gap-2.5 mb-2.5">
+              <div className="relative w-8 h-8 rounded-full overflow-hidden bg-neutral-100 shrink-0">
+                {c.hairdresser_avatar ? (
+                  <Image src={resolveMediaUrl(c.hairdresser_avatar) ?? ''} alt={c.hairdresser_name} fill className="object-cover" sizes="32px" />
+                ) : (
+                  <span className="w-full h-full flex items-center justify-center text-[12px] font-bold text-neutral-500">
+                    {c.hairdresser_name.charAt(0)}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[13px] font-bold text-neutral-900 truncate flex items-center gap-1.5">
+                  <MessageCircleHeart size={13} className="text-neutral-400 shrink-0" />
+                  {c.hairdresser_name}
+                </p>
+                {c.updated_at && (
+                  <p className="text-[11px] text-neutral-400">
+                    {new Date(c.updated_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
+                  </p>
+                )}
+              </div>
+            </Link>
+            <p className="text-[14px] text-neutral-700 leading-relaxed selectable">{c.advice}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function BlockedAccountsRow() {
   const [open, setOpen] = useState(false);
 

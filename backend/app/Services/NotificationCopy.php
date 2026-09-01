@@ -469,6 +469,26 @@ class NotificationCopy
             ],
         ],
 
+        // Le conseil post-visite : le coiffeur a laissé une recommandation
+        // visible dans l app du client (fiche client, onglet compte).
+        'advice_posted' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Un conseil de {coiffeur}',
+                'message'  => 'Sa recommandation après ton passage est dans ton compte.',
+                'fallback' => 'Ton coiffeur t a laissé un conseil personnalisé.',
+            ],
+        ],
+
+        // Relance manuelle : le coiffeur choisit de recontacter CE client
+        // (30 jours minimum entre deux, drapeau relance_sent_at).
+        'pro_relance' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => '{coiffeur} pense à toi',
+                'message'  => 'Ça fait un moment — un créneau cette semaine ?',
+                'fallback' => 'Ton coiffeur aimerait te revoir bientôt.',
+            ],
+        ],
+
         // Promo flash : un coiffeur suivi ou en favori brade un jour creux.
         // Une seule vague par promo (drapeau notified_at posé avant l'envoi).
         'flash_promo' => [
