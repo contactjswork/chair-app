@@ -84,11 +84,21 @@ class SendAppointmentReminders extends Command
 
             if ($appointment->reminded_24h_at === null
                 && $start->between($now->copy()->addHours(24)->subMinutes(15), $now->copy()->addHours(24)->addMinutes(15))) {
-                // Le rappel 24 h est aussi la DEMANDE DE CONFIRMATION
-                // (01/09/2026) : confirmation_requested_at arme la libération
-                // automatique 4 h avant le RDV si le client ne confirme pas.
-                $appointment->forceFill(['confirmation_requested_at' => now()])->save();
-                $this->remind($appointment, 'appointment_reminder_24h', 'reminded_24h_at', $start);
+                // GROSSES PRESTATIONS (>= 3 h) : le rappel devient une demande
+                // de confirmation, et confirmation_requested_at arme la
+                // libération automatique 4 h avant. En dessous : simple rappel
+                // doux, jamais de libération (retour Julien 01/09 : « pour les
+                // presta en dessous de 3 h, ça sert à rien »).
+                $grosseTransfo = ($appointment->duration_minutes ?? 0) >= 180;
+                if ($grosseTransfo) {
+                    $appointment->forceFill(['confirmation_requested_at' => now()])->save();
+                }
+                $this->remind(
+                    $appointment,
+                    $grosseTransfo ? 'appointment_confirm_request' : 'appointment_reminder_24h',
+                    'reminded_24h_at',
+                    $start
+                );
                 $sent24h++;
             }
 

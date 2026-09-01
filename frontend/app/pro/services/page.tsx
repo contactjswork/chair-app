@@ -33,7 +33,9 @@ import ServiceActionsSheet from '@/components/ui/ServiceActionsSheet';
  * l'expérience de création change.
  */
 
-const DUREES = [15, 20, 30, 45, 60, 90, 120, 150, 180];
+// Jusqu'à 8 h — le backend accepte 5-480 min, c'est le coiffeur qui sait
+// combien dure SA prestation (retour Julien : plus de plafond à 3 h).
+const DUREES = [15, 20, 30, 45, 60, 90, 120, 150, 180, 210, 240, 270, 300, 360, 420, 480];
 
 interface ServiceDraft {
   name: string;

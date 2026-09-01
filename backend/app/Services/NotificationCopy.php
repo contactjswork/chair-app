@@ -135,14 +135,11 @@ class NotificationCopy
         ],
 
         // Rappels : mapping de préférence déjà prêt, envoi pas encore branché.
-        // Depuis le 01/09/2026 : le rappel 24 h DEMANDE la confirmation.
-        // Sans confirmation, le créneau est libéré 4 h avant le RDV
-        // (chair:send-appointment-reminders, branche libération).
         'appointment_reminder_24h' => [
             self::AUDIENCE_CLIENT => [
-                'title'    => 'Confirme ton rendez-vous',
-                'message'  => 'Demain {heure} chez {coiffeur} — confirme en un tap, sinon le créneau sera libéré.',
-                'fallback' => 'Confirme ton rendez-vous de demain, sinon le créneau sera libéré.',
+                'title'    => 'Rendez-vous demain',
+                'message'  => 'Demain {heure} chez {coiffeur}. Préviens en cas d\'imprévu.',
+                'fallback' => 'Tu as un rendez-vous demain. Préviens ton coiffeur en cas d\'imprévu.',
             ],
             self::AUDIENCE_PRO => [
                 'title'    => 'Ton agenda de demain',
@@ -479,6 +476,18 @@ class NotificationCopy
                 'title'    => '{coiffeur} a changé de salon',
                 'message'  => 'Retrouve-le désormais chez {salon}.',
                 'fallback' => 'Un coiffeur que tu suis a changé de salon — son profil est à jour.',
+            ],
+        ],
+
+        // GROSSES PRESTATIONS UNIQUEMENT (>= 3 h — retour Julien : « pour
+        // les presta en dessous de 3 h, ça sert à rien ») : le rappel 24 h
+        // demande une confirmation, et sans réponse le créneau est libéré
+        // 4 h avant (chair:send-appointment-reminders, branche libération).
+        'appointment_confirm_request' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Confirme ton rendez-vous',
+                'message'  => 'Demain {heure} chez {coiffeur} — confirme en un tap, sinon le créneau sera libéré.',
+                'fallback' => 'Confirme ton rendez-vous de demain, sinon le créneau sera libéré.',
             ],
         ],
 

@@ -646,7 +646,7 @@ export default function OnboardingPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <input type="number" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} placeholder="Prix (€)" min="0" className={inputCls} />
                     <select value={serviceDuration} onChange={(e) => setServiceDuration(e.target.value)} className={inputCls}>
-                      {[30, 45, 60, 75, 90, 120, 150, 180].map((d) => <option key={d} value={d}>{d} min</option>)}
+                      {[30, 45, 60, 75, 90, 120, 150, 180, 210, 240, 300, 360, 420, 480].map((d) => <option key={d} value={d}>{d < 60 ? `${d} min` : `${Math.floor(d / 60)} h${d % 60 ? ` ${d % 60}` : ''}`}</option>)}
                     </select>
                   </div>
                 )}

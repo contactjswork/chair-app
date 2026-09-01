@@ -35,6 +35,8 @@ class NotificationService
 
         // Rappels (émis par chair:send-appointment-reminders, cron 15 min)
         'appointment_reminder_24h' => 'reminder_24h',
+        // Même préférence : c'est le rappel 24 h version grosse prestation.
+        'appointment_confirm_request' => 'reminder_24h',
         'appointment_reminder_1h'  => 'reminder_1h',
 
         // Avis
