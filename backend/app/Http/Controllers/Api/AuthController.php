@@ -95,7 +95,10 @@ class AuthController extends Controller
         }
 
         [$user, $token] = DB::transaction(function () use ($validated, $clientCity, $geoCoords) {
-            $user = \App\Models\User::create([
+            // forceCreate car 'role' est hors $fillable (voir User::$fillable) :
+            // la valeur est déjà validée in:client,hairdresser,salon_owner, donc
+            // sûre ; l'exclusion de $fillable protège les AUTRES chemins d'écriture.
+            $user = \App\Models\User::forceCreate([
                 'name'        => $validated['name'],
                 'email'       => $validated['email'],
                 'password'    => bcrypt($validated['password']),
@@ -235,6 +238,13 @@ class AuthController extends Controller
         ], 201);
     }
 
+    // Hash bcrypt factice, vérifié quand l'email n'existe pas, pour que la
+    // réponse d'un login raté prenne le MÊME temps qu'un email inexistant :
+    // sans lui, aucun bcrypt n'était calculé pour un email inconnu, la réponse
+    // était plus rapide, et cette différence de latence révélait quels emails
+    // ont un compte (oracle temporel d'énumération — audit sécurité 01/09/2026).
+    private const DUMMY_PASSWORD_HASH = '$2y$10$OnR6ELC.rGUX38MW0e.Et.9e/d.0j/VU2CmBf4I7E3zoe34hEZj/K';
+
     public function login(Request $request)
     {
         $request->validate([
@@ -242,14 +252,19 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        if (!\Illuminate\Support\Facades\Auth::attempt($request->only('email', 'password'))) {
+        $user = \App\Models\User::where('email', $request->email)->first();
+
+        // Vérification manuelle (au lieu d'Auth::attempt) pour pouvoir égaliser
+        // le temps de réponse : si l'email est inconnu, on hache tout de même
+        // un mot de passe factice avant de répondre.
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+            if (!$user) {
+                \Illuminate\Support\Facades\Hash::check($request->password, self::DUMMY_PASSWORD_HASH);
+            }
             return response()->json(['message' => 'Identifiants invalides'], 401);
         }
 
-        $user = \App\Models\User::where('email', $request->email)->first();
-
         if ($user->suspended_at) {
-            \Illuminate\Support\Facades\Auth::logout();
             return response()->json(['message' => 'Ce compte est suspendu.'], 403);
         }
 
@@ -471,11 +486,19 @@ class AuthController extends Controller
             return response()->json(['message' => 'Vous gérez déjà un salon.'], 422);
         }
 
+        $profile = $user->hairdresserProfile;
+
+        // Garde de robustesse (audit sécurité 01/09/2026) : cette bascule est
+        // réservée à un compte coiffeur existant. Sans profil (compte client),
+        // l'accès à $profile->city plus bas partait en erreur 500 — on refuse
+        // proprement au lieu de crasher.
+        if (!$profile) {
+            return response()->json(['message' => 'Cette action est réservée aux comptes professionnels.'], 422);
+        }
+
         $validated = $request->validate([
             'salon_name' => 'required|string|max:255',
         ]);
-
-        $profile = $user->hairdresserProfile;
 
         $baseSlug = Str::slug($validated['salon_name']);
         $slug     = $baseSlug;

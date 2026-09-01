@@ -314,7 +314,7 @@ class ProfileController extends Controller
         }
 
         if (!$result['is_hairdresser'] || !$result['is_active']) {
-            $profile->update(['siret' => $request->siret, 'siret_verification_status' => 'rejected']);
+            $profile->forceFill(['siret' => $request->siret, 'siret_verification_status' => 'rejected'])->save();
             return response()->json([
                 'verified' => false,
                 'message'  => !$result['is_active']
@@ -323,7 +323,7 @@ class ProfileController extends Controller
             ], 422);
         }
 
-        $profile->update(['siret' => $request->siret, 'siret_verification_status' => 'verified']);
+        $profile->forceFill(['siret' => $request->siret, 'siret_verification_status' => 'verified'])->save();
 
         return response()->json([
             'verified'      => true,

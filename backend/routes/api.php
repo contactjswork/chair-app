@@ -213,7 +213,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(functi
 // Auth — throttle dédié : le seul throttle:api global (60/min) laisse trop de
 // marge pour du brute-force login/mot de passe (voir audit pré-lancement).
 Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:6,1');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:4,1');
 Route::post('/contact', [ContactController::class, 'store'])->middleware('throttle:5,1');
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');

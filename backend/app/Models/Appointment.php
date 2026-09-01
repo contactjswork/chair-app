@@ -20,6 +20,14 @@ class Appointment extends Model
         'status', 'review_token', 'review_unlocked',
     ];
 
+    // Le review_token vaut autorisation de déposer un avis VÉRIFIÉ : il ne doit
+    // jamais sortir dans une réponse API. Il n'était pas masqué, donc le
+    // coiffeur pouvait le lire dans GET /appointments et fabriquer de faux avis
+    // 5★ (audit sécurité 01/09/2026). Il reste lisible en PHP (le mail de
+    // demande d'avis construit le lien côté serveur) — $hidden n'agit que sur
+    // la sérialisation JSON.
+    protected $hidden = ['review_token'];
+
     protected $casts = [
         'desired_date'     => 'date:Y-m-d',
         'appointment_date' => 'date:Y-m-d',

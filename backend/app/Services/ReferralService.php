@@ -175,13 +175,13 @@ class ReferralService
     private static function extendBoost(HairdresserProfile $profile, int $days): void
     {
         $base = ($profile->featured_until && $profile->featured_until->isFuture()) ? $profile->featured_until : now();
-        $profile->update(['featured_until' => $base->copy()->addDays($days)]);
+        $profile->forceFill(['featured_until' => $base->copy()->addDays($days)])->save();
     }
 
     private static function extendChairPlus(HairdresserProfile $profile, int $days): void
     {
         $base = ($profile->chair_plus_until && $profile->chair_plus_until->isFuture()) ? $profile->chair_plus_until : now();
-        $profile->update(['chair_plus_until' => $base->copy()->addDays($days)]);
+        $profile->forceFill(['chair_plus_until' => $base->copy()->addDays($days)])->save();
     }
 
     /** Filleuls réels = comptes créés avec ce referral_code, peu importe leur rôle. */

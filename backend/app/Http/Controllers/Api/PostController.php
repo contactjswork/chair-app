@@ -409,6 +409,17 @@ class PostController extends Controller
             ->where('hairdresser_id', $profile?->id)
             ->firstOrFail();
 
+        // Les réalisations épinglées sont une fonctionnalité CHAIR+ (docs/
+        // CHAIR_PLUS.md). Le garde premium était présent sur les vidéos et les
+        // stories mais AVAIT ÉTÉ OUBLIÉ ici — un pro non abonné pouvait épingler
+        // via un appel API direct (audit sécurité 01/09/2026). On ne bloque que
+        // l'ACTION d'épingler : désépingler reste toujours possible.
+        if (!$post->is_pinned && !($profile?->hasChairPlus())) {
+            return response()->json([
+                'message' => 'Épingler une réalisation est réservé aux abonnés CHAIR+.',
+            ], 403);
+        }
+
         if (!$post->is_pinned) {
             $pinnedCount = Post::where('hairdresser_id', $profile?->id)
                 ->where('is_pinned', true)

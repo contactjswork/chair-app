@@ -104,7 +104,7 @@ class PublicScope
         return $user?->makeHidden(self::USER_PRIVATE);
     }
 
-    /** Masque un salon + son équipe imbriquée si elle est chargée. */
+    /** Masque un salon + son équipe ET son gérant imbriqués si chargés. */
     public static function salon(?Salon $salon): ?Salon
     {
         if (!$salon) {
@@ -118,6 +118,13 @@ class PublicScope
             if ($team instanceof Collection) {
                 self::hairdressers($team);
             }
+        }
+
+        // Le gérant est un User : sans ce masque, son email, son téléphone et
+        // les coordonnées GPS de son domicile fuitaient sur les fiches salon
+        // publiques (GET /salons, GET /salons/{slug}).
+        if ($salon->relationLoaded('owner') && $salon->owner) {
+            self::user($salon->owner);
         }
 
         return $salon;

@@ -160,6 +160,11 @@ class SearchController extends Controller
 
         BadgeService::attachGamification($items);
 
+        // Masque email/téléphone/GPS domicile/SIRET/diplôme avant sérialisation
+        // publique — comme HairdresserController le fait déjà partout (audit
+        // sécurité 01/09/2026, ce maillon avait été oublié).
+        \App\Support\PublicScope::hairdressers($items);
+
         return response()->json([
             'data'         => $items,
             'total'        => $total,

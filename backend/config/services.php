@@ -67,6 +67,9 @@ return [
     'apple_iap' => [
         'shared_secret'      => env('APPLE_IAP_SHARED_SECRET'),
         'product_chair_plus' => env('APPLE_IAP_PRODUCT_CHAIR_PLUS', 'app.getchair.pro.chairplus.monthly'),
+        // Bundle de l'app CHAIR PRO — le reçu Apple DOIT le porter, sinon c'est
+        // le reçu d'une autre app (défense en profondeur, audit 01/09/2026).
+        'bundle_id'          => env('APPLE_IAP_BUNDLE_ID', 'app.getchair.pro'),
     ],
 
 ];

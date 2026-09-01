@@ -20,17 +20,31 @@ class HairdresserProfile extends Model
     // seule échelle visible est le niveau par spécialité.
     protected $hidden = ['chair_score', 'chair_level', 'chair_score_adjustment'];
 
+    // Colonnes qui OCTROIENT un privilège (vérification, badge, entitlement
+    // CHAIR+, mise en avant) : volontairement HORS $fillable pour qu'aucun
+    // assignement de masse ne puisse jamais les poser depuis une entrée
+    // utilisateur — même un futur `->update($request->all())` maladroit.
+    // Elles ne s'écrivent que par forceFill() explicite, dans du code
+    // privilégié (admin, service de parrainage, vérification SIRET serveur).
+    // Audit sécurité 01/09/2026. Voir $guardedPrivileged plus bas pour la liste.
     protected $fillable = [
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
         'years_experience', 'diploma', 'diploma_document_url', 'diploma_status', 'city', 'postal_code',
         'department', 'region',
-        'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'work_availability', 'is_verified',
+        'latitude', 'longitude', 'is_independent', 'work_status', 'work_address', 'work_availability',
         'followers_count', 'posts_count', 'avg_rating', 'reviews_count', 'visits_count', 'verified_visits_count',
         'instagram_url', 'tiktok_url', 'booking_url', 'google_review_url', 'monthly_goal_amount', 'keywords',
-        'identity_verified', 'pro_active_badge', 'booking_window_days',
-        'featured_until', 'chair_plus_until', 'chair_pick_until', 'chair_plus_test_mode',
-        'siret', 'siret_verification_status', 'pro_goals',
+        'pro_active_badge', 'booking_window_days',
+        'siret', 'pro_goals',
     ];
+
+    // Ne JAMAIS ajouter ces colonnes à $fillable : elles octroient un statut
+    // ou un accès payant. Écriture uniquement via forceFill() dans du code
+    // serveur privilégié.
+    //   is_verified, identity_verified   → badge « vérifié »
+    //   chair_plus_until, chair_plus_test_mode → entitlement CHAIR+
+    //   chair_pick_until, featured_until  → mise en avant éditoriale / boost
+    //   siret_verification_status         → statut de vérification SIRET
 
     protected $casts = [
         'loyalty_addon_until' => 'datetime',

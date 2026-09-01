@@ -173,6 +173,14 @@ class AppointmentController extends Controller
 
             $profile = \App\Models\HairdresserProfile::findOrFail($validated['hairdresser_id']);
 
+            // Anti-triche : un coiffeur ne peut pas réserver sur son propre
+            // profil. C'était la porte d'entrée d'une fabrique à faux avis
+            // vérifiés et à fausses visites (créer des RDV bidon sur soi, les
+            // passer « terminé », s'auto-noter). Audit sécurité 01/09/2026.
+            if ($clientId !== null && (int) $profile->user_id === $clientId) {
+                abort(422, 'Vous ne pouvez pas réserver sur votre propre profil.');
+            }
+
             // Le serveur re-valide TOUT (planning, pause, congés, chevauchement
             // de durée, fenêtre de réservation, heure passée) : la liste de
             // créneaux affichée au client peut être périmée, falsifiée, ou
@@ -656,6 +664,12 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Le rendez-vous doit être terminé pour laisser un avis.'], 422);
         }
 
+        // Anti-auto-avis (audit sécurité 01/09/2026) : impossible de se noter
+        // soi-même. Filet en plus du blocage d'auto-réservation dans store().
+        if ((int) ($appointment->hairdresser->user_id ?? 0) === (int) $user->id) {
+            return response()->json(['message' => 'Vous ne pouvez pas laisser un avis sur votre propre profil.'], 403);
+        }
+
         // 1 avis max par rendez-vous
         if ($appointment->review()->exists()) {
             return response()->json(['message' => 'Un avis a déjà été soumis pour ce rendez-vous.'], 409);
@@ -725,7 +739,7 @@ class AppointmentController extends Controller
      */
     public function reviewByToken(Request $request, string $token)
     {
-        $appointment = Appointment::with('serviceModel')
+        $appointment = Appointment::with(['serviceModel', 'hairdresser'])
             ->where('review_token', $token)
             ->where('review_unlocked', true)
             ->where('status', 'completed')
@@ -733,6 +747,19 @@ class AppointmentController extends Controller
 
         if ($appointment->review()->exists()) {
             return response()->json(['message' => 'Un avis a déjà été laissé pour ce rendez-vous.'], 409);
+        }
+
+        $clientId = self::resolveClientId($request);
+
+        // Anti-auto-avis (audit sécurité 01/09/2026) : le coiffeur ne peut pas
+        // se noter lui-même, ni via son compte, ni via un RDV dont l'email
+        // client est le sien. Miroir de la protection du circuit QR
+        // (VisitController « Vous ne pouvez pas vous noter vous-même »).
+        $ownerUser = $appointment->hairdresser?->user_id;
+        $ownerEmail = $appointment->hairdresser?->relationLoaded('user') ? $appointment->hairdresser->user?->email : optional(\App\Models\User::find($ownerUser))->email;
+        if (($clientId !== null && $ownerUser !== null && (int) $ownerUser === $clientId)
+            || ($ownerEmail && strcasecmp((string) $appointment->client_email, $ownerEmail) === 0)) {
+            return response()->json(['message' => 'Vous ne pouvez pas laisser un avis sur votre propre profil.'], 403);
         }
 
         $validated = $request->validate([
@@ -746,8 +773,6 @@ class AppointmentController extends Controller
         if ($reason = ContentFilter::check($validated['comment'] ?? null)) {
             return response()->json(['message' => ContentFilter::message($reason)], 422);
         }
-
-        $clientId = self::resolveClientId($request);
 
         $review = Review::create([
             'hairdresser_id' => $appointment->hairdresser_id,

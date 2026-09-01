@@ -69,6 +69,17 @@ class AppleIapService
             abort(422, "Apple n'a pas reconnu cet achat. Réessaie, ou utilise « Restaurer mes achats »." );
         }
 
+        // Défense en profondeur (audit 01/09/2026) : le reçu doit appartenir à
+        // CHAIR PRO. Sans ce contrôle, un reçu valide d'une AUTRE app (même
+        // basé sur la même clé n'est pas censé arriver, mais on ne fait pas
+        // confiance) pourrait théoriquement ouvrir l'entitlement.
+        $expectedBundle = config('services.apple_iap.bundle_id');
+        $receiptBundle = $response['receipt']['bundle_id'] ?? null;
+        if ($expectedBundle && $receiptBundle && $receiptBundle !== $expectedBundle) {
+            \Log::warning('Reçu Apple : bundle_id inattendu', ['recu' => $receiptBundle, 'attendu' => $expectedBundle]);
+            abort(422, "Ce reçu ne correspond pas à l'application CHAIR PRO.");
+        }
+
         $productId = config('services.apple_iap.product_chair_plus');
         $entries = collect($response['latest_receipt_info'] ?? [])
             ->filter(fn ($e) => ($e['product_id'] ?? null) === $productId);

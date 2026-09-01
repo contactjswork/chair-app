@@ -145,7 +145,7 @@ class AdminHairdresserController extends Controller
     {
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->identity_verified;
-        $profile->update(['identity_verified' => true]);
+        $profile->forceFill(['identity_verified' => true])->save();
         BadgeService::refresh($profile->fresh());
 
         AdminAuditLogger::log($request->user(), 'hairdressers.verify', 'hairdresser_profile', $profile->id, ['identity_verified' => $old], ['identity_verified' => true], $request);
@@ -157,7 +157,7 @@ class AdminHairdresserController extends Controller
     {
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->identity_verified;
-        $profile->update(['identity_verified' => false]);
+        $profile->forceFill(['identity_verified' => false])->save();
 
         AdminAuditLogger::log($request->user(), 'hairdressers.unverify', 'hairdresser_profile', $profile->id, ['identity_verified' => $old], ['identity_verified' => false], $request);
 
@@ -212,7 +212,7 @@ class AdminHairdresserController extends Controller
         $days = max(1, min(90, (int) ($request->input('days', 14))));
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->chair_pick_until;
-        $profile->update(['chair_pick_until' => now()->addDays($days)]);
+        $profile->forceFill(['chair_pick_until' => now()->addDays($days)])->save();
 
         AdminAuditLogger::log($request->user(), 'hairdressers.chair_pick.set', 'hairdresser_profile', $profile->id, ['chair_pick_until' => $old], ['chair_pick_until' => $profile->chair_pick_until], $request);
 
@@ -223,7 +223,7 @@ class AdminHairdresserController extends Controller
     {
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->chair_pick_until;
-        $profile->update(['chair_pick_until' => null]);
+        $profile->forceFill(['chair_pick_until' => null])->save();
 
         AdminAuditLogger::log($request->user(), 'hairdressers.chair_pick.remove', 'hairdresser_profile', $profile->id, ['chair_pick_until' => $old], ['chair_pick_until' => null], $request);
 
@@ -243,7 +243,7 @@ class AdminHairdresserController extends Controller
     {
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->chair_plus_test_mode;
-        $profile->update(['chair_plus_test_mode' => true]);
+        $profile->forceFill(['chair_plus_test_mode' => true])->save();
 
         AdminAuditLogger::log($request->user(), 'hairdressers.chair_plus_test.set', 'hairdresser_profile', $profile->id, ['chair_plus_test_mode' => $old], ['chair_plus_test_mode' => true], $request);
 
@@ -254,7 +254,7 @@ class AdminHairdresserController extends Controller
     {
         $profile = HairdresserProfile::findOrFail($id);
         $old = $profile->chair_plus_test_mode;
-        $profile->update(['chair_plus_test_mode' => false]);
+        $profile->forceFill(['chair_plus_test_mode' => false])->save();
 
         AdminAuditLogger::log($request->user(), 'hairdressers.chair_plus_test.remove', 'hairdresser_profile', $profile->id, ['chair_plus_test_mode' => $old], ['chair_plus_test_mode' => false], $request);
 

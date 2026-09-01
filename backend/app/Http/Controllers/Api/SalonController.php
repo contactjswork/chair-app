@@ -42,7 +42,13 @@ class SalonController extends Controller
 
         $query->orderByDesc('hairdressers_count');
 
-        return response()->json($query->paginate(20));
+        // Masque des champs privés AVANT sérialisation : sans lui, ce listing
+        // public exposait email/téléphone/GPS domicile/SIRET du gérant ET de
+        // chaque coiffeur de chaque salon (audit sécurité 01/09/2026).
+        $page = $query->paginate(20);
+        $page->getCollection()->each(fn ($salon) => \App\Support\PublicScope::salon($salon));
+
+        return response()->json($page);
     }
 
     /** GET /salons/{slug} — page publique du salon */
@@ -104,6 +110,10 @@ class SalonController extends Controller
                 ->limit(12)
                 ->get()
         );
+
+        // Masque email/téléphone/GPS domicile/SIRET du gérant et de toute
+        // l'équipe avant sérialisation publique (audit sécurité 01/09/2026).
+        \App\Support\PublicScope::salon($salon);
 
         return response()->json($salon);
     }

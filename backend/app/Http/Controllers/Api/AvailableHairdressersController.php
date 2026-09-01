@@ -67,6 +67,10 @@ class AvailableHairdressersController extends Controller
             return $p;
         })->values();
 
+        // Masque email/téléphone/GPS domicile/SIRET/diplôme avant sérialisation
+        // publique (audit sécurité 01/09/2026, maillon oublié de PublicScope).
+        \App\Support\PublicScope::hairdressers($available);
+
         return response()->json([
             'data'     => $available,
             'total'    => $available->count(),

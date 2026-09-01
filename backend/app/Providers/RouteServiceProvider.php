@@ -65,5 +65,17 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by(optional($request->user())->id ?: $request->ip());
         });
+
+        // Login : double limite (audit sécurité 01/09/2026). Le throttle par IP
+        // seul (6/min) ne freine pas un brute-force ciblé sur UN compte mené
+        // depuis un pool d'IP. On limite donc AUSSI par email visé — 5 essais
+        // par minute sur un même identifiant, quelle que soit l'IP d'origine.
+        RateLimiter::for('login', function (Request $request) {
+            $email = (string) $request->input('email');
+            return [
+                Limit::perMinute(6)->by('login-ip:' . $request->ip()),
+                Limit::perMinute(5)->by('login-email:' . mb_strtolower($email)),
+            ];
+        });
     }
 }

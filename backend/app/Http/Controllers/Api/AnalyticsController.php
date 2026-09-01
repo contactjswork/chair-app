@@ -277,7 +277,10 @@ class AnalyticsController extends Controller
         if (!in_array($period, ['7d', '30d', '90d', '12mo'], true)) {
             $period = '7d';
         }
-        if ($period === '90d' && !$isPremium) {
+        // Les plages longues (90 j ET 12 mois) sont réservées à CHAIR+ : le
+        // rabattement du 12mo avait été oublié, un non-abonné obtenait 12 mois
+        // de séries via period=12mo (audit sécurité 01/09/2026).
+        if (($period === '90d' || $period === '12mo') && !$isPremium) {
             $period = '30d';
         }
 

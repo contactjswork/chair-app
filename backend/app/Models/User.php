@@ -17,8 +17,14 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
+    // 'role' est volontairement HORS $fillable : c'est la colonne qui décide
+    // du niveau de privilège (client / hairdresser / salon_owner / admin). Elle
+    // n'est posée qu'à l'inscription via forceCreate() sur une valeur déjà
+    // validée (in:client,hairdresser,salon_owner) — jamais assignable en masse
+    // depuis une requête ordinaire, pour qu'aucun futur update($request->all())
+    // ne puisse promouvoir un compte. Audit sécurité 01/09/2026.
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'avatar', 'city', 'postal_code', 'latitude', 'longitude', 'bio', 'phone',
+        'name', 'email', 'password', 'avatar', 'city', 'postal_code', 'latitude', 'longitude', 'bio', 'phone',
         'referral_code', 'referred_by_user_id', 'active_pro_mode',
     ];
 
