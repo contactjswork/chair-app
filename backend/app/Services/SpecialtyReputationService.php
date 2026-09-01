@@ -57,41 +57,43 @@ class SpecialtyReputationService
         ['min' => 1000, 'pts' => 400],
     ];
 
-    // Niveaux d'une spécialité. 0-3 = seuil de points seul. 4, 5 et 6 combinent
+    // Niveaux d'une spécialité — refonte du 31/08/2026 (décision Julien) :
+    // CINQ paliers avec des mots qu'un coiffeur emploie vraiment, et c'est
+    // LA SEULE échelle de niveau de toute l'app (le « niveau CHAIR » global
+    // a été supprimé — il affichait « Expert » à côté d'un « Novice » de
+    // spécialité, deux échelles pour la même tête).
+    //
+    // 0-2 = seuil de points seul. 3 (Maître) et 4 (Référence) combinent
     // TOUJOURS seuil de points ET critère relatif (voir levelFor()) — jamais
     // l'un sans l'autre, pour qu'un score élevé obtenu dans une ville sans
     // concurrence ne suffise pas, et qu'une bonne position relative sur un
     // échantillon trop petit ne suffise pas non plus.
     // rarity : reflet produit du niveau, utilisé par l'UI (pas de logique métier).
     const LEVELS = [
-        ['level' => 0, 'name' => 'Novice',               'min' => 0,   'color' => 'neutral', 'rarity' => 'commun'],
-        ['level' => 1, 'name' => 'Débutant confirmé',    'min' => 60,  'color' => 'bronze',   'rarity' => 'commun'],
-        ['level' => 2, 'name' => 'Spécialiste',          'min' => 150, 'color' => 'silver',   'rarity' => 'rare'],
-        ['level' => 3, 'name' => 'Expert',               'min' => 300, 'color' => 'gold',     'rarity' => 'epique'],
-        ['level' => 4, 'name' => 'Référence locale',     'min' => 500, 'color' => 'purple',   'rarity' => 'legendaire'],
-        ['level' => 5, 'name' => 'Référence régionale',  'min' => 650, 'color' => 'diamond',  'rarity' => 'legendaire'],
-        ['level' => 6, 'name' => 'Référence nationale',  'min' => 700, 'color' => 'diamond',  'rarity' => 'ultime'],
+        ['level' => 0, 'name' => 'Nouveau',   'min' => 0,   'color' => 'neutral', 'rarity' => 'commun'],
+        ['level' => 1, 'name' => 'Confirmé',  'min' => 60,  'color' => 'bronze',  'rarity' => 'commun'],
+        ['level' => 2, 'name' => 'Expert',    'min' => 250, 'color' => 'gold',    'rarity' => 'rare'],
+        ['level' => 3, 'name' => 'Maître',    'min' => 500, 'color' => 'purple',  'rarity' => 'legendaire'],
+        ['level' => 4, 'name' => 'Référence', 'min' => 650, 'color' => 'diamond', 'rarity' => 'ultime'],
     ];
 
-    // Niveau 4 "Référence locale" : seuil de points ET top 1% dans sa ville.
+    // Niveau 3 "Maître" : seuil de points ET top 1% dans sa ville.
     const LOCAL_REFERENCE_MIN_SCORE = 500;
     const MIN_SAMPLE_LOCAL = 15;
 
-    // Niveau 5 "Référence régionale". Combine délibérément les 4 critères
-    // demandés : seuil absolu élevé, position relative (top 1% RÉGIONAL —
-    // échantillon plus large et donc plus dur que le niveau local), activité
-    // récente DANS la spécialité, et un signal anti-fraude (plusieurs clients
-    // distincts, pas un seul compte qui spamme des avis pour gonfler
-    // artificiellement le score).
+    // Niveau 4 "Référence". Combine délibérément les 4 critères : seuil
+    // absolu élevé, position relative (top 1% RÉGIONAL — échantillon plus
+    // large et donc plus dur que le local), activité récente DANS la
+    // spécialité, et un signal anti-fraude (plusieurs clients distincts,
+    // pas un seul compte qui spamme des avis pour gonfler le score).
     const REGIONAL_REFERENCE_MIN_SCORE = 650;
     const MIN_SAMPLE_REGIONAL = 30;
     const REGIONAL_RECENCY_DAYS = 90;
     const REGIONAL_MIN_DISTINCT_REVIEWERS = 5;
 
-    // Niveau 6 "Référence nationale" — le palier ultime d'une spécialité,
-    // au-delà même du régional. Mêmes 4 critères que le régional mais à
-    // l'échelle du pays entier, avec un échantillon minimum plus large et un
-    // seuil de score légèrement plus haut.
+    // « Top 1% France » — n'est plus un niveau à part : c'est une MENTION
+    // d'élite posée sur le palier Référence (is_national_reference), avec
+    // les mêmes 4 critères à l'échelle du pays.
     const NATIONAL_REFERENCE_MIN_SCORE = 700;
     const MIN_SAMPLE_NATIONAL = 50;
     const NATIONAL_RECENCY_DAYS = 90;
@@ -321,23 +323,24 @@ class SpecialtyReputationService
      */
     public static function levelFor(HairdresserProfile $profile, HairdresserSpecialtyProgress $row): array
     {
-        if ($row->score >= self::NATIONAL_REFERENCE_MIN_SCORE && self::isNationalReferenceForSpecialty($profile, $row->specialty_id)) {
-            return self::LEVELS[6];
-        }
-        if ($row->score >= self::REGIONAL_REFERENCE_MIN_SCORE && self::isRegionalReference($profile, $row->specialty_id)) {
-            return self::LEVELS[5];
+        // Régional OU national → Référence (le national ajoute la mention
+        // « Top 1% France » via is_national_reference, pas un palier de plus).
+        if ($row->score >= self::REGIONAL_REFERENCE_MIN_SCORE
+            && (self::isRegionalReference($profile, $row->specialty_id)
+                || ($row->score >= self::NATIONAL_REFERENCE_MIN_SCORE && self::isNationalReferenceForSpecialty($profile, $row->specialty_id)))) {
+            return self::LEVELS[4];
         }
         if ($row->score >= self::LOCAL_REFERENCE_MIN_SCORE && $row->is_reference) {
-            return self::LEVELS[4];
+            return self::LEVELS[3];
         }
         return self::scoreLevelCap($row->score);
     }
 
-    /** Niveaux 0-3 seulement — pas de critère relatif requis. */
+    /** Niveaux 0-2 seulement — pas de critère relatif requis. */
     private static function scoreLevelCap(int $score): array
     {
         $current = self::LEVELS[0];
-        foreach (array_slice(self::LEVELS, 0, 4) as $level) {
+        foreach (array_slice(self::LEVELS, 0, 3) as $level) {
             if ($score >= $level['min']) $current = $level;
         }
         return $current;
@@ -688,13 +691,13 @@ class SpecialtyReputationService
     {
         $rows = self::rankedRows($specialtyId, $geo, $geoValue, $lat, $lng, $radiusKm)->take($limit);
 
-        // Niveau 5 (régional, critère relatif coûteux) volontairement pas
-        // recalculé ici pour chaque ligne d'une liste — bornée à un seul
-        // profil ailleurs (publicHighlights/badges). Le rang affiché parle
-        // déjà de lui-même pour une liste ; is_reference (local) reste inclus.
+        // Le palier Référence (régional, critère relatif coûteux) n'est
+        // volontairement pas recalculé ici pour chaque ligne d'une liste —
+        // borné à un seul profil ailleurs (publicHighlights/badges). Le rang
+        // affiché parle déjà de lui-même ; is_reference (Maître) reste inclus.
         return $rows->values()->map(function ($row, $i) {
             $level = $row->is_reference && $row->score >= self::LOCAL_REFERENCE_MIN_SCORE
-                ? self::LEVELS[4]
+                ? self::LEVELS[3]
                 : self::scoreLevelCap($row->score);
 
             return [
@@ -836,10 +839,14 @@ class SpecialtyReputationService
             return [
                 'specialty_id'    => $row->specialty_id,
                 'specialty_name'  => $row->specialty->name ?? null,
+                // Score public (décision 31/08/2026) : les points par
+                // spécialité sont visibles côté client aussi — seuls les
+                // défis et la mécanique interne restent côté pro.
+                'score'           => $row->score,
                 'level'           => $level['level'],
                 'level_name'      => $level['name'],
                 'level_color'     => $level['color'],
-                'is_reference'    => $level['level'] >= 4,
+                'is_reference'    => $level['level'] >= 3,
                 'local_rank'      => $rank['rank'] ?? null,
                 'local_total'     => $rank['total'] ?? null,
                 // L'ecart au rang superieur n'a de sens que pour le coiffeur

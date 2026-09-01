@@ -307,7 +307,7 @@ export function BadgeTrophyCase({ badges, coiffeurName }: { badges: ApiChairBadg
 }
 
 // Re-export depuis lib/chairLevel (pas de 'use client' → utilisable partout)
-export { LEVEL_STYLES, LEVEL_RING, estimateLevelColor, ringGradientClass } from '@/lib/chairLevel';
+export { LEVEL_STYLES, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 
 // ── Badge chip (compact) ──────────────────────────────────────────────────────
 

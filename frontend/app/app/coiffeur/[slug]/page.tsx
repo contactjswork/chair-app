@@ -216,7 +216,6 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               content: (
                 <PublicProfileBadges
                   badges={hairdresser.chair_badges_all ?? []}
-                  level={hairdresser.chair_level}
                   coiffeurName={hairdresser.user.name}
                 />
               ),

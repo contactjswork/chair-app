@@ -112,7 +112,7 @@ const SearchMap = forwardRef<SearchMapHandle, Props>(function SearchMap(
             rating: r.reviews_count > 0 ? r.avg_rating : null,
             avatarUrl: r.type === 'hairdresser' ? resolveMediaUrl(r.avatar) : null,
             initials: r.name,
-            levelColor: r.type === 'hairdresser' ? (r.chair_level?.color ?? null) : null,
+            levelColor: r.type === 'hairdresser' ? (r.top_specialty_level?.color ?? null) : null,
           }))
       );
     });

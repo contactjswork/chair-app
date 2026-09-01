@@ -21,7 +21,7 @@ export default function SearchMiniCard({ result: r, onClose }: Props) {
   const image = resolveMediaUrl(isSalon ? r.image : (r.avatar ?? r.image));
   const hasRating = r.reviews_count > 0;
 
-  const levelColor = r.chair_level?.color ?? 'neutral';
+  const levelColor = r.top_specialty_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
 
   return (

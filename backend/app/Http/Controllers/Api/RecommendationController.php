@@ -136,7 +136,7 @@ class RecommendationController extends Controller
             'is_chair_pick'  => $h->is_chair_pick,
             'salon'          => $h->salon ? ['name' => $h->salon->name, 'slug' => $h->salon->slug] : null,
             'specialties'    => $h->specialties->map(fn ($s) => ['name' => $s->name, 'slug' => $s->slug])->values()->all(),
-            'chair_level'    => $h->chair_level ?? null,
+            'top_specialty_level' => $h->top_specialty_level ?? null,
             'tagline'        => $h->tagline,
             'match_score'    => $h->match_score ?? 0,
         ];

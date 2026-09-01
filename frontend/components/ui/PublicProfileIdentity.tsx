@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { MapPin, BadgeCheck, Star } from 'lucide-react';
 import type { ApiHairdresserProfile } from '@/lib/types';
-import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { useAuth } from '@/contexts/AuthContext';
 import StreakFlameBadge from './StreakFlameBadge';
 import SpecialtyHighlights from './SpecialtyHighlights';
@@ -52,8 +52,22 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
     return () => window.removeEventListener('chair:follow-change', onFollowChange);
   }, [hairdresser.id]);
   const followersLive = Math.max(0, hairdresser.followers_count + followerDelta);
-  const levelColor   = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
+  // L'anneau raconte la MEILLEURE SPÉCIALITÉ (seule échelle de niveau depuis
+  // la refonte du 31/08/2026) : couleur du palier, pastille « 1ᵉʳ · Coupe »
+  // quand le rang local est fort (échantillon ≥ 5, sinon un « Top 1 » parmi
+  // 1 seul coiffeur mentirait), « Expert · Coupe » sinon. Aucun anneau pour
+  // un palier Nouveau — l'absence de distinction est une information honnête.
+  const top          = hairdresser.specialty_highlights?.[0] ?? null;
+  const levelColor   = top?.level_color ?? 'neutral';
   const ring         = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
+  const specCourt    = top?.specialty_name
+    ? (top.specialty_name.length <= 12 ? top.specialty_name : top.specialty_name.split(' ')[0])
+    : '';
+  const pillLabel    = top && top.local_rank != null && top.local_rank <= 3 && (top.local_total ?? 0) >= 5
+    ? `${top.local_rank}${top.local_rank === 1 ? 'ᵉʳ' : 'ᵉ'} · ${specCourt}`
+    : top && top.level >= 1
+      ? `${top.level_name} · ${specCourt}`
+      : null;
   const streakDays   = hairdresser.chair_streak?.current_streak ?? 0;
   const streakActive = hairdresser.chair_streak?.is_active_today ?? false;
   const salonStatus  = getSalonStatus(hairdresser);
@@ -104,9 +118,9 @@ export default function PublicProfileIdentity({ hairdresser, avatarUrl }: Props)
               </div>
             )}
           </div>
-          {ring.show && (
+          {ring.show && pillLabel && (
             <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[8px] font-bold tracking-[0.1em] uppercase whitespace-nowrap shadow-sm ${ring.pill}`}>
-              {ring.label}
+              {pillLabel}
             </div>
           )}
           <StreakFlameBadge days={streakDays} active={streakActive} coiffeurName={hairdresser.user.name} />

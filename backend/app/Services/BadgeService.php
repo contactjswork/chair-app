@@ -538,8 +538,30 @@ class BadgeService
             ->get()
             ->keyBy('hairdresser_id');
 
+        // La meilleure spécialité de chaque coiffeur — LA seule échelle de
+        // niveau de l'app depuis la refonte du 31/08/2026 (le niveau CHAIR
+        // global est mort). Le niveau lu ici est celui PERSISTÉ par
+        // refreshOne() ; on le borne à l'échelle actuelle (des lignes
+        // anciennes peuvent porter 5-6 de l'ancienne échelle à 7 paliers).
+        $tops = DB::table('hairdresser_specialty_progress as hsp')
+            ->join('specialties', 'specialties.id', '=', 'hsp.specialty_id')
+            ->whereIn('hsp.hairdresser_id', $ids)
+            ->orderByDesc('hsp.score')
+            ->get(['hsp.hairdresser_id', 'hsp.score', 'hsp.level', 'specialties.name'])
+            ->groupBy('hairdresser_id')
+            ->map->first();
+
         foreach ($items as $h) {
-            $h->chair_level = self::getLevel((int) ($h->chair_score ?? 0));
+            $top = $tops->get($h->id);
+            $levelIndex = $top ? min((int) $top->level, count(SpecialtyReputationService::LEVELS) - 1) : null;
+            $h->top_specialty_level = ($top && $top->score > 0) ? [
+                'specialty'  => $top->name,
+                'score'      => (int) $top->score,
+                'level'      => $levelIndex,
+                'level_name' => SpecialtyReputationService::LEVELS[$levelIndex]['name'],
+                'color'      => SpecialtyReputationService::LEVELS[$levelIndex]['color'],
+            ] : null;
+
             $row = $streaks->get($h->id);
             $h->chair_streak = [
                 'current_streak'  => $row->current_streak ?? 0,

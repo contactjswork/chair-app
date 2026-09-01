@@ -49,7 +49,7 @@ export default function SearchResultCard({ result: r, selected = false, isFavori
   const matched   = r.matched_pros[0];
   const size      = compact ? 56 : 68;
 
-  const levelColor = r.chair_level?.color ?? 'neutral';
+  const levelColor = r.top_specialty_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
 
   const showHeart = !isSalon && isFavorite !== null && !!onToggleFavorite;

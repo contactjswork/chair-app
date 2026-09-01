@@ -48,7 +48,8 @@ class ProfileController extends Controller
         // Resync counters from DB to ensure badge accuracy
         BadgeService::syncCounters($profile);
 
-        $points = BadgeService::computePoints($profile);
+        // Rafraîchit hairdresser_specialty_progress avant lecture des highlights.
+        BadgeService::computePoints($profile);
 
         return response()->json([
             'user'          => $user,
@@ -59,8 +60,8 @@ class ProfileController extends Controller
             // débloqué + verrouillé, jamais exposé sur le profil public.
             'chair_badges_catalog' => BadgeService::getFullCatalog($profile),
             'next_badges'   => BadgeService::nextBadges($profile),
-            'chair_points'  => $points,
-            'chair_level'   => BadgeService::getLevel($points),
+            // chair_points / chair_level supprimés (refonte 31/08/2026) — la
+            // progression se lit par spécialité (my-specialty-progress).
             // Classement par specialite dans la ville du coiffeur : le signal
             // le plus concret qu'on puisse lui rendre. « 3e sur 12 en Coupe
             // Homme a Haguenau » se comprend d'un coup d'oeil, la ou un

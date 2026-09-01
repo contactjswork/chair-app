@@ -3,7 +3,6 @@
  * Utilisables dans Server Components ET Client Components.
  */
 
-import type { ApiHairdresserProfile } from '@/lib/types';
 
 // ── Level card/bar styles ────────────────────────────────────────────────────
 
@@ -45,33 +44,8 @@ export function ringGradientClass(levelColor: string): string {
   }
 }
 
-/** Estime le niveau depuis les stats brutes (Server + Client) */
-export function estimateLevelColor(h: Pick<
-  ApiHairdresserProfile,
-  'posts_count' | 'followers_count' | 'reviews_count' | 'avg_rating' | 'visits_count' | 'is_verified'
->): string {
-  let pts = 0;
-  if (h.posts_count >= 1)  pts += 30;
-  if (h.posts_count >= 5)  pts += 50;
-  if (h.posts_count >= 20) pts += 100;
-  if (h.followers_count >= 1)   pts += 15;
-  if (h.followers_count >= 30)  pts += 60;
-  if (h.followers_count >= 100) pts += 120;
-  if (h.followers_count >= 500) pts += 300;
-  if (h.reviews_count >= 1) pts += 25;
-  const rating = parseFloat(h.avg_rating ?? '0');
-  if (h.reviews_count >= 5  && rating >= 4.5) pts += 80;
-  if (h.reviews_count >= 10 && rating >= 4.8) pts += 150;
-  if (h.visits_count >= 1)   pts += 50;
-  if (h.visits_count >= 10)  pts += 100;
-  if (h.visits_count >= 50)  pts += 250;
-  if (h.visits_count >= 100) pts += 500;
-  if (h.is_verified) pts += 100;
-
-  if (pts >= 2500) return 'diamond';
-  if (pts >= 1000) return 'purple';
-  if (pts >= 500)  return 'gold';
-  if (pts >= 250)  return 'silver';
-  if (pts >= 100)  return 'bronze';
-  return 'neutral';
-}
+// estimateLevelColor a été supprimé (refonte 31/08/2026) : c'était un
+// TROISIÈME calcul de niveau, approximatif et côté client, qui pouvait
+// donner une couleur d'anneau différente d'un écran à l'autre. La couleur
+// vient désormais toujours du serveur (top_specialty_level /
+// specialty_highlights) — pas de donnée, pas d'anneau.

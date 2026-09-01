@@ -104,6 +104,8 @@ export interface ApiMyRankings {
 export interface ApiSpecialtyHighlight {
   specialty_id: number;
   specialty_name: string | null;
+  /** Points de la spécialité — publics depuis la refonte du 31/08/2026. */
+  score: number;
   level: number;
   level_name: string;
   level_color: 'neutral' | 'bronze' | 'silver' | 'gold' | 'purple' | 'diamond';
@@ -458,6 +460,15 @@ export type ApiNextBadge =
   | { type: 'badge'; code: string; name: string; tier: 1 | 2 | 3 | 4 | 5; rarity: ApiRarity; current: number; target: number; pct: number }
   | { type: 'specialty'; specialty_id: number; specialty_name: string | null; name: string; label: string; pct: number };
 
+/** Meilleure spécialité d'un coiffeur, avec son palier — attachée aux listes (attachGamification). */
+export interface ApiTopSpecialtyLevel {
+  specialty: string;
+  score: number;
+  level: number;
+  level_name: string;
+  color: string;
+}
+
 export interface ApiChairLevel {
   level: number;
   name: string;
@@ -510,8 +521,11 @@ export interface ApiHairdresserProfile {
   // Gamification
   chair_badges?: ApiChairBadge[];
   chair_badges_all?: ApiChairBadge[];
-  chair_points?: number;
-  chair_level?: ApiChairLevel;
+  /**
+   * Meilleure spécialité + son palier — LA seule échelle de niveau depuis la
+   * refonte du 31/08/2026 (le niveau CHAIR global a été supprimé partout).
+   */
+  top_specialty_level?: ApiTopSpecialtyLevel | null;
   chair_streak?: { current_streak: number; is_active_today: boolean };
   specialty_highlights?: ApiSpecialtyHighlight[];
   chair_plus_until?: string | null;

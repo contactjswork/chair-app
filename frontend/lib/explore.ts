@@ -48,7 +48,7 @@ export interface ExploreResult {
   price_from: number | null;
   team_count: number | null;
   matched_pros: ExploreMatchedPro[];
-  chair_level?: { level: number; name: string; color: string } | null;
+  top_specialty_level?: { specialty: string; score: number; level: number; level_name: string; color: string } | null;
   tagline: string | null;
 }
 
@@ -204,7 +204,7 @@ interface LegacyHairdresser {
   work_address?: string | null;
   user: { name: string; avatar: string | null };
   specialties: { name: string; slug: string }[];
-  chair_level?: { level: number; name: string; color: string } | null;
+  top_specialty_level?: { specialty: string; score: number; level: number; level_name: string; color: string } | null;
 }
 
 async function fetchExploreLegacy(params: ExploreParams, signal?: AbortSignal): Promise<ExploreResponse> {
@@ -251,7 +251,7 @@ async function fetchExploreLegacy(params: ExploreParams, signal?: AbortSignal): 
       price_from: null,
       team_count: null,
       matched_pros: [],
-      chair_level: h.chair_level ?? null,
+      top_specialty_level: h.top_specialty_level ?? null,
       tagline: h.tagline,
     };
   });

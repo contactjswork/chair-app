@@ -7,7 +7,7 @@ import { Star, ChevronRight, BadgeCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl } from '@/lib/types';
 import type { ApiHairdresserProfile } from '@/lib/types';
-import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
 import { fetchHairdressersProgressive } from '@/lib/homeFetch';
 import { useDedupedList } from '@/contexts/HomeDedupeContext';
@@ -19,7 +19,7 @@ function HDCard({ h, badge, badgeCls }: { h: ApiHairdresserProfile; badge?: stri
   const bg = banner ?? avatar;
   const hasRating = h.reviews_count > 0;
   const spec = h.specialties[0]?.name;
-  const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
+  const levelColor = h.top_specialty_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   return (
     <Link href={`/app/coiffeur/${h.slug}`} className="relative flex-shrink-0 w-[155px] md:w-[170px] block group active:scale-[0.98] transition-transform duration-150">
@@ -134,7 +134,7 @@ function FeaturedAvatarStrip({ hairdressers }: { hairdressers: ApiHairdresserPro
         const avatar = resolveMediaUrl(h.user.avatar);
         const spec = h.specialties[0]?.name;
         const hasRating = h.reviews_count > 0;
-        const levelColor = h.chair_level?.color ?? estimateLevelColor(h);
+        const levelColor = h.top_specialty_level?.color ?? 'neutral';
         const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
         return (
           <Reveal key={h.id} delay={(i % 4) * 70} className="flex-shrink-0">

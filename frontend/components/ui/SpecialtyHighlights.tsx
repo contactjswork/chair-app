@@ -18,7 +18,10 @@ function bestSignalFor(h: ApiSpecialtyHighlight): Highlight | null {
   const name = h.specialty_name ?? 'cette spécialité';
   const visits = h.visits_count ?? 0;
 
-  if (h.is_reference) {
+  // Échelle unique à 5 paliers (refonte 31/08/2026) : le libellé vient du
+  // serveur (level_name), jamais recomposé ici — Référence (4) > rang local
+  // > Expert/Maître (2-3).
+  if (h.level >= 4) {
     return { key: `${h.specialty_id}-ref`, Icon: Trophy, label: `Référence ${name}`, visits, priority: 100 };
   }
   // Échantillon minimum avant qu'un "Top X local" ait un sens — sinon "Top 1"
@@ -26,8 +29,8 @@ function bestSignalFor(h: ApiSpecialtyHighlight): Highlight | null {
   if (h.local_rank != null && h.local_rank <= 3 && (h.local_total ?? 0) >= 5) {
     return { key: `${h.specialty_id}-rank`, Icon: Medal, label: `Top ${h.local_rank} local en ${name}`, visits, priority: 80 };
   }
-  if (h.level >= 3) {
-    return { key: `${h.specialty_id}-expert`, Icon: Star, label: `Expert ${name}`, visits, priority: 60 };
+  if (h.level >= 2) {
+    return { key: `${h.specialty_id}-expert`, Icon: Star, label: `${h.level_name} ${name}`, visits, priority: 60 };
   }
   if (h.fast_progress) {
     return { key: `${h.specialty_id}-progress`, Icon: TrendingUp, label: `Progression rapide en ${name}`, visits, priority: 40 };

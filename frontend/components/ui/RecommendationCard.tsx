@@ -12,7 +12,7 @@ import type { RecommendationResult } from '@/lib/recommendation';
 /**
  * Carte "hero" pour /api/recommendations — même langage visuel que HDCard
  * (components/ui/HomeGeoStrips.tsx) mais adaptée au contrat plat de
- * RecommendationResult (pas de `user` imbriqué, chair_level déjà résolu par
+ * RecommendationResult (pas de `user` imbriqué, top_specialty_level déjà résolu par
  * le backend, jamais estimé côté client faute de posts_count/followers_count
  * dans ce contrat volontairement allégé).
  *
@@ -51,7 +51,7 @@ export default function RecommendationCard({
   const matched = r.specialties.find((s) => preferred.includes(s.slug));
   const spec = matched?.name ?? r.specialties[0]?.name;
   const isMatch = Boolean(matched);
-  const levelColor = r.chair_level?.color ?? 'neutral';
+  const levelColor = r.top_specialty_level?.color ?? 'neutral';
   const ring = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   // Réduite (retour Julien : la nouvelle carte était "un peu" trop grande).
   const width = size === 'lg' ? 'w-[152px] md:w-[176px]' : 'w-[134px] md:w-[152px]';

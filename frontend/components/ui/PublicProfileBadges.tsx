@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Trophy } from 'lucide-react';
-import type { ApiChairBadge, ApiChairLevel, ApiRarity } from '@/lib/types';
+import type { ApiChairBadge, ApiRarity } from '@/lib/types';
 import { BadgeMedallion, BadgeExplainSheet } from './ChairBadges';
 
 // ── Onglet "Badges" du profil public — vitrine à trophées façon Strava ───────
@@ -24,11 +24,10 @@ const RARITY_LABELS: Record<ApiRarity, string> = {
 
 interface Props {
   badges: ApiChairBadge[];
-  level?: ApiChairLevel | null;
   coiffeurName: string;
 }
 
-export default function PublicProfileBadges({ badges, level, coiffeurName }: Props) {
+export default function PublicProfileBadges({ badges, coiffeurName }: Props) {
   const [selected, setSelected] = useState<ApiChairBadge | null>(null);
 
   if (!badges.length) {
@@ -62,11 +61,6 @@ export default function PublicProfileBadges({ badges, level, coiffeurName }: Pro
             {badges.length} badge{badges.length > 1 ? 's' : ''} obtenu{badges.length > 1 ? 's' : ''}
           </p>
         </div>
-        {level && (
-          <span className="text-[10px] font-bold tracking-[0.14em] uppercase bg-neutral-900 text-white px-3 py-2 rounded-full whitespace-nowrap">
-            {level.name}
-          </span>
-        )}
       </div>
 
       {/* Sections par rareté — du plus prestigieux au plus commun */}

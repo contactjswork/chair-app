@@ -88,7 +88,7 @@ export interface RecommendationResult {
   is_chair_pick?: boolean;
   salon: RecommendationSalonRef | null;
   specialties: { name: string; slug: string }[];
-  chair_level?: { level: number; name: string; color: string } | null;
+  top_specialty_level?: { specialty: string; score: number; level: number; level_name: string; color: string } | null;
   tagline: string | null;
   /** Score interne de classement — utile pour debug, jamais affiché tel quel à l'utilisateur. */
   match_score: number;
@@ -149,7 +149,7 @@ export function fromHairdresserProfile(h: import('./types').ApiHairdresserProfil
     is_chair_pick: h.is_chair_pick,
     salon: h.salon ? { name: h.salon.name, slug: h.salon.slug } : null,
     specialties: h.specialties.map((s) => ({ name: s.name, slug: s.slug })),
-    chair_level: h.chair_level ? { level: h.chair_level.level, name: h.chair_level.name, color: h.chair_level.color } : null,
+    top_specialty_level: h.top_specialty_level ?? null,
     tagline: h.tagline,
     match_score: 0,
   };

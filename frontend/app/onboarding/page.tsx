@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, referral } from '@/lib/api';
-import { resolveMediaUrl, type ApiChairBadge, type ApiChairLevel, type ApiSpecialty, type ApiReferral } from '@/lib/types';
+import { resolveMediaUrl, type ApiChairBadge, type ApiSpecialty, type ApiReferral } from '@/lib/types';
 import { Armchair, Briefcase, Camera, Check, ImageIcon as ImageIconLucide, Share2, Sparkles, Users } from 'lucide-react';
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import SpecialtyPicker from '@/components/ui/SpecialtyPicker';
@@ -26,9 +26,8 @@ type Step =
   | 'specialties' | 'services' | 'schedule' | 'post' | 'pro_goals' | 'discover';
 
 interface ProfileResponse {
-  chair_points: number;
-  chair_level: ApiChairLevel;
   chair_badges_all: ApiChairBadge[];
+  specialty_highlights?: { specialty_name: string | null; level_name: string; score: number }[];
 }
 
 // "Pourquoi as-tu installé CHAIR PRO ?" — les 3 usages primaires distincts
@@ -366,7 +365,9 @@ export default function OnboardingPage() {
   // ── Écran final : récompense réelle + partage ────────────────────────────
   if (done && showSharePrompt) {
     const fullProfileBadge = finalProfile?.chair_badges_all.find((b) => b.code === 'full_profile');
-    const level = finalProfile?.chair_level;
+    // La progression se lit par spécialité (refonte 31/08/2026) — on montre
+    // la meilleure, avec ses points, si le parcours en a déjà produit une.
+    const top = finalProfile?.specialty_highlights?.[0] ?? null;
 
     return (
       <div className="min-h-screen bg-white flex flex-col">
@@ -384,14 +385,14 @@ export default function OnboardingPage() {
               : "Tu peux continuer à compléter ton profil à tout moment depuis ton espace pro."}
           </p>
 
-          {level && (
+          {top && (
             <div className="flex items-center gap-4 bg-neutral-50 rounded-2xl px-5 py-4 mb-6 w-full max-w-xs">
               <div className="w-11 h-11 rounded-full bg-neutral-900 flex items-center justify-center flex-shrink-0">
                 <Sparkles size={18} className="text-white" />
               </div>
               <div className="text-left min-w-0">
-                <p className="text-[13px] font-bold text-neutral-900 truncate">{level.name}</p>
-                <p className="text-[11px] text-neutral-400">{finalProfile?.chair_points ?? 0} points CHAIR</p>
+                <p className="text-[13px] font-bold text-neutral-900 truncate">{top.level_name}{top.specialty_name ? ` · ${top.specialty_name}` : ''}</p>
+                <p className="text-[11px] text-neutral-400">{top.score} pts dans la spécialité</p>
               </div>
             </div>
           )}

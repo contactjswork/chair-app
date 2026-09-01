@@ -4,7 +4,7 @@ import type { ApiHairdresserProfile } from '@/lib/types';
 import { resolveMediaUrl } from '@/lib/types';
 import { formatDistance } from '@/hooks/useGeolocation';
 import { Star, Award, Flame } from 'lucide-react';
-import { estimateLevelColor, LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
+import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { hasChairPlus } from '@/lib/types';
 
 export default function HairdresserCard({
@@ -20,7 +20,7 @@ export default function HairdresserCard({
   const avatar      = resolveMediaUrl(hairdresser.user.avatar);
   const name        = hairdresser.user.name;
   const hasRating   = hairdresser.reviews_count > 0;
-  const levelColor  = hairdresser.chair_level?.color ?? estimateLevelColor(hairdresser);
+  const levelColor  = hairdresser.top_specialty_level?.color ?? 'neutral';
   const ring        = LEVEL_RING[levelColor] ?? LEVEL_RING.neutral;
   const badgeCount  = hairdresser.chair_badges?.length ?? hairdresser.chair_badges_all?.length ?? 0;
   const streakDays  = hairdresser.chair_streak?.current_streak ?? 0;

@@ -270,6 +270,12 @@ export default function BadgesPage() {
           <h1 className="text-lg font-bold text-neutral-900">Badges CHAIR</h1>
         </div>
 
+        {/* La règle du jeu, écrite une fois pour toutes — l'échelle unique. */}
+        <p className="text-[12px] text-neutral-500 leading-relaxed">
+          Chaque spécialité a son niveau : <span className="font-semibold text-neutral-700">Nouveau → Confirmé → Expert → Maître → Référence</span>.
+          Vos passages vérifiés, vos avis et vos réalisations dans la spécialité le font monter — rien d&apos;autre.
+        </p>
+
         {/* ── HERO PROGRESSION ── */}
         {dataLoading ? (
           <div className="h-40 bg-neutral-200 rounded-[28px] animate-pulse" />
@@ -279,12 +285,12 @@ export default function BadgesPage() {
               {bestSpecialty.specialty_name ?? 'Votre spécialité'}
             </p>
             <h2 className="text-4xl font-black text-white tracking-tight leading-none mb-2">{bestSpecialty.level_name}</h2>
-            {bestSpecialty.local_rank != null && bestSpecialty.local_total != null && (
-              <p className="text-sm font-semibold text-white/70 mb-4 tabular-nums">
-                {bestSpecialty.local_rank}
-                {bestSpecialty.local_rank === 1 ? 'er' : 'e'} sur {bestSpecialty.local_total} dans votre ville
-              </p>
-            )}
+            <p className="text-sm font-semibold text-white/70 mb-4 tabular-nums">
+              {bestSpecialty.score} pts
+              {bestSpecialty.local_rank != null && bestSpecialty.local_total != null && (
+                <> · {bestSpecialty.local_rank}{bestSpecialty.local_rank === 1 ? 'er' : 'e'} sur {bestSpecialty.local_total} dans votre ville</>
+              )}
+            </p>
             {bestSpecialty.next_step ? (
               <div className="mb-4">
                 <div className="h-2.5 bg-white/15 rounded-full overflow-hidden mb-2">

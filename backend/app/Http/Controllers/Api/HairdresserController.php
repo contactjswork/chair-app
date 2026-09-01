@@ -319,13 +319,14 @@ class HairdresserController extends Controller
             ]);
         }
 
-        $points = BadgeService::computePoints($hairdresser);
+        // Rafraîchit hairdresser_specialty_progress (les highlights lisent des données à jour).
+        BadgeService::computePoints($hairdresser);
         // Masquage des champs privés AVANT sérialisation (email, téléphone,
         // GPS exact, SIRET, diplôme, drapeaux internes) — voir PublicScope.
         $data   = PublicScope::hairdresser($hairdresser)->toArray();
         $data['chair_badges']        = BadgeService::getVisibleBadges($hairdresser);
-        $data['chair_points']        = $points;
-        $data['chair_level']         = BadgeService::getLevel($points);
+        // Niveau global supprimé (refonte 31/08/2026) : le niveau public
+        // vit dans specialty_highlights — une seule échelle, par spécialité.
         $data['chair_badges_all']    = BadgeService::getUnlockedBadges($hairdresser);
         // "Pourquoi ce coiffeur est reconnu" — computePoints() vient de rafraîchir
         // hairdresser_specialty_progress, les highlights lisent des données à jour.

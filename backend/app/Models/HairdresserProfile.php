@@ -15,6 +15,11 @@ class HairdresserProfile extends Model
     // portfolio) sans geste supplémentaire par contrôleur.
     protected $appends = ['is_chair_pick'];
 
+    // Colonnes internes de l'ancien niveau global (refonte 31/08/2026) :
+    // conservées pour l'admin et le tri, mais plus jamais sérialisées — la
+    // seule échelle visible est le niveau par spécialité.
+    protected $hidden = ['chair_score', 'chair_level', 'chair_score_adjustment'];
+
     protected $fillable = [
         'user_id', 'salon_id', 'slug', 'banner_image', 'tagline',
         'years_experience', 'diploma', 'diploma_document_url', 'diploma_status', 'city', 'postal_code',
