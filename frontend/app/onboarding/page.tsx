@@ -18,6 +18,7 @@ import DiscoverCarousel from '@/components/onboarding/DiscoverCarousel';
 import BadgeUnlockToast from '@/components/onboarding/BadgeUnlockToast';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
+import { requestAndRegister } from '@/lib/push';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
@@ -398,7 +399,14 @@ export default function OnboardingPage() {
           )}
 
           <button
-            onClick={() => router.push('/pro')}
+            onClick={async () => {
+              // Demande l'autorisation des notifications au tout dernier
+              // moment (geste explicite, popup système iOS), puis entre dans
+              // l'app. La localisation a déjà été demandée à l'étape geo_location.
+              // Best-effort : un refus ne bloque jamais l'entrée.
+              try { await requestAndRegister(); } catch { /* refus/erreur : on entre quand même */ }
+              router.push('/pro');
+            }}
             className="w-full max-w-xs bg-neutral-900 text-white font-bold py-4 rounded-2xl text-[15px] active:bg-neutral-700 transition-colors mb-3"
           >
             Aller à mon espace pro

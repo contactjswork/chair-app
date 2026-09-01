@@ -10,13 +10,14 @@ import { Check, ArrowRight, Share2 } from 'lucide-react';
 import ShareSheet from '@/components/ui/ShareSheet';
 import { getSharePayload } from '@/lib/share';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
+import PermissionsStep from '@/components/onboarding/PermissionsStep';
 import { useStepTransition } from '@/hooks/useStepTransition';
 import { getLiveSpecialties, SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS, type LiveSpecialty } from '@/lib/specialties';
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
 
 type Gender = 'femme' | 'homme' | 'non-binaire' | null;
-type Step   = 'genre' | 'styles' | 'done';
+type Step   = 'genre' | 'styles' | 'permissions' | 'done';
 
 // Les 14 spécialités actives (source : /api/specialties) réparties par genre
 // selon HOMME_SPECIALTY_SLUGS/FEMME_SPECIALTY_SLUGS (lib/specialties.ts,
@@ -97,7 +98,9 @@ export default function ClientOnboardingPage() {
       });
     } catch { /* ignore */ }
     setSaving(false);
-    transition(() => setStep('done'));
+    // Étape d'autorisations (notifs + localisation) avant l'écran final, donc
+    // avant d'entrer dans l'app. Sur le web elle s'auto-passe (voir le composant).
+    transition(() => setStep('permissions'));
   }
 
   function skip() {
@@ -108,6 +111,12 @@ export default function ClientOnboardingPage() {
   }
 
   if (isLoading || !user) return null;
+
+  // Écran d'autorisations plein cadre (notifs + localisation), juste avant
+  // l'écran final. Rendu à part car il ne partage pas l'ossature à en-tête.
+  if (step === 'permissions') {
+    return <PermissionsStep theme="light" onContinue={() => transition(() => setStep('done'))} />;
+  }
 
   const firstName = user.name.split(' ')[0];
   const options   = getOptions(gender, liveSpecialties);
