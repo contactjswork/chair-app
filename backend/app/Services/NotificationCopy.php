@@ -494,7 +494,7 @@ class NotificationCopy
         'flash_promo' => [
             self::AUDIENCE_CLIENT => [
                 'title'    => 'Promo flash ⚡',
-                'message'  => '-{pct}% chez {coiffeur} {jour}. Les créneaux partent vite.',
+                'message'  => '-{pct} chez {coiffeur} {jour}. Les créneaux partent vite.',
                 'fallback' => 'Un coiffeur que tu suis fait une promo flash.',
             ],
         ],

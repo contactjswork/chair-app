@@ -101,7 +101,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   // Promos flash à venir du coiffeur — jour bradé signalé sur le calendrier,
   // prix remisé affiché dès que la date choisie en porte une.
-  const [flashPromos, setFlashPromos] = useState<{ date: string; discount_percent: number }[]>([]);
+  const [flashPromos, setFlashPromos] = useState<{ date: string; discount_percent: number; specialty_id: number | null; specialty_name: string | null }[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [datesLoadedKey, setDatesLoadedKey] = useState('');
 
@@ -380,8 +380,12 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
   const priceOf = (svc: ApiService) => parseFloat(svc.price ?? '0').toFixed(0);
 
   // Remise du jour sélectionné (null si aucune) — le backend applique la
-  // même règle à la réservation, l'affichage ne fait que l'annoncer.
-  const promoPct = flashPromos.find((p) => p.date === selectedDate)?.discount_percent ?? null;
+  // même règle à la réservation, l'affichage ne fait que l'annoncer. Une
+  // promo ciblée sur une spécialité ne couvre que les services rattachés.
+  const promoCouvre = (p: { specialty_id: number | null }) =>
+    p.specialty_id === null || (selectedService != null && selectedService.specialty_id === p.specialty_id);
+  const promoDuJour = flashPromos.find((p) => p.date === selectedDate && promoCouvre(p)) ?? null;
+  const promoPct = promoDuJour?.discount_percent ?? null;
   const promoPriceOf = (svc: ApiService) =>
     (parseFloat(svc.price ?? '0') * (1 - (promoPct ?? 0) / 100)).toFixed(0);
 
@@ -667,7 +671,7 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                           const isSelected = dateStr === selectedDate;
                           const todayStr = toLocalYMD(today);
                           const isPast = dateStr < todayStr;
-                          const hasPromo = isAvailable && !isPast && flashPromos.some((p) => p.date === dateStr);
+                          const hasPromo = isAvailable && !isPast && flashPromos.some((p) => p.date === dateStr && promoCouvre(p));
                           return (
                             <button
                               key={dayNum}
@@ -711,14 +715,18 @@ export default function BookingSheet({ slug, open, onClose, initialCategoryId, i
                             <span className="w-3 h-3 rounded-md bg-neutral-100" />
                             <span className="text-[12px] text-neutral-400">Jours disponibles</span>
                           </span>
-                          {flashPromos.some((p) => availableDates.includes(p.date)) && (
-                            <span className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-md bg-amber-50 ring-1 ring-amber-200" />
-                              <span className="text-[12px] text-amber-600 font-semibold">
-                                Promo flash -{flashPromos.find((p) => availableDates.includes(p.date))!.discount_percent}%
+                          {(() => {
+                            const promoVisible = flashPromos.find((p) => availableDates.includes(p.date) && promoCouvre(p));
+                            return promoVisible ? (
+                              <span className="flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-md bg-amber-50 ring-1 ring-amber-200" />
+                                <span className="text-[12px] text-amber-600 font-semibold">
+                                  Promo flash -{promoVisible.discount_percent}%
+                                  {promoVisible.specialty_name ? ` · ${promoVisible.specialty_name}` : ''}
+                                </span>
                               </span>
-                            </span>
-                          )}
+                            ) : null;
+                          })()}
                         </div>
                       )}
                     </>

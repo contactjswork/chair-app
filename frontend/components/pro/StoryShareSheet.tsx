@@ -16,8 +16,10 @@ import { Share2, Download, Check } from 'lucide-react';
  * feuille, prévisualisation, et le bouton « Partager » part d'un tap
  * frais avec le fichier déjà prêt.
  */
-export default function StoryShareSheet({ generer, onClose }: {
+export default function StoryShareSheet({ generer, lien, onClose }: {
   generer: () => Promise<Blob>;
+  /** Lien de réservation — copié au partage pour le sticker Lien d'Instagram. */
+  lien?: string | null;
   onClose: () => void;
 }) {
   const [blob, setBlob]       = useState<Blob | null>(null);
@@ -41,10 +43,16 @@ export default function StoryShareSheet({ generer, onClose }: {
 
   async function partager() {
     if (!blob) return;
+    // Instagram interdit les liens cliquables DANS l'image — à toutes les
+    // apps. Le seul lien cliquable est le sticker « Lien » ajouté dans
+    // Instagram : on copie donc l'adresse maintenant, il n'y aura qu'à coller.
+    if (lien) {
+      try { await navigator.clipboard.writeText(lien); } catch {}
+    }
     const resultat = await partagerBlob(blob);
     if (resultat === 'partage' || resultat === 'telecharge') {
       setEtat(resultat);
-      setTimeout(onClose, 900);
+      setTimeout(onClose, lien ? 2400 : 900);
     }
   }
 
@@ -90,6 +98,14 @@ export default function StoryShareSheet({ generer, onClose }: {
         >
           <Download size={14} /> Enregistrer l&apos;image
         </button>
+
+        {lien && (
+          <p className={`text-[11px] leading-relaxed text-center mt-1 transition-colors ${etat ? 'text-green-600 font-semibold' : 'text-neutral-400'}`}>
+            {etat
+              ? 'Lien copié ✓ — dans Instagram, ajoutez le sticker « Lien » et collez-le.'
+              : 'Votre lien de réservation sera copié : ajoutez le sticker « Lien » dans Instagram et collez-le pour le rendre cliquable.'}
+          </p>
+        )}
       </div>
     </BottomSheet>
   );

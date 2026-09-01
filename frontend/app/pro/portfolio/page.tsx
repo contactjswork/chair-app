@@ -651,7 +651,11 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
               />
             )}
             {storyOpen && storyImage && (
-              <StoryShareSheet generer={genererStoryPost} onClose={() => setStoryOpen(false)} />
+              <StoryShareSheet
+                generer={genererStoryPost}
+                lien={storyMeta.slug ? `https://getchair.app/coiffeur/${storyMeta.slug}` : null}
+                onClose={() => setStoryOpen(false)}
+              />
             )}
           </>
         )}

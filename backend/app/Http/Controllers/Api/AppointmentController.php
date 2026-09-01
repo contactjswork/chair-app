@@ -189,8 +189,10 @@ class AppointmentController extends Controller
                     'duration_minutes' => $service->duration_minutes,
                     // Promo flash du jour : le prix remisé est figé À LA
                     // RÉSERVATION — retirer la promo ensuite ne change pas
-                    // le prix promis au client.
-                    'price'            => ($promoFlash = \App\Models\FlashPromo::activeFor($validated['hairdresser_id'], $validated['appointment_date']))
+                    // le prix promis au client. Une promo ciblée sur une
+                    // spécialité ne remise que les services qui en relèvent.
+                    'price'            => (($promoFlash = \App\Models\FlashPromo::activeFor($validated['hairdresser_id'], $validated['appointment_date']))
+                            && $promoFlash->couvreService($service))
                         ? round($service->price * (1 - $promoFlash->discount_percent / 100), 2)
                         : $service->price,
                     'message'          => $validated['message'] ?? null,

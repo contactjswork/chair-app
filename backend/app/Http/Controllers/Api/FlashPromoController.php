@@ -36,10 +36,19 @@ class FlashPromoController extends Controller
         }
 
         return response()->json(
-            FlashPromo::where('hairdresser_id', $profile->id)
+            FlashPromo::with('specialty:id,name')
+                ->where('hairdresser_id', $profile->id)
                 ->whereDate('date', '>=', now('Europe/Paris')->toDateString())
                 ->orderBy('date')
-                ->get(['id', 'date', 'discount_percent', 'notified_at'])
+                ->get()
+                ->map(fn ($p) => [
+                    'id'               => $p->id,
+                    'date'             => $p->date->format('Y-m-d'),
+                    'discount_percent' => $p->discount_percent,
+                    'specialty_id'     => $p->specialty_id,
+                    'specialty_name'   => $p->specialty->name ?? null,
+                    'notified_at'      => $p->notified_at,
+                ])
         );
     }
 
@@ -51,11 +60,17 @@ class FlashPromoController extends Controller
             ->firstOrFail();
 
         return response()->json(
-            FlashPromo::where('hairdresser_id', $profile->id)
+            FlashPromo::with('specialty:id,name')
+                ->where('hairdresser_id', $profile->id)
                 ->whereDate('date', '>=', now('Europe/Paris')->toDateString())
                 ->orderBy('date')
-                ->get(['date', 'discount_percent'])
-                ->map(fn ($p) => ['date' => $p->date->format('Y-m-d'), 'discount_percent' => $p->discount_percent])
+                ->get()
+                ->map(fn ($p) => [
+                    'date'             => $p->date->format('Y-m-d'),
+                    'discount_percent' => $p->discount_percent,
+                    'specialty_id'     => $p->specialty_id,
+                    'specialty_name'   => $p->specialty->name ?? null,
+                ])
         );
     }
 
@@ -70,7 +85,16 @@ class FlashPromoController extends Controller
         $validated = $request->validate([
             'date'             => 'required|date_format:Y-m-d',
             'discount_percent' => 'required|integer|min:10|max:50',
+            // null = toutes les prestations ; sinon une de SES spécialités.
+            'specialty_id'     => 'nullable|integer|exists:specialties,id',
         ]);
+
+        if (!empty($validated['specialty_id'])) {
+            $aSpecialite = $profile->specialties()->where('specialties.id', $validated['specialty_id'])->exists();
+            if (!$aSpecialite) {
+                return response()->json(['message' => 'Cette spécialité n’est pas sur votre profil.'], 422);
+            }
+        }
 
         $aujourdhui = now('Europe/Paris')->toDateString();
         if ($validated['date'] < $aujourdhui) {
@@ -82,7 +106,10 @@ class FlashPromoController extends Controller
 
         $promo = FlashPromo::updateOrCreate(
             ['hairdresser_id' => $profile->id, 'date' => $validated['date']],
-            ['discount_percent' => $validated['discount_percent']]
+            [
+                'discount_percent' => $validated['discount_percent'],
+                'specialty_id'     => $validated['specialty_id'] ?? null,
+            ]
         );
 
         // Une seule vague de notifications par promo, même si le coiffeur
@@ -96,6 +123,8 @@ class FlashPromoController extends Controller
             'id'               => $promo->id,
             'date'             => $promo->date->format('Y-m-d'),
             'discount_percent' => $promo->discount_percent,
+            'specialty_id'     => $promo->specialty_id,
+            'specialty_name'   => $promo->specialty_id ? ($promo->specialty->name ?? null) : null,
             'notified_at'      => $promo->notified_at,
         ], 201);
     }
@@ -141,9 +170,12 @@ class FlashPromoController extends Controller
             }
 
             $jour = Carbon::parse($promo->date)->locale('fr')->isoFormat('dddd D MMMM');
+            // Une promo ciblée nomme sa spécialité — « -30% sur Coupe
+            // Classique » vaut mieux qu'un rabais anonyme.
+            $cible = $promo->specialty_id ? ($promo->specialty->name ?? null) : null;
             $vars = [
                 'coiffeur' => $profile->user->name ?? 'Votre coiffeur',
-                'pct'      => (string) $promo->discount_percent,
+                'pct'      => $promo->discount_percent . '%' . ($cible ? ' sur ' . $cible : ''),
                 'jour'     => $jour,
             ];
             $data = ['url' => '/app/coiffeur/' . $profile->slug];

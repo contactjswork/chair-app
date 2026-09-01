@@ -8,7 +8,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import BottomSheet from '@/components/ui/BottomSheet';
 import StoryShareSheet from '@/components/pro/StoryShareSheet';
 import { genererStoryCreneau } from '@/lib/storyImage';
-import { appointments as apptApi, api, schedule as scheduleApi } from '@/lib/api';
+import { appointments as apptApi, api, schedule as scheduleApi, specialtyProgress } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
 import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl, getAfterImage } from '@/lib/types';
 import {
@@ -639,7 +639,10 @@ interface DayViewProps {
   onStoryCreneau?: (time: string) => void;
 }
 
-interface FlashPromoDto { id:number; date:string; discount_percent:number; }
+interface FlashPromoDto {
+  id:number; date:string; discount_percent:number;
+  specialty_id:number|null; specialty_name:string|null;
+}
 
 // Prochain créneau libre (>= maintenant si aujourd'hui) en tenant compte des
 // RDV actifs et des blocages — dérivé des données réelles, jamais estimé.
@@ -890,14 +893,23 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
             <p className="text-[12px] font-semibold text-neutral-500">Aucun</p>
           )}
         </div>
-        <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Users size={9}/>RDV</p>
-          <p className="text-[14px] font-bold text-neutral-900">{dayApts.length}</p>
-        </div>
-        <div className="flex-shrink-0 min-w-[74px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Euro size={9}/>CA</p>
-          <p className="text-[14px] font-bold text-neutral-900">{revenue}€</p>
-        </div>
+        {/* Les pastilles ACTIONNABLES (Promo, Libre) d'abord — le retour de
+            Julien : la promo était invisible sans faire défiler le rail. */}
+        {onPromoTap && dateStr >= isoDate(new Date()) && (
+          <button onClick={onPromoTap}
+            className={`flex-shrink-0 min-w-[84px] rounded-2xl px-3 py-2 text-left transition-colors ${
+              promoPct!=null
+                ? 'bg-amber-50 shadow-[0_2px_8px_-6px_rgba(245,158,11,0.3)] ring-1 ring-amber-100'
+                : 'bg-neutral-50 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]'
+            }`}>
+            <p className={`text-[9px] font-bold uppercase tracking-[0.14em] flex items-center gap-1 ${promoPct!=null?'text-amber-500':'text-neutral-400'}`}>
+              <Zap size={9}/>Promo
+            </p>
+            <p className={`text-[14px] font-bold ${promoPct!=null?'text-amber-600':'text-neutral-900'}`}>
+              {promoPct!=null ? `-${promoPct}%` : '—'}
+            </p>
+          </button>
+        )}
         {/* Un créneau libre est une story à poster : toucher la pastille
             génère « Créneau libéré · demain 14:00 » prête pour Instagram. */}
         <button
@@ -917,22 +929,14 @@ function DayView({ date, appointments, unavailabilities, hourHeight, loading, on
             <p className="text-[14px] font-bold text-red-600">{late}</p>
           </div>
         )}
-        {/* Promo flash — seulement sur un jour à venir (une promo sur hier ne sert à rien). */}
-        {onPromoTap && dateStr >= isoDate(new Date()) && (
-          <button onClick={onPromoTap}
-            className={`flex-shrink-0 min-w-[84px] rounded-2xl px-3 py-2 text-left transition-colors ${
-              promoPct!=null
-                ? 'bg-amber-50 shadow-[0_2px_8px_-6px_rgba(245,158,11,0.3)] ring-1 ring-amber-100'
-                : 'bg-neutral-50 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]'
-            }`}>
-            <p className={`text-[9px] font-bold uppercase tracking-[0.14em] flex items-center gap-1 ${promoPct!=null?'text-amber-500':'text-neutral-400'}`}>
-              <Zap size={9}/>Promo
-            </p>
-            <p className={`text-[14px] font-bold ${promoPct!=null?'text-amber-600':'text-neutral-900'}`}>
-              {promoPct!=null ? `-${promoPct}%` : '—'}
-            </p>
-          </button>
-        )}
+        <div className="flex-shrink-0 min-w-[70px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Users size={9}/>RDV</p>
+          <p className="text-[14px] font-bold text-neutral-900">{dayApts.length}</p>
+        </div>
+        <div className="flex-shrink-0 min-w-[74px] bg-neutral-50 rounded-2xl px-3 py-2 shadow-[0_2px_8px_-6px_rgba(10,10,10,0.12)]">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-neutral-400 flex items-center gap-1"><Euro size={9}/>CA</p>
+          <p className="text-[14px] font-bold text-neutral-900">{revenue}€</p>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto touch-pan-y" style={{height:'calc(100vh - 208px)'}}>
@@ -1354,6 +1358,7 @@ export default function AgendaPage() {
   const [selectedUnavail, setSelectedUnavail] = useState<ApiUnavailability|null>(null);
   const [flashPromos, setFlashPromos] = useState<FlashPromoDto[]>([]);
   const [promoSheetOpen, setPromoSheetOpen] = useState(false);
+  const [mesSpecialites, setMesSpecialites] = useState<{id:number; nom:string}[]>([]);
   const [storyCreneau, setStoryCreneau] = useState<{date:string; time:string}|null>(null);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
@@ -1373,6 +1378,9 @@ export default function AgendaPage() {
       .finally(()=>setLoading(false));
     loadUnavailabilities();
     api.get<FlashPromoDto[]>('/flash-promos').then(setFlashPromos).catch(()=>{});
+    specialtyProgress.mine()
+      .then(d=>setMesSpecialites(d.specialties.map(s=>({id:s.specialty_id, nom:s.specialty_name ?? 'Spécialité'}))))
+      .catch(()=>{});
   },[user]);
 
   // Dérivé de appointments — reste toujours synchronisé sans effet ni copie.
@@ -1626,6 +1634,7 @@ export default function AgendaPage() {
             city: user?.hairdresser_profile?.city ?? null,
             slug: user?.hairdresser_profile?.slug ?? null,
           })}
+          lien={user?.hairdresser_profile?.slug ? `https://getchair.app/coiffeur/${user.hairdresser_profile.slug}` : null}
           onClose={()=>setStoryCreneau(null)}
         />
       )}
@@ -1635,6 +1644,7 @@ export default function AgendaPage() {
         <FlashPromoSheet
           date={isoDate(current)}
           promo={flashPromos.find(p=>p.date===isoDate(current)) ?? null}
+          specialites={mesSpecialites}
           onClose={()=>setPromoSheetOpen(false)}
           onChanged={(next)=>{
             setFlashPromos(prev=>{
@@ -1656,11 +1666,13 @@ export default function AgendaPage() {
  * sont prévenus une seule fois ; le prix remisé s'applique tout seul aux
  * réservations du jour.
  */
-function FlashPromoSheet({date,promo,onClose,onChanged}:{
+function FlashPromoSheet({date,promo,specialites,onClose,onChanged}:{
   date:string; promo:FlashPromoDto|null;
+  specialites:{id:number; nom:string}[];
   onClose:()=>void; onChanged:(next:FlashPromoDto|null)=>void;
 }) {
   const [pct, setPct] = useState<number>(promo?.discount_percent ?? 20);
+  const [specialiteId, setSpecialiteId] = useState<number|null>(promo?.specialty_id ?? null);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState('');
   const jourLabel = new Date(date+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
@@ -1668,7 +1680,7 @@ function FlashPromoSheet({date,promo,onClose,onChanged}:{
   async function poser() {
     setBusy(true); setErreur('');
     try {
-      const created = await api.post<FlashPromoDto>('/flash-promos',{date,discount_percent:pct});
+      const created = await api.post<FlashPromoDto>('/flash-promos',{date,discount_percent:pct,specialty_id:specialiteId});
       onChanged(created);
       onClose();
     } catch (e) {
@@ -1696,11 +1708,11 @@ function FlashPromoSheet({date,promo,onClose,onChanged}:{
         </p>
         <p className="text-[22px] font-bold text-neutral-900 capitalize">{jourLabel}</p>
         <p className="text-[13px] text-neutral-500 leading-relaxed mt-1.5 mb-5">
-          La remise s&apos;applique à toutes vos prestations ce jour-là. Vos clients
+          Choisissez la remise et les prestations concernées. Vos clients
           fidèles et abonnés sont prévenus à la création — une seule fois.
         </p>
 
-        <div className="flex gap-2 mb-5">
+        <div className="flex gap-2 mb-4">
           {[10,20,30,40,50].map(p=>(
             <button key={p} onClick={()=>setPct(p)}
               className={`flex-1 py-3 rounded-xl text-[14px] font-bold border transition-all ${
@@ -1710,6 +1722,30 @@ function FlashPromoSheet({date,promo,onClose,onChanged}:{
             </button>
           ))}
         </div>
+
+        {/* Sur quoi porte la remise : tout, ou UNE spécialité (« -30 % sur
+            les Coupes Classiques ») — la notification la nomme. */}
+        {specialites.length > 0 && (
+          <div className="mb-5">
+            <p className="text-[11px] font-bold tracking-[0.16em] uppercase text-neutral-400 mb-2">Sur quelles prestations ?</p>
+            <div className="flex flex-wrap gap-x-1.5 gap-y-2.5">
+              <button onClick={()=>setSpecialiteId(null)}
+                className={`relative before:absolute before:-inset-y-[5px] before:inset-x-0 before:content-[''] px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                  specialiteId===null ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                }`}>
+                Toutes
+              </button>
+              {specialites.map(s=>(
+                <button key={s.id} onClick={()=>setSpecialiteId(s.id)}
+                  className={`relative before:absolute before:-inset-y-[5px] before:inset-x-0 before:content-[''] px-3.5 py-1.5 rounded-full text-[13px] font-semibold border transition-all ${
+                    specialiteId===s.id ? 'bg-neutral-900 text-white border-neutral-900' : 'bg-white text-neutral-500 border-neutral-200 hover:border-neutral-400'
+                  }`}>
+                  {s.nom}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {erreur && <p className="text-[12px] font-semibold text-red-600 mb-3">{erreur}</p>}
 
