@@ -63,6 +63,10 @@ interface JobApplication {
     // Le candidat a postulé de lui-même ici : l'API partage ses coordonnées
     // avec CE gérant (JobApplicationController::shapeForOwner).
     user?: { name?: string; avatar?: string | null; email?: string | null; phone?: string | null };
+    // Le « CV CHAIR » : chiffres vérifiés attachés à la candidature.
+    reviews_count?: number;
+    avg_rating?: string | number;
+    top_specialty_level?: { specialty: string; level_name: string } | null;
   };
   job_offer?: { title?: string; id?: number };
 }
@@ -75,6 +79,24 @@ const ADVANCE_LABELS: Partial<Record<ApplicantStatus, string>> = {
   viewed:    "Passer à l'entretien",
   interview: 'Accepter',
 };
+
+/**
+ * Le « CV CHAIR » du candidat en une ligne : offre visée, puis niveau de sa
+ * meilleure spécialité et avis vérifiés — des chiffres que personne ne peut
+ * embellir sur un CV papier.
+ */
+function cvChair(app: JobApplication): string | undefined {
+  const morceaux: string[] = [];
+  if (app.job_offer?.title) morceaux.push(`Pour : ${app.job_offer.title}`);
+  const top = app.hairdresser?.top_specialty_level;
+  if (top) morceaux.push(`${top.level_name} · ${top.specialty}`);
+  const avis = app.hairdresser?.reviews_count ?? 0;
+  if (avis > 0) {
+    const note = parseFloat(String(app.hairdresser?.avg_rating ?? 0));
+    morceaux.push(`${avis} avis vérifiés${note > 0 ? ` ★${note.toFixed(1)}` : ''}`);
+  }
+  return morceaux.length ? morceaux.join(' — ') : undefined;
+}
 
 function nextStage(current: ApplicantStatus): ApplicantStatus | null {
   const idx = STAGE_ORDER.indexOf(current);
@@ -273,7 +295,7 @@ export default function RecrutementPage() {
                       name={app.hairdresser?.user?.name ?? 'Coiffeur'}
                       avatarUrl={resolveMediaUrl(app.hairdresser?.user?.avatar)}
                       status={app.status}
-                      subtitle={app.job_offer?.title ? `Pour : ${app.job_offer.title}` : undefined}
+                      subtitle={cvChair(app)}
                       date={new Date(app.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                       message={app.message}
                       profileHref={app.hairdresser?.slug ? `/app/coiffeur/${app.hairdresser.slug}` : undefined}

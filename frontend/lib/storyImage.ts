@@ -247,6 +247,110 @@ export async function genererStoryCreneau(opts: CreneauStoryOptions): Promise<Bl
   });
 }
 
+// ── Story « avis client » ────────────────────────────────────────────
+
+export interface AvisStoryOptions {
+  rating: number;
+  comment: string;
+  clientFirstName: string;
+  name: string;
+  city?: string | null;
+  slug?: string | null;
+}
+
+/** Découpe un texte en lignes qui tiennent dans maxWidth. */
+function decouperLignes(ctx: CanvasRenderingContext2D, texte: string, maxWidth: number, maxLignes: number): string[] {
+  const mots = texte.split(/\s+/);
+  const lignes: string[] = [];
+  let courante = '';
+  for (const mot of mots) {
+    const essai = courante ? courante + ' ' + mot : mot;
+    if (ctx.measureText(essai).width <= maxWidth) {
+      courante = essai;
+    } else {
+      if (courante) lignes.push(courante);
+      courante = mot;
+      if (lignes.length === maxLignes - 1) break;
+    }
+  }
+  if (courante && lignes.length < maxLignes) lignes.push(courante);
+  if (lignes.length === maxLignes && mots.join(' ') !== lignes.join(' ')) {
+    lignes[maxLignes - 1] = lignes[maxLignes - 1].replace(/\s*\S*$/, ' …');
+  }
+  return lignes;
+}
+
+/** Un avis vérifié en story : les étoiles, la citation, le lien. */
+export async function genererStoryAvis(opts: AvisStoryOptions): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponible');
+
+  const fond = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, H * 1.1);
+  fond.addColorStop(0, '#1f1f21');
+  fond.addColorStop(0.62, '#0a0a0a');
+  fond.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = fond;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  dessinerWordmark(ctx, W / 2, 220, 64, '#ffffff');
+
+  // Les étoiles.
+  ctx.font = `72px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  const etoiles = '★'.repeat(Math.max(1, Math.min(5, opts.rating)));
+  ctx.fillStyle = '#f5b942';
+  ctx.fillText(etoiles.split('').join(' '), W / 2, 560);
+
+  // La citation, guillemets français, max 7 lignes.
+  ctx.font = `700 52px Georgia, 'Times New Roman', serif`;
+  ctx.fillStyle = '#ffffff';
+  const lignes = decouperLignes(ctx, `« ${opts.comment.trim()} »`, W - 220, 7);
+  let y = 700;
+  for (const ligne of lignes) {
+    ctx.fillText(ligne, W / 2, y);
+    y += 74;
+  }
+
+  // Signataire.
+  ctx.font = `600 34px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText(`— ${opts.clientFirstName}, avis vérifié`, W / 2, y + 40);
+
+  // Coiffeur + lien en pied.
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(W / 2 - 40, 1440, 80, 3);
+  ctx.font = `900 54px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(opts.name, W / 2, 1540, W - 160);
+  if (opts.city) {
+    ctx.font = `500 32px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(opts.city, W / 2, 1595);
+  }
+  if (opts.slug) {
+    const texte = `getchair.app/coiffeur/${opts.slug}`;
+    ctx.font = `700 32px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+    const l = ctx.measureText(texte).width;
+    const cy = 1700;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - l / 2 - 36, cy - 40, l + 72, 80, 40);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texte, W / 2, cy + 2);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.textAlign = 'left';
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Export impossible'))), 'image/png');
+  });
+}
+
 /**
  * Partage un blob déjà généré. À appeler DEPUIS un geste utilisateur
  * (clic) : iOS refuse navigator.share hors activation — c'est exactement

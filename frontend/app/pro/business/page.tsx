@@ -14,6 +14,7 @@ import type {
 } from '@/lib/types';
 import { BadgeMedallion } from '@/components/ui/ChairBadges';
 import { PremiumLockCard } from '@/components/ui/PremiumLock';
+import GoalCard from '@/components/pro/GoalCard';
 import {
   Users, Star, Eye, Bookmark, Euro, Percent, TrendingUp, TrendingDown, Minus,
   Crown, ChevronRight, Calendar, CheckCircle2, Clock, ImageIcon, Lightbulb, ArrowRight,
@@ -223,6 +224,9 @@ export default function PerformancePage() {
                 </div>
               </Link>
             </section>
+
+            {/* ── Objectif du mois (independants — le salarie n'a pas de CA ici) ── */}
+            {isIndependent && <GoalCard />}
 
             {/* ── Recommandations ── */}
             {analyticsData && analyticsData.recommendations.length > 0 && (

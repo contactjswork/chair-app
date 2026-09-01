@@ -52,6 +52,12 @@ class JobApplicationController extends Controller
 
         $apps->each(fn ($app) => $this->shapeForOwner($app));
 
+        // Le « CV CHAIR » du candidat : sa meilleure spécialité et son palier
+        // accompagnent la candidature (avec avis/portfolio déjà présents).
+        \App\Services\BadgeService::attachGamification(
+            $apps->pluck('hairdresser')->filter()
+        );
+
         return response()->json($apps);
     }
 

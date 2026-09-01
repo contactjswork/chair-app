@@ -421,6 +421,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/loyalty/my-card/{hairdresserId}', [LoyaltyController::class, 'myCard']);
     // Les conseils laisses par mes coiffeurs (fiche client, cote client).
     Route::get('/my-advices', [ClientBookController::class, 'myAdvices']);
+    // Confirmation 24 h : le client confirme son RDV de demain en un tap.
+    Route::post('/appointments/{id}/client-confirm', [AppointmentController::class, 'clientConfirm']);
     // Liste d attente : « prevenez-moi si ca se libere » sur un jour complet.
     Route::post('/waitlist', [WaitlistController::class, 'join']);
     // Le coiffeur a imprime son QR — alimente la checklist des premiers pas.
@@ -527,6 +529,10 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::put('/my-clients/{userId}/advice',  [ClientBookController::class, 'saveAdvice']);
     Route::put('/my-clients/{userId}/rhythm',  [ClientBookController::class, 'saveRhythm']);
     Route::post('/my-clients/{userId}/relance', [ClientBookController::class, 'relance']);
+    // La semaine du coiffeur (pense pour les salaries) + objectif mensuel.
+    Route::get('/my-week', [\App\Http\Controllers\Api\ProHomeController::class, 'week']);
+    Route::get('/my-goal', [\App\Http\Controllers\Api\ProHomeController::class, 'goal']);
+    Route::put('/my-goal', [\App\Http\Controllers\Api\ProHomeController::class, 'saveGoal']);
     // « Votre annee CHAIR » — recap annuel du coiffeur.
     Route::get('/my-year-recap', [\App\Http\Controllers\Api\YearRecapController::class, 'mine']);
     // Promo flash : brader un jour creux pour le remplir.

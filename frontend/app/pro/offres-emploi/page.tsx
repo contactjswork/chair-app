@@ -243,17 +243,24 @@ export default function OffresEmploiPage() {
               </div>
             ) : (
               <>
-                <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-widest mb-3">Postuler à cette offre</h3>
+                <h3 className="text-xs font-bold text-neutral-900 uppercase tracking-widest mb-2">Postuler à cette offre</h3>
+                {/* Le profil CHAIR est le CV : le gérant reçoit portfolio,
+                    avis vérifiés, niveau et rang avec la candidature. Le
+                    message n'est qu'un plus — un tap suffit. */}
+                <p className="text-[12px] text-neutral-500 leading-relaxed mb-3">
+                  Votre profil CHAIR accompagne la candidature — portfolio,
+                  avis vérifiés et niveau. Un mot est bienvenu, pas obligatoire.
+                </p>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  placeholder="Présentez-vous en quelques lignes : expérience, disponibilité..."
-                  className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-sm resize-none focus:outline-none focus:border-neutral-800 transition-colors mb-3"
+                  rows={3}
+                  placeholder="Un mot pour le gérant (optionnel)…"
+                  className="w-full px-3 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl text-[16px] resize-none focus:outline-none focus:border-neutral-800 transition-colors mb-3"
                 />
                 <button onClick={handleApply} disabled={sending}
                   className="w-full py-3.5 bg-neutral-900 text-white text-sm font-bold rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                  <Send size={14} />{sending ? 'Envoi en cours...' : 'Envoyer ma candidature'}
+                  <Send size={14} />{sending ? 'Envoi en cours...' : 'Postuler avec mon profil CHAIR'}
                 </button>
               </>
             )}

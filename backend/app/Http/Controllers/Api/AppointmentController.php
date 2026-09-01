@@ -58,6 +58,31 @@ class AppointmentController extends Controller
     }
 
     /**
+     * POST /appointments/{id}/client-confirm — le client confirme son RDV
+     * de demain (demande envoyée par le rappel 24 h). Sans confirmation, le
+     * créneau est libéré 4 h avant par chair:send-appointment-reminders.
+     */
+    public function clientConfirm(Request $request, int $id)
+    {
+        $appointment = Appointment::where('id', $id)
+            ->where('client_id', $request->user()->id)
+            ->first();
+
+        if (!$appointment) {
+            return response()->json(['message' => 'Rendez-vous introuvable.'], 404);
+        }
+        if ($appointment->status !== 'confirmed') {
+            return response()->json(['message' => 'Ce rendez-vous n’est plus actif.'], 422);
+        }
+
+        if ($appointment->client_confirmed_at === null) {
+            $appointment->forceFill(['client_confirmed_at' => now()])->save();
+        }
+
+        return response()->json(['client_confirmed_at' => $appointment->client_confirmed_at]);
+    }
+
+    /**
      * Machine à états des rendez-vous : source => destinations autorisées.
      *
      * Avant, updateStatus() acceptait N'IMPORTE QUELLE valeur de l'enum quel

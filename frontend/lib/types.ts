@@ -619,6 +619,9 @@ export interface ApiAppointment {
   duration_minutes: number | null;
   price: string | null;
   payment_method: 'on_site' | 'deposit' | 'full' | null;
+  /** Confirmation 24 h : demande envoyée la veille ; confirmée par le client en un tap. */
+  confirmation_requested_at?: string | null;
+  client_confirmed_at?: string | null;
   message: string | null;
   /**
    * La réalisation que le client a jointe en réservant : « je voudrais ce

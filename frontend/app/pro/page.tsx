@@ -19,6 +19,7 @@ import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
 import StoryCreateCard from '@/components/ui/StoryCreateCard';
 import RankCard from '@/components/pro/home/RankCard';
 import TodayCard from '@/components/pro/home/TodayCard';
+import WeekCard from '@/components/pro/home/WeekCard';
 import StreakCard from '@/components/pro/home/StreakCard';
 import QuestCard from '@/components/pro/home/QuestCard';
 import CompletionCard from '@/components/pro/home/CompletionCard';
@@ -189,7 +190,11 @@ export default function CockpitPage() {
               </Link>
             )}
 
-            <TodayCard appointments={appointments} href={isIndependent ? '/pro/agenda' : '/pro/reservations'} />
+            {/* Salarié : sa semaine (scans, avis) — les RDV sont le monde de
+                l'indépendant, pas le sien. */}
+            {isIndependent
+              ? <TodayCard appointments={appointments} href="/pro/agenda" />
+              : <WeekCard />}
 
             {/* ══════════ Ce qui me tire vers le haut ══════════ */}
             <StreakCard />

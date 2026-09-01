@@ -30,6 +30,33 @@ interface TeamMember {
   specialty?: string;
   specialties?: { id: number; name: string }[];
   avatar?: string | null;
+  // La part du salarié dans le salon (lot 01/09/2026) : ces compteurs sont
+  // déjà sur le profil renvoyé par /my-salon — on les affiche enfin.
+  verified_visits_count?: number;
+  reviews_count?: number;
+  avg_rating?: string | number;
+}
+
+/**
+ * « 34 passages · 12 avis ★4,8 · 41 % du salon » — la part de chaque membre
+ * dans l'activité vérifiée du salon. Reconnaissance chiffrée pour le
+ * salarié, pilotage pour le gérant. La part n'apparaît qu'à partir de deux
+ * membres ET d'une activité réelle (un « 100 % » d'un salon vide ne dit rien).
+ */
+function contributionLigne(m: TeamMember, team: TeamMember[]): string {
+  const passages = m.verified_visits_count ?? 0;
+  const avis = m.reviews_count ?? 0;
+  const note = m.avg_rating != null ? parseFloat(String(m.avg_rating)) : 0;
+
+  const morceaux: string[] = [];
+  morceaux.push(`${passages} passage${passages > 1 ? 's' : ''}`);
+  if (avis > 0) morceaux.push(`${avis} avis${note > 0 ? ` ★${note.toFixed(1)}` : ''}`);
+
+  const totalSalon = team.reduce((acc, t) => acc + (t.verified_visits_count ?? 0), 0);
+  if (team.length > 1 && totalSalon > 0 && passages > 0) {
+    morceaux.push(`${Math.round((passages / totalSalon) * 100)} % du salon`);
+  }
+  return morceaux.join(' · ');
 }
 
 export default function EquipePage() {
@@ -235,7 +262,7 @@ export default function EquipePage() {
                     key={m.id}
                     avatarUrl={resolveMediaUrl(m.avatar)}
                     name={m.user?.name ?? 'Coiffeur'}
-                    subtitle={m.specialty}
+                    subtitle={contributionLigne(m, team)}
                     actions={
                       <>
                         <button

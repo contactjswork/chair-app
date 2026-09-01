@@ -61,7 +61,12 @@ class SendAppointmentReminders extends Command
             ->whereNotNull('appointment_date')
             ->whereNotNull('appointment_time')
             ->where(function ($q) {
-                $q->whereNull('reminded_24h_at')->orWhereNull('reminded_1h_at');
+                $q->whereNull('reminded_24h_at')
+                  ->orWhereNull('reminded_1h_at')
+                  // …ou candidat à la libération (confirmé demandé, pas confirmé).
+                  ->orWhere(function ($qq) {
+                      $qq->whereNotNull('confirmation_requested_at')->whereNull('client_confirmed_at');
+                  });
             })
             ->whereBetween('appointment_date', [$now->toDateString(), $now->copy()->addDays(2)->toDateString()])
             ->with('hairdresser.user')
@@ -69,6 +74,7 @@ class SendAppointmentReminders extends Command
 
         $sent24h = 0;
         $sent1h  = 0;
+        $liberes = 0;
 
         foreach ($candidates as $appointment) {
             $start = $this->startsAt($appointment);
@@ -78,8 +84,26 @@ class SendAppointmentReminders extends Command
 
             if ($appointment->reminded_24h_at === null
                 && $start->between($now->copy()->addHours(24)->subMinutes(15), $now->copy()->addHours(24)->addMinutes(15))) {
+                // Le rappel 24 h est aussi la DEMANDE DE CONFIRMATION
+                // (01/09/2026) : confirmation_requested_at arme la libération
+                // automatique 4 h avant le RDV si le client ne confirme pas.
+                $appointment->forceFill(['confirmation_requested_at' => now()])->save();
                 $this->remind($appointment, 'appointment_reminder_24h', 'reminded_24h_at', $start);
                 $sent24h++;
+            }
+
+            // LIBÉRATION : demandé il y a ~20 h, jamais confirmé, et le RDV
+            // est dans ~4 h → le créneau repart au planning et la liste
+            // d'attente est prévenue. Jamais pour un RDV pris < 24 h avant
+            // (aucune confirmation n'a été demandée, confirmation_requested_at
+            // est null) ni pour un invité sans compte (client_id null, déjà
+            // filtré en amont).
+            if ($appointment->confirmation_requested_at !== null
+                && $appointment->client_confirmed_at === null
+                && $appointment->status === 'confirmed'
+                && $start->between($now->copy()->addHours(4)->subMinutes(15), $now->copy()->addHours(4)->addMinutes(15))) {
+                $this->liberer($appointment, $start);
+                $liberes++;
             }
 
             if ($appointment->reminded_1h_at === null
@@ -89,7 +113,7 @@ class SendAppointmentReminders extends Command
             }
         }
 
-        $this->info("Rappels 24h : {$sent24h} — Rappels 1h : {$sent1h} (candidats : {$candidates->count()})");
+        $this->info("Rappels 24h : {$sent24h} — Rappels 1h : {$sent1h} — Libérés : {$liberes} (candidats : {$candidates->count()})");
 
         return 0;
     }
@@ -138,5 +162,42 @@ class SendAppointmentReminders extends Command
                 'url'            => '/app/compte',
             ]
         );
+    }
+
+    /**
+     * Libère un créneau jamais confirmé : statut annulé, client et coiffeur
+     * prévenus, liste d'attente notifiée. Le client n'est pas puni — le
+     * message l'invite à reprendre un créneau.
+     */
+    private function liberer(Appointment $appointment, Carbon $start): void
+    {
+        // Statut d'abord : si une notification lève, le créneau est quand
+        // même libéré — c'est l'effet qui compte.
+        $appointment->forceFill(['status' => 'cancelled'])->save();
+
+        $vars = [
+            'coiffeur' => $appointment->hairdresser->user->name ?? null,
+            'heure'    => $start->format('H\hi'),
+        ];
+
+        NotificationService::sendTyped(
+            (int) $appointment->client_id,
+            'appointment_released',
+            $vars,
+            NotificationCopy::AUDIENCE_CLIENT,
+            ['appointment_id' => $appointment->id, 'url' => '/app/coiffeur/' . ($appointment->hairdresser->slug ?? '')]
+        );
+
+        if ($appointment->hairdresser && $appointment->hairdresser->user_id) {
+            NotificationService::sendTyped(
+                (int) $appointment->hairdresser->user_id,
+                'appointment_released',
+                ['client' => $appointment->client_name, 'heure' => $start->format('H\hi')],
+                NotificationCopy::AUDIENCE_PRO,
+                ['appointment_id' => $appointment->id, 'url' => '/pro/agenda']
+            );
+        }
+
+        AppServicesWaitlistService::onSlotFreed($appointment);
     }
 }

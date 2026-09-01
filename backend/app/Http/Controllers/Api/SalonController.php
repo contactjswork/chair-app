@@ -332,6 +332,9 @@ class SalonController extends Controller
         // Lier le coiffeur au salon
         $joinRequest->hairdresser->update(['salon_id' => $joinRequest->salon_id]);
 
+        // « J'ai changé de salon » : ses abonnés et favoris le suivent.
+        \App\Services\SalonMoveNotifier::annoncer($joinRequest->hairdresser, $joinRequest->salon);
+
         // Notifier le coiffeur
         NotificationService::send(
             $joinRequest->hairdresser->user_id,

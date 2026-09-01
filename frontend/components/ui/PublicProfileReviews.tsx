@@ -16,6 +16,7 @@ interface Props {
   reviews: ApiReview[];
   avgRating: string;
   reviewsCount: number;
+  storyMeta?: { name: string; city: string | null; slug: string | null };
 }
 
 /**
@@ -38,6 +39,7 @@ export default function PublicProfileReviews({
   reviews,
   avgRating,
   reviewsCount,
+  storyMeta,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [reportId, setReportId]     = useState<number | null>(null);
@@ -50,6 +52,7 @@ export default function PublicProfileReviews({
         initialReviews={reviews}
         avgRating={avgRating}
         reviewsCount={reviewsCount}
+        storyMeta={storyMeta}
       />
 
       {reviews.length > 0 && (

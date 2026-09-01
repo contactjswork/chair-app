@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Star, ShieldCheck, BadgeCheck, X } from 'lucide-react';
+import { Star, ShieldCheck, BadgeCheck, X, Share2 } from 'lucide-react';
+import StoryShareSheet from '@/components/pro/StoryShareSheet';
+import { genererStoryAvis } from '@/lib/storyImage';
 import StarRating from '@/components/ui/StarRating';
 import ReviewsSection from '@/components/ui/ReviewsSection';
 import BottomSheet from '@/components/ui/BottomSheet';
@@ -17,7 +19,7 @@ function buildBreakdown(reviews: ApiReview[]): Record<number, number> {
   return b;
 }
 
-function SimpleReviewCard({ review, isOwner, onReplied }: { review: ApiReview; isOwner: boolean; onReplied: (id: number, reply: string) => void }) {
+function SimpleReviewCard({ review, isOwner, onReplied, onShareStory }: { review: ApiReview; isOwner: boolean; onReplied: (id: number, reply: string) => void; onShareStory?: () => void }) {
   const clientAvatar = resolveMediaUrl(review.client?.avatar ?? null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(review.hairdresser_reply ?? '');
@@ -103,6 +105,17 @@ function SimpleReviewCard({ review, isOwner, onReplied }: { review: ApiReview; i
         </div>
       )}
 
+      {/* Un bon avis est une pub : le coiffeur le partage en story
+          formatée CHAIR (étoiles, citation, lien de réservation). */}
+      {onShareStory && (
+        <button
+          onClick={onShareStory}
+          className="relative before:absolute before:-inset-y-[8px] before:inset-x-0 before:content-[''] mt-2 ml-11 flex items-center gap-1.5 text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
+        >
+          <Share2 size={12} /> Partager en story
+        </button>
+      )}
+
       {isOwner && (editing || !review.hairdresser_reply) && (
         <div className="mt-2.5 ml-11">
           {editing ? (
@@ -151,6 +164,8 @@ interface Props {
   initialReviews: ApiReview[];
   avgRating: string;
   reviewsCount: number;
+  /** Nécessaire au partage d'un avis en story (propriétaire uniquement). */
+  storyMeta?: { name: string; city: string | null; slug: string | null };
 }
 
 export default function ReviewsCompact({
@@ -159,8 +174,11 @@ export default function ReviewsCompact({
   initialReviews,
   avgRating,
   reviewsCount,
+  storyMeta,
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  // L'avis en cours de partage en story (propriétaire, avis 4★+ seulement).
+  const [avisStory, setAvisStory] = useState<ApiReview | null>(null);
   // Copie locale : la réponse tout juste publiée doit apparaître sans
   // recharger la page — le coiffeur doit voir sa parole en place.
   const [liste, setListe] = useState(initialReviews);
@@ -224,7 +242,8 @@ export default function ReviewsCompact({
           {top3.length > 0 && (
             <div className="divide-y divide-neutral-100 mb-4">
               {top3.map((r) => (
-                <SimpleReviewCard key={r.id} review={r} isOwner={isOwner} onReplied={surReponse} />
+                <SimpleReviewCard key={r.id} review={r} isOwner={isOwner} onReplied={surReponse}
+                  onShareStory={storyMeta && r.rating >= 4 ? () => setAvisStory(r) : undefined} />
               ))}
             </div>
           )}
@@ -246,6 +265,21 @@ export default function ReviewsCompact({
             </p>
           </div>
         </div>
+      )}
+
+      {avisStory && storyMeta && (
+        <StoryShareSheet
+          generer={() => genererStoryAvis({
+            rating: avisStory.rating,
+            comment: avisStory.comment,
+            clientFirstName: (avisStory.client?.name ?? 'Client').split(' ')[0],
+            name: storyMeta.name,
+            city: storyMeta.city,
+            slug: storyMeta.slug,
+          })}
+          lien={storyMeta.slug ? `https://getchair.app/coiffeur/${storyMeta.slug}` : null}
+          onClose={() => setAvisStory(null)}
+        />
       )}
 
       {/* Bottom sheet — tous les avis */}

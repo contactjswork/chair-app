@@ -617,6 +617,37 @@ export default function ComptePage() {
  * montage, on ne le monte donc qu'à l'ouverture pour ne pas alourdir chaque
  * visite de la page Compte.
  */
+/**
+ * Confirmation 24 h : le bouton qui protège le créneau. Sans confirmation,
+ * le serveur libère le rendez-vous 4 h avant l'heure et prévient la liste
+ * d'attente — le bouton le dit pour que l'enjeu soit clair.
+ */
+function ConfirmPresenceButton({ appt, onUpdated }: { appt: ApiAppointment; onUpdated: (a: ApiAppointment) => void }) {
+  const [envoi, setEnvoi] = useState(false);
+  return (
+    <div className="mt-3 bg-amber-50 ring-1 ring-amber-100 rounded-xl p-3">
+      <p className="text-[12px] font-semibold text-amber-800 leading-snug mb-2">
+        Confirme ta présence — sans confirmation, le créneau sera libéré 4 h avant.
+      </p>
+      <button
+        type="button"
+        disabled={envoi}
+        onClick={async () => {
+          setEnvoi(true);
+          try {
+            await api.post(`/appointments/${appt.id}/client-confirm`, {});
+            onUpdated({ ...appt, client_confirmed_at: new Date().toISOString() });
+          } catch {}
+          setEnvoi(false);
+        }}
+        className="w-full min-h-[44px] rounded-xl bg-neutral-900 text-white text-[13px] font-bold disabled:opacity-50 active:scale-[0.98] transition-transform"
+      >
+        {envoi ? 'Confirmation…' : 'Je confirme ma présence'}
+      </button>
+    </div>
+  );
+}
+
 /** Sélecteur d'apparence — même préférence chair_theme que CHAIR PRO. */
 function ThemePicker() {
   const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice());
@@ -805,6 +836,16 @@ function ClientAppointmentCard({
               {referenceAuthor ? ` — de ${referenceAuthor}` : ''}
             </p>
           </div>
+        )}
+        {/* Confirmation 24 h : demandée la veille, le créneau est libéré
+            4 h avant sans réponse. Un tap suffit. */}
+        {appt.status === 'confirmed' && appt.confirmation_requested_at && !appt.client_confirmed_at && (
+          <ConfirmPresenceButton appt={appt} onUpdated={onUpdated} />
+        )}
+        {appt.status === 'confirmed' && appt.client_confirmed_at && (
+          <p className="mt-3 text-[12px] font-semibold text-green-600 flex items-center gap-1.5">
+            <CalendarDays size={13} /> Présence confirmée
+          </p>
         )}
         {(hairdresserSlug || cancellable) && (
           <div className="mt-3 pt-3 border-t border-neutral-100 space-y-2">

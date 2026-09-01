@@ -135,11 +135,14 @@ class NotificationCopy
         ],
 
         // Rappels : mapping de préférence déjà prêt, envoi pas encore branché.
+        // Depuis le 01/09/2026 : le rappel 24 h DEMANDE la confirmation.
+        // Sans confirmation, le créneau est libéré 4 h avant le RDV
+        // (chair:send-appointment-reminders, branche libération).
         'appointment_reminder_24h' => [
             self::AUDIENCE_CLIENT => [
-                'title'    => 'Rendez-vous demain',
-                'message'  => 'Demain {heure} chez {coiffeur}. Préviens en cas d\'imprévu.',
-                'fallback' => 'Tu as un rendez-vous demain. Préviens ton coiffeur en cas d\'imprévu.',
+                'title'    => 'Confirme ton rendez-vous',
+                'message'  => 'Demain {heure} chez {coiffeur} — confirme en un tap, sinon le créneau sera libéré.',
+                'fallback' => 'Confirme ton rendez-vous de demain, sinon le créneau sera libéré.',
             ],
             self::AUDIENCE_PRO => [
                 'title'    => 'Ton agenda de demain',
@@ -466,6 +469,30 @@ class NotificationCopy
                 'title'    => 'Un petit rafraîchissement ?',
                 'message'  => 'Ça fait {semaines} semaines depuis ta visite chez {coiffeur}. Un créneau ?',
                 'fallback' => 'Ton coiffeur a des créneaux cette semaine.',
+            ],
+        ],
+
+        // Le coiffeur suivi a change de salon : SA clientele le suit —
+        // c'est le coeur de la promesse CHAIR (voir SalonMoveNotifier).
+        'salon_changed' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => '{coiffeur} a changé de salon',
+                'message'  => 'Retrouve-le désormais chez {salon}.',
+                'fallback' => 'Un coiffeur que tu suis a changé de salon — son profil est à jour.',
+            ],
+        ],
+
+        // Créneau libéré faute de confirmation — les deux côtés prévenus.
+        'appointment_released' => [
+            self::AUDIENCE_CLIENT => [
+                'title'    => 'Créneau libéré',
+                'message'  => 'Ton RDV de {heure} chez {coiffeur} a été libéré faute de confirmation. Reprends un créneau quand tu veux.',
+                'fallback' => 'Ton rendez-vous non confirmé a été libéré. Reprends un créneau quand tu veux.',
+            ],
+            self::AUDIENCE_PRO => [
+                'title'    => 'Créneau libéré',
+                'message'  => '{client} n\'a pas confirmé son RDV de {heure} — le créneau est reparti au planning.',
+                'fallback' => 'Un rendez-vous non confirmé a été libéré dans ton agenda.',
             ],
         ],
 

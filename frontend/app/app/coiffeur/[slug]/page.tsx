@@ -201,6 +201,11 @@ export default async function HairdresserProfilePage({ params }: { params: Promi
               count: hairdresser.reviews_count,
               content: (
                 <PublicProfileReviews
+                  storyMeta={{
+                    name: hairdresser.user.name,
+                    city: hairdresser.city ?? null,
+                    slug: hairdresser.slug ?? null,
+                  }}
                   hairdresserId={hairdresser.id}
                   hairdresserUserId={hairdresser.user.id}
                   reviews={reviews}

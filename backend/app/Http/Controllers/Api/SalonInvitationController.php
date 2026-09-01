@@ -277,6 +277,9 @@ class SalonInvitationController extends Controller
         }
 
         $profile->update(['salon_id' => $invitation->salon_id, 'is_independent' => false]);
+
+        // « J'ai changé de salon » : ses abonnés et favoris le suivent.
+        \App\Services\SalonMoveNotifier::annoncer($profile, $invitation->salon);
         $invitation->update(['status' => 'accepted']);
 
         NotificationService::send(

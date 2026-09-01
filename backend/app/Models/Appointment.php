@@ -15,6 +15,7 @@ class Appointment extends Model
         'reference_post_id',
         // New real booking fields
         'service_id', 'appointment_date', 'appointment_time',
+        'confirmation_requested_at', 'client_confirmed_at',
         'duration_minutes', 'price', 'payment_method',
         'status', 'review_token', 'review_unlocked',
     ];
@@ -24,6 +25,8 @@ class Appointment extends Model
         'appointment_date' => 'date:Y-m-d',
         'review_unlocked'  => 'boolean',
         'price'            => 'decimal:2',
+        'confirmation_requested_at' => 'datetime',
+        'client_confirmed_at'       => 'datetime',
     ];
 
     public function hairdresser()
