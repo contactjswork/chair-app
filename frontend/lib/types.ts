@@ -238,6 +238,8 @@ export interface ApiQrTokenResponse {
 // ── Abonnements CHAIR+ / CHAIR BUSINESS (voir docs/CHAIR_PLUS.md) ──
 export interface ApiSubscriptionDetail {
   plan: 'chair_plus' | 'chair_business';
+  /** D'où vient l'argent : Stripe (web) ou achat intégré Apple (app iOS) — décide où se gère l'abonnement. */
+  provider: 'stripe' | 'apple';
   status: 'trialing' | 'active' | 'past_due' | 'canceled';
   trial_ends_at: string | null;
   current_period_end: string | null;

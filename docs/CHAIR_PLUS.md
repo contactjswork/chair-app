@@ -138,3 +138,49 @@ et coût Cloudinary vidéo à construire/chiffrer d'abord).
 Réponses, likes, mise en avant automatique d'une disponibilité de dernière
 minute, statistiques avancées CHAIR+, stories visibles pour les favoris (pas
 seulement les abonnements).
+
+## Achat intégré Apple — binaire CHAIR PRO iOS (2026-09-01)
+
+Le web reste sur Stripe ; DANS l'app iOS, la règle App Store 3.1.1 impose la
+feuille de paiement Apple pour un abonnement numérique. Les deux tunnels
+alimentent la MÊME table `subscriptions` (colonne `provider` : stripe|apple),
+`hasChairPlus()` reste l'unique point de vérité.
+
+**Flux** : `/pro/chair-plus` (binaire PRO détecté via lib/appContext.ts) →
+`lib/iap.ts` → plugin `@capgo/native-purchases` (StoreKit) → feuille Apple →
+reçu base64 → `POST /iap/verify` → `AppleIapService::syncFromReceipt()`
+(validation /verifyReceipt avec la clé secrète partagée, repli sandbox sur
+statut 21007) → ligne `subscriptions` provider=apple.
+
+- L'identifiant produit `app.getchair.pro.chairplus.monthly` est défini en DEUX
+  endroits à garder synchrones : `PRODUIT_CHAIR_PLUS` (frontend/lib/iap.ts) et
+  `APPLE_IAP_PRODUCT_CHAIR_PLUS` (backend .env / config/services.php).
+- Les 30 jours gratuits côté Apple = offre d'essai configurée SUR LE PRODUIT
+  dans App Store Connect (le code ne fait que refléter `is_trial_period`).
+- Renouvellements/annulations : `chair:sync-apple-subscriptions` (scheduler,
+  05:15) re-valide chaque jour les reçus proches d'échéance avec le
+  `apple_latest_receipt` stocké. Pas d'App Store Server Notifications en V1.
+- Gestion/annulation d'un abo Apple : `manageSubscriptions()` natif (réglages
+  App Store), jamais le portail Stripe. « Restaurer mes achats » obligatoire :
+  `restorePurchases()` + `getPurchases()` → re-`/iap/verify`.
+- Garde anti-partage : un `apple_original_transaction_id` déjà rattaché à un
+  autre profil → 409, jamais de déplacement silencieux.
+
+### Checklist d'activation (Julien)
+
+**Stripe (web)** — dashboard.stripe.com, mode test d'abord :
+1. Créer les produits CHAIR+ (15,99 €/mois) et CHAIR BUSINESS → copier les `price_...`.
+2. `.env` serveur : `STRIPE_SECRET`, `STRIPE_PRICE_CHAIR_PLUS`, `STRIPE_PRICE_CHAIR_BUSINESS`.
+3. Webhook → endpoint `https://api.getchair.app/api/stripe/webhook`, événements
+   checkout.session.completed, customer.subscription.updated/deleted,
+   invoice.payment_failed → copier le secret dans `STRIPE_WEBHOOK_SECRET`.
+4. `php artisan config:clear` sur le serveur. C'est tout — le code est prêt.
+
+**Apple (app)** — App Store Connect :
+1. App CHAIR PRO → Abonnements → créer le groupe + l'abonnement
+   `app.getchair.pro.chairplus.monthly`, 15,99 €/mois, offre d'essai « 1 mois gratuit ».
+2. Informations sur l'app → Clé secrète partagée → `.env` : `APPLE_IAP_SHARED_SECRET`.
+3. Sur le Mac : `npm install` puis `npx cap sync ios` (le plugin
+   @capgo/native-purchases est déjà dans package.json) → build → TestFlight.
+4. Tester en sandbox (compte Sandbox App Store Connect) : achat, restauration,
+   annulation.

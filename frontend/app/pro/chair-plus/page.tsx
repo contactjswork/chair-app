@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { subscription } from '@/lib/api';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
+import { acheterChairPlus, restaurerChairPlus, gererAbonnementApple, iapDisponible, prixChairPlusApple, AchatAnnule } from '@/lib/iap';
 import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
@@ -88,6 +89,12 @@ export default function ChairPlusPage() {
   const [flagEnabled, setFlagEnabled] = useState(true);
   const [flagLoading, setFlagLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Achat intégré Apple (binaire PRO uniquement) : la feuille de paiement
+  // est-elle utilisable dans ce build, et à quel prix l'App Store vend-il
+  // réellement CHAIR+ ici (devise du storefront) ?
+  const [iapOk, setIapOk] = useState(false);
+  const [prixApple, setPrixApple] = useState<string | null>(null);
+  const [iapNotice, setIapNotice] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -95,17 +102,64 @@ export default function ChairPlusPage() {
   }, [user]);
 
   useEffect(() => {
+    if (appContext !== 'pro') return;
+    iapDisponible().then(setIapOk).catch(() => {});
+    prixChairPlusApple().then(setPrixApple).catch(() => {});
+  }, [appContext]);
+
+  useEffect(() => {
     isFeatureEnabled('chair_plus_enabled').then(setFlagEnabled).finally(() => setFlagLoading(false));
   }, []);
+
+  async function refreshSubscription() {
+    try { setData(await subscription.mine()); } catch { /* le bandeau d'état restera sur l'ancien état, sans casser la page */ }
+  }
 
   async function handleSubscribe() {
     setBusy(true);
     setError('');
+    setIapNotice('');
     try {
-      const res = await subscription.subscribe('chair_plus');
-      window.location.href = res.checkout_url;
+      if (appContext === 'pro') {
+        // Binaire iOS : la vente passe par la feuille de paiement Apple
+        // (règle App Store 3.1.1) — jamais par Stripe Checkout dans l'app.
+        if (!iapOk) {
+          setError("L'achat intégré n'est pas disponible dans cette version de l'app. Mets à jour CHAIR PRO depuis l'App Store.");
+          return;
+        }
+        await acheterChairPlus();
+        await refreshSubscription();
+        setIapNotice('CHAIR+ est actif — bienvenue ! 🎉');
+      } else {
+        // Web : Stripe Checkout (30 jours d'essai gérés par Stripe).
+        const res = await subscription.subscribe('chair_plus');
+        window.location.href = res.checkout_url;
+        return; // on quitte la page, ne pas réactiver le bouton
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la création de l'abonnement.");
+      if (!(err instanceof AchatAnnule)) {
+        setError(err instanceof Error ? err.message : "Erreur lors de la création de l'abonnement.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestore() {
+    setBusy(true);
+    setError('');
+    setIapNotice('');
+    try {
+      const trouve = await restaurerChairPlus();
+      if (trouve) {
+        await refreshSubscription();
+        setIapNotice('Abonnement retrouvé — CHAIR+ est de nouveau actif.');
+      } else {
+        setIapNotice('Aucun abonnement CHAIR+ trouvé sur ce compte App Store.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'La restauration a échoué. Réessaie dans un instant.');
+    } finally {
       setBusy(false);
     }
   }
@@ -114,10 +168,18 @@ export default function ChairPlusPage() {
     setBusy(true);
     setError('');
     try {
+      if (sub?.provider === 'apple') {
+        // Un abonnement Apple s'annule dans les réglages App Store — le
+        // portail Stripe ne le connaît pas.
+        await gererAbonnementApple();
+        await refreshSubscription();
+        return;
+      }
       const res = await subscription.manage();
       window.location.href = res.portal_url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'ouverture de la gestion d'abonnement.");
+    } finally {
       setBusy(false);
     }
   }
@@ -148,6 +210,9 @@ export default function ChairPlusPage() {
   // honnêtement où cela se passe. Identique pour tout le monde, reviewer
   // compris — aucune détection de reviewer nulle part.
   const showSubscriptionUI = allowsDigitalSubscriptionUI(appContext);
+  // Dans le binaire PRO le prix affiché est celui que l'App Store vend
+  // réellement (devise du storefront) ; repli sur le tarif France sinon.
+  const prixLabel = appContext === 'pro' && prixApple ? prixApple : '15,99€';
 
   return (
     <div className="min-h-screen bg-white">
@@ -202,10 +267,11 @@ export default function ChairPlusPage() {
               ) : (
                 <>
                   <p className="text-[13px] text-white/50 font-medium mb-8">
-                    30 jours gratuits, puis 15,99€/mois
+                    30 jours gratuits, puis {prixLabel}/mois
                   </p>
 
                   {error && <p className="text-xs text-red-300 mb-3">{error}</p>}
+                  {iapNotice && <p className="text-xs text-white/80 mb-3 font-semibold">{iapNotice}</p>}
 
                   <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
 
@@ -228,6 +294,18 @@ export default function ChairPlusPage() {
                     >
                       {busy ? 'Chargement...' : 'Essayer CHAIR+ gratuitement'}
                       {!busy && <ArrowRight size={15} />}
+                    </button>
+                  )}
+
+                  {/* Restauration : obligatoire côté Apple (nouvel iPhone, app
+                      réinstallée, validation interrompue après paiement). */}
+                  {appContext === 'pro' && !canManage && (
+                    <button
+                      onClick={handleRestore}
+                      disabled={busy}
+                      className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/50 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
+                    >
+                      Déjà abonné via l&apos;App Store ? Restaurer mes achats
                     </button>
                   )}
 
@@ -294,7 +372,7 @@ export default function ChairPlusPage() {
               <section className="bg-neutral-900 rounded-3xl p-8 md:p-10 text-center">
                 <Sparkles size={20} className="text-white/50 mx-auto mb-4" />
                 <h2 className="text-xl md:text-2xl font-black text-white mb-2">Prêt à passer au niveau supérieur ?</h2>
-                <p className="text-[13px] text-white/50 mb-6">30 jours gratuits, puis 15,99€/mois. Annulation à tout moment.</p>
+                <p className="text-[13px] text-white/50 mb-6">30 jours gratuits, puis {prixLabel}/mois. Annulation à tout moment.</p>
                 <button
                   onClick={handleSubscribe}
                   disabled={busy}

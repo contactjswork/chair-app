@@ -555,6 +555,9 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/my-subscription',    [SubscriptionController::class, 'mine']);
     Route::post('/subscribe',         [SubscriptionController::class, 'subscribe']);
     Route::post('/subscribe/manage',  [SubscriptionController::class, 'manage']);
+    // Achat intégré Apple (binaire CHAIR PRO iOS) — l'app envoie le reçu
+    // StoreKit après paiement via la feuille Apple, le serveur le valide.
+    Route::post('/iap/verify',        [\App\Http\Controllers\Api\IapController::class, 'verify']);
 
     // Stories CHAIR+ (voir docs/CHAIR_PLUS.md)
     Route::get('/stories/feed',                    [StoryController::class, 'feed']);

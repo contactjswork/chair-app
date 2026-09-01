@@ -39,6 +39,11 @@ class Kernel extends ConsoleKernel
         // client. Un seul par rendez-vous termine, jamais si un rendez-vous
         // futur existe deja.
         $schedule->command('chair:send-rebook-reminders')->dailyAt('11:00')->timezone('Europe/Paris');
+
+        // Abonnements Apple (achat intégré CHAIR+) : les renouvellements et
+        // annulations App Store arrivent sans que l'app soit ouverte — on
+        // re-valide chaque jour les reçus proches de l'échéance.
+        $schedule->command('chair:sync-apple-subscriptions')->dailyAt('05:15')->timezone('Europe/Paris');
     }
 
     /**

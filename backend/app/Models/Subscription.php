@@ -8,7 +8,9 @@ class Subscription extends Model
 {
     protected $fillable = [
         'hairdresser_profile_id', 'salon_id', 'plan', 'status',
+        'provider',
         'stripe_customer_id', 'stripe_subscription_id',
+        'apple_original_transaction_id', 'apple_latest_receipt',
         'trial_ends_at', 'current_period_end', 'canceled_at',
         'cancel_at_period_end',
     ];

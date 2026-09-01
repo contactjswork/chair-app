@@ -58,4 +58,15 @@ return [
         'price_chair_business'   => env('STRIPE_PRICE_CHAIR_BUSINESS'),
     ],
 
+    // Achat intégré Apple — CHAIR+ acheté depuis le binaire CHAIR PRO iOS.
+    // shared_secret : « clé secrète partagée » App Store Connect (app CHAIR PRO
+    // → Informations sur l'app → Clé secrète partagée) — sert à /verifyReceipt.
+    // product_chair_plus : identifiant EXACT du produit d'abonnement créé dans
+    // App Store Connect ; doit rester synchronisé avec PRODUIT_CHAIR_PLUS
+    // (frontend/lib/iap.ts).
+    'apple_iap' => [
+        'shared_secret'      => env('APPLE_IAP_SHARED_SECRET'),
+        'product_chair_plus' => env('APPLE_IAP_PRODUCT_CHAIR_PLUS', 'app.getchair.pro.chairplus.monthly'),
+    ],
+
 ];

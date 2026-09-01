@@ -319,6 +319,10 @@ export const subscription = {
   subscribe: (plan: 'chair_plus' | 'chair_business') =>
     api.post<{ checkout_url: string }>('/subscribe', { plan }),
   manage: () => api.post<{ portal_url: string }>('/subscribe/manage', {}),
+  // Achat intégré Apple : l'app a déjà payé via la feuille Apple, on envoie
+  // le reçu StoreKit au serveur qui le valide et ouvre l'entitlement.
+  verifyIap: (receipt: string) =>
+    api.post<{ has_chair_plus: boolean }>('/iap/verify', { receipt }),
 };
 
 // ── Stories CHAIR+ ──────────────────────────────────────────────────────

@@ -99,6 +99,9 @@ class SubscriptionController extends Controller
     {
         return [
             'plan'                  => $sub->plan,
+            // 'stripe' | 'apple' — le front en a besoin pour router la gestion
+            // (portail Stripe vs réglages d'abonnement App Store).
+            'provider'              => $sub->provider ?? 'stripe',
             'status'                => $sub->status,
             'trial_ends_at'         => $sub->trial_ends_at?->toIso8601String(),
             'current_period_end'    => $sub->current_period_end?->toIso8601String(),

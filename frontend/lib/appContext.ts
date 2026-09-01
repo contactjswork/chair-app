@@ -166,9 +166,10 @@ export function binaryLockVerdict(role: string, context: AppContext = getAppCont
  * storefront américain (la France en fait partie), une app ne peut pas
  * présenter de bouton, de lien externe ou d'appel à l'action dirigeant vers
  * un moyen de paiement autre que l'achat intégré, POUR DU CONTENU NUMÉRIQUE.
- * CHAIR+ (stories, vidéos, badge, boost, analytics) est numérique et passe
- * par Stripe : son tarif et son bouton de souscription n'ont donc rien à
- * faire dans le binaire CHAIR CLIENT.
+ * CHAIR+ (stories, vidéos, badge, boost, analytics) est numérique : sur le
+ * web il passe par Stripe, et dans le binaire PRO par l'achat intégré Apple
+ * (lib/iap.ts) — conforme dans les deux cas. Dans le binaire CHAIR CLIENT en
+ * revanche, ni tarif ni bouton de souscription : ce n'est pas son monde.
  *
  * À l'inverse, la prestation de coiffure est un service PHYSIQUE, exclu de
  * cette règle par 3.1.3(e) : la réservation ne doit surtout PAS passer par
