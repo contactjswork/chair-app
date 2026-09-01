@@ -179,7 +179,26 @@ class SpecialtyReputationService
         );
 
         self::refreshReferenceStatus($row);
-        $row->update(['level' => self::levelFor($profile, $row)['level']]);
+
+        // Détection de montée de palier : le niveau stocké AVANT ce recalcul
+        // (0 si la ligne vient d'être créée) comparé au nouveau. On ne notifie
+        // que sur une VRAIE hausse — donc jamais deux fois pour le même palier,
+        // et jamais à la baisse. Le premier palier (Nouveau, 0) ne notifie pas.
+        $previousLevel = $row->wasRecentlyCreated ? 0 : (int) $row->getOriginal('level');
+        $newLevel = self::levelFor($profile, $row)['level'];
+        $row->update(['level' => $newLevel]);
+
+        if ($newLevel > $previousLevel && $newLevel >= 1 && $profile->user_id) {
+            $levelName = self::LEVELS[$newLevel]['name'] ?? null;
+            $specialtyName = optional(\App\Models\Specialty::find($specialtyId))->name;
+            \App\Services\NotificationService::sendTyped(
+                $profile->user_id,
+                'specialty_level_up',
+                ['niveau' => $levelName, 'specialite' => $specialtyName],
+                \App\Services\NotificationCopy::AUDIENCE_PRO,
+                ['specialty_id' => $specialtyId, 'level' => $newLevel]
+            );
+        }
 
         return $row;
     }

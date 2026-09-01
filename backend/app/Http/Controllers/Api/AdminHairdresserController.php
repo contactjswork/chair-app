@@ -148,6 +148,17 @@ class AdminHairdresserController extends Controller
         $profile->forceFill(['identity_verified' => true])->save();
         BadgeService::refresh($profile->fresh());
 
+        // Notifie le coiffeur que son profil est vérifié (uniquement lors du
+        // passage réel non-vérifié → vérifié, pas à chaque appel idempotent).
+        if (!$old && $profile->user_id) {
+            \App\Services\NotificationService::sendTyped(
+                $profile->user_id,
+                'identity_verified',
+                [],
+                \App\Services\NotificationCopy::AUDIENCE_PRO
+            );
+        }
+
         AdminAuditLogger::log($request->user(), 'hairdressers.verify', 'hairdresser_profile', $profile->id, ['identity_verified' => $old], ['identity_verified' => true], $request);
 
         return response()->json(['ok' => true]);

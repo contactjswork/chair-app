@@ -11,12 +11,13 @@ class Subscription extends Model
         'provider',
         'stripe_customer_id', 'stripe_subscription_id',
         'apple_original_transaction_id', 'apple_latest_receipt',
-        'trial_ends_at', 'current_period_end', 'canceled_at',
+        'trial_ends_at', 'trial_ending_notified_at', 'current_period_end', 'canceled_at',
         'cancel_at_period_end',
     ];
 
     protected $casts = [
-        'trial_ends_at'       => 'datetime',
+        'trial_ends_at'            => 'datetime',
+        'trial_ending_notified_at' => 'datetime',
         'current_period_end'  => 'datetime',
         'canceled_at'         => 'datetime',
         'cancel_at_period_end' => 'boolean',

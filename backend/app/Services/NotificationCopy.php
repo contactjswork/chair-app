@@ -534,6 +534,94 @@ class NotificationCopy
                 'fallback' => 'Un coiffeur que tu suis fait une promo flash.',
             ],
         ],
+
+        // =====================================================================
+        // PROGRESSION MÉTIER (montée de palier par spécialité)
+        // =====================================================================
+
+        // Émis par SpecialtyReputationService::refreshOne quand le niveau d'une
+        // spécialité augmente réellement (franchit un palier). {niveau} = nom
+        // du palier (Confirmé, Expert, Maître, Référence), {specialite} = spé.
+        'specialty_level_up' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Nouveau palier atteint',
+                'message'  => 'Te voilà {niveau} en {specialite}. Ta réputation grimpe.',
+                'fallback' => 'Tu viens de passer un nouveau palier. Va voir ta progression.',
+            ],
+        ],
+
+        // =====================================================================
+        // VÉRIFICATION DE COMPTE
+        // =====================================================================
+
+        // Émis par AdminHairdresserController::verify (identité validée).
+        'identity_verified' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Profil vérifié',
+                'message'  => 'Ton identité est validée. Le badge Vérifié est sur ton profil.',
+                'fallback' => 'Ton profil est désormais vérifié.',
+            ],
+        ],
+
+        // Note : le résultat SIRET n'a pas de notification — le coiffeur le
+        // vérifie lui-même et voit le résultat immédiatement dans la réponse
+        // (ProfileController::submitSiret), un push serait redondant.
+
+        // =====================================================================
+        // PARRAINAGE
+        // =====================================================================
+
+        // Émis par ReferralService quand une récompense concrète est créditée.
+        // {recompense} = "CHAIR+" ou "boost", {jours} = nombre de jours gagnés.
+        'referral_reward' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Récompense parrainage',
+                'message'  => 'Tu gagnes {jours} jours de {recompense} grâce à ton parrainage. Merci !',
+                'fallback' => 'Ton parrainage t\'a rapporté une récompense. Va la voir.',
+            ],
+        ],
+
+        // =====================================================================
+        // ABONNEMENT CHAIR+ (cycle de vie — Stripe web + achat Apple)
+        // =====================================================================
+
+        // Émis à l'ouverture de l'entitlement (StripeService / AppleIapService).
+        'chair_plus_started' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Bienvenue dans CHAIR+',
+                'message'  => 'Ton essai gratuit de 30 jours commence. Profite de tout CHAIR+.',
+                'fallback' => 'Ton abonnement CHAIR+ est actif.',
+            ],
+        ],
+
+        // Émis par chair:notify-trial-ending, ~3 jours avant la fin de l'essai.
+        // {jours} = jours restants, {prix} = tarif mensuel (ex "15,99 €").
+        'chair_plus_trial_ending' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Ton essai CHAIR+ se termine',
+                'message'  => 'Dans {jours} jours, CHAIR+ passe à {prix}/mois. Annule avant si tu veux.',
+                'fallback' => 'Ton essai CHAIR+ se termine bientôt. Gère-le dans ton espace.',
+            ],
+        ],
+
+        // Émis sur invoice.payment_failed (Stripe) — accès conservé le temps
+        // des relances automatiques, mais l'abonné doit agir.
+        'chair_plus_payment_failed' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'Paiement CHAIR+ refusé',
+                'message'  => 'Mets à jour ton moyen de paiement pour garder CHAIR+.',
+                'fallback' => 'Ton paiement CHAIR+ a échoué. Mets à jour ton moyen de paiement.',
+            ],
+        ],
+
+        // Émis à la fin réelle de l'abonnement (annulation ou non-paiement).
+        'chair_plus_expired' => [
+            self::AUDIENCE_PRO => [
+                'title'    => 'CHAIR+ a pris fin',
+                'message'  => 'Réabonne-toi quand tu veux pour retrouver stories, badge et analytics.',
+                'fallback' => 'Ton abonnement CHAIR+ a pris fin.',
+            ],
+        ],
     ];
 
     /**

@@ -166,10 +166,25 @@ class ReferralService
 
         if ($reward->boost_days > 0) {
             self::extendBoost($profile, $reward->boost_days);
+            self::notifyReward($profile, $reward->boost_days, 'boost');
         }
         if ($reward->chair_plus_days > 0) {
             self::extendChairPlus($profile, $reward->chair_plus_days);
+            self::notifyReward($profile, $reward->chair_plus_days, 'CHAIR+');
         }
+    }
+
+    /** Prévient le coiffeur qu'une récompense concrète vient d'être créditée. */
+    private static function notifyReward(HairdresserProfile $profile, int $days, string $label): void
+    {
+        if (!$profile->user_id) return;
+        \App\Services\NotificationService::sendTyped(
+            $profile->user_id,
+            'referral_reward',
+            ['jours' => (string) $days, 'recompense' => $label],
+            \App\Services\NotificationCopy::AUDIENCE_PRO,
+            ['days' => $days, 'reward' => $label]
+        );
     }
 
     private static function extendBoost(HairdresserProfile $profile, int $days): void

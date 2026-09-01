@@ -120,16 +120,23 @@ class StripeService
             'cancel_at_period_end'   => (bool) ($stripeSub->cancel_at_period_end ?? false),
         ];
 
+        $subscription = null;
         if ($plan === 'chair_business' && !empty($metadata['salon_id'])) {
-            Subscription::updateOrCreate(
+            $subscription = Subscription::updateOrCreate(
                 ['salon_id' => $metadata['salon_id'], 'plan' => 'chair_business'],
                 $attrs
             );
         } elseif (!empty($metadata['hairdresser_profile_id'])) {
-            Subscription::updateOrCreate(
+            $subscription = Subscription::updateOrCreate(
                 ['hairdresser_profile_id' => $metadata['hairdresser_profile_id'], 'plan' => 'chair_plus'],
                 $attrs
             );
+        }
+
+        // Bienvenue : checkout.session.completed ne se produit qu'à la première
+        // souscription (pas aux renouvellements), c'est donc le bon moment.
+        if ($subscription && $subscription->wasRecentlyCreated) {
+            SubscriptionNotifier::started($subscription);
         }
     }
 
@@ -152,6 +159,7 @@ class StripeService
         if (!$row) return;
 
         $row->update(['status' => 'canceled', 'canceled_at' => now()]);
+        SubscriptionNotifier::expired($row);
     }
 
     private static function onPaymentFailed(array $invoice): void
@@ -165,6 +173,12 @@ class StripeService
         // Stripe retente automatiquement (Smart Retries) — on marque juste
         // l'état, coversToday() garde l'accès tant que current_period_end
         // n'est pas dépassé, laissant le temps au paiement de repasser.
+        // On ne notifie qu'au PASSAGE en past_due (pas à chaque relance Stripe
+        // qui ré-émet l'événement), pour ne pas répéter l'alerte.
+        $wasPastDue = $row->status === 'past_due';
         $row->update(['status' => 'past_due']);
+        if (!$wasPastDue) {
+            SubscriptionNotifier::paymentFailed($row);
+        }
     }
 }

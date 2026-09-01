@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown } from 'lucide-react';
+import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown, Trophy, BadgeCheck, Gift, Sparkles, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,20 @@ function notifIcon(type: string) {
       return <UserPlus size={16} className="text-blue-500" />;
     case 'new_member':
       return <Users size={16} className="text-neutral-600" />;
+    case 'specialty_level_up':
+    case 'rank_moved':
+    case 'badge_unlocked':
+      return <Trophy size={16} className="text-amber-500" />;
+    case 'identity_verified':
+      return <BadgeCheck size={16} className="text-emerald-500" />;
+    case 'referral_reward':
+      return <Gift size={16} className="text-pink-500" />;
+    case 'chair_plus_started':
+    case 'chair_plus_trial_ending':
+    case 'chair_plus_expired':
+      return <Sparkles size={16} className="text-neutral-900" />;
+    case 'chair_plus_payment_failed':
+      return <AlertTriangle size={16} className="text-red-500" />;
     default:
       return <Bell size={16} className="text-neutral-500" />;
   }

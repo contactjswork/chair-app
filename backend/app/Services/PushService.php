@@ -177,6 +177,27 @@ class PushService
             case 'review_request':
                 return $isPro ? '/pro/reservations' : '/app/compte';
 
+            // Progression métier → page badges/progression du pro
+            case 'specialty_level_up':
+            case 'badge_unlocked':
+            case 'rank_moved':
+                return $isPro ? '/pro/badges' : '/app/notifications';
+
+            // Vérification de profil → profil du pro
+            case 'identity_verified':
+                return '/pro/profil';
+
+            // Parrainage → page parrainage du pro
+            case 'referral_reward':
+                return '/pro/parrainage';
+
+            // Abonnement CHAIR+ (cycle de vie) → page CHAIR+ pour gérer/réagir
+            case 'chair_plus_started':
+            case 'chair_plus_trial_ending':
+            case 'chair_plus_payment_failed':
+            case 'chair_plus_expired':
+                return '/pro/chair-plus';
+
             // Tout le reste : le centre de notifications du bon espace
             default:
                 return $isPro ? '/pro/notifications' : '/app/notifications';

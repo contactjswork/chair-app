@@ -44,6 +44,10 @@ class Kernel extends ConsoleKernel
         // annulations App Store arrivent sans que l'app soit ouverte — on
         // re-valide chaque jour les reçus proches de l'échéance.
         $schedule->command('chair:sync-apple-subscriptions')->dailyAt('05:15')->timezone('Europe/Paris');
+
+        // Alerte honnête « ton essai gratuit se termine dans 3 jours » (évite
+        // le prélèvement surprise). Idempotent par abonnement.
+        $schedule->command('chair:notify-trial-ending')->dailyAt('10:00')->timezone('Europe/Paris');
     }
 
     /**

@@ -58,6 +58,13 @@ return [
         'price_chair_business'   => env('STRIPE_PRICE_CHAIR_BUSINESS'),
     ],
 
+    // CHAIR+ — tarif de référence affiché dans certaines notifications
+    // (l'alerte de fin d'essai). Le montant réellement facturé vit chez
+    // Stripe/Apple ; ceci n'est qu'un libellé.
+    'chair_plus' => [
+        'display_price' => env('CHAIR_PLUS_DISPLAY_PRICE', '15,99 €'),
+    ],
+
     // Achat intégré Apple — CHAIR+ acheté depuis le binaire CHAIR PRO iOS.
     // shared_secret : « clé secrète partagée » App Store Connect (app CHAIR PRO
     // → Informations sur l'app → Clé secrète partagée) — sert à /verifyReceipt.

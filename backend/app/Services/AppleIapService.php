@@ -125,7 +125,11 @@ class AppleIapService
             $canceledAt = $expiresAt;
         }
 
-        return Subscription::updateOrCreate(
+        // Statut AVANT cette synchro (null si la ligne n'existe pas encore),
+        // pour ne notifier qu'aux vraies transitions — voir plus bas.
+        $previousStatus = $existing?->status;
+
+        $subscription = Subscription::updateOrCreate(
             ['apple_original_transaction_id' => $originalTxId],
             [
                 'hairdresser_profile_id' => $profile->id,
@@ -141,6 +145,17 @@ class AppleIapService
                 'apple_latest_receipt'   => $response['latest_receipt'] ?? $receiptData,
             ]
         );
+
+        // Notifications de cycle de vie (une seule fois par transition) :
+        //   • première ouverture de l'entitlement → bienvenue ;
+        //   • passage d'un statut couvrant à « canceled » → fin d'abonnement.
+        if ($previousStatus === null && in_array($status, ['trialing', 'active'], true)) {
+            SubscriptionNotifier::started($subscription);
+        } elseif ($previousStatus !== 'canceled' && $status === 'canceled') {
+            SubscriptionNotifier::expired($subscription);
+        }
+
+        return $subscription;
     }
 
     /**
