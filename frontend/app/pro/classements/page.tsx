@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, ArrowRight, BadgeCheck, Check, HelpCircle, Trophy, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BadgeCheck, Check, HelpCircle, Scissors, Trophy, X } from 'lucide-react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { api, leaderboard, specialtyProgress } from '@/lib/api';
+import { api, leaderboard, myRankings, specialtyProgress } from '@/lib/api';
 import { resolveMediaUrl } from '@/lib/types';
 import type {
   ApiSpecialty, ApiSpecialtyLeaderboardEntry, ApiMySpecialtyRank, ApiSpecialtyProgress,
@@ -13,6 +13,7 @@ import type {
 import BottomSheet from '@/components/ui/BottomSheet';
 import ProSection from '@/components/pro/ProSection';
 import { CARTE, CARTE_TAP, CARTE_SOMBRE } from '@/lib/proStyle';
+import { SPECIALTY_ILLUSTRATIONS } from '@/lib/specialties';
 
 /**
  * Classement à l'intérieur de CHAIR PRO. Le seul accès existant pointait vers
@@ -23,7 +24,39 @@ import { CARTE, CARTE_TAP, CARTE_SOMBRE } from '@/lib/proStyle';
  * points est la place au-dessus.
  */
 
-type GeoScope = 'city' | 'country';
+/** Périmètre choisi — les périmètres réellement calculables viennent du
+ *  serveur (available_scopes de /my-rankings : département et région
+ *  seulement s'ils sont dérivables du code postal, même règle d'honnêteté
+ *  que la home). */
+interface ZoneChoisie {
+  geo: 'city' | 'department' | 'region' | 'country';
+  value: string;
+}
+
+const ZONE_HINTS: Record<ZoneChoisie['geo'], string> = {
+  city: 'Votre ville',
+  department: 'Votre département',
+  region: 'Votre région',
+  country: 'Tous les coiffeurs CHAIR',
+};
+
+/** Pastille photo d'une spécialité — même chaîne de priorité que partout
+ *  (vraie photo > illustration locale > ciseaux). */
+function SpecialtyThumb({ specialty, size = 34 }: { specialty: ApiSpecialty | undefined; size?: number }) {
+  const photo = specialty?.image_url;
+  const illustration = specialty ? SPECIALTY_ILLUSTRATIONS[specialty.slug] : undefined;
+  return (
+    <span className="relative rounded-full overflow-hidden bg-neutral-100 flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
+      {photo ? (
+        <Image src={photo} alt="" fill className="object-cover" sizes={`${size}px`} />
+      ) : illustration ? (
+        <Image src={illustration} alt="" fill className="object-contain mix-blend-multiply" sizes={`${size}px`} />
+      ) : (
+        <Scissors size={size * 0.42} className="text-neutral-400" />
+      )}
+    </span>
+  );
+}
 
 // ── Une ligne de classement ─────────────────────────────────────────────────
 function RankRow({ entry, isMe }: { entry: ApiSpecialtyLeaderboardEntry; isMe: boolean }) {
@@ -67,7 +100,7 @@ function PickerSheet({
   title, options, selected, onSelect, onClose,
 }: {
   title: string;
-  options: { value: string; label: string; hint?: string }[];
+  options: { value: string; label: string; hint?: string; thumb?: React.ReactNode }[];
   selected: string;
   onSelect: (v: string) => void;
   onClose: () => void;
@@ -88,6 +121,7 @@ function PickerSheet({
               onClick={() => { onSelect(o.value); onClose(); }}
               className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-neutral-100/70 transition-colors"
             >
+              {o.thumb}
               <div className="flex-1 min-w-0">
                 <p className="text-[15px] text-neutral-900 truncate">{o.label}</p>
                 {o.hint && <p className="text-[12px] text-neutral-400 mt-0.5 truncate">{o.hint}</p>}
@@ -154,7 +188,10 @@ export default function ProClassementsPage() {
   const [specialties,  setSpecialties]  = useState<ApiSpecialty[]>([]);
   const [mine,         setMine]         = useState<ApiSpecialtyProgress[]>([]);
   const [specialtyId,  setSpecialtyId]  = useState<number | null>(null);
-  const [scope,        setScope]        = useState<GeoScope>(city ? 'city' : 'country');
+  const [zones,        setZones]        = useState<ZoneChoisie[]>([]);
+  const [zone,         setZone]         = useState<ZoneChoisie>(
+    city ? { geo: 'city', value: city } : { geo: 'country', value: 'France' }
+  );
   const [entries,      setEntries]      = useState<ApiSpecialtyLeaderboardEntry[]>([]);
   const [myRank,       setMyRank]       = useState<ApiMySpecialtyRank | null>(null);
   const [loading,      setLoading]      = useState(true);
@@ -169,11 +206,17 @@ export default function ProClassementsPage() {
     Promise.allSettled([
       api.get<ApiSpecialty[]>('/specialties'),
       specialtyProgress.mine(),
-    ]).then(([all, own]) => {
+      // Les périmètres réellement calculables (ville / département / région /
+      // France) — mêmes données que le sélecteur de la home.
+      myRankings.get('city'),
+    ]).then(([all, own, rk]) => {
       const catalog = all.status === 'fulfilled' && Array.isArray(all.value) ? all.value : [];
       const ownRows = own.status === 'fulfilled' ? own.value.specialties : [];
       setSpecialties(catalog);
       setMine(ownRows);
+      if (rk.status === 'fulfilled' && Array.isArray(rk.value.available_scopes)) {
+        setZones(rk.value.available_scopes.map((s) => ({ geo: s.geo, value: s.value })));
+      }
       // Repli sur le catalogue quand le coiffeur n'a encore déclaré aucune
       // spécialité : la page montre un vrai classement plutôt qu'un squelette
       // figé, et la carte du haut l'invite à en ajouter une.
@@ -194,9 +237,9 @@ export default function ProClassementsPage() {
       // Le rang privé doit être calculé sur EXACTEMENT la même vue que la
       // liste publique (même spécialité, même zone), sinon "vous êtes 3e"
       // ne correspond à rien de ce qui est affiché dessous.
-      const geoParams = scope === 'city' && city
-        ? { geo: 'city' as const, geoValue: city }
-        : { geo: 'country' as const };
+      const geoParams = zone.geo === 'country'
+        ? { geo: 'country' as const }
+        : { geo: zone.geo, geoValue: zone.value };
 
       const [list, rank] = await Promise.allSettled([
         leaderboard.bySpecialty({ specialtyId: id, limit: 30, ...geoParams }),
@@ -213,7 +256,7 @@ export default function ProClassementsPage() {
     load(specialtyId);
 
     return () => { cancelled = true; };
-  }, [user, specialtyId, scope, city]);
+  }, [user, specialtyId, zone]);
 
   const specialtyName = useMemo(
     () => specialties.find((s) => s.id === specialtyId)?.name
@@ -222,7 +265,7 @@ export default function ProClassementsPage() {
     [specialties, mine, specialtyId],
   );
 
-  const zoneLabel = scope === 'city' && city ? city : 'France';
+  const zoneLabel = zone.value;
   const visibleIds = new Set(entries.map((e) => e.id));
   const isMine = !!mine.find((s) => s.specialty_id === specialtyId);
 
@@ -237,15 +280,17 @@ export default function ProClassementsPage() {
   // Options de spécialité : les siennes d'abord (avec son score), puis le
   // reste du catalogue.
   const mineIds = new Set(mine.map((s) => s.specialty_id));
+  const catalogById = new Map(specialties.map((s) => [s.id, s]));
   const specialtyOptions = [
     ...mine.map((s) => ({
       value: String(s.specialty_id),
       label: s.specialty_name ?? 'Spécialité',
       hint: 'Votre spécialité',
+      thumb: <SpecialtyThumb specialty={catalogById.get(s.specialty_id)} />,
     })),
     ...specialties
       .filter((s) => !mineIds.has(s.id))
-      .map((s) => ({ value: String(s.id), label: s.name })),
+      .map((s) => ({ value: String(s.id), label: s.name, thumb: <SpecialtyThumb specialty={s} /> })),
   ];
 
   return (
@@ -326,7 +371,7 @@ export default function ProClassementsPage() {
           </button>
           <button
             onClick={() => setSheet('scope')}
-            disabled={!city}
+            disabled={zones.length <= 1}
             className={`flex-1 min-w-0 ${CARTE_TAP} px-4 py-3 text-left disabled:opacity-60`}
           >
             <p className="text-[11px] text-neutral-400">Zone</p>
@@ -353,7 +398,7 @@ export default function ProClassementsPage() {
             <div className={`${CARTE} px-5 py-5`}>
               <p className="text-[15px] text-neutral-900">Pas encore de classement ici</p>
               <p className="text-[13px] text-neutral-400 mt-1">
-                Il faut assez d&apos;avis vérifiés sur {specialtyName ?? 'cette spécialité'} à {zoneLabel} pour en établir un.
+                Il faut assez d&apos;avis vérifiés sur {specialtyName ?? 'cette spécialité'} dans cette zone ({zoneLabel}) pour en établir un.
               </p>
             </div>
           ) : (
@@ -421,15 +466,19 @@ export default function ProClassementsPage() {
           onClose={() => setSheet(null)}
         />
       )}
-      {sheet === 'scope' && city && (
+      {sheet === 'scope' && zones.length > 0 && (
         <PickerSheet
           title="Zone"
-          options={[
-            { value: 'city', label: city, hint: 'Votre ville' },
-            { value: 'country', label: 'France', hint: 'Tous les coiffeurs CHAIR' },
-          ]}
-          selected={scope}
-          onSelect={(v) => setScope(v as GeoScope)}
+          options={zones.map((z) => ({
+            value: z.geo,
+            label: z.value,
+            hint: ZONE_HINTS[z.geo],
+          }))}
+          selected={zone.geo}
+          onSelect={(v) => {
+            const choisie = zones.find((z) => z.geo === v);
+            if (choisie) setZone(choisie);
+          }}
           onClose={() => setSheet(null)}
         />
       )}
