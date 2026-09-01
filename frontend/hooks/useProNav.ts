@@ -40,7 +40,7 @@ function salarieNav(): ProNavConfig {
     secondary: [
       { href: '/pro/services',      label: 'Mes expertises',  icon: Scissors },
       { href: '/pro/business',      label: 'Performance',     icon: TrendingUp },
-      { href: '/pro/badges',        label: 'Badges',          icon: Crown },
+      { href: '/pro/badges',        label: 'Progression',     icon: Crown },
       { href: '/pro/classements',   label: 'Classement',      icon: Trophy },
       { href: '/pro/clients',       label: 'Mes clients',     icon: Users },
       { href: '/pro/fidelite',      label: 'Carte de fidélité', icon: Stamp },
@@ -64,7 +64,7 @@ function independantNav(): ProNavConfig {
     secondary: [
       { href: '/pro/reservations',      label: 'Réservations',      icon: Clock },
       { href: '/pro/services',          label: 'Services',          icon: Scissors },
-      { href: '/pro/badges',            label: 'Badges',            icon: Crown },
+      { href: '/pro/badges',            label: 'Progression',       icon: Crown },
       { href: '/pro/classements',       label: 'Classement',        icon: Trophy },
       { href: '/pro/clients',           label: 'Mes clients',       icon: Users },
       { href: '/pro/fidelite',          label: 'Carte de fidélité', icon: Stamp },

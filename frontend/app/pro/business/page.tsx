@@ -218,8 +218,8 @@ export default function PerformancePage() {
                   <Crown size={17} className="text-amber-600" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-neutral-900">Badges</p>
-                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">Niveau et prochains paliers</p>
+                  <p className="text-sm font-bold text-neutral-900">Progression</p>
+                  <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">Niveau, paliers et trophées</p>
                 </div>
               </Link>
             </section>
