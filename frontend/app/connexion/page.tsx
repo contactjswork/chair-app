@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeInternalPath } from '@/lib/auth';
+import { isProBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 
 
 function ConnexionContent() {
@@ -13,6 +14,15 @@ function ConnexionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sessionExpired, setSessionExpired] = useState(false);
+  // Message du verrou binaire ↔ rôle (compte pro évincé de l'app CLIENT) —
+  // posé en sessionStorage par AuthContext juste avant la redirection ici.
+  const [wrongAppMsg, setWrongAppMsg] = useState('');
+
+  // Dans le binaire CHAIR PRO, la connexion CLIENT n'existe pas : chaque app
+  // n'expose que son propre écran d'entrée (décision Julien 01/09/2026).
+  useEffect(() => {
+    if (isProBinary()) router.replace('/pro/connexion');
+  }, [router]);
 
   // Reprise de parcours (ex: réservation interrompue par l'auth) : on revient
   // là d'où l'utilisateur a été interrompu plutôt que sur l'accueil de son
@@ -27,6 +37,14 @@ function ConnexionContent() {
       setSessionExpired(true);
       sessionStorage.removeItem('chair_session_expired');
     }
+    try {
+      const msg = sessionStorage.getItem(WRONG_APP_MSG_KEY);
+      if (msg) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setWrongAppMsg(msg);
+        sessionStorage.removeItem(WRONG_APP_MSG_KEY);
+      }
+    } catch { /* stockage indisponible : pas de message, l'écran reste utilisable */ }
   }, [searchParams]);
 
   function handleBack() {
@@ -76,6 +94,11 @@ function ConnexionContent() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {wrongAppMsg && !error && (
+            <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">
+              {wrongAppMsg}
+            </div>
+          )}
           {sessionExpired && !error && (
             <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">
               Ta session a expiré, reconnecte-toi pour continuer.

@@ -17,6 +17,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
 import { unregister as unregisterPush, getStoredPushToken } from '@/lib/push';
 import { hydrateUserPrefsFromServer } from '@/lib/homeFilters';
+import { binaryLockVerdict, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -74,6 +75,25 @@ interface AuthRedirectOptions {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * Révoque un jeton que le verrou binaire↔rôle vient de refuser. Appel direct
+ * (pas via `api.post`) : le jeton n'a jamais été écrit en localStorage — c'est
+ * tout l'intérêt — donc le client API, qui lit le jeton stocké, enverrait la
+ * requête anonyme. Best-effort : si la révocation échoue, le jeton expirera
+ * de lui-même ; l'important est qu'il n'existe nulle part côté appareil.
+ */
+async function revokeRefusedToken(token: string): Promise<void> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
+  try {
+    await fetch(`${base}/logout`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    // Réseau coupé — le jeton n'a jamais touché le stockage, rien à nettoyer.
+  }
+}
+
 // Le bypass de login de fin de développement (NEXT_PUBLIC_AUTH_BYPASS) a été
 // retiré avant soumission App Store : il embarquait deux couples
 // e-mail/mot de passe de comptes réels en clair dans le bundle JavaScript
@@ -92,6 +112,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const token = getStoredToken();
     const storedUser = getStoredUser();
+
+    // Verrou binaire ↔ rôle sur une session DÉJÀ stockée : le cas de figure
+    // réel qui a déclenché la règle — un compte pro connecté dans le binaire
+    // CLIENT avant l'existence du verrou affichait l'interface PRO entière
+    // dans l'app grand public. On évince : session purgée, jeton révoqué,
+    // retour à l'écran de connexion du binaire avec l'explication.
+    if (token && storedUser) {
+      const verdict = binaryLockVerdict(storedUser.role);
+      if (!verdict.allowed) {
+        clearSession();
+        revokeRefusedToken(token);
+        try { sessionStorage.setItem(WRONG_APP_MSG_KEY, verdict.message); } catch { /* stockage indisponible : l'écran de connexion s'affichera sans le message */ }
+        // Fin de chargement immédiate et assumée : l'éviction remplace le
+        // parcours de restauration de session, il n'y aura pas d'appel /me.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIsLoading(false);
+        router.replace(verdict.loginPath);
+        return;
+      }
+    }
+
     if (token && storedUser) {
       setUser(storedUser);
       // Vérifie le token en arrière-plan. Un second setUser(freshUser)
@@ -124,6 +165,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       setIsLoading(false);
     }
+    // `router` volontairement hors des dépendances : ce démarrage ne doit
+    // tourner qu'une fois, et le routeur Next est stable sur toute la session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Session invalidée en cours d'usage (token révoqué / DB dev réinitialisée
@@ -166,6 +210,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string, options?: AuthRedirectOptions): Promise<void> {
     const data = await api.post<AuthResponse>('/login', { email, password });
+    // Verrou binaire ↔ rôle : les identifiants sont bons, mais ce compte
+    // n'a pas sa place dans CE binaire (compte pro dans l'app CLIENT ou
+    // l'inverse). Le jeton fraîchement émis est révoqué sans JAMAIS toucher
+    // le stockage local — aucune session ne doit exister, même une seconde.
+    const verdict = binaryLockVerdict(data.user.role);
+    if (!verdict.allowed) {
+      revokeRefusedToken(data.token);
+      throw new Error(verdict.message);
+    }
     saveSession(data.token, data.user);
     setUser(data.user);
     // Une connexion sur un appareil neuf n'a aucune préférence locale : on
@@ -176,6 +229,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function register(registerData: RegisterData, options?: AuthRedirectOptions): Promise<void> {
+    // Verrou binaire ↔ rôle, AVANT l'appel réseau : inutile de créer un
+    // compte qu'on refuserait à la seconde suivante.
+    const verdict = binaryLockVerdict(registerData.role);
+    if (!verdict.allowed) throw new Error(verdict.message);
     const ref = registerData.ref ?? getStoredReferralCode();
     const data = await api.post<AuthResponse>('/register', { ...registerData, ref });
     clearStoredReferralCode();

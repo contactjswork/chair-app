@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { isClientBinary, useAppContext, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 import ChairLogo from '@/components/ui/ChairLogo';
 import OnboardingCarousel, { type OnboardingSlide } from '@/components/ui/OnboardingCarousel';
 import { TrendingUp, Award, CalendarClock, Briefcase } from 'lucide-react';
@@ -31,6 +32,29 @@ export default function ProConnexionPage() {
   // classique. État initial toujours `false` (identique aux deux rendus),
   // lecture de localStorage repoussée dans un effet, après montage.
   const [showOnboarding, setShowOnboarding] = useState(false);
+  // Rendu-sûr à l'hydratation (contrairement à un appel direct isProBinary()
+  // pendant le rendu, qui divergerait entre serveur et navigateur).
+  const { context: appContext } = useAppContext();
+  // Message du verrou binaire ↔ rôle (compte client évincé de l'app PRO) —
+  // posé en sessionStorage par AuthContext juste avant la redirection ici.
+  const [wrongAppMsg, setWrongAppMsg] = useState('');
+
+  // Dans le binaire CHAIR CLIENT, la connexion PRO n'existe pas : chaque app
+  // n'expose que son propre écran d'entrée (décision Julien 01/09/2026).
+  useEffect(() => {
+    if (isClientBinary()) router.replace('/connexion');
+  }, [router]);
+
+  useEffect(() => {
+    try {
+      const msg = sessionStorage.getItem(WRONG_APP_MSG_KEY);
+      if (msg) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setWrongAppMsg(msg);
+        sessionStorage.removeItem(WRONG_APP_MSG_KEY);
+      }
+    } catch { /* stockage indisponible : pas de message, l'écran reste utilisable */ }
+  }, []);
 
   useEffect(() => {
     // Lecture localStorage impossible côté serveur — ne peut arriver qu'après
@@ -82,6 +106,9 @@ export default function ProConnexionPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-neutral-900 rounded-[28px] ring-1 ring-white/[0.06] shadow-[0_20px_50px_-16px_rgba(0,0,0,0.6)] p-6 mb-4">
+          {wrongAppMsg && !error && (
+            <div className="mb-4 px-4 py-3 bg-amber-900/30 rounded-xl text-sm text-amber-400">{wrongAppMsg}</div>
+          )}
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-900/40 rounded-xl text-sm text-red-400">{error}</div>
           )}
@@ -117,10 +144,14 @@ export default function ProConnexionPage() {
           Pas encore de compte pro ?{' '}
           <Link href="/pro/inscription" className="font-semibold text-white hover:underline">Créer mon espace pro</Link>
         </p>
-        <p className="text-center text-sm text-neutral-600 mt-3">
-          Vous êtes client ?{' '}
-          <Link href="/connexion" className="text-neutral-500 hover:text-neutral-300 hover:underline">Connexion client</Link>
-        </p>
+        {/* Dans le binaire PRO, aucun pont vers l'espace client : le verrou
+            binaire ↔ rôle refuserait de toute façon la connexion au bout. */}
+        {appContext !== 'pro' && (
+          <p className="text-center text-sm text-neutral-600 mt-3">
+            Vous êtes client ?{' '}
+            <Link href="/connexion" className="text-neutral-500 hover:text-neutral-300 hover:underline">Connexion client</Link>
+          </p>
+        )}
       </div>
     </div>
   );

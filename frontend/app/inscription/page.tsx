@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeInternalPath } from '@/lib/auth';
+import { isProBinary } from '@/lib/appContext';
 import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
@@ -37,6 +38,12 @@ function InscriptionContent() {
   const { animClass, transition } = useStepTransition();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Dans le binaire CHAIR PRO, pas de création de compte client : chaque app
+  // n'expose que son propre parcours d'entrée (verrou binaire ↔ rôle).
+  useEffect(() => {
+    if (isProBinary()) router.replace('/pro/inscription');
+  }, [router]);
 
   // Reprise de parcours : propagé depuis /connexion (ou posé directement par
   // BookingSheet). Chemin interne uniquement — anti open-redirect.

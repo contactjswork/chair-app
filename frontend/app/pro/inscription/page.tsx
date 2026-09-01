@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { isClientBinary } from '@/lib/appContext';
 import { salons } from '@/lib/api';
 import type { ApiSalonFull } from '@/lib/types';
 import {
@@ -62,6 +63,12 @@ export default function ProInscriptionPage() {
   const router = useRouter();
 
   const [showSlides, setShowSlides] = useState(true);
+
+  // Dans le binaire CHAIR CLIENT, pas de création de compte pro : chaque app
+  // n'expose que son propre parcours d'entrée (verrou binaire ↔ rôle).
+  useEffect(() => {
+    if (isClientBinary()) router.replace('/inscription');
+  }, [router]);
 
   const [role, setRole] = useState<ProRole | null>(null);
   const [name, setName] = useState('');

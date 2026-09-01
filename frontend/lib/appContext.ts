@@ -102,6 +102,65 @@ export function isUnidentifiedBinary(): boolean {
   return getAppContext() === 'unknown' && isCapacitorShell();
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Verrou binaire ↔ rôle de compte (retour Julien 01/09/2026 : « un compte
+// CHAIR PRO peut QUE se connecter sur CHAIR PRO l'app, et pareil pour
+// l'inverse »). Deux apps distinctes sur l'App Store = deux mondes étanches :
+// un compte pro dans le binaire CLIENT affichait l'interface PRO complète
+// dans l'app grand public — exactement ce que la séparation en deux apps
+// devait empêcher.
+//
+// Le verrou ne s'applique QUE lorsque le binaire est identifié ('client' ou
+// 'pro') : sur le web les deux espaces cohabitent volontairement, et un
+// binaire 'unknown' (antérieur au marqueur UA) ne doit jamais déconnecter
+// quelqu'un sur un soupçon — le verrou s'activera de lui-même dès que
+// l'utilisateur installera un build marqué.
+//
+// Le rôle 'admin' passe partout : compte interne des fondateurs, le bloquer
+// sur mobile ne protégerait rien et pourrait les enfermer dehors.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Clé sessionStorage du message affiché sur l'écran de connexion après une
+ *  éviction (session existante refusée par le verrou au démarrage). */
+export const WRONG_APP_MSG_KEY = 'chair_wrong_app_msg';
+
+export type BinaryLockVerdict =
+  | { allowed: true }
+  | {
+      /** Refusé : ce rôle de compte n'a pas sa place dans ce binaire. */
+      allowed: false;
+      /** Message utilisateur — dit QUELLE app utiliser, pas juste « non ». */
+      message: string;
+      /** Écran de connexion du binaire courant (où renvoyer l'évincé). */
+      loginPath: string;
+    };
+
+/**
+ * Le compte de ce rôle a-t-il le droit de vivre dans le binaire courant ?
+ * À appeler à CHAQUE point d'entrée d'une session : connexion, inscription,
+ * et restauration d'une session stockée au démarrage (le cas Julien : déjà
+ * connecté en pro dans l'app CLIENT avant l'existence du verrou).
+ */
+export function binaryLockVerdict(role: string, context: AppContext = getAppContext()): BinaryLockVerdict {
+  const isProRole = role === 'hairdresser' || role === 'salon_owner';
+
+  if (context === 'client' && isProRole) {
+    return {
+      allowed: false,
+      message: 'Ce compte est un compte professionnel. CHAIR est l’app réservée aux clients — connecte-toi depuis l’app CHAIR PRO.',
+      loginPath: '/connexion',
+    };
+  }
+  if (context === 'pro' && role === 'client') {
+    return {
+      allowed: false,
+      message: 'Ce compte est un compte client. CHAIR PRO est l’app réservée aux professionnels — connectez-vous depuis l’app CHAIR.',
+      loginPath: '/pro/connexion',
+    };
+  }
+  return { allowed: true };
+}
+
 /**
  * Politique unique pour l'App Store Review Guideline 3.1.1(a) : hors
  * storefront américain (la France en fait partie), une app ne peut pas
