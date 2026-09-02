@@ -11,10 +11,12 @@ import {
 } from '@/lib/types';
 import {
   Check, Lock, ChevronDown, ArrowLeft, Trophy, Sparkles,
-  Scissors, TrendingUp, Award, ArrowRight, Flame, Gem,
+  Scissors, TrendingUp, Award, ArrowRight, Flame, Gem, Share2,
 } from 'lucide-react';
 import { BadgeMedallion, BadgeExplainSheet, METIER_LEVEL_ICONS } from '@/components/ui/ChairBadges';
 import BadgeUnlockModal from '@/components/ui/BadgeUnlockModal';
+import StoryShareSheet from '@/components/pro/StoryShareSheet';
+import { genererStoryReussite } from '@/lib/storyImage';
 
 /**
  * Progression — refonte UX complète (01/09/2026, « on comprend vraiment rien »).
@@ -228,6 +230,8 @@ export default function BadgesPage() {
   const [dataLoading,    setDataLoading]    = useState(true);
   const [selectedBadge,  setSelectedBadge]  = useState<ApiChairBadge | null>(null);
   const [catalogOuvert,  setCatalogOuvert]  = useState(false);
+  // « Partage ta réussite » — story de montée de palier (levier viral entre coiffeurs).
+  const [reussiteOpen,   setReussiteOpen]   = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -348,6 +352,18 @@ export default function BadgesPage() {
               ) : !palierSuivant ? (
                 <p className="text-[12px] font-bold text-white/60">Palier maximal — vous êtes la Référence.</p>
               ) : null}
+
+              {/* Partage ta réussite : dès le palier Confirmé (level ≥ 1), le
+                  coiffeur poste sa montée en story CHAIR — pub gratuite entre
+                  coiffeurs. On ne le propose pas au palier « Nouveau ». */}
+              {bestSpecialty.level >= 1 && (
+                <button
+                  onClick={() => setReussiteOpen(true)}
+                  className="mt-5 w-full flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-semibold py-3 rounded-2xl text-[13px] transition-colors"
+                >
+                  <Share2 size={14} /> Partager ma réussite
+                </button>
+              )}
 
               <div className="flex items-center gap-4 pt-4 mt-4 border-t border-white/10">
                 <div className="flex items-center gap-1.5">
@@ -483,6 +499,23 @@ export default function BadgesPage() {
       <BadgeExplainSheet badge={selectedBadge} onClose={() => setSelectedBadge(null)} coiffeurName={user.name} />
       {!celebrationDismissed && newlyUnlocked.length > 0 && (
         <BadgeUnlockModal badges={newlyUnlocked} onClose={() => setCelebrationDismissed(true)} />
+      )}
+
+      {reussiteOpen && bestSpecialty && (
+        <StoryShareSheet
+          generer={() => genererStoryReussite({
+            niveau: bestSpecialty.level_name,
+            specialite: bestSpecialty.specialty_name ?? 'ma spécialité',
+            rang: bestSpecialty.local_rank != null && user.city
+              ? `${bestSpecialty.local_rank}${bestSpecialty.local_rank === 1 ? 'ᵉʳ' : 'ᵉ'} à ${user.city}`
+              : null,
+            name: user.name,
+            city: user.city,
+            slug: user.hairdresser_profile?.slug ?? null,
+          })}
+          lien={user.hairdresser_profile?.slug ? `https://getchair.app/coiffeur/${user.hairdresser_profile.slug}` : null}
+          onClose={() => setReussiteOpen(false)}
+        />
       )}
     </div>
   );

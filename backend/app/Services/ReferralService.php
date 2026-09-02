@@ -24,11 +24,19 @@ class ReferralService
     // quel action_type de cette liste depuis le frontend — un utilisateur
     // pouvait donc s'auto-créditer des points/du boost à l'infini en rejouant
     // POST /share-events. Voir git blame pour l'ancien comportement.)
+    // Parrainage à double sens (sprint croissance) : parrainer un PRO rapporte
+    // désormais 1 mois de CHAIR+ au parrain — et le filleul reçoit lui aussi
+    // 1 mois de bienvenue (voir grantReferredWelcome + AuthController::register).
+    // « Toi ET ton pote gagnez 1 mois CHAIR+. » Le coût marginal d'un mois
+    // CHAIR+ offert est quasi nul, la valeur perçue est le vrai moteur viral.
     const ACTIONS = [
-        'invite_hairdresser' => ['points' => 80,  'boost_days' => 3],
-        'invite_salon'       => ['points' => 150, 'boost_days' => 7],
+        'invite_hairdresser' => ['points' => 80,  'boost_days' => 3, 'chair_plus_days' => 30],
+        'invite_salon'       => ['points' => 150, 'boost_days' => 7, 'chair_plus_days' => 30],
         'invite_client'      => ['points' => 40],
     ];
+
+    /** Jours de CHAIR+ offerts au FILLEUL pro qui s'inscrit via un lien. */
+    const REFERRED_WELCOME_DAYS = 30;
 
     // Actions de partage : pur télémétrie (compteur "invitations envoyées"),
     // ne rapportent et n'ont jamais rapporté de points par elles-mêmes. Seule
@@ -197,6 +205,44 @@ class ReferralService
     {
         $base = ($profile->chair_plus_until && $profile->chair_plus_until->isFuture()) ? $profile->chair_plus_until : now();
         $profile->forceFill(['chair_plus_until' => $base->copy()->addDays($days)])->save();
+    }
+
+    /**
+     * Bonus de bienvenue du parrainage à double sens : le coiffeur qui vient de
+     * s'inscrire via un lien de parrain reçoit REFERRED_WELCOME_DAYS jours de
+     * CHAIR+. À appeler APRÈS la création de son profil (le profil n'existe pas
+     * encore au moment de attributeSignup, exécuté plus tôt dans register).
+     *
+     * Idempotent : n'accorde le bonus qu'une fois par filleul, tracé par une
+     * ligne referral_rewards (reason 'referred_welcome', unique sur la cible).
+     * N'accorde rien si le compte n'a pas de parrain.
+     */
+    public static function grantReferredWelcome(User $newUser): void
+    {
+        if (!$newUser->referred_by_user_id) return;
+        $profile = $newUser->hairdresserProfile;
+        if (!$profile) return;
+
+        try {
+            ReferralReward::create([
+                'user_id'         => $newUser->id,
+                'reason'          => 'referred_welcome',
+                'target_type'     => 'user',
+                'target_id'       => $newUser->id,
+                'points'          => 0,
+                'chair_plus_days' => self::REFERRED_WELCOME_DAYS,
+                'boost_days'      => 0,
+                'badge_code'      => null,
+                'created_at'      => now(),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Déjà accordé (contrainte unique) : rien à refaire.
+            if (str_contains($e->getMessage(), 'referral_rewards_reason_target_unique')) return;
+            throw $e;
+        }
+
+        self::extendChairPlus($profile, self::REFERRED_WELCOME_DAYS);
+        self::notifyReward($profile, self::REFERRED_WELCOME_DAYS, 'CHAIR+');
     }
 
     /** Filleuls réels = comptes créés avec ce referral_code, peu importe leur rôle. */

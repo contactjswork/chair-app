@@ -351,6 +351,102 @@ export async function genererStoryAvis(opts: AvisStoryOptions): Promise<Blob> {
   });
 }
 
+export interface ReussiteStoryOptions {
+  /** Nom du palier atteint — « Expert », « Maître », « Référence »… */
+  niveau: string;
+  /** Spécialité concernée — « Coupe Homme », « Balayage »… */
+  specialite: string;
+  /** Rang local optionnel — « Top 5 à Haguenau » (affiché seulement s'il existe). */
+  rang?: string | null;
+  name: string;
+  city?: string | null;
+  slug?: string | null;
+}
+
+/**
+ * « Partage ta réussite » : le coiffeur poste sa montée de palier en story.
+ * C'est de la pub gratuite entre pairs — ses potes coiffeurs voient CHAIR et
+ * son mérite affiché. Déclenché au moment de fierté (nouveau palier, 1re place).
+ */
+export async function genererStoryReussite(opts: ReussiteStoryOptions): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas indisponible');
+
+  const fond = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, H * 1.1);
+  fond.addColorStop(0, '#1f1f21');
+  fond.addColorStop(0.62, '#0a0a0a');
+  fond.addColorStop(1, '#0a0a0a');
+  ctx.fillStyle = fond;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  dessinerWordmark(ctx, W / 2, 240, 64, '#ffffff');
+
+  // Eyebrow.
+  ctx.font = `700 34px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillText('NOUVEAU PALIER', W / 2, 640);
+
+  // Le palier, en très grand — la fierté.
+  ctx.font = `900 150px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(opts.niveau.toUpperCase(), W / 2, 800, W - 120);
+
+  // La spécialité.
+  ctx.font = `500 48px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.fillText(`en ${opts.specialite}`, W / 2, 880, W - 160);
+
+  // Le rang, dans une pastille, si fourni.
+  if (opts.rang) {
+    ctx.font = `700 40px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+    const l = ctx.measureText(opts.rang).width;
+    const cy = 1010;
+    ctx.fillStyle = 'rgba(245,185,66,0.16)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - l / 2 - 44, cy - 46, l + 88, 92, 46);
+    ctx.fill();
+    ctx.fillStyle = '#f5b942';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(opts.rang, W / 2, cy + 2);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  // Coiffeur + lien en pied (même structure que la story avis).
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(W / 2 - 40, 1440, 80, 3);
+  ctx.font = `900 54px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(opts.name, W / 2, 1540, W - 160);
+  if (opts.city) {
+    ctx.font = `500 32px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(opts.city, W / 2, 1595);
+  }
+  if (opts.slug) {
+    const texte = `getchair.app/coiffeur/${opts.slug}`;
+    ctx.font = `700 32px -apple-system, 'Helvetica Neue', Arial, sans-serif`;
+    const l = ctx.measureText(texte).width;
+    const cy = 1700;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - l / 2 - 36, cy - 40, l + 72, 80, 40);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(texte, W / 2, cy + 2);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.textAlign = 'left';
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Export impossible'))), 'image/png');
+  });
+}
+
 /**
  * Partage un blob déjà généré. À appeler DEPUIS un geste utilisateur
  * (clic) : iOS refuse navigator.share hors activation — c'est exactement

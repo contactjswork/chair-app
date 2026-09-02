@@ -95,12 +95,16 @@ export function getSharePayload(
     }
 
     case 'referral':
-      // Messages historiques conservés à l'identique (le code de parrainage
-      // vit dans l'URL — getchair.app/parrainage/CODE).
+      // Le code de parrainage vit dans l'URL — getchair.app/parrainage/CODE.
+      // Côté PRO : message d'invitation entre coiffeurs, prêt à copier-coller,
+      // qui met en avant l'offre à double sens (1 mois CHAIR+ chacun) — c'est
+      // le levier de croissance n°1 (voir sprint parrainage).
       return context.audience === 'pro'
         ? {
-            title: 'Partager mon profil',
-            text: "Rejoignez-moi sur CHAIR, l'app qui met en avant les coiffeurs !",
+            title: 'Inviter un coiffeur',
+            text:
+              "Salut ! Je suis sur CHAIR, l'app qui fait connaître les coiffeurs : avis vérifiés, visibilité locale, nouveaux clients. " +
+              "Rejoins-moi avec mon lien et on gagne 1 mois CHAIR+ gratuit tous les deux 👉",
             url,
           }
         : {

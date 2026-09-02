@@ -199,6 +199,14 @@ class AuthController extends Controller
                     $profile->specialties()->sync($validated['specialties']);
                 }
 
+                // Parrainage à double sens : le filleul coiffeur reçoit 1 mois
+                // de CHAIR+ de bienvenue. Le parrain, lui, a déjà été crédité
+                // par attributeSignup ci-dessus. Appelé ICI car le profil doit
+                // exister (attributeSignup s'exécute avant sa création).
+                if ($user->referred_by_user_id) {
+                    ReferralService::grantReferredWelcome($user->fresh());
+                }
+
                 if ($salonId) {
                     $joinRequest = SalonJoinRequest::updateOrCreate(
                         ['hairdresser_id' => $profile->id, 'salon_id' => $salonId],
