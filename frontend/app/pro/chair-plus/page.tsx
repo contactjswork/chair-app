@@ -14,23 +14,24 @@ import { acheterChairPlus, restaurerChairPlus, gererAbonnementApple, iapDisponib
 import {
   ArrowLeft, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
   BadgeCheck, TrendingUp, Heart, BarChart3, Film, Pin, X, Sparkles, BookUser,
+  Unlock, Bell, CreditCard, Gift,
 } from 'lucide-react';
 
-// ── Offre ────────────────────────────────────────────────────────────────
+// ── CHAIR+ — la page « carte noire » ─────────────────────────────────────
 //
-// Refonte visuelle + contenu du 01/09/2026 (retours Julien) :
-//  - les STORIES sortent de CHAIR+ (gratuites pour tous — moteur viral) ;
-//  - le CARNET CLIENT devient l'argument n°1 : limité à 25 clients sans
-//    CHAIR+ (ClientBookController::CARNET_GRATUIT_MAX), illimité avec.
+// Seule page 100 % sombre de CHAIR PRO — c'est voulu : l'abonnement premium
+// vit dans son propre univers, il tranche avec tout le reste de l'app.
+// Un seul accent : l'or (#f5b942), utilisé franchement (CTA, « + », vedette).
+//
+// Contenu (retours Julien 01-02/09) :
+//  - stories GRATUITES (sorties de l'offre) ;
+//  - carnet client = argument n°1 (25 clients sans CHAIR+, illimité avec) ;
+//  - timeline d'essai transparente (J1 / J27 alerte / J30 débit) ;
+//  - carte parrainage « gagne-le sans payer » (1 mois chacun).
 
 const CARNET_LIMITE = 25; // miroir de ClientBookController::CARNET_GRATUIT_MAX
 
-/** L'avantage vedette, mis en scène à part. */
-const FEATURE_HERO = {
-  icon: BookUser,
-  label: 'Carnet client illimité',
-  desc: `Notes privées, conseils, rythme de retour, relances — sur TOUS vos clients. Sans CHAIR+, votre carnet s'arrête aux ${CARNET_LIMITE} derniers.`,
-};
+const OR = '#f5b942';
 
 const FEATURES = [
   { icon: BadgeCheck,  label: 'Badge CHAIR+',       desc: 'Visible sur votre profil, la recherche et vos réalisations.' },
@@ -44,8 +45,7 @@ const FEATURES = [
 // Comparatif : une valeur peut être un booléen (✓/✗) ou un texte (« 25 clients »).
 const COMPARISON: { label: string; free: boolean | string; plus: boolean | string }[] = [
   { label: 'Profil, réservations, agenda', free: true,          plus: true },
-  { label: 'Portfolio photo',              free: true,          plus: true },
-  { label: 'Stories',                      free: true,          plus: true },
+  { label: 'Portfolio et stories',         free: true,          plus: true },
   { label: 'Carnet client',                free: `${CARNET_LIMITE} clients`, plus: 'Illimité' },
   { label: 'Analytics',                    free: '30 jours',    plus: '12 mois' },
   { label: 'Vidéos 15s',                   free: false,         plus: true },
@@ -72,10 +72,9 @@ export default function ChairPlusPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
   const searchParams = useSearchParams();
   const checkoutResult = searchParams.get('checkout');
-  // Quel binaire affiche cette page ? CHAIR CLIENT et CHAIR PRO chargent le
-  // même site : sans ce test, le tarif et le bouton de souscription CHAIR+
-  // s'afficheraient aussi dans l'app CLIENT — interdit par l'App Store
-  // Review Guideline 3.1.1(a) hors achat intégré. Voir lib/appContext.ts.
+  // Quel binaire affiche cette page ? Sans ce test, tarif et bouton de
+  // souscription s'afficheraient aussi dans l'app CLIENT — interdit par
+  // l'App Store Review Guideline 3.1.1(a). Voir lib/appContext.ts.
   const { context: appContext, resolved: appContextResolved } = useAppContext();
 
   const [data, setData] = useState<ApiMySubscription | null>(null);
@@ -85,9 +84,7 @@ export default function ChairPlusPage() {
   const [flagEnabled, setFlagEnabled] = useState(true);
   const [flagLoading, setFlagLoading] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
-  // Achat intégré Apple (binaire PRO uniquement) : la feuille de paiement
-  // est-elle utilisable dans ce build, et à quel prix l'App Store vend-il
-  // réellement CHAIR+ ici (devise du storefront) ?
+  // Achat intégré Apple (binaire PRO uniquement).
   const [iapOk, setIapOk] = useState(false);
   const [prixApple, setPrixApple] = useState<string | null>(null);
   const [iapNotice, setIapNotice] = useState('');
@@ -108,7 +105,7 @@ export default function ChairPlusPage() {
   }, [appContext]);
 
   async function refreshSubscription() {
-    try { setData(await subscription.mine()); } catch { /* le bandeau d'état restera sur l'ancien état, sans casser la page */ }
+    try { setData(await subscription.mine()); } catch { /* le bandeau d'état restera sur l'ancien état */ }
   }
 
   async function handleSubscribe() {
@@ -117,8 +114,8 @@ export default function ChairPlusPage() {
     setIapNotice('');
     try {
       if (appContext === 'pro') {
-        // Binaire iOS : la vente passe par la feuille de paiement Apple
-        // (règle App Store 3.1.1) — jamais par Stripe Checkout dans l'app.
+        // Binaire iOS : feuille de paiement Apple (App Store 3.1.1) — jamais
+        // Stripe Checkout dans l'app.
         if (!iapOk) {
           setError("L'achat intégré n'est pas disponible dans cette version de l'app. Mets à jour CHAIR PRO depuis l'App Store.");
           return;
@@ -165,8 +162,7 @@ export default function ChairPlusPage() {
     setError('');
     try {
       if (sub?.provider === 'apple') {
-        // Un abonnement Apple s'annule dans les réglages App Store — le
-        // portail Stripe ne le connaît pas.
+        // Un abonnement Apple s'annule dans les réglages App Store.
         await gererAbonnementApple();
         await refreshSubscription();
         return;
@@ -180,14 +176,10 @@ export default function ChairPlusPage() {
     }
   }
 
-  // `!appContextResolved` inclus dans l'état de chargement : la détection du
-  // binaire lit `navigator`, donc rien n'est décidé avant l'hydratation. On
-  // affiche le spinner plutôt qu'une UI d'abonnement qu'il faudrait retirer
-  // juste après — aucun tarif n'est jamais peint puis rétracté.
   if (isLoading || !user || !appContextResolved) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-white/10 border-t-white rounded-full animate-spin" />
       </div>
     );
   }
@@ -195,104 +187,97 @@ export default function ChairPlusPage() {
   const sub = data?.subscription;
   const hasPlus = data?.has_chair_plus ?? false;
   const state = chairPlusState(hasPlus, sub ?? null);
-  // Un abonnement déjà existant (actif, en essai, ou en annulation programmée)
-  // reste gérable même si le flag est désactivé — le flag ne bloque que les
-  // NOUVELLES souscriptions, jamais l'entitlement déjà acquis.
   const canManage = !!sub && state !== 'expired';
   const showComingSoon = !flagLoading && !flagEnabled && !canManage;
   const showSubscriptionUI = allowsDigitalSubscriptionUI(appContext);
-  // Dans le binaire PRO le prix affiché est celui que l'App Store vend
-  // réellement (devise du storefront) ; repli sur le tarif France sinon.
   const prixLabel = appContext === 'pro' && prixApple ? prixApple : '15,99 €';
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-[#f5b942] selection:text-black">
 
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
+      {/* En-tête — même univers sombre que la page. */}
+      <div className="sticky top-0 z-20 bg-[#0a0a0b]/85 backdrop-blur-md border-b border-white/[0.06] px-4 h-14 flex items-center md:hidden">
+        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-white/50 hover:text-white transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">
-          CHAIR+
+        <span className="text-sm font-black tracking-tight absolute left-1/2 -translate-x-1/2">
+          CHAIR<span style={{ color: OR }}>+</span>
         </span>
       </div>
 
       <div className="hidden md:flex items-center gap-3 max-w-2xl mx-auto px-6 pt-8">
-        <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
+        <Link href="/pro" className="flex items-center text-white/40 hover:text-white/80 transition-colors p-1 -ml-1 rounded-lg">
           <ArrowLeft size={16} />
         </Link>
-        <span className="text-neutral-200">/</span>
-        <h1 className="text-lg font-bold text-neutral-900">CHAIR+</h1>
+        <span className="text-white/15">/</span>
+        <h1 className="text-lg font-black tracking-tight">CHAIR<span style={{ color: OR }}>+</span></h1>
       </div>
 
-      {/* La page visuelle complète s'affiche dans TOUS les binaires (demande
-          Julien 02/09) : avantages, carnet, comparatif — c'est de l'information
-          produit. Seuls le TARIF et les BOUTONS d'achat/gestion restent
-          conditionnés à showSubscriptionUI (App Store 3.1.1(a)) : le binaire
-          CLIENT et les builds non identifiés voient une note sobre à la place. */}
       {showComingSoon ? (
         <ComingSoonState />
       ) : (
         <>
           {checkoutResult === 'success' && (
             <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
-              <div className="bg-neutral-900 rounded-2xl px-4 py-3 text-sm text-white font-semibold flex items-center gap-2">
+              <div className="bg-white text-black rounded-2xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
                 <Check size={15} />Abonnement en cours d&apos;activation — quelques secondes le temps que Stripe confirme.
               </div>
             </div>
           )}
           {checkoutResult === 'cancel' && (
             <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
-              <div className="bg-neutral-100 rounded-2xl px-4 py-3 text-sm text-neutral-600">
+              <div className="bg-white/[0.06] rounded-2xl px-4 py-3 text-sm text-white/70">
                 Abonnement annulé — vous pouvez réessayer à tout moment.
               </div>
             </div>
           )}
 
-          {/* ── Hero ─────────────────────────────────────────────────── */}
-          <section className="bg-neutral-900 bg-[radial-gradient(130%_100%_at_50%_0%,#26262a_0%,#0a0a0a_65%)] md:mx-auto md:max-w-2xl md:mt-6 md:rounded-[32px] md:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_60px_-24px_rgba(10,10,10,0.6)] overflow-hidden">
-            <div className="px-6 pt-12 pb-10 md:pt-14 md:pb-12 text-center relative">
+          {/* ══ HERO ══ */}
+          <section className="relative overflow-hidden">
+            {/* Halo doré derrière le wordmark — la seule lumière de la page. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 w-[720px] h-[420px]"
+              style={{ background: `radial-gradient(closest-side, ${OR}26 0%, ${OR}0d 45%, transparent 75%)` }}
+            />
 
-              {/* Wordmark CHAIR+ : le « + » en or — seul accent coloré de la page. */}
-              <p className="text-[26px] font-black tracking-tight text-white mb-6">
-                CHAIR<span className="text-[#f5b942]">+</span>
+            <div className="relative max-w-2xl mx-auto px-6 pt-14 pb-12 md:pt-20 md:pb-16 text-center">
+              <p className="text-[34px] md:text-[40px] font-black tracking-tight leading-none mb-7">
+                CHAIR<span style={{ color: OR }}>+</span>
               </p>
 
-              <h1 className="text-[34px] md:text-[42px] font-black text-white leading-[1.05] tracking-tight mb-3">
-                Votre métier mérite<br />d&apos;être vu.
-              </h1>
+              <h2 className="text-[40px] md:text-[54px] font-black leading-[0.98] tracking-tight mb-4">
+                Passez<br />devant.
+              </h2>
+              <p className="text-[14px] md:text-[15px] text-white/50 font-medium max-w-sm mx-auto mb-9 leading-relaxed">
+                La visibilité, le badge, le carnet illimité — tout ce qui
+                sépare un bon coiffeur d&apos;un coiffeur qu&apos;on remarque.
+              </p>
 
               {dataLoading || flagLoading ? (
-                <div className="h-24 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto mt-6" />
+                <div className="h-24 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto" />
               ) : !showSubscriptionUI ? (
-                // Binaire CLIENT ou build natif non identifié : la page
-                // s'affiche, mais ni tarif ni bouton d'achat — une note sobre
-                // dit où l'abonnement se gère (App Store 3.1.1(a)).
-                <div className="max-w-xs mx-auto mt-6">
+                // Binaire CLIENT ou build non identifié : la page s'affiche,
+                // mais ni tarif ni bouton d'achat (App Store 3.1.1(a)).
+                <div className="max-w-xs mx-auto">
                   <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
-                  <div className="bg-white/10 rounded-2xl px-4 py-4 text-left">
-                    <p className="text-[13px] font-semibold text-white mb-1">
-                      CHAIR+ se gère dans l&apos;espace professionnel
-                    </p>
-                    <p className="text-[12px] text-white/60 leading-relaxed">
+                  <div className="bg-white/[0.06] ring-1 ring-white/[0.08] rounded-2xl px-4 py-4 text-left">
+                    <p className="text-[13px] font-semibold mb-1">CHAIR+ se gère dans l&apos;espace professionnel</p>
+                    <p className="text-[12px] text-white/50 leading-relaxed">
                       La souscription et la résiliation se trouvent dans CHAIR PRO.
                       Déjà abonné ? Votre accès reste actif ici.
                     </p>
                     {appContext === 'unknown' && (
-                      <p className="text-[11px] text-white/40 leading-relaxed mt-2 pt-2 border-t border-white/10">
-                        Si vous utilisez CHAIR PRO, installez la dernière mise à
-                        jour pour gérer l&apos;abonnement directement dans l&apos;app.
+                      <p className="text-[11px] text-white/35 leading-relaxed mt-2 pt-2 border-t border-white/10">
+                        Si vous utilisez CHAIR PRO, installez la dernière mise à jour
+                        pour gérer l&apos;abonnement directement dans l&apos;app.
                       </p>
                     )}
                   </div>
                 </div>
               ) : (
                 <>
-                  <p className="text-[13px] text-white/50 font-medium mb-8">
-                    30 jours gratuits, puis {prixLabel}/mois. Sans engagement.
-                  </p>
-
-                  {error && <p className="text-xs text-red-300 mb-3">{error}</p>}
+                  {error && <p className="text-xs text-red-300 mb-3 max-w-xs mx-auto">{error}</p>}
                   {iapNotice && <p className="text-xs text-white/80 mb-3 font-semibold">{iapNotice}</p>}
 
                   <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
@@ -301,28 +286,35 @@ export default function ChairPlusPage() {
                     <button
                       onClick={handleManage}
                       disabled={busy}
-                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-black font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-200 transition-colors disabled:opacity-50"
                     >
                       <ExternalLink size={15} />{busy ? 'Chargement...' : 'Gérer mon abonnement'}
                     </button>
                   ) : (
-                    <button
-                      onClick={handleSubscribe}
-                      disabled={busy}
-                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 active:scale-[0.99] transition-all disabled:opacity-50 shadow-[0_12px_30px_-10px_rgba(255,255,255,0.25)]"
-                    >
-                      {busy ? 'Chargement...' : 'Essayer 30 jours gratuits'}
-                      {!busy && <ArrowRight size={15} />}
-                    </button>
+                    <>
+                      <button
+                        onClick={handleSubscribe}
+                        disabled={busy}
+                        className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 font-black py-4 rounded-2xl text-[15px] text-black active:scale-[0.99] transition-all disabled:opacity-60"
+                        style={{
+                          background: `linear-gradient(180deg, #f9cf6b 0%, ${OR} 55%, #e3a52e 100%)`,
+                          boxShadow: `0 14px 38px -12px ${OR}66, inset 0 1px 0 rgba(255,255,255,0.45)`,
+                        }}
+                      >
+                        {busy ? 'Chargement...' : 'Essayer 30 jours gratuits'}
+                        {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
+                      </button>
+                      <p className="text-[12px] text-white/40 font-medium mt-3">
+                        Puis {prixLabel}/mois. Sans engagement, annulable en deux taps.
+                      </p>
+                    </>
                   )}
 
-                  {/* Restauration : obligatoire côté Apple (nouvel iPhone, app
-                      réinstallée, validation interrompue après paiement). */}
                   {appContext === 'pro' && !canManage && (
                     <button
                       onClick={handleRestore}
                       disabled={busy}
-                      className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/50 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
+                      className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/45 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
                     >
                       Déjà abonné via l&apos;App Store ? Restaurer mes achats
                     </button>
@@ -330,7 +322,7 @@ export default function ChairPlusPage() {
 
                   <button
                     onClick={() => setSheetOpen(true)}
-                    className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/40 underline underline-offset-4 decoration-white/20 hover:text-white/70 transition-colors"
+                    className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mt-3 text-[12px] font-semibold text-white/35 underline underline-offset-4 decoration-white/15 hover:text-white/70 transition-colors"
                   >
                     Aperçu rapide des avantages
                   </button>
@@ -339,58 +331,101 @@ export default function ChairPlusPage() {
             </div>
           </section>
 
-          <div className="max-w-2xl mx-auto px-4 md:px-6 py-12 md:py-16 space-y-12 md:space-y-16">
+          <div className="max-w-2xl mx-auto px-4 md:px-6 pb-16 space-y-12 md:space-y-16">
 
-            {/* ── Avantage vedette : le carnet client ── */}
+            {/* ══ TIMELINE DE L'ESSAI — la transparence qui rassure ══ */}
+            {showSubscriptionUI && !canManage && (
+              <section className="max-w-md mx-auto w-full">
+                <div className="relative pl-10">
+                  {/* Le fil. */}
+                  <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-[#f5b942] via-white/20 to-white/10" />
+                  {[
+                    { icon: Unlock,     t: "Aujourd'hui",  d: 'Accès complet à tout CHAIR+, gratuitement.', or: true },
+                    { icon: Bell,       t: 'Jour 27',      d: "On vous prévient avant la fin de l'essai — pas de surprise." },
+                    { icon: CreditCard, t: 'Jour 30',      d: `${prixLabel}/mois. Ou vous annulez, et tout s'arrête là.` },
+                  ].map((e) => (
+                    <div key={e.t} className="relative flex items-start gap-4 pb-6 last:pb-0">
+                      <div
+                        className="absolute -left-10 w-8 h-8 rounded-full flex items-center justify-center ring-1"
+                        style={e.or
+                          ? { background: `${OR}1f`, borderColor: `${OR}55`, boxShadow: `0 0 18px -4px ${OR}59` }
+                          : { background: 'rgba(255,255,255,0.05)' }}
+                      >
+                        <e.icon size={13} style={{ color: e.or ? OR : 'rgba(255,255,255,0.55)' }} strokeWidth={2} />
+                      </div>
+                      <div className="min-w-0 pt-1">
+                        <p className="text-[13px] font-bold">{e.t}</p>
+                        <p className="text-[12px] text-white/45 leading-relaxed">{e.d}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ══ VEDETTE — le carnet client, bordure dorée ══ */}
             <section>
-              <div className="bg-neutral-900 bg-[radial-gradient(120%_120%_at_0%_0%,#26262a_0%,#0a0a0a_70%)] rounded-[26px] p-6 md:p-7 shadow-[0_20px_44px_-20px_rgba(10,10,10,0.5)]">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#f5b942]/15 flex items-center justify-center flex-shrink-0">
-                    <FEATURE_HERO.icon size={21} className="text-[#f5b942]" strokeWidth={1.75} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/40 mb-1">L&apos;outil qui fidélise</p>
-                    <p className="text-[17px] font-black text-white leading-tight mb-1.5">{FEATURE_HERO.label}</p>
-                    <p className="text-[13px] text-white/60 leading-relaxed">{FEATURE_HERO.desc}</p>
+              <div
+                className="rounded-[28px] p-[1.5px]"
+                style={{ background: `linear-gradient(135deg, ${OR}99 0%, ${OR}22 35%, rgba(255,255,255,0.06) 100%)` }}
+              >
+                <div className="rounded-[26.5px] bg-[#111113] p-6 md:p-7">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${OR}1a` }}
+                    >
+                      <BookUser size={21} style={{ color: OR }} strokeWidth={1.75} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-1" style={{ color: `${OR}cc` }}>
+                        L&apos;outil qui fidélise
+                      </p>
+                      <p className="text-[18px] font-black leading-tight mb-1.5">Carnet client illimité</p>
+                      <p className="text-[13px] text-white/55 leading-relaxed">
+                        Notes privées, conseils, rythme de retour, relances — sur TOUS vos
+                        clients. Sans CHAIR+, votre carnet s&apos;arrête aux {CARNET_LIMITE} derniers.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* ── Les autres avantages ── */}
+            {/* ══ AVANTAGES ══ */}
             <section>
-              <h2 className="text-xl font-black text-neutral-900 mb-5">Et tout le reste</h2>
+              <h2 className="text-[22px] font-black tracking-tight mb-5">Et tout le reste</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {FEATURES.map((f) => (
-                  <div key={f.label} className="flex items-start gap-3.5 bg-neutral-50 rounded-[20px] p-4 ring-1 ring-neutral-100 hover:ring-neutral-200 transition-shadow">
-                    <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
-                      <f.icon size={16} className="text-white" strokeWidth={1.5} />
+                  <div key={f.label} className="flex items-start gap-3.5 bg-white/[0.04] rounded-[20px] p-4 ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-shadow">
+                    <div className="w-10 h-10 rounded-xl bg-white/[0.07] flex items-center justify-center flex-shrink-0">
+                      <f.icon size={16} className="text-white/80" strokeWidth={1.5} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[13px] font-bold text-neutral-900">{f.label}</p>
-                      <p className="text-[12px] text-neutral-500 leading-relaxed mt-0.5">{f.desc}</p>
+                      <p className="text-[13px] font-bold">{f.label}</p>
+                      <p className="text-[12px] text-white/45 leading-relaxed mt-0.5">{f.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </section>
 
-            {/* ── Comparatif ── */}
+            {/* ══ COMPARATIF ══ */}
             <section>
-              <h2 className="text-xl font-black text-neutral-900 text-center mb-6">Gratuit vs CHAIR+</h2>
-              <div className="rounded-[22px] ring-1 ring-neutral-100 overflow-hidden shadow-[0_2px_12px_-6px_rgba(10,10,10,0.08)]">
-                <div className="grid grid-cols-[1fr_auto_auto] bg-neutral-50 border-b border-neutral-100">
+              <h2 className="text-[22px] font-black tracking-tight text-center mb-6">Gratuit vs CHAIR<span style={{ color: OR }}>+</span></h2>
+              <div className="rounded-[22px] ring-1 ring-white/[0.08] overflow-hidden">
+                <div className="grid grid-cols-[1fr_auto_auto] bg-white/[0.03] border-b border-white/[0.06]">
                   <div className="px-4 py-3" />
-                  <div className="px-2 py-3 w-24 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-400">Gratuit</div>
-                  <div className="px-2 py-3 w-24 text-center text-[11px] font-bold uppercase tracking-wide text-white bg-neutral-900">CHAIR+</div>
+                  <div className="px-2 py-3 w-24 text-center text-[11px] font-bold uppercase tracking-wide text-white/35">Gratuit</div>
+                  <div className="px-2 py-3 w-24 text-center text-[11px] font-black uppercase tracking-wide text-black" style={{ background: OR }}>CHAIR+</div>
                 </div>
                 {COMPARISON.map((row, i) => (
-                  <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-neutral-50' : ''}`}>
-                    <div className="px-4 py-3.5 text-[13px] font-medium text-neutral-700">{row.label}</div>
+                  <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-white/[0.05]' : ''}`}>
+                    <div className="px-4 py-3.5 text-[13px] font-medium text-white/75">{row.label}</div>
                     <div className="px-2 py-3.5 w-24 flex items-center justify-center">
                       <CellValue value={row.free} muted />
                     </div>
-                    <div className="px-2 py-3.5 w-24 flex items-center justify-center bg-neutral-50/70">
+                    <div className="px-2 py-3.5 w-24 flex items-center justify-center" style={{ background: `${OR}0f` }}>
                       <CellValue value={row.plus} />
                     </div>
                   </div>
@@ -398,19 +433,51 @@ export default function ChairPlusPage() {
               </div>
             </section>
 
-            {/* ── CTA final — uniquement là où l'achat est autorisé ── */}
+            {/* ══ PARRAINAGE — l'autre chemin vers CHAIR+ ══ */}
+            <section>
+              <Link
+                href="/pro/parrainage"
+                className="flex items-center gap-4 bg-white/[0.04] hover:bg-white/[0.07] ring-1 ring-white/[0.06] rounded-[24px] p-5 transition-colors group"
+              >
+                <div
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${OR}1a` }}
+                >
+                  <Gift size={18} style={{ color: OR }} strokeWidth={1.75} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-black leading-tight">Ou gagnez-le sans payer</p>
+                  <p className="text-[12px] text-white/45 leading-relaxed mt-0.5">
+                    Parrainez un coiffeur : <span className="text-white/80 font-semibold">1 mois de CHAIR+ offert</span> pour
+                    vous, 1 mois pour lui.
+                  </p>
+                </div>
+                <ArrowRight size={16} className="text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+              </Link>
+            </section>
+
+            {/* ══ CTA FINAL — uniquement là où l'achat est autorisé ══ */}
             {showSubscriptionUI && !canManage && (
-              <section className="bg-neutral-900 bg-[radial-gradient(130%_120%_at_50%_0%,#26262a_0%,#0a0a0a_70%)] rounded-[28px] p-8 md:p-10 text-center shadow-[0_24px_50px_-24px_rgba(10,10,10,0.55)]">
-                <Sparkles size={20} className="text-[#f5b942] mx-auto mb-4" />
-                <h2 className="text-xl md:text-2xl font-black text-white mb-2">Essayez, c&apos;est offert.</h2>
-                <p className="text-[13px] text-white/50 mb-6">30 jours gratuits, puis {prixLabel}/mois. Annulation en deux taps, à tout moment.</p>
+              <section className="relative overflow-hidden rounded-[28px] ring-1 ring-white/[0.07] p-8 md:p-10 text-center">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute left-1/2 -top-24 -translate-x-1/2 w-[520px] h-[300px]"
+                  style={{ background: `radial-gradient(closest-side, ${OR}21 0%, transparent 72%)` }}
+                />
+                <Sparkles size={20} className="mx-auto mb-4" style={{ color: OR }} />
+                <h2 className="text-[22px] md:text-[26px] font-black tracking-tight mb-2">Essayez. C&apos;est offert.</h2>
+                <p className="text-[13px] text-white/45 mb-7">30 jours complets, sans engagement. Vous jugez sur pièces.</p>
                 <button
                   onClick={handleSubscribe}
                   disabled={busy}
-                  className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold px-7 py-3.5 rounded-2xl text-[14px] hover:bg-neutral-100 transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 font-black px-8 py-4 rounded-2xl text-[14px] text-black transition-all active:scale-[0.99] disabled:opacity-60"
+                  style={{
+                    background: `linear-gradient(180deg, #f9cf6b 0%, ${OR} 55%, #e3a52e 100%)`,
+                    boxShadow: `0 14px 38px -12px ${OR}66, inset 0 1px 0 rgba(255,255,255,0.45)`,
+                  }}
                 >
                   {busy ? 'Chargement...' : 'Essayer 30 jours gratuits'}
-                  {!busy && <ArrowRight size={15} />}
+                  {!busy && <ArrowRight size={15} strokeWidth={2.5} />}
                 </button>
               </section>
             )}
@@ -418,8 +485,6 @@ export default function ChairPlusPage() {
         </>
       )}
 
-      {/* Le sheet d'upsell porte un CTA de souscription : il ne doit pas être
-          monté là où l'UI d'abonnement est retirée. */}
       {showSubscriptionUI && <PremiumUpsellSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />}
     </div>
   );
@@ -428,12 +493,12 @@ export default function ChairPlusPage() {
 /** Cellule du comparatif : ✓ / ✗ / texte (« 25 clients », « Illimité »). */
 function CellValue({ value, muted = false }: { value: boolean | string; muted?: boolean }) {
   if (typeof value === 'string') {
-    return <span className={`text-[11px] font-bold tabular-nums ${muted ? 'text-neutral-400' : 'text-neutral-900'}`}>{value}</span>;
+    return <span className={`text-[11px] font-bold tabular-nums ${muted ? 'text-white/40' : 'text-white'}`}>{value}</span>;
   }
   if (value) {
-    return <Check size={16} className={muted ? 'text-neutral-400' : 'text-neutral-900'} strokeWidth={muted ? 2 : 2.5} />;
+    return <Check size={16} className={muted ? 'text-white/35' : 'text-white'} strokeWidth={muted ? 2 : 2.5} />;
   }
-  return <X size={14} className="text-neutral-200" />;
+  return <X size={14} className="text-white/15" />;
 }
 
 // ── État "pas encore disponible" — flag désactivé, honnête, pas de CTA. ──
@@ -443,22 +508,23 @@ function ComingSoonState() {
 
   return (
     <div className="max-w-sm mx-auto px-6 py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-5">
-        <Sparkles size={22} className="text-neutral-400" strokeWidth={1.5} />
+      <div className="w-14 h-14 rounded-2xl bg-white/[0.06] flex items-center justify-center mx-auto mb-5">
+        <Sparkles size={22} className="text-white/40" strokeWidth={1.5} />
       </div>
-      <h1 className="text-xl font-black text-neutral-900 mb-2">Bientôt disponible</h1>
-      <p className="text-sm text-neutral-500 leading-relaxed mb-6">
-        CHAIR+ n&apos;est pas encore disponible. Carnet client illimité, badge, boost et analytics avancées arrivent prochainement.
+      <h1 className="text-xl font-black mb-2">Bientôt disponible</h1>
+      <p className="text-sm text-white/45 leading-relaxed mb-6">
+        CHAIR+ n&apos;est pas encore disponible. Carnet client illimité, badge,
+        boost et analytics avancées arrivent prochainement.
       </p>
       {!notified ? (
         <button
           onClick={() => setNotified(true)}
-          className="text-sm font-semibold text-neutral-900 underline underline-offset-4 decoration-neutral-300 hover:decoration-neutral-900 transition-colors"
+          className="text-sm font-semibold underline underline-offset-4 decoration-white/25 hover:decoration-white transition-colors"
         >
           Me prévenir de la sortie
         </button>
       ) : (
-        <p className="text-sm text-neutral-400">Merci — on vous tient au courant.</p>
+        <p className="text-sm text-white/40">Merci — on vous tient au courant.</p>
       )}
     </div>
   );
@@ -473,9 +539,6 @@ function StateBanner({ state, sub, isPastDue }: {
 }) {
   const base = 'rounded-xl px-3.5 py-3 flex items-center justify-center gap-2 mb-4 max-w-xs mx-auto text-[13px] font-semibold';
 
-  // Paiement refusé — cas prioritaire même si l'accès est encore techniquement
-  // "premium" (Stripe retente automatiquement) : sans cette alerte, l'abonné
-  // ne saurait pas qu'une action de sa part est nécessaire.
   if (isPastDue) {
     return (
       <div className={`${base} bg-white/10 text-white`}>
@@ -518,5 +581,5 @@ function StateBanner({ state, sub, isPastDue }: {
       </div>
     );
   }
-  return null; // free : rien à afficher, le CTA principal suffit
+  return null;
 }
