@@ -15,15 +15,17 @@
 // « not implemented » — chaque appel gère ce cas au lieu de planter.
 
 import { subscription } from './api';
-import { isProBinary } from './appContext';
+import { isProBinary, isBusinessBinary } from './appContext';
 
 /**
- * Identifiant EXACT du produit d'abonnement dans App Store Connect.
- * Doit rester synchronisé avec APPLE_IAP_PRODUCT_CHAIR_PLUS côté backend
- * (config/services.php). Le produit porte l'offre d'essai « 30 jours
- * gratuits » — configurée dans App Store Connect, pas dans le code.
+ * Identifiants EXACTS des produits d'abonnement dans App Store Connect.
+ * À garder synchronisés avec APPLE_IAP_PRODUCT_CHAIR_PLUS /
+ * APPLE_IAP_PRODUCT_CHAIR_BUSINESS côté backend (config/services.php).
+ * Chaque produit porte son offre d'essai « 30 jours gratuits » — configurée
+ * dans App Store Connect, pas dans le code.
  */
 export const PRODUIT_CHAIR_PLUS = 'app.getchair.pro.chairplus.monthly';
+export const PRODUIT_CHAIR_BUSINESS = 'app.getchair.business.chairbusiness.monthly';
 
 async function chargerPlugin() {
   const { NativePurchases, PURCHASE_TYPE } = await import('@capgo/native-purchases');
@@ -37,7 +39,8 @@ async function chargerPlugin() {
  * retombe alors sur le message « mets à jour l'app ».
  */
 export async function iapDisponible(): Promise<boolean> {
-  if (!isProBinary()) return false;
+  // PRO vend CHAIR+, BUSINESS vend CHAIR BUSINESS — même feuille Apple.
+  if (!isProBinary() && !isBusinessBinary()) return false;
   try {
     const { NativePurchases } = await chargerPlugin();
     const { isBillingSupported } = await NativePurchases.isBillingSupported();
@@ -53,9 +56,17 @@ export async function iapDisponible(): Promise<boolean> {
  * son libellé de repli.
  */
 export async function prixChairPlusApple(): Promise<string | null> {
+  return prixProduitApple(PRODUIT_CHAIR_PLUS);
+}
+
+export async function prixChairBusinessApple(): Promise<string | null> {
+  return prixProduitApple(PRODUIT_CHAIR_BUSINESS);
+}
+
+async function prixProduitApple(productIdentifier: string): Promise<string | null> {
   try {
     const { NativePurchases } = await chargerPlugin();
-    const { product } = await NativePurchases.getProduct({ productIdentifier: PRODUIT_CHAIR_PLUS });
+    const { product } = await NativePurchases.getProduct({ productIdentifier });
     // Selon les versions du plugin, le prix formaté s'appelle priceString ou
     // n'existe pas (price numérique + currencyCode) — on prend ce qui existe.
     const p = product as unknown as { priceString?: string; price?: number; currencyCode?: string };
@@ -85,12 +96,20 @@ function estAnnulation(err: unknown): boolean {
  * Lève AchatAnnule si l'utilisateur referme la feuille sans payer.
  */
 export async function acheterChairPlus(): Promise<void> {
+  return acheterProduit(PRODUIT_CHAIR_PLUS);
+}
+
+export async function acheterChairBusiness(): Promise<void> {
+  return acheterProduit(PRODUIT_CHAIR_BUSINESS);
+}
+
+async function acheterProduit(productIdentifier: string): Promise<void> {
   const { NativePurchases, PURCHASE_TYPE } = await chargerPlugin();
 
   let transaction: { receipt?: string };
   try {
     transaction = await NativePurchases.purchaseProduct({
-      productIdentifier: PRODUIT_CHAIR_PLUS,
+      productIdentifier,
       productType: PURCHASE_TYPE.SUBS,
       quantity: 1,
     });
@@ -112,6 +131,14 @@ export async function acheterChairPlus(): Promise<void> {
  * true si un abonnement CHAIR+ a été retrouvé et revalidé.
  */
 export async function restaurerChairPlus(): Promise<boolean> {
+  return restaurerProduit(PRODUIT_CHAIR_PLUS);
+}
+
+export async function restaurerChairBusiness(): Promise<boolean> {
+  return restaurerProduit(PRODUIT_CHAIR_BUSINESS);
+}
+
+async function restaurerProduit(productIdentifier: string): Promise<boolean> {
   const { NativePurchases, PURCHASE_TYPE } = await chargerPlugin();
 
   await NativePurchases.restorePurchases();
@@ -119,7 +146,7 @@ export async function restaurerChairPlus(): Promise<boolean> {
 
   const achat = (purchases ?? []).find(
     (p: { productIdentifier?: string; receipt?: string }) =>
-      p.productIdentifier === PRODUIT_CHAIR_PLUS && !!p.receipt,
+      p.productIdentifier === productIdentifier && !!p.receipt,
   );
   if (!achat?.receipt) return false;
 

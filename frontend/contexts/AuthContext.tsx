@@ -17,7 +17,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
 import { unregister as unregisterPush, getStoredPushToken } from '@/lib/push';
 import { hydrateUserPrefsFromServer } from '@/lib/homeFilters';
-import { binaryLockVerdict, WRONG_APP_MSG_KEY } from '@/lib/appContext';
+import { binaryLockVerdict, isBusinessBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // dans l'app grand public. On évince : session purgée, jeton révoqué,
     // retour à l'écran de connexion du binaire avec l'explication.
     if (token && storedUser) {
-      const verdict = binaryLockVerdict(storedUser.role);
+      const verdict = binaryLockVerdict(storedUser);
       if (!verdict.allowed) {
         clearSession();
         revokeRefusedToken(token);
@@ -205,6 +205,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const pending = safeInternalPath(sessionStorage.getItem('chair_redirect'));
     sessionStorage.removeItem('chair_redirect');
     if (pending && canRoleVisit(freshUser.role, pending)) return pending;
+    // Binaire CHAIR BUSINESS : l'accueil est l'espace gérant, pas /pro
+    // (le verrou a déjà refusé les comptes sans casquette gérant).
+    if (isBusinessBinary() && freshUser.role !== 'client') return '/business';
     return redirectPathForRole(freshUser.role, isNewUser);
   }
 
@@ -214,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // n'a pas sa place dans CE binaire (compte pro dans l'app CLIENT ou
     // l'inverse). Le jeton fraîchement émis est révoqué sans JAMAIS toucher
     // le stockage local — aucune session ne doit exister, même une seconde.
-    const verdict = binaryLockVerdict(data.user.role);
+    const verdict = binaryLockVerdict(data.user);
     if (!verdict.allowed) {
       revokeRefusedToken(data.token);
       throw new Error(verdict.message);
@@ -231,7 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function register(registerData: RegisterData, options?: AuthRedirectOptions): Promise<void> {
     // Verrou binaire ↔ rôle, AVANT l'appel réseau : inutile de créer un
     // compte qu'on refuserait à la seconde suivante.
-    const verdict = binaryLockVerdict(registerData.role);
+    const verdict = binaryLockVerdict({ role: registerData.role });
     if (!verdict.allowed) throw new Error(verdict.message);
     const ref = registerData.ref ?? getStoredReferralCode();
     const data = await api.post<AuthResponse>('/register', { ...registerData, ref });

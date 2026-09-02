@@ -9,10 +9,13 @@
     "lint": "eslint",
     "cap:chair:sync": "cp capacitor.chair.config.ts capacitor.config.ts && npx cap sync",
     "cap:pro:sync": "cp capacitor.pro.config.ts capacitor.config.ts && npx cap sync",
+    "cap:business:sync": "cp capacitor.business.config.ts capacitor.config.ts && npx cap sync",
     "ios:chair": "bash scripts/sync-ios-chair.sh",
     "ios:pro": "bash scripts/sync-ios-pro.sh",
+    "ios:business": "bash scripts/sync-ios-business.sh",
     "cap:chair:ios": "npm run ios:chair && npx cap open ios",
-    "cap:pro:ios": "npm run ios:pro && npx cap open ios"
+    "cap:pro:ios": "npm run ios:pro && npx cap open ios",
+    "cap:business:ios": "npm run ios:business && npx cap open ios"
   },
   "dependencies": {
     "@capacitor/geolocation": "^8.2.0",

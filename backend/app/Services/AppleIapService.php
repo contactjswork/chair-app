@@ -2,33 +2,42 @@
 
 namespace App\Services;
 
-use App\Models\HairdresserProfile;
 use App\Models\Subscription;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 
 /**
- * CHAIR+ acheté dans l'app iOS (achat intégré Apple / StoreKit).
+ * Achats intégrés Apple (StoreKit) — les DEUX abonnements CHAIR :
+ *   • CHAIR+ (coiffeur)      — vendu dans le binaire CHAIR PRO ;
+ *   • CHAIR BUSINESS (salon) — vendu dans le binaire CHAIR BUSINESS.
  *
  * Miroir Apple de StripeService : ce service ne décide JAMAIS de l'accès —
  * il synchronise l'état App Store → la table `subscriptions`, que
- * HairdresserProfile::hasChairPlus() lit comme point de vérité unique.
+ * HairdresserProfile::hasChairPlus() / Salon::hasChairBusiness() lisent
+ * comme points de vérité uniques.
  *
- * Flux : l'app achète via la feuille de paiement Apple (plugin
- * @capgo/native-purchases), envoie le reçu base64 à POST /iap/verify, et ce
- * service le fait valider par Apple (/verifyReceipt + clé secrète partagée).
- * Les 30 jours gratuits sont l'offre d'essai configurée dans App Store
- * Connect — le reçu les signale via is_trial_period.
+ * Flux : l'app achète via la feuille de paiement Apple, envoie le reçu
+ * base64 à POST /iap/verify, et ce service le fait valider par Apple
+ * (/verifyReceipt + clé secrète partagée). Le PRODUIT trouvé dans le reçu
+ * décide du plan et de la cible (profil coiffeur ou salon du gérant).
  *
- * Renouvellements/annulations : l'appareil n'est pas fiable pour ça (app
- * fermée, désinstallée...). La commande chair:sync-apple-subscriptions
- * re-valide chaque jour les reçus proches de l'échéance avec le
- * latest_receipt stocké — Apple renvoie l'état à jour à chaque validation.
+ * Renouvellements/annulations : la commande chair:sync-apple-subscriptions
+ * re-valide chaque jour les reçus proches de l'échéance.
  */
 class AppleIapService
 {
     const PROD_URL    = 'https://buy.itunes.apple.com/verifyReceipt';
     const SANDBOX_URL = 'https://sandbox.itunes.apple.com/verifyReceipt';
+
+    /** product_id App Store → plan interne. */
+    private static function products(): array
+    {
+        return array_filter([
+            (string) config('services.apple_iap.product_chair_plus')     => 'chair_plus',
+            (string) config('services.apple_iap.product_chair_business') => 'chair_business',
+        ], fn ($plan, $product) => $product !== '', ARRAY_FILTER_USE_BOTH);
+    }
 
     /**
      * Valide un reçu auprès d'Apple et retourne la réponse décodée.
@@ -53,11 +62,12 @@ class AppleIapService
     }
 
     /**
-     * Valide le reçu et synchronise la ligne `subscriptions` du profil.
-     * Lève une HttpException métier (422/409) sur reçu invalide ou reçu
-     * appartenant à un autre compte — messages faits pour être affichés.
+     * Valide le reçu et synchronise la ligne `subscriptions` correspondante.
+     * Le produit trouvé dans le reçu décide de tout : CHAIR+ → profil
+     * coiffeur de $user ; CHAIR BUSINESS → salon dont $user est gérant.
+     * Lève une HttpException métier (422/409) — messages faits pour être affichés.
      */
-    public static function syncFromReceipt(HairdresserProfile $profile, string $receiptData): Subscription
+    public static function syncFromReceipt(User $user, string $receiptData): Subscription
     {
         $response = self::verifyReceipt($receiptData);
 
@@ -69,29 +79,32 @@ class AppleIapService
             abort(422, "Apple n'a pas reconnu cet achat. Réessaie, ou utilise « Restaurer mes achats »." );
         }
 
-        // Défense en profondeur (audit 01/09/2026) : le reçu doit appartenir à
-        // CHAIR PRO. Sans ce contrôle, un reçu valide d'une AUTRE app (même
-        // basé sur la même clé n'est pas censé arriver, mais on ne fait pas
-        // confiance) pourrait théoriquement ouvrir l'entitlement.
-        $expectedBundle = config('services.apple_iap.bundle_id');
+        // Défense en profondeur (audit 01/09/2026) : le reçu doit venir d'un
+        // binaire CHAIR (PRO ou BUSINESS) — jamais d'une autre app.
+        $allowedBundles = array_filter([
+            config('services.apple_iap.bundle_id'),
+            config('services.apple_iap.bundle_id_business'),
+        ]);
         $receiptBundle = $response['receipt']['bundle_id'] ?? null;
-        if ($expectedBundle && $receiptBundle && $receiptBundle !== $expectedBundle) {
-            \Log::warning('Reçu Apple : bundle_id inattendu', ['recu' => $receiptBundle, 'attendu' => $expectedBundle]);
-            abort(422, "Ce reçu ne correspond pas à l'application CHAIR PRO.");
+        if ($allowedBundles && $receiptBundle && !in_array($receiptBundle, $allowedBundles, true)) {
+            \Log::warning('Reçu Apple : bundle_id inattendu', ['recu' => $receiptBundle]);
+            abort(422, "Ce reçu ne correspond pas à une application CHAIR.");
         }
 
-        $productId = config('services.apple_iap.product_chair_plus');
+        $products = self::products();
         $entries = collect($response['latest_receipt_info'] ?? [])
-            ->filter(fn ($e) => ($e['product_id'] ?? null) === $productId);
+            ->filter(fn ($e) => isset($products[$e['product_id'] ?? '']));
 
         if ($entries->isEmpty()) {
-            abort(422, 'Aucun abonnement CHAIR+ trouvé sur ce compte App Store.');
+            abort(422, 'Aucun abonnement CHAIR trouvé sur ce compte App Store.');
         }
 
         // La ligne la plus récente du reçu porte l'état courant de l'abonnement
         // (chaque renouvellement ajoute une entrée ; l'original_transaction_id,
         // lui, ne change jamais).
         $latest = $entries->sortByDesc(fn ($e) => (int) ($e['expires_date_ms'] ?? 0))->first();
+        $productId = $latest['product_id'];
+        $plan = $products[$productId];
         $originalTxId = $latest['original_transaction_id'] ?? null;
         $expiresAt = !empty($latest['expires_date_ms'])
             ? Carbon::createFromTimestampMs((int) $latest['expires_date_ms'])
@@ -101,12 +114,24 @@ class AppleIapService
             abort(422, 'Reçu Apple incomplet — réessaie dans un instant.');
         }
 
-        // Un abonnement Apple ne peut nourrir qu'UN profil CHAIR : si ce même
+        // Cible de l'entitlement selon le plan.
+        $profileId = null;
+        $salonId = null;
+        if ($plan === 'chair_plus') {
+            $profile = $user->hairdresserProfile;
+            if (!$profile) abort(422, 'Aucun profil coiffeur associé à ce compte.');
+            $profileId = $profile->id;
+        } else {
+            $salon = $user->salon;
+            if (!$salon) abort(422, 'Aucun salon associé à ce compte.');
+            $salonId = $salon->id;
+        }
+
+        // Un abonnement Apple ne peut nourrir qu'UNE cible CHAIR : si ce même
         // abonnement (partage familial, changement de compte...) est déjà
-        // rattaché à un autre profil, on refuse au lieu de le déplacer en
-        // silence — déplacer couperait l'accès du premier compte sans un mot.
+        // rattaché ailleurs, on refuse au lieu de le déplacer en silence.
         $existing = Subscription::where('apple_original_transaction_id', $originalTxId)->first();
-        if ($existing && $existing->hairdresser_profile_id !== $profile->id) {
+        if ($existing && ($existing->hairdresser_profile_id !== $profileId || $existing->salon_id !== $salonId)) {
             abort(409, 'Cet abonnement App Store est déjà rattaché à un autre compte CHAIR.');
         }
 
@@ -132,8 +157,9 @@ class AppleIapService
         $subscription = Subscription::updateOrCreate(
             ['apple_original_transaction_id' => $originalTxId],
             [
-                'hairdresser_profile_id' => $profile->id,
-                'plan'                   => 'chair_plus',
+                'hairdresser_profile_id' => $profileId,
+                'salon_id'               => $salonId,
+                'plan'                   => $plan,
                 'provider'               => 'apple',
                 'status'                 => $status,
                 'trial_ends_at'          => $isTrial ? $expiresAt : null,
@@ -168,11 +194,15 @@ class AppleIapService
     {
         if ($subscription->provider !== 'apple' || !$subscription->apple_latest_receipt) return;
 
-        $profile = $subscription->hairdresserProfile;
-        if (!$profile) return;
+        // L'utilisateur « propriétaire » de l'entitlement : le coiffeur pour
+        // CHAIR+, le gérant du salon pour CHAIR BUSINESS.
+        $user = $subscription->hairdresser_profile_id
+            ? optional($subscription->hairdresserProfile)->user
+            : optional($subscription->salon)->owner;
+        if (!$user) return;
 
         try {
-            self::syncFromReceipt($profile, $subscription->apple_latest_receipt);
+            self::syncFromReceipt($user, $subscription->apple_latest_receipt);
         } catch (\Throwable $e) {
             \Log::warning('Resync abonnement Apple impossible', [
                 'subscription_id' => $subscription->id,

@@ -121,7 +121,9 @@ export function redirectPathForRole(role: UserRole, isNewUser = false): string {
  * sens client → espace pro.
  */
 export function canRoleVisit(role: UserRole, path: string): boolean {
-  const isProPath = path === '/pro' || path.startsWith('/pro/') || path === '/onboarding' || path.startsWith('/onboarding/');
+  const isProPath = path === '/pro' || path.startsWith('/pro/') || path === '/onboarding' || path.startsWith('/onboarding/')
+    // Espace gérant CHAIR BUSINESS — même monde professionnel que /pro.
+    || path === '/business' || path.startsWith('/business/');
   if (isProPath) return role === 'hairdresser' || role === 'salon_owner';
   return true;
 }

@@ -22,13 +22,13 @@ class IapController extends Controller
             'receipt' => 'required|string|max:1000000',
         ]);
 
-        $profile = $request->user()->hairdresserProfile;
-        if (!$profile) {
-            return response()->json(['message' => 'Aucun profil coiffeur associé à ce compte.'], 422);
-        }
+        $user = $request->user();
 
         try {
-            $subscription = AppleIapService::syncFromReceipt($profile, $validated['receipt']);
+            // Le service résout lui-même le produit du reçu (CHAIR+ → profil
+            // coiffeur, CHAIR BUSINESS → salon du gérant) et refuse proprement
+            // si le compte n'a pas la casquette correspondante.
+            $subscription = AppleIapService::syncFromReceipt($user, $validated['receipt']);
         } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
             // abort(422/409) du service — messages métier prêts à afficher.
             throw $e;
@@ -38,7 +38,8 @@ class IapController extends Controller
         }
 
         return response()->json([
-            'has_chair_plus' => $profile->fresh()->hasChairPlus(),
+            'has_chair_plus'     => (bool) ($user->hairdresserProfile?->fresh()?->hasChairPlus()),
+            'has_chair_business' => (bool) ($user->salon?->fresh()?->hasChairBusiness()),
             'subscription'   => [
                 'plan'                 => $subscription->plan,
                 'provider'             => $subscription->provider,

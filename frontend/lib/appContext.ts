@@ -28,11 +28,16 @@ export const CLIENT_UA_MARKER = 'CHAIRClient';
 /** Marqueur ajouté au User-Agent par capacitor.pro.config.ts. */
 export const PRO_UA_MARKER = 'CHAIRPro';
 
+/** Marqueur ajouté au User-Agent par capacitor.business.config.ts. */
+export const BUSINESS_UA_MARKER = 'CHAIRBusiness';
+
 export type AppContext =
   /** Binaire CHAIR CLIENT identifié (marqueur UA présent). */
   | 'client'
   /** Binaire CHAIR PRO identifié (marqueur UA présent). */
   | 'pro'
+  /** Binaire CHAIR BUSINESS (gérants de salon) identifié. */
+  | 'business'
   /** Navigateur web classique — aucun shell natif Capacitor. */
   | 'web'
   /**
@@ -73,8 +78,10 @@ export function getAppContext(): AppContext {
   if (typeof window === 'undefined') return 'unknown';
 
   const ua = readUserAgent();
-  // Les deux marqueurs sont mutuellement exclusifs (un binaire n'embarque
-  // qu'une configuration Capacitor), l'ordre de test n'a pas d'importance.
+  // Les marqueurs sont mutuellement exclusifs (un binaire n'embarque qu'une
+  // configuration Capacitor). BUSINESS testé avant PRO par prudence : aucun
+  // marqueur n'est un préfixe d'un autre aujourd'hui, gardons ça vrai.
+  if (ua.includes(BUSINESS_UA_MARKER)) return 'business';
   if (ua.includes(PRO_UA_MARKER)) return 'pro';
   if (ua.includes(CLIENT_UA_MARKER)) return 'client';
 
@@ -95,6 +102,11 @@ export function isClientBinary(): boolean {
 /** Vrai uniquement si le marqueur PRO est présent. Jamais pour 'unknown'. */
 export function isProBinary(): boolean {
   return getAppContext() === 'pro';
+}
+
+/** Vrai uniquement si le marqueur BUSINESS est présent. Jamais pour 'unknown'. */
+export function isBusinessBinary(): boolean {
+  return getAppContext() === 'business';
 }
 
 /** Vrai dans un shell natif dont on ne sait pas s'il est CLIENT ou PRO. */
@@ -136,12 +148,30 @@ export type BinaryLockVerdict =
     };
 
 /**
- * Le compte de ce rôle a-t-il le droit de vivre dans le binaire courant ?
- * À appeler à CHAQUE point d'entrée d'une session : connexion, inscription,
- * et restauration d'une session stockée au démarrage (le cas Julien : déjà
- * connecté en pro dans l'app CLIENT avant l'existence du verrou).
+ * Identité minimale nécessaire au verdict. `can_manage_salon` porte la double
+ * casquette (un coiffeur peut posséder un salon sans avoir le rôle
+ * salon_owner, et inversement) — absent (undefined) = on ne sait pas, on
+ * reste permissif plutôt que d'évincer à tort.
  */
-export function binaryLockVerdict(role: string, context: AppContext = getAppContext()): BinaryLockVerdict {
+export interface LockSubject {
+  role: string;
+  can_manage_salon?: boolean;
+}
+
+/**
+ * Le compte a-t-il le droit de vivre dans le binaire courant ?
+ * À appeler à CHAQUE point d'entrée d'une session : connexion, inscription,
+ * et restauration d'une session stockée au démarrage.
+ *
+ * Répartition à TROIS apps (décision Julien 02/09/2026, « les deux apps »
+ * pour la double casquette) :
+ *   CHAIR (client)   → comptes clients uniquement ;
+ *   CHAIR PRO        → coiffeurs ET gérants (le mode gérant y reste tant que
+ *                      CHAIR BUSINESS n'est pas publiée — resserrer ensuite) ;
+ *   CHAIR BUSINESS   → uniquement les comptes qui gèrent un salon.
+ */
+export function binaryLockVerdict(subject: LockSubject, context: AppContext = getAppContext()): BinaryLockVerdict {
+  const { role, can_manage_salon } = subject;
   const isProRole = role === 'hairdresser' || role === 'salon_owner';
 
   if (context === 'client' && isProRole) {
@@ -158,6 +188,28 @@ export function binaryLockVerdict(role: string, context: AppContext = getAppCont
       loginPath: '/pro/connexion',
     };
   }
+
+  if (context === 'business') {
+    if (role === 'client') {
+      return {
+        allowed: false,
+        message: 'Ce compte est un compte client. CHAIR BUSINESS est l’app des gérants de salon — utilisez l’app CHAIR.',
+        loginPath: '/pro/connexion',
+      };
+    }
+    // Coiffeur sans salon : son espace est CHAIR PRO. On ne refuse que si on
+    // SAIT qu'il ne gère aucun salon (false explicite) — pas de casquette
+    // connue (undefined) = prudence, on laisse entrer. Un salon_owner passe
+    // toujours (le rôle même vaut casquette, ex. inscription fraîche).
+    if (role === 'hairdresser' && can_manage_salon === false) {
+      return {
+        allowed: false,
+        message: 'CHAIR BUSINESS est réservée aux gérants de salon. Ton espace coiffeur est dans l’app CHAIR PRO.',
+        loginPath: '/pro/connexion',
+      };
+    }
+  }
+
   return { allowed: true };
 }
 
@@ -192,7 +244,9 @@ export function binaryLockVerdict(role: string, context: AppContext = getAppCont
  * voit n'importe quel utilisateur du même binaire.
  */
 export function allowsDigitalSubscriptionUI(context: AppContext = getAppContext()): boolean {
-  return context === 'pro' || context === 'web';
+  // 'business' : même statut que 'pro' — binaire professionnel où l'achat
+  // passe par la feuille Apple (CHAIR BUSINESS y est vendu en achat intégré).
+  return context === 'pro' || context === 'business' || context === 'web';
 }
 
 /**

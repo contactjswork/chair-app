@@ -72,11 +72,15 @@ return [
     // App Store Connect ; doit rester synchronisé avec PRODUIT_CHAIR_PLUS
     // (frontend/lib/iap.ts).
     'apple_iap' => [
-        'shared_secret'      => env('APPLE_IAP_SHARED_SECRET'),
-        'product_chair_plus' => env('APPLE_IAP_PRODUCT_CHAIR_PLUS', 'app.getchair.pro.chairplus.monthly'),
-        // Bundle de l'app CHAIR PRO — le reçu Apple DOIT le porter, sinon c'est
-        // le reçu d'une autre app (défense en profondeur, audit 01/09/2026).
+        'shared_secret'          => env('APPLE_IAP_SHARED_SECRET'),
+        'product_chair_plus'     => env('APPLE_IAP_PRODUCT_CHAIR_PLUS', 'app.getchair.pro.chairplus.monthly'),
+        // CHAIR BUSINESS — abonnement salon vendu dans le binaire gérant
+        // (app.getchair.business). Sync avec PRODUIT_CHAIR_BUSINESS (lib/iap.ts).
+        'product_chair_business' => env('APPLE_IAP_PRODUCT_CHAIR_BUSINESS', 'app.getchair.business.chairbusiness.monthly'),
+        // Bundles autorisés à porter un reçu (défense en profondeur, audit
+        // 01/09/2026) : PRO vend CHAIR+, BUSINESS vend CHAIR BUSINESS.
         'bundle_id'          => env('APPLE_IAP_BUNDLE_ID', 'app.getchair.pro'),
+        'bundle_id_business' => env('APPLE_IAP_BUNDLE_ID_BUSINESS', 'app.getchair.business'),
     ],
 
 ];

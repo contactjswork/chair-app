@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
 import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import { subscription } from '@/lib/api';
+import { acheterChairBusiness, restaurerChairBusiness, gererAbonnementApple, iapDisponible, AchatAnnule } from '@/lib/iap';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
 import {
@@ -95,20 +96,58 @@ export default function ChairBusinessPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  // Achat intégré Apple — binaire CHAIR BUSINESS uniquement (même règle
+  // App Store 3.1.1 que CHAIR+ dans le binaire PRO).
+  const [iapOk, setIapOk] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     subscription.mine().then(setData).catch(() => {}).finally(() => setDataLoading(false));
   }, [user]);
 
+  useEffect(() => {
+    if (appContext !== 'business') return;
+    iapDisponible().then(setIapOk).catch(() => {});
+  }, [appContext]);
+
   async function handleSubscribe() {
     setBusy(true);
     setError('');
     try {
+      if (appContext === 'business') {
+        // Binaire iOS gérant : feuille de paiement Apple, jamais Stripe
+        // Checkout dans l'app.
+        if (!iapOk) {
+          setError("L'achat intégré n'est pas disponible dans cette version de l'app. Mettez à jour CHAIR BUSINESS depuis l'App Store.");
+          return;
+        }
+        await acheterChairBusiness();
+        const fresh = await subscription.mine();
+        setData(fresh);
+        return;
+      }
       const res = await subscription.subscribe('chair_business');
       window.location.href = res.checkout_url;
+      return;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la création de l'abonnement.");
+      if (!(err instanceof AchatAnnule)) {
+        setError(err instanceof Error ? err.message : "Erreur lors de la création de l'abonnement.");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestore() {
+    setBusy(true);
+    setError('');
+    try {
+      const trouve = await restaurerChairBusiness();
+      if (trouve) setData(await subscription.mine());
+      else setError('Aucun abonnement CHAIR BUSINESS trouvé sur ce compte App Store.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'La restauration a échoué. Réessayez dans un instant.');
+    } finally {
       setBusy(false);
     }
   }
@@ -117,10 +156,18 @@ export default function ChairBusinessPage() {
     setBusy(true);
     setError('');
     try {
+      if (sub?.provider === 'apple') {
+        // Un abonnement Apple s'annule dans les réglages App Store.
+        await gererAbonnementApple();
+        setData(await subscription.mine());
+        return;
+      }
       const res = await subscription.manage();
       window.location.href = res.portal_url;
+      return;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'ouverture de la gestion d'abonnement.");
+    } finally {
       setBusy(false);
     }
   }
@@ -229,6 +276,18 @@ export default function ChairBusinessPage() {
                 >
                   {busy ? 'Chargement...' : state === 'expired' ? 'Réactiver CHAIR Business' : 'Commencer gratuitement'}
                   {!busy && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
+                </button>
+              )}
+
+              {/* Restauration : obligatoire côté Apple (nouvel iPhone, app
+                  réinstallée, validation interrompue après paiement). */}
+              {appContext === 'business' && !(sub && state !== 'expired') && (
+                <button
+                  onClick={handleRestore}
+                  disabled={busy}
+                  className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/50 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
+                >
+                  Déjà abonné via l&apos;App Store ? Restaurer mes achats
                 </button>
               )}
             </>

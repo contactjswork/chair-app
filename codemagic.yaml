@@ -224,3 +224,84 @@ workflows:
         submit_to_testflight: true
         beta_groups:
           - "Internal Testers"
+
+  # CHAIR BUSINESS — 3e binaire (gérants de salon). Même projet Xcode partagé,
+  # re-brandé à chaque build comme les deux autres. Prérequis App Store
+  # Connect : créer l'app app.getchair.business (New App) avant le 1er build.
+  chair-business-ios:
+    name: CHAIR BUSINESS — iOS TestFlight
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: chair_asc_key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: app.getchair.business
+      vars:
+        BUNDLE_ID: "app.getchair.business"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+      node: 20
+      xcode: latest
+    cache:
+      cache_paths: *npm_cache_paths
+    scripts:
+      - name: Installer les dépendances npm
+        script: |
+          cd frontend
+          npm ci
+      - name: Copier la config Capacitor CHAIR BUSINESS
+        script: |
+          cd frontend
+          npm run cap:business:sync
+      - name: Générer le projet iOS si absent + sync
+        script: |
+          cd frontend
+          test -d ios || npx cap add ios
+          npx cap sync ios
+      - <<: *restore_native_bundle
+      - <<: *configure_bundle_id
+      - name: Configurer nom affiché + permissions caméra/photo (CHAIR BUSINESS)
+        script: |
+          cd frontend
+          PLIST="ios/App/App/Info.plist"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR BUSINESS'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR BUSINESS utilise l appareil photo pour les photos de votre salon.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR BUSINESS utilise l appareil photo pour les photos de votre salon.'" "$PLIST"
+
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR BUSINESS accede a vos photos pour illustrer votre salon depuis votre galerie.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR BUSINESS accede a vos photos pour illustrer votre salon depuis votre galerie.'" "$PLIST"
+      - <<: *configure_ios_common
+      - <<: *configure_ios_no_location
+      - name: Récupérer/générer le certificat + profil App Store Connect
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Charger le certificat dans le trousseau de build
+        script: |
+          keychain initialize
+          keychain add-certificates
+      - name: Appliquer les profils de signature au projet Xcode
+        script: |
+          cd frontend/ios/App
+          xcode-project use-profiles
+      - name: Incrémenter le build number
+        script: |
+          cd frontend/ios/App
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$BUNDLE_ID" || echo 0)
+          agvtool new-version -all $(($LATEST + 1))
+      - name: Build .ipa
+        script: |
+          cd frontend
+          xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers"
