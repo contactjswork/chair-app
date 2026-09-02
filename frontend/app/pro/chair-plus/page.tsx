@@ -7,7 +7,6 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { subscription } from '@/lib/api';
 import { isFeatureEnabled } from '@/lib/featureFlags';
 import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
-import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
 import PremiumUpsellSheet from '@/components/ui/PremiumUpsellSheet';
@@ -226,10 +225,13 @@ export default function ChairPlusPage() {
         <h1 className="text-lg font-bold text-neutral-900">CHAIR+</h1>
       </div>
 
+      {/* La page visuelle complète s'affiche dans TOUS les binaires (demande
+          Julien 02/09) : avantages, carnet, comparatif — c'est de l'information
+          produit. Seuls le TARIF et les BOUTONS d'achat/gestion restent
+          conditionnés à showSubscriptionUI (App Store 3.1.1(a)) : le binaire
+          CLIENT et les builds non identifiés voient une note sobre à la place. */}
       {showComingSoon ? (
         <ComingSoonState />
-      ) : !showSubscriptionUI ? (
-        <SubscriptionElsewhereState planName="CHAIR+" context={appContext} />
       ) : (
         <>
           {checkoutResult === 'success' && (
@@ -262,6 +264,28 @@ export default function ChairPlusPage() {
 
               {dataLoading || flagLoading ? (
                 <div className="h-24 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto mt-6" />
+              ) : !showSubscriptionUI ? (
+                // Binaire CLIENT ou build natif non identifié : la page
+                // s'affiche, mais ni tarif ni bouton d'achat — une note sobre
+                // dit où l'abonnement se gère (App Store 3.1.1(a)).
+                <div className="max-w-xs mx-auto mt-6">
+                  <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
+                  <div className="bg-white/10 rounded-2xl px-4 py-4 text-left">
+                    <p className="text-[13px] font-semibold text-white mb-1">
+                      CHAIR+ se gère dans l&apos;espace professionnel
+                    </p>
+                    <p className="text-[12px] text-white/60 leading-relaxed">
+                      La souscription et la résiliation se trouvent dans CHAIR PRO.
+                      Déjà abonné ? Votre accès reste actif ici.
+                    </p>
+                    {appContext === 'unknown' && (
+                      <p className="text-[11px] text-white/40 leading-relaxed mt-2 pt-2 border-t border-white/10">
+                        Si vous utilisez CHAIR PRO, installez la dernière mise à
+                        jour pour gérer l&apos;abonnement directement dans l&apos;app.
+                      </p>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <>
                   <p className="text-[13px] text-white/50 font-medium mb-8">
@@ -374,8 +398,8 @@ export default function ChairPlusPage() {
               </div>
             </section>
 
-            {/* ── CTA final ── */}
-            {!canManage && (
+            {/* ── CTA final — uniquement là où l'achat est autorisé ── */}
+            {showSubscriptionUI && !canManage && (
               <section className="bg-neutral-900 bg-[radial-gradient(130%_120%_at_50%_0%,#26262a_0%,#0a0a0a_70%)] rounded-[28px] p-8 md:p-10 text-center shadow-[0_24px_50px_-24px_rgba(10,10,10,0.55)]">
                 <Sparkles size={20} className="text-[#f5b942] mx-auto mb-4" />
                 <h2 className="text-xl md:text-2xl font-black text-white mb-2">Essayez, c&apos;est offert.</h2>
