@@ -9,14 +9,13 @@ export interface DiscoverFeature {
   desc: string;
 }
 
-// "Stories" n'est volontairement pas une carte à part — c'est un avantage
-// CHAIR+ (StoryController::store est réservé aux abonnés), pas une fonction
-// gratuite pour tous : la mentionner séparément aurait été trompeur.
+// Les stories sont gratuites depuis le 01/09/2026 (sorties de CHAIR+) — la
+// carte CHAIR+ vend désormais le carnet client illimité, le badge et le boost.
 const HAIRDRESSER_FEATURES: DiscoverFeature[] = [
   { icon: Trophy,   title: 'Classements',      desc: 'Grimpe dans le top de ta spécialité et de ta ville — vu par tous les clients qui cherchent près de chez eux.' },
   { icon: Award,    title: 'Badges & niveau',  desc: 'Chaque réalisation, chaque avis, chaque visite te fait gagner des points et monter de niveau.' },
-  { icon: Sparkles, title: 'CHAIR+',           desc: 'Stories illimitées, badge vérifié et mise en avant locale — pour sortir du lot.' },
-  { icon: Gift,     title: 'Parrainage',       desc: "Invite d'autres coiffeurs ou salons : points, boost et CHAIR+ offert à la clé." },
+  { icon: Sparkles, title: 'CHAIR+',           desc: 'Carnet client illimité, badge vérifié et mise en avant locale — pour sortir du lot.' },
+  { icon: Gift,     title: 'Parrainage',       desc: "Invite d'autres coiffeurs ou salons : 1 mois de CHAIR+ offert pour toi et ton filleul." },
 ];
 
 interface Props {

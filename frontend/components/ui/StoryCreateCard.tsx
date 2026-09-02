@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import { Camera, Lock, Trash2, Eye } from 'lucide-react';
+import { Camera, Trash2, Eye } from 'lucide-react';
 import { getStoredToken } from '@/lib/auth';
 import { stories as storiesApi } from '@/lib/api';
-import { hasChairPlus, resolveMediaUrl } from '@/lib/types';
-import { allowsDigitalSubscriptionUI, useAppContext } from '@/lib/appContext';
+import { resolveMediaUrl } from '@/lib/types';
 import type { ApiHairdresserProfile, ApiStory } from '@/lib/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
@@ -79,16 +77,12 @@ function getVideoDuration(file: File): Promise<number> {
   });
 }
 
-// Création de story — réservée CHAIR+. Le serveur fait autorité (403 si pas
-// abonné), cette carte évite juste à un non-abonné de tenter l'upload pour
-// rien et l'oriente vers le parrainage, seul moyen d'obtenir CHAIR+ aujourd'hui
-// (Stripe pas encore branché).
+// Création de story — GRATUITE pour tout coiffeur depuis le 01/09/2026
+// (décision Julien : les stories sortent de CHAIR+ — chaque story publiée est
+// de la visibilité pour CHAIR, les verrouiller freinait le moteur viral).
+// Le serveur a le même contrat (StoryService::create : profil coiffeur requis).
 export default function StoryCreateCard({ profile }: { profile: ApiHairdresserProfile | null }) {
-  const eligible = hasChairPlus(profile);
-  // Binaire CHAIR CLIENT (ou natif non identifié) : pas de mention d'essai
-  // gratuit d'un abonnement numérique (App Store 3.1.1(a)) — on n'évoque que
-  // le parrainage. Identique pour tous les utilisateurs du même binaire.
-  const { context: appContext } = useAppContext();
+  const eligible = !!profile;
   const [mine, setMine] = useState<ApiStory[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
@@ -146,22 +140,10 @@ export default function StoryCreateCard({ profile }: { profile: ApiHairdresserPr
     } catch { /* ignore */ }
   }
 
+  // Profil pas encore chargé (ou absent) : rien à afficher — plus d'écran
+  // verrouillé, les stories sont ouvertes à tous les coiffeurs.
   if (!eligible) {
-    return (
-      <Link href="/pro/chair-plus" className="flex items-center gap-3 bg-neutral-50 rounded-[20px] p-4 hover:bg-neutral-100/80 transition-colors">
-        <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
-          <Lock size={15} className="text-neutral-400" strokeWidth={1.5} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-neutral-900">Stories — réservé CHAIR+</p>
-          <p className="text-xs text-neutral-400 mt-0.5">
-            {allowsDigitalSubscriptionUI(appContext)
-              ? 'Essai gratuit 30 jours, ou débloquez via le parrainage'
-              : 'Débloquez les stories via le parrainage'}
-          </p>
-        </div>
-      </Link>
-    );
+    return null;
   }
 
   return (

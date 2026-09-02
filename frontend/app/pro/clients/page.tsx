@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
 import { resolveMediaUrl, formatDate } from '@/lib/types';
@@ -84,13 +85,20 @@ export default function ProClientsPage() {
   const [rythmeEtat, setRythmeEtat] = useState<'idle' | 'saving'>('idle');
   const [relanceEnCours, setRelanceEnCours] = useState<number | null>(null);
   const [relanceErreur, setRelanceErreur] = useState('');
+  // Carnet limité sans CHAIR+ (25 derniers clients) : le serveur tronque et le
+  // signale — on affiche combien de clients restent cachés + le lien CHAIR+.
+  const [carnetLimite, setCarnetLimite] = useState<{ total: number; limit: number } | null>(null);
 
   useEffect(() => {
     if (!user) return;
     let annule = false;
     api
-      .get<{ clients: LigneClient[] }>('/my-clients')
-      .then((d) => { if (!annule) setClients(d.clients); })
+      .get<{ clients: LigneClient[]; total?: number; limit?: number; limited?: boolean }>('/my-clients')
+      .then((d) => {
+        if (annule) return;
+        setClients(d.clients);
+        setCarnetLimite(d.limited && d.total != null && d.limit != null ? { total: d.total, limit: d.limit } : null);
+      })
       .catch(() => {})
       .finally(() => { if (!annule) setChargement(false); });
     return () => { annule = true; };
@@ -217,6 +225,28 @@ export default function ProClientsPage() {
             className="w-full border border-neutral-200 rounded-xl pl-10 pr-4 h-12 text-[16px] text-neutral-900 placeholder:text-neutral-300 focus:outline-none focus:border-neutral-900 transition-colors"
           />
         </div>
+      )}
+
+      {/* Carnet limité sans CHAIR+ : le serveur ne sert que les {limit} plus
+          récents — on dit combien restent masqués, avec le déblocage à un tap. */}
+      {carnetLimite && (
+        <Link
+          href="/pro/chair-plus"
+          className="mt-3 flex items-center gap-3 bg-neutral-900 rounded-[20px] px-4 py-3.5 hover:bg-neutral-800 transition-colors"
+        >
+          <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+            <Users size={15} className="text-[#f5b942]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-bold text-white">
+              {carnetLimite.total - carnetLimite.limit} client{carnetLimite.total - carnetLimite.limit > 1 ? 's' : ''} masqué{carnetLimite.total - carnetLimite.limit > 1 ? 's' : ''}
+            </p>
+            <p className="text-[11px] text-white/60">
+              Carnet limité aux {carnetLimite.limit} derniers — CHAIR+ le débloque en illimité.
+            </p>
+          </div>
+          <span className="text-[11px] font-bold text-[#f5b942] flex-shrink-0">Débloquer</span>
+        </Link>
       )}
 
       <div className="mt-3">

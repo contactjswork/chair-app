@@ -21,9 +21,13 @@ class StoryService
 
     public static function create(User $author, UploadedFile $file, string $type, ?int $videoDurationSeconds = null): Story
     {
+        // Les stories sont GRATUITES depuis le 01/09/2026 (décision Julien :
+        // « enlève les stories de CHAIR+ ») — chaque story publiée est de la
+        // visibilité pour CHAIR, les verrouiller freinait le moteur viral.
+        // Seul un profil coiffeur reste requis.
         $profile = $author->hairdresserProfile;
-        if (!$profile || !$profile->hasChairPlus()) {
-            abort(403, 'Les stories sont réservées aux abonnés CHAIR+.');
+        if (!$profile) {
+            abort(403, 'Les stories sont réservées aux coiffeurs.');
         }
 
         $cloudinary = new CloudinaryService();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Check, BarChart3, Camera, Film, Pin, TrendingUp, BadgeCheck } from 'lucide-react';
+import { Check, BarChart3, BookUser, Film, Pin, TrendingUp, BadgeCheck } from 'lucide-react';
 import BottomSheet from '@/components/ui/BottomSheet';
 import { allowsDigitalSubscriptionUI, useAppContext } from '@/lib/appContext';
 
@@ -10,9 +10,11 @@ interface Props {
   onClose: () => void;
 }
 
+// Stories retirées de l'offre le 01/09/2026 (gratuites pour tous — décision
+// Julien) ; le carnet client illimité les remplace dans l'argumentaire.
 const POINTS = [
+  { icon: BookUser,   label: 'Carnet client illimité' },
   { icon: BarChart3,  label: 'Analytics avancées' },
-  { icon: Camera,     label: 'Stories 24h' },
   { icon: Film,       label: 'Vidéos' },
   { icon: Pin,        label: 'Posts épinglés' },
   { icon: TrendingUp, label: 'Boost local' },

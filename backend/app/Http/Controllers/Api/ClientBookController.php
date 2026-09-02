@@ -22,6 +22,14 @@ use Illuminate\Support\Facades\DB;
  */
 class ClientBookController extends Controller
 {
+    /**
+     * Taille du carnet sans CHAIR+ (décision Julien 01/09/2026) : les 25
+     * clients les plus récents. Avec CHAIR+, illimité. 25 = assez pour
+     * goûter à la valeur du carnet, assez peu pour qu'un coiffeur actif
+     * atteigne la limite en quelques semaines.
+     */
+    public const CARNET_GRATUIT_MAX = 25;
+
     /** GET /my-clients — tous les clients connus, dernier passage en premier. */
     public function index(Request $request)
     {
@@ -78,7 +86,64 @@ class ClientBookController extends Controller
             ];
         })->filter()->sortByDesc('last_seen')->values();
 
-        return response()->json(['clients' => $clients]);
+        // Carnet limité sans CHAIR+ : seuls les CARNET_GRATUIT_MAX clients les
+        // plus récents sont servis — la troncature se fait ICI, côté serveur,
+        // jamais en CSS (un appel API direct ne doit pas contourner la limite).
+        $total = $clients->count();
+        $limited = false;
+        if (!$profile->hasChairPlus() && $total > self::CARNET_GRATUIT_MAX) {
+            $clients = $clients->take(self::CARNET_GRATUIT_MAX)->values();
+            $limited = true;
+        }
+
+        return response()->json([
+            'clients' => $clients,
+            'total'   => $total,
+            'limit'   => self::CARNET_GRATUIT_MAX,
+            'limited' => $limited,
+        ]);
+    }
+
+    /**
+     * Le client {userId} est-il accessible dans le carnet de ce profil ?
+     * Sans CHAIR+, seuls les CARNET_GRATUIT_MAX plus récents le sont — même
+     * garde que la liste, appliquée aux fiches et aux actions (note, conseil,
+     * rythme, relance) pour qu'un appel API direct ne contourne rien.
+     */
+    private function carnetAutorise($profile, int $userId): bool
+    {
+        if ($profile->hasChairPlus()) {
+            return true;
+        }
+
+        $viaRdv = Appointment::where('hairdresser_id', $profile->id)
+            ->whereNotNull('client_id')
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->select('client_id as uid', DB::raw('MAX(appointment_date) as derniere'))
+            ->groupBy('client_id')
+            ->pluck('derniere', 'uid');
+
+        $viaScan = VerifiedVisit::where('hairdresser_id', $profile->id)
+            ->select('client_user_id as uid', DB::raw('MAX(scanned_at) as derniere'))
+            ->groupBy('client_user_id')
+            ->pluck('derniere', 'uid');
+
+        $recents = collect($viaRdv)->keys()->merge(collect($viaScan)->keys())->unique()
+            ->map(fn ($id) => ['id' => (int) $id, 'derniere' => max(array_filter([$viaRdv[$id] ?? null, $viaScan[$id] ?? null]) ?: [null])])
+            ->sortByDesc('derniere')
+            ->take(self::CARNET_GRATUIT_MAX)
+            ->pluck('id');
+
+        return $recents->contains($userId);
+    }
+
+    /** Réponse uniforme quand la limite du carnet gratuit est atteinte. */
+    private function refusCarnetLimite()
+    {
+        return response()->json([
+            'message' => 'Carnet limité aux ' . self::CARNET_GRATUIT_MAX . ' derniers clients. Passez à CHAIR+ pour un carnet illimité.',
+            'carnet_limited' => true,
+        ], 403);
     }
 
     /** GET /my-clients/{userId} — l'historique complet et la note. */
@@ -92,6 +157,10 @@ class ClientBookController extends Controller
         $client = User::find($userId, ['id', 'name', 'avatar']);
         if (!$client) {
             return response()->json(['message' => 'Client introuvable'], 404);
+        }
+
+        if (!$this->carnetAutorise($profile, $userId)) {
+            return $this->refusCarnetLimite();
         }
 
         // On ne montre l'historique QUE de la relation avec CE coiffeur :
@@ -143,6 +212,10 @@ class ClientBookController extends Controller
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
         }
 
+        if (!$this->carnetAutorise($profile, $userId)) {
+            return $this->refusCarnetLimite();
+        }
+
         $validated = $request->validate([
             'note' => 'nullable|string|max:2000',
         ]);
@@ -169,6 +242,10 @@ class ClientBookController extends Controller
         $profile = $request->user()->hairdresserProfile;
         if (!$profile) {
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        if (!$this->carnetAutorise($profile, $userId)) {
+            return $this->refusCarnetLimite();
         }
 
         $validated = $request->validate([
@@ -213,6 +290,10 @@ class ClientBookController extends Controller
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
         }
 
+        if (!$this->carnetAutorise($profile, $userId)) {
+            return $this->refusCarnetLimite();
+        }
+
         $validated = $request->validate([
             'rebook_weeks' => 'nullable|integer|min:2|max:26',
         ]);
@@ -239,6 +320,10 @@ class ClientBookController extends Controller
         $profile = $request->user()->hairdresserProfile;
         if (!$profile) {
             return response()->json(['message' => 'Profil coiffeur introuvable'], 404);
+        }
+
+        if (!$this->carnetAutorise($profile, $userId)) {
+            return $this->refusCarnetLimite();
         }
 
         // Dans le carnet = au moins un passage réel chez CE coiffeur.
