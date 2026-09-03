@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
+import BusinessShell from '@/components/business/BusinessShell';
 
 // CHAIR BUSINESS — l'espace gérant comme app à part entière (3e binaire,
-// décision Julien 02/09/2026). V1 : /business est la porte d'entrée du
-// binaire app.getchair.business et réutilise les écrans gérant existants
-// (/pro/salon, /pro/equipe, /pro/recrutement, /pro/fauteuils…) — un seul
-// code, trois vitrines. Les écrans migreront sous /business au fur et à
-// mesure que l'app prendra sa propre identité visuelle.
+// décision Julien 02/09/2026). Ce layout serveur porte les métadonnées ;
+// toute la coquille (gardes, wordmark, navigation, gate binaire PRO) vit
+// dans BusinessShell (client). Les écrans réutilisent les pages gérant
+// existantes via ré-export (/business/salon → /pro/salon, etc.) — un seul
+// code, l'identité BUSINESS par-dessus.
 export const metadata: Metadata = {
   title: 'CHAIR BUSINESS — Gérez votre salon',
   description:
@@ -13,5 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default function BusinessLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return <BusinessShell>{children}</BusinessShell>;
 }

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Building2, Scissors } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { isProBinary, isBusinessBinary } from '@/lib/appContext';
 
 function Spinner() {
   return <span className="w-3 h-3 border-2 border-neutral-300 border-t-neutral-700 rounded-full animate-spin" />;
@@ -24,6 +26,26 @@ export default function ProModeSwitcher({ compact = false }: { compact?: boolean
   const [pendingMode, setPendingMode] = useState<'salon_owner' | 'hairdresser' | null>(null);
 
   if (!user?.can_manage_salon || !user?.has_hairdresser_profile) return null;
+
+  // Plus de bascule de mode DANS l'app native (décision Julien 02/09/2026) :
+  // dans le binaire CHAIR PRO, la casquette gérant vit dans CHAIR BUSINESS.
+  // Le lien mène à /business, qui affiche l'écran d'installation dans ce
+  // binaire (voir app/business/layout.tsx). Sur le web, la bascule reste.
+  if (isProBinary()) {
+    return (
+      <Link
+        href="/business"
+        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 bg-neutral-100 rounded-full text-[11px] font-semibold text-neutral-600 hover:text-neutral-900 transition-colors ${compact ? '' : 'w-full'}`}
+      >
+        <Building2 size={12} /> Gérer mon salon
+      </Link>
+    );
+  }
+  // Binaire BUSINESS : pas de bascule non plus — l'activité coiffeur vit
+  // dans l'app CHAIR PRO, rien à proposer ici.
+  if (isBusinessBinary()) {
+    return null;
+  }
 
   const activeMode = user.active_pro_mode ?? user.role;
   const switching = pendingMode !== null;

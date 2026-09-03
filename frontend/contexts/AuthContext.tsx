@@ -17,7 +17,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { captureReferralCode, getStoredReferralCode, clearStoredReferralCode } from '@/lib/referral';
 import { unregister as unregisterPush, getStoredPushToken } from '@/lib/push';
 import { hydrateUserPrefsFromServer } from '@/lib/homeFilters';
-import { binaryLockVerdict, isBusinessBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
+import { binaryLockVerdict, isBusinessBinary, isProBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -241,6 +241,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearStoredReferralCode();
     saveSession(data.token, data.user);
     setUser(data.user);
+    // Un gérant qui vient de créer son compte DANS le binaire CHAIR PRO est
+    // mené directement vers CHAIR BUSINESS (/business affiche l'écran
+    // d'installation dans ce binaire) — plus de parcours gérant dans PRO.
+    if (isProBinary() && data.user.role === 'salon_owner') {
+      router.push('/business');
+      return;
+    }
     router.push(resolvePostAuthPath(data.user, true, options));
   }
 
@@ -249,7 +256,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const token = getStoredToken();
     if (token) saveSession(token, updated);
     setUser(updated);
-    router.push(mode === 'salon_owner' ? '/pro/salon-owner' : '/pro');
+    // L'accueil gérant est désormais /business (l'espace CHAIR BUSINESS).
+    router.push(mode === 'salon_owner' ? '/business' : '/pro');
   }
 
   async function enableHairdresserMode(): Promise<void> {

@@ -104,7 +104,8 @@ export function redirectPathForRole(role: UserRole, isNewUser = false): string {
     return isNewUser ? '/onboarding' : '/pro';
   }
   if (role === 'salon_owner') {
-    return isNewUser ? '/onboarding/gerant' : '/pro/salon-owner';
+    // L'accueil gérant vit désormais dans l'espace CHAIR BUSINESS.
+    return isNewUser ? '/onboarding/gerant' : '/business';
   }
   return isNewUser ? '/app/onboarding' : '/app';
 }

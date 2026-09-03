@@ -7,6 +7,8 @@ import ProTopBar from '@/components/layout/ProTopBar';
 import ProNav from '@/components/layout/ProNav';
 import ProSidebar from '@/components/layout/ProSidebar';
 import SplashScreen from '@/components/ui/SplashScreen';
+import BusinessAppGate from '@/components/business/BusinessAppGate';
+import { isProBinary } from '@/lib/appContext';
 
 const PUBLIC_PRO_ROUTES = ['/pro/connexion', '/pro/inscription'];
 
@@ -31,6 +33,15 @@ export default function ProLayout({ children }: { children: React.ReactNode }) {
   if (isPublic) return <>{children}</>;
   if (isLoading) return <SplashScreen pro />;
   if (!user || user.role === 'client') return null;
+
+  // Plus AUCUNE transition gérant/coiffeur dans les apps (décision Julien
+  // 02/09/2026) : dans le binaire CHAIR PRO, un GÉRANT PUR (gère un salon,
+  // aucun profil coiffeur) n'a rien à faire ici — on le mène vers CHAIR
+  // BUSINESS. Un gérant-coiffeur (double casquette) reste : PRO est l'app de
+  // son activité de coiffeur.
+  if (isProBinary() && user.can_manage_salon && !user.has_hairdresser_profile) {
+    return <BusinessAppGate />;
+  }
 
   return (
     <>
