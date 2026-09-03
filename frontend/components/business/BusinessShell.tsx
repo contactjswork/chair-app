@@ -57,11 +57,15 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-[100dvh] bg-neutral-50 flex flex-col">
 
-      {/* ── Barre haute — l'identité de l'app ── */}
-      <header className="sticky top-0 z-30 bg-[#0a0a0b] pt-safe">
+      {/* ── Barre haute — DA CHAIR : blanc, noir, rien d'autre. L'or est
+          l'accent du PREMIUM (pages d'abonnement), jamais du chrome. ── */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-neutral-100 pt-safe">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/business" className="text-[15px] font-black tracking-tight text-white">
-            CHAIR <span className="text-[#f5b942]">BUSINESS</span>
+          <Link href="/business" className="flex items-center gap-2">
+            <span className="text-[17px] font-black tracking-tight text-neutral-900">CHAIR</span>
+            <span className="text-[9px] font-bold tracking-[0.14em] uppercase bg-neutral-900 text-white px-1.5 py-[3px] rounded-md">
+              Business
+            </span>
           </Link>
 
           {/* Desktop : les sections en ligne. */}
@@ -71,7 +75,7 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
                 key={tab.href}
                 href={tab.href}
                 className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                  estActif(tab) ? 'bg-white text-black' : 'text-white/55 hover:text-white'
+                  estActif(tab) ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900'
                 }`}
               >
                 {tab.label}
@@ -79,18 +83,18 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
             ))}
             <Link
               href="/business/abonnement"
-              className="ml-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold text-black bg-[#f5b942] hover:brightness-105 transition-all"
+              className="ml-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors"
             >
-              <Sparkles size={12} /> Business
+              <Sparkles size={12} /> Abonnement
             </Link>
           </nav>
 
           {/* Mobile : l'abonnement reste accessible en haut à droite. */}
           <Link
             href="/business/abonnement"
-            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold text-black bg-[#f5b942]"
+            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold text-white bg-neutral-900"
           >
-            <Sparkles size={11} /> Business
+            <Sparkles size={11} /> Abonnement
           </Link>
         </div>
       </header>

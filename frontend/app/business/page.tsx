@@ -13,6 +13,8 @@ import {
 import { api, salons as salonsApi } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview } from '@/lib/types';
 import { isBusinessBinary } from '@/lib/appContext';
+import { CARTE, CARTE_SOMBRE, MICRO_TITRE } from '@/lib/proStyle';
+import { Users, Camera, Sparkles } from 'lucide-react';
 import OwnerStat from '@/components/owner/OwnerStat';
 import OwnerActionCard from '@/components/owner/OwnerActionCard';
 
@@ -110,6 +112,8 @@ export default function BusinessHome() {
   const ACTIONS = [
     { icon: Briefcase, label: 'Créer une offre',     href: '/business/recrutement', color: 'bg-neutral-900 text-white' },
     { icon: Armchair,  label: 'Ajouter un fauteuil', href: '/business/fauteuils',   color: 'bg-neutral-900 text-white' },
+    { icon: UserPlus,  label: 'Inviter un coiffeur', href: '/business/equipe',      color: 'bg-white text-neutral-900 ring-1 ring-neutral-100' },
+    ...(salon?.slug ? [{ icon: Building2, label: 'Ma page publique', href: `/app/salon/${salon.slug}`, color: 'bg-white text-neutral-900 ring-1 ring-neutral-100' }] : []),
   ];
 
   return (
@@ -153,11 +157,20 @@ export default function BusinessHome() {
 
       {/* Salon card */}
       {salon ? (
-        <div className="bg-white rounded-[26px] shadow-[0_8px_26px_-10px_rgba(10,10,10,0.16)] ring-1 ring-neutral-50 overflow-hidden">
+        <div className={`${CARTE} overflow-hidden`}>
           <Link href="/business/salon" className="block hover:opacity-90 transition-opacity">
-            <div className="relative h-24 bg-neutral-200">
-              {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
-            </div>
+            {coverUrl ? (
+              <div className="relative h-28 bg-neutral-200">
+                <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />
+              </div>
+            ) : (
+              // Pas encore de couverture : un bandeau sombre soigné qui INVITE
+              // à en ajouter une — jamais un rectangle gris vide.
+              <div className="relative h-28 bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#26262a_0%,#0a0a0a_70%)] flex flex-col items-center justify-center gap-1.5">
+                <Camera size={18} className="text-white/40" strokeWidth={1.5} />
+                <p className="text-[11px] font-semibold text-white/50">Ajouter une photo de couverture</p>
+              </div>
+            )}
           </Link>
           <div className="p-4 flex items-center gap-3">
             <Link href="/business/salon" className="w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -230,10 +243,12 @@ export default function BusinessHome() {
         </div>
       )}
 
-      {/* Stats rapides */}
+      {/* Stats rapides — la santé du salon d'un coup d'œil */}
       <div className="grid grid-cols-2 gap-3">
-        <OwnerStat icon={Briefcase} value={data?.job_offers_count ?? 0} label="Offres actives" href="/business/recrutement" />
-        <OwnerStat icon={Armchair}  value={data?.rentals_count ?? 0}   label="Fauteuils"       href="/business/fauteuils" />
+        <OwnerStat icon={Users}     value={data?.hairdressers_count ?? 0} label="Coiffeurs"            href="/business/equipe" />
+        <OwnerStat icon={UserPlus}  value={data?.pending_apps ?? 0}       label="Candidatures"          href="/business/recrutement" />
+        <OwnerStat icon={Briefcase} value={data?.job_offers_count ?? 0}   label="Offres actives"        href="/business/recrutement" />
+        <OwnerStat icon={Armchair}  value={data?.rentals_count ?? 0}      label="Fauteuils en location" href="/business/fauteuils" />
       </div>
 
       {/* Avis récents — ce qui s'est passé depuis la dernière visite */}
@@ -263,13 +278,28 @@ export default function BusinessHome() {
 
       {/* Actions rapides */}
       <div>
-        <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-[0.15em] mb-3">Actions rapides</p>
+        <p className={`${MICRO_TITRE} mb-3`}>Actions rapides</p>
         <div className="grid grid-cols-2 gap-3">
           {ACTIONS.map((a, i) => (
             <OwnerActionCard key={i} icon={a.icon} label={a.label} href={a.href} colorClassName={a.color} />
           ))}
         </div>
       </div>
+
+      {/* CHAIR Business — le teaser premium. Seul endroit où l'or a sa place :
+          c'est l'accent du premium, pas celui du chrome de l'app. */}
+      <Link href="/business/abonnement" className={`${CARTE_SOMBRE} flex items-center gap-4 p-5 hover:opacity-95 transition-opacity`}>
+        <div className="w-11 h-11 rounded-2xl bg-[#f5b942]/15 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={18} className="text-[#f5b942]" strokeWidth={1.75} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-black leading-tight">CHAIR Business</p>
+          <p className="text-[12px] text-white/50 leading-relaxed mt-0.5">
+            Salon mis en avant, analytics d&apos;équipe, support prioritaire — 30 jours gratuits.
+          </p>
+        </div>
+        <ChevronRight size={16} className="text-white/35 flex-shrink-0" />
+      </Link>
 
       {/* Déconnexion mobile */}
       <div className="pt-2 pb-2 md:hidden">
