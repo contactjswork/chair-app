@@ -11,10 +11,21 @@ import { useProNav, type NavItem } from '@/hooks/useProNav';
 // sur mobile, qui est la plateforme principale de cette app.
 const PLUS_ITEM: NavItem = { href: '/pro/plus', label: 'Plus', icon: MoreHorizontal };
 
-export default function ProNav() {
+/**
+ * Barre d'onglets mobile — LA bottom nav de la famille CHAIR. Sans props :
+ * comportement historique CHAIR PRO (items de useProNav + onglet Plus).
+ * Avec `items`/`homeHref` : la même barre, pixel pour pixel, au service d'une
+ * autre app de la famille (CHAIR BUSINESS) — jamais une seconde nav maison
+ * (audit DA 03/09/2026).
+ */
+export default function ProNav({ items: itemsProp, homeHref: homeHrefProp }: {
+  items?: NavItem[];
+  homeHref?: string;
+} = {}) {
   const pathname = usePathname();
-  const { primary, homeHref } = useProNav();
-  const items = [...primary, PLUS_ITEM];
+  const { primary, homeHref: proHomeHref } = useProNav();
+  const homeHref = homeHrefProp ?? proHomeHref;
+  const items = itemsProp ?? [...primary, PLUS_ITEM];
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white shadow-[0_-4px_20px_-6px_rgba(10,10,10,0.1)] pb-safe-nav">

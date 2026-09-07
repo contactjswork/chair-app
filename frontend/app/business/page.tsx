@@ -6,37 +6,51 @@ import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
-  Building2, Armchair, Briefcase,
-  ArrowRight, ChevronRight, MapPin, Edit2, UserPlus,
-  AlertTriangle, LogOut, Scissors, Star,
+  Building2, Armchair, Briefcase, ChevronRight, UserPlus,
+  LogOut, Scissors, Star, Check, Sparkles,
 } from 'lucide-react';
-import { api, salons as salonsApi } from '@/lib/api';
-import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview } from '@/lib/types';
+import { api, salons as salonsApi, subscription as subscriptionApi } from '@/lib/api';
+import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview, type ApiMySubscription } from '@/lib/types';
 import { isBusinessBinary } from '@/lib/appContext';
-import { CARTE, CARTE_SOMBRE, MICRO_TITRE } from '@/lib/proStyle';
-import { Users, Camera, Sparkles } from 'lucide-react';
-import OwnerStat from '@/components/owner/OwnerStat';
+import { CARTE, CARTE_TAP, CARTE_SOMBRE_TAP, MICRO_TITRE } from '@/lib/proStyle';
+import { contributionLigne, type MembreContribution } from '@/lib/teamContribution';
+import OwnerTeamMember from '@/components/owner/OwnerTeamMember';
 import OwnerActionCard from '@/components/owner/OwnerActionCard';
+import { PrimaryButton } from '@/components/ui/Button';
 
-// Accueil CHAIR BUSINESS — l'ancien tableau de bord gérant (/pro/salon-owner),
-// déménagé ici avec des liens internes /business/* : l'espace gérant est une
-// app à part entière, plus une annexe de CHAIR PRO. /pro/salon-owner redirige.
+/**
+ * Home CHAIR BUSINESS — la page que le patron ouvre chaque matin.
+ * Refonte UX du 03/09/2026 (brief fondateur + plan architecte) :
+ * elle répond dans l'ordre à « dois-je traiter quelque chose ? » (À traiter,
+ * premier viewport), « comment va mon salon ? » (indicateurs réels), « qui
+ * fait quoi ? » (équipe humaine, activité), puis les actions et le statut
+ * d'abonnement. Aucune métrique inventée : chaque chiffre vient d'un
+ * endpoint réel, et une section sans donnée est masquée — jamais de « 0 ».
+ */
 
-interface TeamMember {
+interface TeamMember extends MembreContribution {
   id: number;
   user?: { name?: string };
   avatar?: string | null;
 }
 
-interface DashboardData {
-  salon:              ApiSalonFull | null;
-  team:                TeamMember[];
-  hairdressers_count: number;
-  pending_joins:      number;
-  job_offers_count:   number;
-  pending_apps:       number;
-  rentals_count:      number;
-  pending_rentals:    number;
+interface Traiter {
+  compte: number | null; // null = ligne de setup (point ambre, pas de compteur)
+  label: string;
+  href: string;
+}
+
+/** Jours restants avant une date ISO (essai CHAIR Business). */
+function joursRestants(iso: string): number {
+  return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000));
+}
+
+/** « aujourd'hui » / « hier » / « il y a X j » — pour l'activité récente. */
+function depuis(iso: string): string {
+  const jours = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (jours <= 0) return "aujourd'hui";
+  if (jours === 1) return 'hier';
+  return `il y a ${jours} j`;
 }
 
 export default function BusinessHome() {
@@ -45,10 +59,14 @@ export default function BusinessHome() {
   // role='hairdresser' — useRequireAuth('salon_owner') vérifie can_manage_salon.
   const { user, isLoading } = useRequireAuth(['salon_owner']);
 
-  const [data,    setData]    = useState<DashboardData | null>(null);
+  const [salon, setSalon] = useState<ApiSalonFull | null>(null);
+  const [pendingJoins, setPendingJoins] = useState(0);
+  const [pendingApps, setPendingApps] = useState(0);
+  const [pendingRentals, setPendingRentals] = useState(0);
+  const [recentReviews, setRecentReviews] = useState<ApiSalonRecentReview[]>([]);
+  const [sub, setSub] = useState<ApiMySubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [enabling, setEnabling] = useState(false);
-  const [recentReviews, setRecentReviews] = useState<ApiSalonRecentReview[]>([]);
 
   async function handleEnableHairdresserMode() {
     setEnabling(true);
@@ -65,65 +83,268 @@ export default function BusinessHome() {
     Promise.allSettled([
       salonsApi.mySalon(),
       api.get<{ count: number }>('/my-salon/applications/pending-count'),
-      api.get<unknown[]>('/my-salon/rentals'),
-      api.get<unknown[]>('/my-salon/rental-requests'),
+      // ?status=pending : sans le filtre, les demandes déjà acceptées ou
+      // refusées gonflaient le compteur (bug de l'ancienne home, corrigé ici).
+      api.get<unknown[]>('/my-salon/rental-requests?status=pending'),
       salonsApi.recentReviews(),
-      api.get<{ status: string }[]>('/my-job-offers'),
-    ]).then(([salonRes, appsRes, rentalsRes, rentalReqsRes, reviewsRes, jobOffersRes]) => {
-      if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value);
+      subscriptionApi.mine(),
+    ]).then(([salonRes, appsRes, rentalReqsRes, reviewsRes, subRes]) => {
       const salonData = salonRes.status === 'fulfilled' ? salonRes.value : null;
-      const salon     = salonData?.salon ?? null;
-
-      setData({
-        salon,
-        team:                (salon?.hairdressers ?? []) as unknown as TeamMember[],
-        hairdressers_count: salon?.hairdressers?.length ?? 0,
-        pending_joins:      salonData?.pending_requests?.length ?? 0,
-        job_offers_count:   jobOffersRes.status === 'fulfilled' && Array.isArray(jobOffersRes.value) ? jobOffersRes.value.filter((o) => o.status === 'open').length : 0,
-        pending_apps:       appsRes.status === 'fulfilled' && appsRes.value && typeof appsRes.value === 'object' && 'count' in appsRes.value ? (appsRes.value as { count: number }).count : 0,
-        rentals_count:      rentalsRes.status === 'fulfilled'    && Array.isArray(rentalsRes.value)    ? rentalsRes.value.length    : 0,
-        pending_rentals:    rentalReqsRes.status === 'fulfilled' && Array.isArray(rentalReqsRes.value) ? rentalReqsRes.value.length : 0,
-      });
+      setSalon(salonData?.salon ?? null);
+      setPendingJoins(salonData?.pending_requests?.length ?? 0);
+      setPendingApps(appsRes.status === 'fulfilled' && appsRes.value && typeof appsRes.value === 'object' && 'count' in appsRes.value ? (appsRes.value as { count: number }).count : 0);
+      setPendingRentals(rentalReqsRes.status === 'fulfilled' && Array.isArray(rentalReqsRes.value) ? rentalReqsRes.value.length : 0);
+      if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value);
+      if (subRes.status === 'fulfilled') setSub(subRes.value);
     }).finally(() => setLoading(false));
   }, [user, isLoading]);
 
   const firstName = user?.name?.split(' ')[0] ?? '';
+  const todayDateStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   if (isLoading || loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
+      <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 space-y-4">
+        <div className="h-10 bg-neutral-100 rounded-xl animate-pulse" />
+        <div className="h-44 bg-neutral-100 rounded-[28px] animate-pulse" />
+        <div className="h-28 bg-neutral-100 rounded-[28px] animate-pulse" />
       </div>
     );
   }
 
-  const salon    = data?.salon;
-  const coverUrl = resolveMediaUrl(salon?.cover_image ?? null);
-  const logoUrl  = resolveMediaUrl(salon?.logo ?? null);
+  const team = (salon?.hairdressers ?? []) as unknown as TeamMember[];
+  const logoUrl = resolveMediaUrl(salon?.logo ?? null);
 
-  const alerts: { label: string; href: string }[] = [];
-  if (!salon)                                          alerts.push({ label: 'Créez la page de votre salon',             href: '/business/salon' });
-  if (salon && !salon.description)                     alerts.push({ label: 'Ajoutez une description à votre salon',   href: '/business/salon' });
-  if ((data?.pending_joins ?? 0) > 0)                  alerts.push({ label: `${data!.pending_joins} demande(s) de coiffeur en attente`, href: '/business/salon' });
-  if ((data?.pending_apps ?? 0) > 0)                   alerts.push({ label: `${data!.pending_apps} candidature(s) à traiter`,           href: '/business/recrutement' });
-  if ((data?.pending_rentals ?? 0) > 0)                alerts.push({ label: `${data!.pending_rentals} demande(s) de fauteuil`,           href: '/business/fauteuils' });
-  if (salon?.verification_status === 'pending_review') alerts.push({ label: 'Vérification SIRET en cours',                              href: '/business/salon' });
+  // ── « À traiter » : demandes réelles d'abord, setup ensuite. ──
+  const aTraiter: Traiter[] = [];
+  if (salon) {
+    if (pendingJoins > 0)   aTraiter.push({ compte: pendingJoins,   label: `demande${pendingJoins > 1 ? 's' : ''} d'équipe à traiter`,    href: '/business/equipe' });
+    if (pendingApps > 0)    aTraiter.push({ compte: pendingApps,    label: `candidature${pendingApps > 1 ? 's' : ''} à traiter`,          href: '/business/recrutement' });
+    if (pendingRentals > 0) aTraiter.push({ compte: pendingRentals, label: `demande${pendingRentals > 1 ? 's' : ''} de fauteuil à traiter`, href: '/business/fauteuils' });
+    if (!salon.siret) {
+      aTraiter.push({ compte: null, label: 'Ajoutez votre SIRET pour être vérifié', href: '/business/salon' });
+    } else if (salon.verification_status === 'pending_review') {
+      aTraiter.push({ compte: null, label: 'Vérification SIRET en cours', href: '/business/salon' });
+    }
+    if (!salon.description || !salon.cover_image) {
+      aTraiter.push({ compte: null, label: 'Complétez votre page salon', href: '/business/salon' });
+    }
+  }
 
-  const ACTIONS = [
-    { icon: Briefcase, label: 'Créer une offre',     href: '/business/recrutement', color: 'bg-neutral-900 text-white' },
-    { icon: Armchair,  label: 'Ajouter un fauteuil', href: '/business/fauteuils',   color: 'bg-neutral-900 text-white' },
-    { icon: UserPlus,  label: 'Inviter un coiffeur', href: '/business/equipe',      color: 'bg-white text-neutral-900 ring-1 ring-neutral-100' },
-    ...(salon?.slug ? [{ icon: Building2, label: 'Ma page publique', href: `/app/salon/${salon.slug}`, color: 'bg-white text-neutral-900 ring-1 ring-neutral-100' }] : []),
-  ];
+  // ── « Mon salon » : cumuls réels de l'équipe (jamais inventés). ──
+  const totalPassages = team.reduce((acc, m) => acc + (m.verified_visits_count ?? 0), 0);
+  const totalAvis = team.reduce((acc, m) => acc + (m.reviews_count ?? 0), 0);
+  // Moyenne pondérée par le nombre d'avis — même résultat que le calcul
+  // backend de la fiche publique (SalonController::show).
+  const notePonderee = totalAvis > 0
+    ? team.reduce((acc, m) => acc + (parseFloat(String(m.avg_rating ?? 0)) * (m.reviews_count ?? 0)), 0) / totalAvis
+    : null;
+  const montrerSalonStats = team.length > 0 && (totalPassages > 0 || totalAvis > 0);
+
+  // ── Statut CHAIR Business (une ligne, pas une bannière). ──
+  const salonSub = sub?.salon_subscription ?? null;
+  const businessActif = sub?.has_chair_business ?? false;
+  const joursEssai = salonSub?.status === 'trialing' && salonSub.trial_ends_at
+    ? joursRestants(salonSub.trial_ends_at)
+    : null;
+
+  // ═══ Variante « nouveau gérant » : pas encore de salon — home de setup. ═══
+  if (!salon) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 space-y-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="text-[26px] font-bold text-neutral-900 tracking-[-0.02em] truncate">
+            {firstName ? `Bonjour ${firstName}` : 'Bonjour'}
+          </h1>
+          <span className="text-[12px] text-neutral-400 capitalize shrink-0">{todayDateStr}</span>
+        </div>
+
+        <Link href="/business/salon" className={`${CARTE_SOMBRE_TAP} flex items-center gap-4 p-6`}>
+          <Building2 size={22} className="flex-shrink-0 text-white" strokeWidth={1.5} />
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-bold">Créez la page de votre salon</span>
+            <span className="block text-[12px] text-white/50 mt-0.5">Visible publiquement sur CHAIR — photos, équipe, avis.</span>
+          </span>
+          <ChevronRight size={16} className="text-white/40 flex-shrink-0" />
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-xl mx-auto px-4 pt-6 space-y-4">
+    <div className="max-w-2xl mx-auto px-4 md:px-6 pt-6 space-y-4">
 
-      {/* Double casquette : le gérant qui coupe aussi active son profil
-          coiffeur — qui vit dans CHAIR PRO (plus de transition de mode :
-          dans le binaire BUSINESS on l'invite à ouvrir l'app CHAIR PRO). */}
-      {salon && !user?.has_hairdresser_profile && (
-        <div className="bg-white rounded-[22px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 flex items-center gap-3.5">
+      {/* ══ Qui je suis — une ligne, pas une carte (pattern home PRO). ══ */}
+      <div>
+        <div className="flex items-baseline justify-between gap-3">
+          <h1 className="text-[26px] font-bold text-neutral-900 tracking-[-0.02em] truncate">
+            {firstName ? `Bonjour ${firstName}` : 'Bonjour'}
+          </h1>
+          <span className="text-[12px] text-neutral-400 capitalize shrink-0">{todayDateStr}</span>
+        </div>
+        <Link href="/business/salon" className="mt-1 inline-flex items-center gap-2 group">
+          <span className="relative w-7 h-7 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+            {logoUrl
+              ? <Image src={logoUrl} alt="" fill className="object-cover" sizes="28px" />
+              : <Building2 size={13} className="text-neutral-400" />
+            }
+          </span>
+          <span className="text-[13px] font-semibold text-neutral-500 group-hover:text-neutral-900 transition-colors truncate">{salon.name}</span>
+          <ChevronRight size={14} className="text-neutral-300 flex-shrink-0" />
+        </Link>
+      </div>
+
+      {/* ══ À TRAITER — le bloc roi, visible sans scroller. ══ */}
+      {aTraiter.length > 0 ? (
+        <div className={CARTE}>
+          <p className={`${MICRO_TITRE} px-5 pt-4`}>À traiter</p>
+          <div className="mt-2 pb-1.5">
+            {aTraiter.map((t, i) => (
+              <Link
+                key={t.label}
+                href={t.href}
+                className={`flex items-center gap-3 px-5 py-3 min-h-[48px] active:bg-neutral-50 transition-colors ${i > 0 ? 'border-t border-neutral-50' : ''}`}
+              >
+                {t.compte !== null ? (
+                  <span className="w-6 h-6 rounded-full bg-neutral-900 text-white text-[11px] font-bold flex items-center justify-center flex-shrink-0 tabular-nums">
+                    {t.compte}
+                  </span>
+                ) : (
+                  <span className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  </span>
+                )}
+                <span className="flex-1 min-w-0 text-[14px] font-semibold text-neutral-900 truncate">
+                  {t.compte !== null ? `${t.compte} ${t.label}` : t.label}
+                </span>
+                <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="flex items-center gap-1.5 text-[13px] text-neutral-400 px-1">
+          <Check size={13} className="text-emerald-500" /> Tout est à jour
+        </p>
+      )}
+
+      {/* ══ MON SALON — 3 chiffres réels, une rangée compacte. ══ */}
+      {montrerSalonStats && (
+        <div className={`${CARTE} p-5`}>
+          <p className={MICRO_TITRE}>Mon salon</p>
+          <div className="mt-3 grid grid-cols-3">
+            {notePonderee != null && (
+              <Link href="/business/equipe" className="min-w-0">
+                <p className="text-[22px] font-bold text-neutral-900 tabular-nums flex items-center gap-1">
+                  <Star size={14} className="fill-amber-400 stroke-none" />{notePonderee.toFixed(1)}
+                </p>
+                <p className="text-[11px] text-neutral-400">Note du salon</p>
+              </Link>
+            )}
+            <Link href="/business/equipe" className="min-w-0">
+              <p className="text-[22px] font-bold text-neutral-900 tabular-nums">{totalPassages}</p>
+              <p className="text-[11px] text-neutral-400">Passages vérifiés</p>
+            </Link>
+            <Link href="/business/equipe" className="min-w-0">
+              <p className="text-[22px] font-bold text-neutral-900 tabular-nums">{totalAvis}</p>
+              <p className="text-[11px] text-neutral-400">Avis reçus</p>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ══ MON ÉQUIPE — des visages, pas des chiffres. ══ */}
+      {team.length > 0 ? (
+        <div className={`${CARTE} p-5`}>
+          <div className="flex items-center justify-between mb-3">
+            <p className={MICRO_TITRE}>Mon équipe</p>
+            <Link href="/business/equipe" className="flex items-center text-neutral-300 hover:text-neutral-500 transition-colors -m-2 p-2">
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {team.slice(0, 3).map((m) => (
+              <OwnerTeamMember
+                key={m.id}
+                variant="inline"
+                avatarUrl={resolveMediaUrl(m.avatar ?? null)}
+                name={m.user?.name ?? 'Coiffeur'}
+                subtitle={contributionLigne(m, team)}
+              />
+            ))}
+          </div>
+          <Link href="/business/equipe" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-neutral-900 hover:underline">
+            Voir toute l&apos;équipe ({team.length}) <ChevronRight size={14} />
+          </Link>
+        </div>
+      ) : (
+        <Link href="/business/equipe" className={`${CARTE_TAP} flex items-center gap-3 px-5 min-h-[60px] py-3`}>
+          <UserPlus size={17} className="text-neutral-400 shrink-0" />
+          <span className="flex-1 min-w-0">
+            <span className="block text-[14px] font-semibold text-neutral-900">Invitez votre premier coiffeur</span>
+            <span className="block text-[12px] text-neutral-500">Votre équipe apparaîtra sur la page du salon.</span>
+          </span>
+          <ChevronRight size={16} className="text-neutral-300 shrink-0" />
+        </Link>
+      )}
+
+      {/* ══ ACTIVITÉ RÉCENTE — v1 : les avis reçus par l'équipe. ══ */}
+      {recentReviews.length > 0 && (
+        <div className={`${CARTE} p-5`}>
+          <p className={`${MICRO_TITRE} mb-3`}>Activité récente</p>
+          <div className="space-y-3">
+            {recentReviews.slice(0, 3).map((r) => (
+              <Link key={r.id} href="/business/equipe" className="flex items-start gap-2.5 group">
+                <span className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                  <Star size={11} className="fill-amber-400 stroke-none" />
+                  <span className="text-xs font-bold text-neutral-900">{r.rating}</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs text-neutral-600 line-clamp-2 group-hover:text-neutral-900 transition-colors">
+                    {r.comment || <span className="italic text-neutral-400">Sans commentaire</span>}
+                  </span>
+                  <span className="block text-[10px] text-neutral-400 mt-0.5">
+                    {r.hairdresser_name}{r.is_verified && ' · visite vérifiée'}{r.created_at && ` · ${depuis(r.created_at)}`}
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ══ ACTIONS RAPIDES ══ */}
+      <div>
+        <p className={`${MICRO_TITRE} mb-3`}>Actions rapides</p>
+        <div className="grid grid-cols-2 gap-3">
+          <OwnerActionCard icon={Briefcase} label="Créer une offre" href="/business/recrutement" />
+          <OwnerActionCard icon={Armchair} label="Ajouter un fauteuil" href="/business/fauteuils" />
+          <OwnerActionCard icon={UserPlus} label="Inviter un coiffeur" href="/business/equipe" colorClassName="light" />
+          {salon.slug && (
+            <OwnerActionCard icon={Building2} label="Ma page publique" href={`/app/salon/${salon.slug}`} colorClassName="light" />
+          )}
+        </div>
+      </div>
+
+      {/* ══ CHAIR BUSINESS — une ligne de statut, pas une bannière. ══ */}
+      <Link href="/business/abonnement" className={`${CARTE_TAP} flex items-center gap-3 px-5 min-h-[60px] py-3`}>
+        <Sparkles size={17} className={businessActif ? 'text-[#f5b942] shrink-0' : 'text-neutral-400 shrink-0'} />
+        <span className="flex-1 min-w-0">
+          <span className="block text-[14px] font-semibold text-neutral-900">CHAIR Business</span>
+          <span className="block text-[12px] text-neutral-500">
+            {joursEssai != null
+              ? `${joursEssai} jour${joursEssai > 1 ? 's' : ''} d'essai restant${joursEssai > 1 ? 's' : ''}`
+              : businessActif
+                ? 'Actif'
+                : "Salon mis en avant, analytics d'équipe"}
+          </span>
+        </span>
+        <ChevronRight size={16} className="text-neutral-300 shrink-0" />
+      </Link>
+
+      {/* ══ Double casquette — en bas : utile, mais pas prioritaire. ══ */}
+      {!user?.has_hairdresser_profile && (
+        <div className={`${CARTE} p-4 flex items-center gap-3.5`}>
           <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
             <Scissors size={16} className="text-neutral-500" />
           </div>
@@ -136,170 +357,12 @@ export default function BusinessHome() {
             </p>
           </div>
           {!isBusinessBinary() && (
-            <button
-              onClick={handleEnableHairdresserMode}
-              disabled={enabling}
-              className="text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50 flex-shrink-0"
-            >
-              {enabling ? '...' : 'Activer'}
-            </button>
+            <PrimaryButton size="sm" loading={enabling} onClick={handleEnableHairdresserMode} className="flex-shrink-0">
+              Activer
+            </PrimaryButton>
           )}
         </div>
       )}
-
-      {/* Bonjour */}
-      <div>
-        <p className="text-xs text-neutral-400 capitalize">
-          {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-        </p>
-        <h1 className="text-2xl font-bold text-neutral-900 mt-0.5">Bonjour, {firstName}</h1>
-      </div>
-
-      {/* Salon card */}
-      {salon ? (
-        <div className={`${CARTE} overflow-hidden`}>
-          <Link href="/business/salon" className="block hover:opacity-90 transition-opacity">
-            {coverUrl ? (
-              <div className="relative h-28 bg-neutral-200">
-                <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />
-              </div>
-            ) : (
-              // Pas encore de couverture : un bandeau sombre soigné qui INVITE
-              // à en ajouter une — jamais un rectangle gris vide.
-              <div className="relative h-28 bg-neutral-900 bg-[radial-gradient(120%_100%_at_50%_0%,#26262a_0%,#0a0a0a_70%)] flex flex-col items-center justify-center gap-1.5">
-                <Camera size={18} className="text-white/40" strokeWidth={1.5} />
-                <p className="text-[11px] font-semibold text-white/50">Ajouter une photo de couverture</p>
-              </div>
-            )}
-          </Link>
-          <div className="p-4 flex items-center gap-3">
-            <Link href="/business/salon" className="w-12 h-12 rounded-xl bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
-              {logoUrl
-                ? <Image src={logoUrl} alt={salon.name} width={48} height={48} className="object-cover" />
-                : <Building2 size={20} className="text-neutral-400" />
-              }
-            </Link>
-            <Link href="/business/salon" className="flex-1 min-w-0">
-              <p className="text-[15px] font-bold text-neutral-900 truncate">{salon.name}</p>
-              {salon.city && (
-                <div className="flex items-center gap-1 text-xs text-neutral-500 mt-0.5">
-                  <MapPin size={10} />{salon.city}
-                </div>
-              )}
-            </Link>
-            <Link href="/business/salon?edit=1"
-              className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-900 hover:text-white transition-colors flex-shrink-0"
-              title="Modifier la fiche salon">
-              <Edit2 size={13} />
-            </Link>
-          </div>
-
-          {/* Équipe — aperçu direct, sans page intermédiaire */}
-          <Link href="/business/equipe" className="flex items-center gap-3 px-4 py-3 border-t border-neutral-50 hover:bg-neutral-50 transition-colors">
-            {data && data.team.length > 0 ? (
-              <div className="flex -space-x-2 flex-shrink-0">
-                {data.team.slice(0, 4).map((m) => (
-                  <div key={m.id} className="w-7 h-7 rounded-full bg-neutral-200 border-2 border-white overflow-hidden relative flex items-center justify-center">
-                    {m.avatar
-                      ? <Image src={resolveMediaUrl(m.avatar)!} alt="" fill className="object-cover" sizes="28px" />
-                      : <span className="text-[10px] font-bold text-neutral-500">{m.user?.name?.[0] ?? '?'}</span>
-                    }
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0">
-                <UserPlus size={12} className="text-neutral-400" />
-              </div>
-            )}
-            <span className="text-xs font-medium text-neutral-600 flex-1">
-              {data?.hairdressers_count ? `${data.hairdressers_count} coiffeur${data.hairdressers_count > 1 ? 's' : ''} dans l'équipe` : 'Inviter un coiffeur'}
-            </span>
-            <ChevronRight size={14} className="text-neutral-400 flex-shrink-0" />
-          </Link>
-        </div>
-      ) : (
-        <Link href="/business/salon" className="flex items-center gap-3 p-4 bg-neutral-900 text-white rounded-[22px]">
-          <Building2 size={20} className="flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold">Créez la page de votre salon</p>
-            <p className="text-xs text-neutral-400 mt-0.5">Visible publiquement sur CHAIR</p>
-          </div>
-          <ArrowRight size={16} className="flex-shrink-0" />
-        </Link>
-      )}
-
-      {/* Alertes */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((a, i) => (
-            <Link key={i} href={a.href}
-              className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl hover:bg-amber-100 transition-colors">
-              <AlertTriangle size={14} className="text-amber-600 flex-shrink-0" />
-              <span className="text-[13px] text-amber-800 font-medium flex-1">{a.label}</span>
-              <ChevronRight size={14} className="text-amber-500 flex-shrink-0" />
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* Stats rapides — la santé du salon d'un coup d'œil */}
-      <div className="grid grid-cols-2 gap-3">
-        <OwnerStat icon={Users}     value={data?.hairdressers_count ?? 0} label="Coiffeurs"            href="/business/equipe" />
-        <OwnerStat icon={UserPlus}  value={data?.pending_apps ?? 0}       label="Candidatures"          href="/business/recrutement" />
-        <OwnerStat icon={Briefcase} value={data?.job_offers_count ?? 0}   label="Offres actives"        href="/business/recrutement" />
-        <OwnerStat icon={Armchair}  value={data?.rentals_count ?? 0}      label="Fauteuils en location" href="/business/fauteuils" />
-      </div>
-
-      {/* Avis récents — ce qui s'est passé depuis la dernière visite */}
-      {recentReviews.length > 0 && (
-        <div className="bg-white rounded-[22px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
-          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-[0.15em] mb-3">Avis récents</p>
-          <div className="space-y-3">
-            {recentReviews.slice(0, 3).map((r) => (
-              <div key={r.id} className="flex items-start gap-2.5">
-                <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
-                  <Star size={11} className="fill-amber-400 stroke-none" />
-                  <span className="text-xs font-bold text-neutral-900">{r.rating}</span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-neutral-600 line-clamp-2">
-                    {r.comment || <span className="italic text-neutral-400">Sans commentaire</span>}
-                  </p>
-                  <p className="text-[10px] text-neutral-400 mt-0.5">
-                    {r.hairdresser_name} {r.is_verified && '· visite vérifiée'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Actions rapides */}
-      <div>
-        <p className={`${MICRO_TITRE} mb-3`}>Actions rapides</p>
-        <div className="grid grid-cols-2 gap-3">
-          {ACTIONS.map((a, i) => (
-            <OwnerActionCard key={i} icon={a.icon} label={a.label} href={a.href} colorClassName={a.color} />
-          ))}
-        </div>
-      </div>
-
-      {/* CHAIR Business — le teaser premium. Seul endroit où l'or a sa place :
-          c'est l'accent du premium, pas celui du chrome de l'app. */}
-      <Link href="/business/abonnement" className={`${CARTE_SOMBRE} flex items-center gap-4 p-5 hover:opacity-95 transition-opacity`}>
-        <div className="w-11 h-11 rounded-2xl bg-[#f5b942]/15 flex items-center justify-center flex-shrink-0">
-          <Sparkles size={18} className="text-[#f5b942]" strokeWidth={1.75} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-black leading-tight">CHAIR Business</p>
-          <p className="text-[12px] text-white/50 leading-relaxed mt-0.5">
-            Salon mis en avant, analytics d&apos;équipe, support prioritaire — 30 jours gratuits.
-          </p>
-        </div>
-        <ChevronRight size={16} className="text-white/35 flex-shrink-0" />
-      </Link>
 
       {/* Déconnexion mobile */}
       <div className="pt-2 pb-2 md:hidden">

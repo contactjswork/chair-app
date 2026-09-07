@@ -41,10 +41,17 @@ export default function AppBanner() {
   // CHAIR PRO (coiffeurs/gérants) vs CHAIR (clients) — même bannière,
   // copie adaptée à l'app réellement pertinente pour ce visiteur.
   const isPro = pathname.startsWith('/pro');
+  // L'espace gérant a SA propre app (CHAIR BUSINESS) — proposer « Ouvrir dans
+  // l'app CHAIR » (client) sur /business serait un contresens. Tant que
+  // CHAIR BUSINESS n'est pas publiée : aucune bannière sur cet espace.
+  const isBusiness = pathname.startsWith('/business');
 
   useEffect(() => {
-    setVisible(computeVisible());
-  }, [pathname]);
+    // Double rendu volontaire (même motif que l'onboarding client) : premier
+    // rendu identique au serveur, puis la valeur réelle calculée au montage.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setVisible(isBusiness ? false : computeVisible());
+  }, [pathname, isBusiness]);
 
   // Hauteur publiée aux barres fixes (ProTopBar, TopNav), qui sinon se
   // retrouvent dessous, invisibles. Remise à zéro dès que la bannière

@@ -14,9 +14,12 @@ interface OwnerStatProps {
 export default function OwnerStat({ icon: Icon, value, label, href }: OwnerStatProps) {
   const content = (
     <>
+      {/* Calibré sur components/ui/StatCard.tsx (audit DA 03/09/2026) :
+          même valeur text-xl, même libellé 10px uppercase — une seule
+          grammaire de tuile statistique dans toute la famille. */}
       <Icon size={16} className="text-neutral-400" />
-      <p className="text-2xl font-bold text-neutral-900">{value}</p>
-      <p className="text-[11px] text-neutral-400 leading-tight">{label}</p>
+      <p className="text-xl font-bold text-neutral-900">{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-neutral-400 leading-tight">{label}</p>
     </>
   );
   const classes = 'bg-white rounded-2xl border border-neutral-100 p-4 flex flex-col gap-2 hover:border-neutral-200 transition-colors';

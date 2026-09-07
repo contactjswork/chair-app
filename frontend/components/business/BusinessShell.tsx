@@ -7,22 +7,26 @@ import { Home, Building2, Users, Briefcase, Armchair, Sparkles } from 'lucide-re
 import { useAuth } from '@/contexts/AuthContext';
 import { isProBinary } from '@/lib/appContext';
 import BusinessAppGate from '@/components/business/BusinessAppGate';
+import ChairLogo from '@/components/ui/ChairLogo';
+import ProNav from '@/components/layout/ProNav';
+import type { NavItem } from '@/hooks/useProNav';
 
 /**
- * La coquille CHAIR BUSINESS — l'espace gérant comme app à part entière :
- * wordmark noir/or, navigation propre (tabs mobile + liens desktop), et les
- * gardes d'accès. Aucune trace de l'univers coiffeur : plus de transition de
- * mode entre les apps (décision Julien 02/09/2026).
+ * La coquille CHAIR BUSINESS — l'espace gérant comme app à part entière,
+ * dans la MÊME DA que CHAIR et CHAIR PRO (règle absolue, audit 03/09/2026) :
+ * même header (philosophie ProTopBar : opaque + ombre, jamais de verre
+ * dépoli), même bottom nav (ProNav, pixel pour pixel), même wordmark
+ * (ChairLogo). La différence est le contenu, pas la charte.
  *
  * Dans le binaire CHAIR PRO, tout /business affiche l'écran d'installation
  * (BusinessAppGate) : l'espace gérant ne vit JAMAIS dans l'app coiffeur.
  */
-const TABS = [
-  { href: '/business',             label: 'Accueil',     icon: Home,      exact: true },
-  { href: '/business/salon',       label: 'Salon',       icon: Building2, exact: false },
-  { href: '/business/equipe',      label: 'Équipe',      icon: Users,     exact: false },
-  { href: '/business/recrutement', label: 'Recrutement', icon: Briefcase, exact: false },
-  { href: '/business/fauteuils',   label: 'Fauteuils',   icon: Armchair,  exact: false },
+const TABS: NavItem[] = [
+  { href: '/business',             label: 'Accueil',     icon: Home },
+  { href: '/business/salon',       label: 'Salon',       icon: Building2 },
+  { href: '/business/equipe',      label: 'Équipe',      icon: Users },
+  { href: '/business/recrutement', label: 'Recrutement', icon: Briefcase },
+  { href: '/business/fauteuils',   label: 'Fauteuils',   icon: Armchair },
 ];
 
 export default function BusinessShell({ children }: { children: React.ReactNode }) {
@@ -40,7 +44,7 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
 
   if (isLoading || !user || user.role === 'client' || user.can_manage_salon === false) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
@@ -51,79 +55,54 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
     return <BusinessAppGate />;
   }
 
-  const estActif = (tab: (typeof TABS)[number]) =>
-    tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
-
   return (
-    <div className="min-h-[100dvh] bg-neutral-50 flex flex-col">
+    <div className="min-h-[100dvh] bg-neutral-50">
 
-      {/* ── Barre haute — DA CHAIR : blanc, noir, rien d'autre. L'or est
-          l'accent du PREMIUM (pages d'abonnement), jamais du chrome. ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-neutral-100 pt-safe">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link href="/business" className="flex items-center gap-2">
-            <span className="text-[17px] font-black tracking-tight text-neutral-900">CHAIR</span>
-            <span className="text-[9px] font-bold tracking-[0.14em] uppercase bg-neutral-900 text-white px-1.5 py-[3px] rounded-md">
-              Business
-            </span>
-          </Link>
+      {/* ── Header mobile — mêmes classes que ProTopBar (opaque + ombre). ── */}
+      <div className="md:hidden fixed top-[var(--chair-banner-h,0px)] inset-x-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] pt-safe">
+        <div className="h-14 flex items-center justify-between px-4">
+          <div className="w-9" />
+          <ChairLogo href="/business" size="md" business />
+          <div className="w-9" />
+        </div>
+      </div>
 
-          {/* Desktop : les sections en ligne. */}
-          <nav className="hidden md:flex items-center gap-1">
-            {TABS.map((tab) => (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
-                  estActif(tab) ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900'
-                }`}
-              >
-                {tab.label}
-              </Link>
-            ))}
+      {/* ── Header desktop — même philosophie (opaque + ombre), liens en pills. ── */}
+      <div className="hidden md:block sticky top-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)]">
+        <div className="max-w-2xl mx-auto px-6 h-14 flex items-center justify-between">
+          <ChairLogo href="/business" size="md" business />
+          <nav className="flex items-center gap-1">
+            {TABS.map((tab) => {
+              const actif = tab.href === '/business' ? pathname === tab.href : pathname.startsWith(tab.href);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`h-9 px-3.5 inline-flex items-center rounded-full text-[13px] font-semibold transition-colors ${
+                    actif ? 'bg-neutral-900 text-white' : 'text-neutral-500 hover:text-neutral-900'
+                  }`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
             <Link
               href="/business/abonnement"
-              className="ml-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold text-white bg-neutral-900 hover:bg-neutral-700 transition-colors"
+              className="ml-1 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-full text-[13px] font-semibold text-white bg-neutral-900 hover:bg-neutral-800 transition-colors"
             >
-              <Sparkles size={12} /> Abonnement
+              <Sparkles size={13} /> Abonnement
             </Link>
           </nav>
-
-          {/* Mobile : l'abonnement reste accessible en haut à droite. */}
-          <Link
-            href="/business/abonnement"
-            className="md:hidden flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold text-white bg-neutral-900"
-          >
-            <Sparkles size={11} /> Abonnement
-          </Link>
         </div>
-      </header>
+      </div>
 
-      {/* ── Contenu ── */}
-      <main className="flex-1 pb-24 md:pb-10">
+      {/* ── Contenu — décalé sous le header fixe mobile, au-dessus de la nav. ── */}
+      <main className="pt-content-mobile-pro md:pt-0 pb-24 md:pb-10">
         {children}
       </main>
 
-      {/* ── Tabs mobile ── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-neutral-100 pb-safe">
-        <div className="grid grid-cols-5 h-16">
-          {TABS.map((tab) => {
-            const actif = estActif(tab);
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                  actif ? 'text-neutral-900' : 'text-neutral-400 hover:text-neutral-600'
-                }`}
-              >
-                <tab.icon size={19} strokeWidth={actif ? 2.2 : 1.7} />
-                <span className={`text-[10px] ${actif ? 'font-bold' : 'font-medium'}`}>{tab.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {/* ── LA bottom nav de la famille — ProNav, avec les onglets gérant. ── */}
+      <ProNav items={TABS} homeHref="/business" />
     </div>
   );
 }

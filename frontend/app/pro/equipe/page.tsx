@@ -9,6 +9,7 @@ import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
 import OwnerTeamMember from '@/components/owner/OwnerTeamMember';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
+import { contributionLigne } from '@/lib/teamContribution';
 import {
   Users, Search, Send, X, UserMinus, Check, Clock, UserPlus, ChevronRight,
   MessageSquarePlus, Copy, Link2, RotateCw, Mail, Ban, XCircle,
@@ -37,27 +38,8 @@ interface TeamMember {
   avg_rating?: string | number;
 }
 
-/**
- * « 34 passages · 12 avis ★4,8 · 41 % du salon » — la part de chaque membre
- * dans l'activité vérifiée du salon. Reconnaissance chiffrée pour le
- * salarié, pilotage pour le gérant. La part n'apparaît qu'à partir de deux
- * membres ET d'une activité réelle (un « 100 % » d'un salon vide ne dit rien).
- */
-function contributionLigne(m: TeamMember, team: TeamMember[]): string {
-  const passages = m.verified_visits_count ?? 0;
-  const avis = m.reviews_count ?? 0;
-  const note = m.avg_rating != null ? parseFloat(String(m.avg_rating)) : 0;
-
-  const morceaux: string[] = [];
-  morceaux.push(`${passages} passage${passages > 1 ? 's' : ''}`);
-  if (avis > 0) morceaux.push(`${avis} avis${note > 0 ? ` ★${note.toFixed(1)}` : ''}`);
-
-  const totalSalon = team.reduce((acc, t) => acc + (t.verified_visits_count ?? 0), 0);
-  if (team.length > 1 && totalSalon > 0 && passages > 0) {
-    morceaux.push(`${Math.round((passages / totalSalon) * 100)} % du salon`);
-  }
-  return morceaux.join(' · ');
-}
+// « 34 passages · 12 avis ★4,8 · 41 % du salon » — désormais partagée avec la
+// home CHAIR BUSINESS : voir lib/teamContribution.ts (une seule formulation).
 
 export default function EquipePage() {
   const { user, isLoading } = useRequireAuth(['salon_owner']);
