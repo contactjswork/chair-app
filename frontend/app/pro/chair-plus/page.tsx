@@ -10,6 +10,8 @@ import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
 import PremiumUpsellSheet from '@/components/ui/PremiumUpsellSheet';
+import { PrimaryButton } from '@/components/ui/Button';
+import { CARTE, CARTE_TAP, CARTE_SOMBRE, MICRO_TITRE } from '@/lib/proStyle';
 import { acheterChairPlus, restaurerChairPlus, gererAbonnementApple, iapDisponible, prixChairPlusApple, AchatAnnule } from '@/lib/iap';
 import {
   ArrowLeft, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
@@ -17,11 +19,14 @@ import {
   Unlock, Bell, CreditCard, Gift,
 } from 'lucide-react';
 
-// ── CHAIR+ — la page « carte noire » ─────────────────────────────────────
+// ── CHAIR+ — la page d'abonnement, dans la DA de la famille ──────────────
 //
-// Seule page 100 % sombre de CHAIR PRO — c'est voulu : l'abonnement premium
-// vit dans son propre univers, il tranche avec tout le reste de l'app.
-// Un seul accent : l'or (#f5b942), utilisé franchement (CTA, « + », vedette).
+// Retour de Julien (09/09/2026) : la version « carte noire » (page 100 %
+// sombre, CTA doré en dégradé) sortait de la charte — « DA de merde ». Ici,
+// même langage que TOUT le reste de CHAIR PRO : fond neutral-50, cartes
+// CARTE/CARTE_SOMBRE (proStyle), CTA noir (PrimaryButton), l'or (#f5b942)
+// réduit à ce qu'il est partout ailleurs : un accent premium discret (le
+// « + » du wordmark, un micro-titre), jamais un aplat ni un bouton.
 //
 // Contenu (retours Julien 01-02/09) :
 //  - stories GRATUITES (sorties de l'offre) ;
@@ -64,6 +69,15 @@ function daysLeft(iso: string | null): number {
 
 function fmtDate(iso: string | null): string {
   return iso ? new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '—';
+}
+
+/** Le wordmark CHAIR+ — le « + » doré est LE seul or autorisé hors premium. */
+function Wordmark({ className = '' }: { className?: string }) {
+  return (
+    <span className={`font-black tracking-tight ${className}`}>
+      CHAIR<span style={{ color: OR }}>+</span>
+    </span>
+  );
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────
@@ -178,8 +192,8 @@ export default function ChairPlusPage() {
 
   if (isLoading || !user || !appContextResolved) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] flex items-center justify-center">
-        <div className="w-5 h-5 border-2 border-white/10 border-t-white rounded-full animate-spin" />
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
   }
@@ -193,24 +207,22 @@ export default function ChairPlusPage() {
   const prixLabel = appContext === 'pro' && prixApple ? prixApple : '15,99 €';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white selection:bg-[#f5b942] selection:text-black">
+    <div className="min-h-screen bg-neutral-50">
 
-      {/* En-tête — même univers sombre que la page. */}
-      <div className="sticky top-0 z-20 bg-[#0a0a0b]/85 backdrop-blur-md border-b border-white/[0.06] px-4 h-14 flex items-center md:hidden">
-        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-white/50 hover:text-white transition-colors mr-auto p-1 -ml-1 rounded-lg">
+      {/* En-tête — même barre que toute page secondaire de CHAIR PRO. */}
+      <div className="sticky top-0 z-20 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
+        <Link href="/pro" className="relative before:absolute before:-inset-2.5 before:content-[''] flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-sm font-black tracking-tight absolute left-1/2 -translate-x-1/2">
-          CHAIR<span style={{ color: OR }}>+</span>
-        </span>
+        <Wordmark className="text-sm text-neutral-900 absolute left-1/2 -translate-x-1/2" />
       </div>
 
       <div className="hidden md:flex items-center gap-3 max-w-2xl mx-auto px-6 pt-8">
-        <Link href="/pro" className="flex items-center text-white/40 hover:text-white/80 transition-colors p-1 -ml-1 rounded-lg">
+        <Link href="/pro" className="flex items-center text-neutral-400 hover:text-neutral-700 transition-colors p-1 -ml-1 rounded-lg">
           <ArrowLeft size={16} />
         </Link>
-        <span className="text-white/15">/</span>
-        <h1 className="text-lg font-black tracking-tight">CHAIR<span style={{ color: OR }}>+</span></h1>
+        <span className="text-neutral-200">/</span>
+        <h1 className="text-lg text-neutral-900"><Wordmark /></h1>
       </div>
 
       {showComingSoon ? (
@@ -219,143 +231,130 @@ export default function ChairPlusPage() {
         <>
           {checkoutResult === 'success' && (
             <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
-              <div className="bg-white text-black rounded-2xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
+              <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 text-sm text-green-700 font-semibold flex items-center gap-2">
                 <Check size={15} />Abonnement en cours d&apos;activation — quelques secondes le temps que Stripe confirme.
               </div>
             </div>
           )}
           {checkoutResult === 'cancel' && (
             <div className="max-w-2xl mx-auto px-4 md:px-6 pt-4">
-              <div className="bg-white/[0.06] rounded-2xl px-4 py-3 text-sm text-white/70">
+              <div className="bg-neutral-100 rounded-2xl px-4 py-3 text-sm text-neutral-600">
                 Abonnement annulé — vous pouvez réessayer à tout moment.
               </div>
             </div>
           )}
 
-          {/* ══ HERO ══ */}
-          <section className="relative overflow-hidden">
-            {/* Halo doré derrière le wordmark — la seule lumière de la page. */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 w-[720px] h-[420px]"
-              style={{ background: `radial-gradient(closest-side, ${OR}26 0%, ${OR}0d 45%, transparent 75%)` }}
-            />
+          {/* ══ HERO — clair, sobre, CTA noir comme partout ══ */}
+          <section className="max-w-2xl mx-auto px-6 pt-10 pb-10 md:pt-14 md:pb-12 text-center">
+            <p className={`${MICRO_TITRE} mb-3`}>Pour les coiffeurs</p>
+            <Wordmark className="block text-[30px] md:text-[36px] text-neutral-900 leading-none mb-5" />
 
-            <div className="relative max-w-2xl mx-auto px-6 pt-14 pb-12 md:pt-20 md:pb-16 text-center">
-              <p className="text-[34px] md:text-[40px] font-black tracking-tight leading-none mb-7">
-                CHAIR<span style={{ color: OR }}>+</span>
-              </p>
+            <h2 className="text-[32px] md:text-[42px] font-black text-neutral-900 leading-[1.02] tracking-tight mb-3">
+              Passez devant.
+            </h2>
+            <p className="text-[14px] md:text-[15px] text-neutral-500 font-medium max-w-sm mx-auto mb-8 leading-relaxed">
+              La visibilité, le badge, le carnet illimité — tout ce qui
+              sépare un bon coiffeur d&apos;un coiffeur qu&apos;on remarque.
+            </p>
 
-              <h2 className="text-[40px] md:text-[54px] font-black leading-[0.98] tracking-tight mb-4">
-                Passez<br />devant.
-              </h2>
-              <p className="text-[14px] md:text-[15px] text-white/50 font-medium max-w-sm mx-auto mb-9 leading-relaxed">
-                La visibilité, le badge, le carnet illimité — tout ce qui
-                sépare un bon coiffeur d&apos;un coiffeur qu&apos;on remarque.
-              </p>
-
-              {dataLoading || flagLoading ? (
-                <div className="h-24 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto" />
-              ) : !showSubscriptionUI ? (
-                // Binaire CLIENT ou build non identifié : la page s'affiche,
-                // mais ni tarif ni bouton d'achat (App Store 3.1.1(a)).
-                <div className="max-w-xs mx-auto">
-                  <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
-                  <div className="bg-white/[0.06] ring-1 ring-white/[0.08] rounded-2xl px-4 py-4 text-left">
-                    <p className="text-[13px] font-semibold mb-1">CHAIR+ se gère dans l&apos;espace professionnel</p>
-                    <p className="text-[12px] text-white/50 leading-relaxed">
-                      La souscription et la résiliation se trouvent dans CHAIR PRO.
-                      Déjà abonné ? Votre accès reste actif ici.
+            {dataLoading || flagLoading ? (
+              <div className="h-24 bg-neutral-100 rounded-2xl animate-pulse max-w-xs mx-auto" />
+            ) : !showSubscriptionUI ? (
+              // Binaire CLIENT ou build non identifié : la page s'affiche,
+              // mais ni tarif ni bouton d'achat (App Store 3.1.1(a)).
+              <div className="max-w-xs mx-auto">
+                <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
+                <div className={`${CARTE} px-4 py-4 text-left`}>
+                  <p className="text-[13px] font-semibold text-neutral-900 mb-1">CHAIR+ se gère dans l&apos;espace professionnel</p>
+                  <p className="text-[12px] text-neutral-500 leading-relaxed">
+                    La souscription et la résiliation se trouvent dans CHAIR PRO.
+                    Déjà abonné ? Votre accès reste actif ici.
+                  </p>
+                  {appContext === 'unknown' && (
+                    <p className="text-[11px] text-neutral-400 leading-relaxed mt-2 pt-2 border-t border-neutral-100">
+                      Si vous utilisez CHAIR PRO, installez la dernière mise à jour
+                      pour gérer l&apos;abonnement directement dans l&apos;app.
                     </p>
-                    {appContext === 'unknown' && (
-                      <p className="text-[11px] text-white/35 leading-relaxed mt-2 pt-2 border-t border-white/10">
-                        Si vous utilisez CHAIR PRO, installez la dernière mise à jour
-                        pour gérer l&apos;abonnement directement dans l&apos;app.
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <>
-                  {error && <p className="text-xs text-red-300 mb-3 max-w-xs mx-auto">{error}</p>}
-                  {iapNotice && <p className="text-xs text-white/80 mb-3 font-semibold">{iapNotice}</p>}
+              </div>
+            ) : (
+              <>
+                {error && <p className="text-xs text-red-500 mb-3 max-w-xs mx-auto">{error}</p>}
+                {iapNotice && <p className="text-xs text-neutral-700 mb-3 font-semibold">{iapNotice}</p>}
 
-                  <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
+                <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
 
-                  {canManage ? (
-                    <button
-                      onClick={handleManage}
-                      disabled={busy}
-                      className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-black font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-200 transition-colors disabled:opacity-50"
-                    >
-                      <ExternalLink size={15} />{busy ? 'Chargement...' : 'Gérer mon abonnement'}
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleSubscribe}
-                        disabled={busy}
-                        className="w-full max-w-xs mx-auto flex items-center justify-center gap-2 font-black py-4 rounded-2xl text-[15px] text-black active:scale-[0.99] transition-all disabled:opacity-60"
-                        style={{
-                          background: `linear-gradient(180deg, #f9cf6b 0%, ${OR} 55%, #e3a52e 100%)`,
-                          boxShadow: `0 14px 38px -12px ${OR}66, inset 0 1px 0 rgba(255,255,255,0.45)`,
-                        }}
-                      >
-                        {busy ? 'Chargement...' : 'Essayer 30 jours gratuits'}
-                        {!busy && <ArrowRight size={16} strokeWidth={2.5} />}
-                      </button>
-                      <p className="text-[12px] text-white/40 font-medium mt-3">
-                        Puis {prixLabel}/mois. Sans engagement, annulable en deux taps.
-                      </p>
-                    </>
-                  )}
-
-                  {appContext === 'pro' && !canManage && (
-                    <button
-                      onClick={handleRestore}
-                      disabled={busy}
-                      className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/45 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
-                    >
-                      Déjà abonné via l&apos;App Store ? Restaurer mes achats
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setSheetOpen(true)}
-                    className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mt-3 text-[12px] font-semibold text-white/35 underline underline-offset-4 decoration-white/15 hover:text-white/70 transition-colors"
+                {canManage ? (
+                  <PrimaryButton
+                    onClick={handleManage}
+                    loading={busy}
+                    icon={<ExternalLink size={15} />}
+                    className="w-full max-w-xs mx-auto"
                   >
-                    Aperçu rapide des avantages
+                    Gérer mon abonnement
+                  </PrimaryButton>
+                ) : (
+                  <>
+                    <PrimaryButton
+                      onClick={handleSubscribe}
+                      loading={busy}
+                      className="w-full max-w-xs mx-auto"
+                    >
+                      Essayer 30 jours gratuits
+                      {!busy && <ArrowRight size={15} strokeWidth={2.5} />}
+                    </PrimaryButton>
+                    <p className="text-[12px] text-neutral-400 font-medium mt-3">
+                      Puis {prixLabel}/mois. Sans engagement, annulable en deux taps.
+                    </p>
+                  </>
+                )}
+
+                {appContext === 'pro' && !canManage && (
+                  <button
+                    onClick={handleRestore}
+                    disabled={busy}
+                    className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-50 block mx-auto"
+                  >
+                    Déjà abonné via l&apos;App Store ? Restaurer mes achats
                   </button>
-                </>
-              )}
-            </div>
+                )}
+
+                <button
+                  onClick={() => setSheetOpen(true)}
+                  className="relative before:absolute before:-inset-y-[13px] before:inset-x-0 before:content-[''] mt-3 text-[12px] font-semibold text-neutral-400 underline underline-offset-4 decoration-neutral-200 hover:text-neutral-700 transition-colors"
+                >
+                  Aperçu rapide des avantages
+                </button>
+              </>
+            )}
           </section>
 
-          <div className="max-w-2xl mx-auto px-4 md:px-6 pb-16 space-y-12 md:space-y-16">
+          <div className="max-w-2xl mx-auto px-4 md:px-6 pb-16 space-y-8 md:space-y-10">
 
             {/* ══ TIMELINE DE L'ESSAI — la transparence qui rassure ══ */}
             {showSubscriptionUI && !canManage && (
-              <section className="max-w-md mx-auto w-full">
+              <section className={`${CARTE} p-6 md:p-7 max-w-md mx-auto w-full`}>
+                <p className={`${MICRO_TITRE} mb-5`}>Comment marche l&apos;essai</p>
                 <div className="relative pl-10">
                   {/* Le fil. */}
-                  <div className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-[#f5b942] via-white/20 to-white/10" />
+                  <div className="absolute left-[15px] top-2 bottom-2 w-px bg-neutral-200" />
                   {[
-                    { icon: Unlock,     t: "Aujourd'hui",  d: 'Accès complet à tout CHAIR+, gratuitement.', or: true },
+                    { icon: Unlock,     t: "Aujourd'hui",  d: 'Accès complet à tout CHAIR+, gratuitement.', fort: true },
                     { icon: Bell,       t: 'Jour 27',      d: "On vous prévient avant la fin de l'essai — pas de surprise." },
                     { icon: CreditCard, t: 'Jour 30',      d: `${prixLabel}/mois. Ou vous annulez, et tout s'arrête là.` },
                   ].map((e) => (
                     <div key={e.t} className="relative flex items-start gap-4 pb-6 last:pb-0">
                       <div
-                        className="absolute -left-10 w-8 h-8 rounded-full flex items-center justify-center ring-1"
-                        style={e.or
-                          ? { background: `${OR}1f`, borderColor: `${OR}55`, boxShadow: `0 0 18px -4px ${OR}59` }
-                          : { background: 'rgba(255,255,255,0.05)' }}
+                        className={`absolute -left-10 w-8 h-8 rounded-full flex items-center justify-center ${
+                          e.fort ? 'bg-neutral-900' : 'bg-neutral-100'
+                        }`}
                       >
-                        <e.icon size={13} style={{ color: e.or ? OR : 'rgba(255,255,255,0.55)' }} strokeWidth={2} />
+                        <e.icon size={13} className={e.fort ? 'text-white' : 'text-neutral-500'} strokeWidth={2} />
                       </div>
                       <div className="min-w-0 pt-1">
-                        <p className="text-[13px] font-bold">{e.t}</p>
-                        <p className="text-[12px] text-white/45 leading-relaxed">{e.d}</p>
+                        <p className="text-[13px] font-bold text-neutral-900">{e.t}</p>
+                        <p className="text-[12px] text-neutral-500 leading-relaxed">{e.d}</p>
                       </div>
                     </div>
                   ))}
@@ -363,30 +362,22 @@ export default function ChairPlusPage() {
               </section>
             )}
 
-            {/* ══ VEDETTE — le carnet client, bordure dorée ══ */}
+            {/* ══ VEDETTE — le carnet client, LA carte sombre de la page ══ */}
             <section>
-              <div
-                className="rounded-[28px] p-[1.5px]"
-                style={{ background: `linear-gradient(135deg, ${OR}99 0%, ${OR}22 35%, rgba(255,255,255,0.06) 100%)` }}
-              >
-                <div className="rounded-[26.5px] bg-[#111113] p-6 md:p-7">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${OR}1a` }}
-                    >
-                      <BookUser size={21} style={{ color: OR }} strokeWidth={1.75} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[10px] font-bold tracking-[0.2em] uppercase mb-1" style={{ color: `${OR}cc` }}>
-                        L&apos;outil qui fidélise
-                      </p>
-                      <p className="text-[18px] font-black leading-tight mb-1.5">Carnet client illimité</p>
-                      <p className="text-[13px] text-white/55 leading-relaxed">
-                        Notes privées, conseils, rythme de retour, relances — sur TOUS vos
-                        clients. Sans CHAIR+, votre carnet s&apos;arrête aux {CARNET_LIMITE} derniers.
-                      </p>
-                    </div>
+              <div className={`${CARTE_SOMBRE} p-6 md:p-7`}>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                    <BookUser size={21} style={{ color: OR }} strokeWidth={1.75} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1" style={{ color: OR }}>
+                      L&apos;outil qui fidélise
+                    </p>
+                    <p className="text-[18px] font-black leading-tight mb-1.5">Carnet client illimité</p>
+                    <p className="text-[13px] text-white/55 leading-relaxed">
+                      Notes privées, conseils, rythme de retour, relances — sur TOUS vos
+                      clients. Sans CHAIR+, votre carnet s&apos;arrête aux {CARNET_LIMITE} derniers.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -394,16 +385,17 @@ export default function ChairPlusPage() {
 
             {/* ══ AVANTAGES ══ */}
             <section>
-              <h2 className="text-[22px] font-black tracking-tight mb-5">Et tout le reste</h2>
+              <p className={`${MICRO_TITRE} mb-2`}>Inclus dans CHAIR+</p>
+              <h2 className="text-[22px] font-black text-neutral-900 tracking-tight mb-5">Et tout le reste</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {FEATURES.map((f) => (
-                  <div key={f.label} className="flex items-start gap-3.5 bg-white/[0.04] rounded-[20px] p-4 ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-shadow">
-                    <div className="w-10 h-10 rounded-xl bg-white/[0.07] flex items-center justify-center flex-shrink-0">
-                      <f.icon size={16} className="text-white/80" strokeWidth={1.5} />
+                  <div key={f.label} className={`${CARTE} flex items-start gap-3.5 p-4`}>
+                    <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                      <f.icon size={16} className="text-neutral-700" strokeWidth={1.5} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[13px] font-bold">{f.label}</p>
-                      <p className="text-[12px] text-white/45 leading-relaxed mt-0.5">{f.desc}</p>
+                      <p className="text-[13px] font-bold text-neutral-900">{f.label}</p>
+                      <p className="text-[12px] text-neutral-500 leading-relaxed mt-0.5">{f.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -412,20 +404,22 @@ export default function ChairPlusPage() {
 
             {/* ══ COMPARATIF ══ */}
             <section>
-              <h2 className="text-[22px] font-black tracking-tight text-center mb-6">Gratuit vs CHAIR<span style={{ color: OR }}>+</span></h2>
-              <div className="rounded-[22px] ring-1 ring-white/[0.08] overflow-hidden">
-                <div className="grid grid-cols-[1fr_auto_auto] bg-white/[0.03] border-b border-white/[0.06]">
+              <h2 className="text-[22px] font-black text-neutral-900 tracking-tight text-center mb-6">
+                Gratuit vs <Wordmark />
+              </h2>
+              <div className={`${CARTE} overflow-hidden`}>
+                <div className="grid grid-cols-[1fr_auto_auto] bg-neutral-50 border-b border-neutral-100">
                   <div className="px-4 py-3" />
-                  <div className="px-2 py-3 w-24 text-center text-[11px] font-bold uppercase tracking-wide text-white/35">Gratuit</div>
-                  <div className="px-2 py-3 w-24 text-center text-[11px] font-black uppercase tracking-wide text-black" style={{ background: OR }}>CHAIR+</div>
+                  <div className="px-2 py-3 w-24 text-center text-[11px] font-bold uppercase tracking-wide text-neutral-400">Gratuit</div>
+                  <div className="px-2 py-3 w-24 text-center text-[11px] font-black uppercase tracking-wide bg-neutral-900 text-white">CHAIR+</div>
                 </div>
                 {COMPARISON.map((row, i) => (
-                  <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-white/[0.05]' : ''}`}>
-                    <div className="px-4 py-3.5 text-[13px] font-medium text-white/75">{row.label}</div>
+                  <div key={row.label} className={`grid grid-cols-[1fr_auto_auto] items-center ${i !== COMPARISON.length - 1 ? 'border-b border-neutral-100' : ''}`}>
+                    <div className="px-4 py-3.5 text-[13px] font-medium text-neutral-700">{row.label}</div>
                     <div className="px-2 py-3.5 w-24 flex items-center justify-center">
                       <CellValue value={row.free} muted />
                     </div>
-                    <div className="px-2 py-3.5 w-24 flex items-center justify-center" style={{ background: `${OR}0f` }}>
+                    <div className="px-2 py-3.5 w-24 flex items-center justify-center bg-neutral-50">
                       <CellValue value={row.plus} />
                     </div>
                   </div>
@@ -435,46 +429,31 @@ export default function ChairPlusPage() {
 
             {/* ══ PARRAINAGE — l'autre chemin vers CHAIR+ ══ */}
             <section>
-              <Link
-                href="/pro/parrainage"
-                className="flex items-center gap-4 bg-white/[0.04] hover:bg-white/[0.07] ring-1 ring-white/[0.06] rounded-[24px] p-5 transition-colors group"
-              >
-                <div
-                  className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `${OR}1a` }}
-                >
-                  <Gift size={18} style={{ color: OR }} strokeWidth={1.75} />
+              <Link href="/pro/parrainage" className={`${CARTE_TAP} flex items-center gap-4 p-5 group`}>
+                <div className="w-11 h-11 rounded-2xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                  <Gift size={18} className="text-neutral-700" strokeWidth={1.75} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-black leading-tight">Ou gagnez-le sans payer</p>
-                  <p className="text-[12px] text-white/45 leading-relaxed mt-0.5">
-                    Parrainez un coiffeur : <span className="text-white/80 font-semibold">1 mois de CHAIR+ offert</span> pour
+                  <p className="text-[14px] font-black text-neutral-900 leading-tight">Ou gagnez-le sans payer</p>
+                  <p className="text-[12px] text-neutral-500 leading-relaxed mt-0.5">
+                    Parrainez un coiffeur : <span className="text-neutral-900 font-semibold">1 mois de CHAIR+ offert</span> pour
                     vous, 1 mois pour lui.
                   </p>
                 </div>
-                <ArrowRight size={16} className="text-white/30 group-hover:text-white/70 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                <ArrowRight size={16} className="text-neutral-300 group-hover:text-neutral-600 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
               </Link>
             </section>
 
             {/* ══ CTA FINAL — uniquement là où l'achat est autorisé ══ */}
             {showSubscriptionUI && !canManage && (
-              <section className="relative overflow-hidden rounded-[28px] ring-1 ring-white/[0.07] p-8 md:p-10 text-center">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute left-1/2 -top-24 -translate-x-1/2 w-[520px] h-[300px]"
-                  style={{ background: `radial-gradient(closest-side, ${OR}21 0%, transparent 72%)` }}
-                />
-                <Sparkles size={20} className="mx-auto mb-4" style={{ color: OR }} />
+              <section className={`${CARTE_SOMBRE} p-8 md:p-10 text-center`}>
+                <Sparkles size={20} className="mx-auto mb-4 text-white/50" />
                 <h2 className="text-[22px] md:text-[26px] font-black tracking-tight mb-2">Essayez. C&apos;est offert.</h2>
-                <p className="text-[13px] text-white/45 mb-7">30 jours complets, sans engagement. Vous jugez sur pièces.</p>
+                <p className="text-[13px] text-white/50 mb-7">30 jours complets, sans engagement. Vous jugez sur pièces.</p>
                 <button
                   onClick={handleSubscribe}
                   disabled={busy}
-                  className="inline-flex items-center gap-2 font-black px-8 py-4 rounded-2xl text-[14px] text-black transition-all active:scale-[0.99] disabled:opacity-60"
-                  style={{
-                    background: `linear-gradient(180deg, #f9cf6b 0%, ${OR} 55%, #e3a52e 100%)`,
-                    boxShadow: `0 14px 38px -12px ${OR}66, inset 0 1px 0 rgba(255,255,255,0.45)`,
-                  }}
+                  className="inline-flex items-center gap-2 bg-white text-neutral-900 font-bold px-8 py-4 rounded-2xl text-[14px] hover:bg-neutral-100 transition-all active:scale-[0.98] disabled:opacity-50"
                 >
                   {busy ? 'Chargement...' : 'Essayer 30 jours gratuits'}
                   {!busy && <ArrowRight size={15} strokeWidth={2.5} />}
@@ -493,12 +472,12 @@ export default function ChairPlusPage() {
 /** Cellule du comparatif : ✓ / ✗ / texte (« 25 clients », « Illimité »). */
 function CellValue({ value, muted = false }: { value: boolean | string; muted?: boolean }) {
   if (typeof value === 'string') {
-    return <span className={`text-[11px] font-bold tabular-nums ${muted ? 'text-white/40' : 'text-white'}`}>{value}</span>;
+    return <span className={`text-[11px] font-bold tabular-nums ${muted ? 'text-neutral-400' : 'text-neutral-900'}`}>{value}</span>;
   }
   if (value) {
-    return <Check size={16} className={muted ? 'text-white/35' : 'text-white'} strokeWidth={muted ? 2 : 2.5} />;
+    return <Check size={16} className={muted ? 'text-neutral-300' : 'text-neutral-900'} strokeWidth={muted ? 2 : 2.5} />;
   }
-  return <X size={14} className="text-white/15" />;
+  return <X size={14} className="text-neutral-200" />;
 }
 
 // ── État "pas encore disponible" — flag désactivé, honnête, pas de CTA. ──
@@ -508,23 +487,23 @@ function ComingSoonState() {
 
   return (
     <div className="max-w-sm mx-auto px-6 py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-white/[0.06] flex items-center justify-center mx-auto mb-5">
-        <Sparkles size={22} className="text-white/40" strokeWidth={1.5} />
+      <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center mx-auto mb-5">
+        <Sparkles size={22} className="text-neutral-400" strokeWidth={1.5} />
       </div>
-      <h1 className="text-xl font-black mb-2">Bientôt disponible</h1>
-      <p className="text-sm text-white/45 leading-relaxed mb-6">
+      <h1 className="text-xl font-black text-neutral-900 mb-2">Bientôt disponible</h1>
+      <p className="text-sm text-neutral-500 leading-relaxed mb-6">
         CHAIR+ n&apos;est pas encore disponible. Carnet client illimité, badge,
         boost et analytics avancées arrivent prochainement.
       </p>
       {!notified ? (
         <button
           onClick={() => setNotified(true)}
-          className="text-sm font-semibold underline underline-offset-4 decoration-white/25 hover:decoration-white transition-colors"
+          className="text-sm font-semibold text-neutral-900 underline underline-offset-4 decoration-neutral-300 hover:decoration-neutral-900 transition-colors"
         >
           Me prévenir de la sortie
         </button>
       ) : (
-        <p className="text-sm text-white/40">Merci — on vous tient au courant.</p>
+        <p className="text-sm text-neutral-400">Merci — on vous tient au courant.</p>
       )}
     </div>
   );
@@ -541,7 +520,7 @@ function StateBanner({ state, sub, isPastDue }: {
 
   if (isPastDue) {
     return (
-      <div className={`${base} bg-white/10 text-white`}>
+      <div className={`${base} bg-amber-50 text-amber-700`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Paiement refusé — mettez à jour votre moyen de paiement
       </div>
@@ -551,15 +530,15 @@ function StateBanner({ state, sub, isPastDue }: {
   if (state === 'trial') {
     const d = daysLeft(sub?.trial_ends_at ?? null);
     return (
-      <div className={`${base} bg-white/10 text-white`}>
-        <Clock size={14} className="text-white/70 flex-shrink-0" />
+      <div className={`${base} bg-neutral-100 text-neutral-900`}>
+        <Clock size={14} className="text-neutral-500 flex-shrink-0" />
         Essai gratuit — {d} jour{d > 1 ? 's' : ''} restant{d > 1 ? 's' : ''}
       </div>
     );
   }
   if (state === 'premium') {
     return (
-      <div className={`${base} bg-white/10 text-white`}>
+      <div className={`${base} bg-neutral-900 text-white`}>
         <Check size={14} className="text-white/70 flex-shrink-0" />
         {sub ? `Actif — renouvellement le ${fmtDate(sub.current_period_end)}` : 'CHAIR+ actif'}
       </div>
@@ -567,7 +546,7 @@ function StateBanner({ state, sub, isPastDue }: {
   }
   if (state === 'cancel_scheduled') {
     return (
-      <div className={`${base} bg-white/10 text-white`}>
+      <div className={`${base} bg-amber-50 text-amber-700`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Annulation programmée — accès conservé jusqu&apos;au {fmtDate(sub?.current_period_end ?? null)}
       </div>
@@ -575,7 +554,7 @@ function StateBanner({ state, sub, isPastDue }: {
   }
   if (state === 'expired') {
     return (
-      <div className={`${base} bg-white/10 text-white/70`}>
+      <div className={`${base} bg-neutral-100 text-neutral-500`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Abonnement expiré — réactivez pour retrouver l&apos;accès
       </div>

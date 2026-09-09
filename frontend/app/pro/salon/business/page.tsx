@@ -10,13 +10,22 @@ import { subscription } from '@/lib/api';
 import { acheterChairBusiness, restaurerChairBusiness, gererAbonnementApple, iapDisponible, AchatAnnule } from '@/lib/iap';
 import type { ApiMySubscription } from '@/lib/types';
 import { chairPlusState } from '@/lib/types';
+import { PrimaryButton } from '@/components/ui/Button';
+import { CARTE, CARTE_SOMBRE, MICRO_TITRE } from '@/lib/proStyle';
 import {
   ArrowLeft, Sparkles, Check, Clock, AlertTriangle, ExternalLink, ArrowRight,
   Headphones, BadgeCheck, ChevronDown,
   BarChart3, TrendingUp, Building2, FileSpreadsheet, Megaphone, Bot,
 } from 'lucide-react';
 
-// ── Reveal — même mécanique que /pro/chair-plus, sans dépendance externe ────
+// ── L'offre CHAIR BUSINESS — dans la DA de la famille ────────────────────
+//
+// Retour de Julien (09/09/2026) : même règle que /pro/chair-plus refait le
+// même jour — pas de héros sombre plein écran ni d'univers à part. Fond
+// neutral-50, cartes CARTE/CARTE_SOMBRE (proStyle), CTA noir (PrimaryButton).
+// La seule surface sombre de la page est le CTA final (CARTE_SOMBRE).
+
+// ── Reveal — même mécanique que la home, sans dépendance externe ─────────
 
 function Reveal({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -176,7 +185,7 @@ export default function ChairBusinessPage() {
   // tarif serait peint pendant une frame puis retiré à l'hydratation.
   if (isLoading || !user || !appContextResolved) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
       </div>
     );
@@ -189,14 +198,14 @@ export default function ChairBusinessPage() {
   const state = chairPlusState(hasBusiness, sub ?? null);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-neutral-50">
 
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-neutral-100 px-4 h-14 flex items-center md:hidden">
+      <div className="sticky top-0 z-20 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center md:hidden">
         <Link href="/pro/salon-owner" className="flex items-center text-neutral-500 hover:text-neutral-900 transition-colors mr-auto p-1 -ml-1 rounded-lg">
           <ArrowLeft size={18} />
         </Link>
-        <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
-          <Sparkles size={13} /> CHAIR Business
+        <span className="text-sm font-bold tracking-tight text-neutral-900 absolute left-1/2 -translate-x-1/2">
+          CHAIR Business
         </span>
       </div>
 
@@ -227,84 +236,78 @@ export default function ChairBusinessPage() {
         </div>
       )}
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-neutral-900">
-        <div className="pointer-events-none absolute inset-0 opacity-40" style={{
-          background: 'radial-gradient(600px circle at 50% -10%, rgba(255,255,255,0.12), transparent 60%)',
-        }} />
-        <div className="relative max-w-3xl mx-auto px-6 pt-12 pb-10 md:pt-16 md:pb-14 text-center">
-          <div className="inline-flex items-center gap-1.5 bg-white/10 text-white text-[11px] font-bold uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-6">
-            <Sparkles size={12} /> Pour les gérants
-          </div>
-          <h1 className="text-[32px] md:text-[44px] font-black text-white leading-[1.08] tracking-tight mb-4">
-            Votre salon,<br />en avant.
-          </h1>
-          <p className="text-[15px] md:text-base text-white/60 max-w-md mx-auto leading-relaxed mb-8">
-            Un badge de confiance et un support prioritaire pour votre salon — sans jamais toucher aux outils déjà gratuits.
-          </p>
+      {/* ── Hero — clair, sobre, CTA noir comme partout ──────────────── */}
+      <section className="max-w-3xl mx-auto px-6 pt-10 pb-4 md:pt-14 md:pb-6 text-center">
+        <p className={`${MICRO_TITRE} mb-3`}>Pour les gérants</p>
+        <h1 className="text-[32px] md:text-[42px] font-black text-neutral-900 leading-[1.02] tracking-tight mb-3">
+          Votre salon,<br />en avant.
+        </h1>
+        <p className="text-[14px] md:text-[15px] text-neutral-500 font-medium max-w-md mx-auto leading-relaxed mb-8">
+          Un badge de confiance et un support prioritaire pour votre salon — sans jamais toucher aux outils déjà gratuits.
+        </p>
 
-          {dataLoading ? (
-            <div className="h-32 bg-white/5 rounded-2xl animate-pulse max-w-xs mx-auto" />
-          ) : (
-            <>
-              <div className="flex items-end justify-center gap-1 mb-1">
-                <span className="text-[15px] text-white/50 font-semibold mb-1.5">€</span>
-                <span className="text-5xl font-black text-white tracking-tight">49,99</span>
-                <span className="text-[15px] text-white/50 font-semibold mb-1.5">/mois</span>
-              </div>
-              <p className="text-xs text-white/40 font-medium mb-7">
-                30 jours d&apos;essai gratuit · sans engagement · annulation à tout moment
-              </p>
+        {dataLoading ? (
+          <div className="h-32 bg-neutral-100 rounded-2xl animate-pulse max-w-xs mx-auto" />
+        ) : (
+          <>
+            <div className="flex items-end justify-center gap-1 mb-1">
+              <span className="text-[15px] text-neutral-400 font-semibold mb-1.5">€</span>
+              <span className="text-5xl font-black text-neutral-900 tracking-tight">49,99</span>
+              <span className="text-[15px] text-neutral-400 font-semibold mb-1.5">/mois</span>
+            </div>
+            <p className="text-xs text-neutral-400 font-medium mb-7">
+              30 jours d&apos;essai gratuit · sans engagement · annulation à tout moment
+            </p>
 
-              {error && <p className="text-xs text-red-300 mb-3">{error}</p>}
+            {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
 
-              <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
+            <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
 
-              {sub && state !== 'expired' ? (
-                <button
-                  onClick={handleManage}
-                  disabled={busy}
-                  className="group relative w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-all disabled:opacity-50"
-                >
-                  <ExternalLink size={15} />{busy ? 'Chargement...' : 'Gérer mon abonnement'}
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubscribe}
-                  disabled={busy}
-                  className="group relative w-full max-w-xs mx-auto flex items-center justify-center gap-2 bg-white text-neutral-900 font-bold py-4 rounded-2xl text-[15px] hover:bg-neutral-100 transition-all disabled:opacity-50"
-                >
-                  {busy ? 'Chargement...' : state === 'expired' ? 'Réactiver CHAIR Business' : 'Commencer gratuitement'}
-                  {!busy && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
-                </button>
-              )}
+            {sub && state !== 'expired' ? (
+              <PrimaryButton
+                onClick={handleManage}
+                loading={busy}
+                icon={<ExternalLink size={15} />}
+                className="w-full max-w-xs mx-auto"
+              >
+                Gérer mon abonnement
+              </PrimaryButton>
+            ) : (
+              <PrimaryButton
+                onClick={handleSubscribe}
+                loading={busy}
+                className="w-full max-w-xs mx-auto group"
+              >
+                {state === 'expired' ? 'Réactiver CHAIR Business' : 'Commencer gratuitement'}
+                {!busy && <ArrowRight size={15} className="transition-transform group-hover:translate-x-0.5" />}
+              </PrimaryButton>
+            )}
 
-              {/* Restauration : obligatoire côté Apple (nouvel iPhone, app
-                  réinstallée, validation interrompue après paiement). */}
-              {appContext === 'business' && !(sub && state !== 'expired') && (
-                <button
-                  onClick={handleRestore}
-                  disabled={busy}
-                  className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-white/50 hover:text-white/80 transition-colors disabled:opacity-50 block mx-auto"
-                >
-                  Déjà abonné via l&apos;App Store ? Restaurer mes achats
-                </button>
-              )}
-            </>
-          )}
-        </div>
+            {/* Restauration : obligatoire côté Apple (nouvel iPhone, app
+                réinstallée, validation interrompue après paiement). */}
+            {appContext === 'business' && !(sub && state !== 'expired') && (
+              <button
+                onClick={handleRestore}
+                disabled={busy}
+                className="relative before:absolute before:-inset-y-[10px] before:inset-x-0 before:content-[''] mt-4 text-[12px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-50 block mx-auto"
+              >
+                Déjà abonné via l&apos;App Store ? Restaurer mes achats
+              </button>
+            )}
+          </>
+        )}
       </section>
 
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-16 md:space-y-24">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-12 md:py-16 space-y-14 md:space-y-20">
 
         {/* ── Disponible aujourd'hui ── */}
         <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Disponible aujourd&apos;hui</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Ce que CHAIR Business change dès maintenant</h2></Reveal>
+          <Reveal><p className={`${MICRO_TITRE} text-center mb-2`}>Disponible aujourd&apos;hui</p></Reveal>
+          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-8 md:mb-12">Ce que CHAIR Business change dès maintenant</h2></Reveal>
           <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
             {FEATURES_LIVE.map((f, i) => (
               <Reveal key={f.name} delay={i * 80}>
-                <div className="h-full bg-neutral-50 rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.08)] ring-1 ring-neutral-100 p-6">
+                <div className={`${CARTE} h-full p-6`}>
                   <div className="w-11 h-11 rounded-xl bg-neutral-900 flex items-center justify-center mb-4">
                     <f.icon size={19} className="text-white" strokeWidth={1.5} />
                   </div>
@@ -323,13 +326,13 @@ export default function ChairBusinessPage() {
 
         {/* ── Bientôt disponible ── */}
         <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Feuille de route</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Bientôt disponible</h2></Reveal>
+          <Reveal><p className={`${MICRO_TITRE} text-center mb-2`}>Feuille de route</p></Reveal>
+          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-8 md:mb-12">Bientôt disponible</h2></Reveal>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
             {COMING_SOON.map((f, i) => (
               <Reveal key={f.name} delay={i * 60}>
-                <div className="h-full bg-neutral-50 rounded-[20px] border border-dashed border-neutral-200 p-4 opacity-70">
-                  <div className="w-9 h-9 rounded-xl bg-neutral-200 flex items-center justify-center mb-3">
+                <div className="h-full bg-white rounded-[20px] border border-dashed border-neutral-200 p-4 opacity-70">
+                  <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center mb-3">
                     <f.icon size={15} className="text-neutral-500" strokeWidth={1.5} />
                   </div>
                   <p className="text-[13px] font-bold text-neutral-600 mb-1">{f.name}</p>
@@ -342,14 +345,14 @@ export default function ChairBusinessPage() {
 
         {/* ── FAQ ── */}
         <section>
-          <Reveal><p className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400 text-center mb-2">Questions</p></Reveal>
-          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-10 md:mb-14">Foire aux questions</h2></Reveal>
+          <Reveal><p className={`${MICRO_TITRE} text-center mb-2`}>Questions</p></Reveal>
+          <Reveal><h2 className="text-2xl md:text-3xl font-black text-neutral-900 text-center mb-8 md:mb-12">Foire aux questions</h2></Reveal>
           <div className="space-y-2 max-w-xl mx-auto">
             {FAQ.map((item, i) => {
               const open = openFaq === i;
               return (
                 <Reveal key={item.q} delay={i * 50}>
-                  <div className="rounded-[22px] shadow-[0_3px_14px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
+                  <div className={`${CARTE} overflow-hidden`}>
                     <button
                       onClick={() => setOpenFaq(open ? null : i)}
                       className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-neutral-50 transition-colors"
@@ -369,10 +372,10 @@ export default function ChairBusinessPage() {
           </div>
         </section>
 
-        {/* ── CTA final ── */}
+        {/* ── CTA final — LA carte sombre de la page ── */}
         {!hasBusiness && (
           <Reveal>
-            <section className="bg-neutral-900 rounded-3xl p-8 md:p-12 text-center">
+            <section className={`${CARTE_SOMBRE} p-8 md:p-12 text-center`}>
               <Sparkles size={22} className="text-white/50 mx-auto mb-4" />
               <h2 className="text-2xl md:text-3xl font-black text-white mb-3">Prêt à passer votre salon en Business ?</h2>
               <p className="text-sm text-white/50 mb-7 max-w-sm mx-auto">30 jours d&apos;essai gratuit. Sans engagement. Annulation à tout moment.</p>
@@ -405,7 +408,7 @@ function StateBanner({ state, sub, isPastDue }: {
 
   if (isPastDue) {
     return (
-      <div className={`${base} bg-amber-500/15 text-amber-200`}>
+      <div className={`${base} bg-amber-50 text-amber-700`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Paiement refusé — mettez à jour votre moyen de paiement pour ne pas perdre l&apos;accès
       </div>
@@ -415,15 +418,15 @@ function StateBanner({ state, sub, isPastDue }: {
   if (state === 'trial') {
     const d = daysLeft(sub?.trial_ends_at ?? null);
     return (
-      <div className={`${base} bg-white/10 text-white`}>
-        <Clock size={14} className="text-white/70 flex-shrink-0" />
+      <div className={`${base} bg-neutral-100 text-neutral-900`}>
+        <Clock size={14} className="text-neutral-500 flex-shrink-0" />
         Essai gratuit — {d} jour{d > 1 ? 's' : ''} restant{d > 1 ? 's' : ''}
       </div>
     );
   }
   if (state === 'premium') {
     return (
-      <div className={`${base} bg-white/10 text-white`}>
+      <div className={`${base} bg-neutral-900 text-white`}>
         <Check size={14} className="text-white/70 flex-shrink-0" />
         {sub ? `Actif — renouvellement le ${fmtDate(sub.current_period_end)}` : 'CHAIR Business actif'}
       </div>
@@ -431,7 +434,7 @@ function StateBanner({ state, sub, isPastDue }: {
   }
   if (state === 'cancel_scheduled') {
     return (
-      <div className={`${base} bg-amber-500/15 text-amber-200`}>
+      <div className={`${base} bg-amber-50 text-amber-700`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Annulation programmée — accès conservé jusqu&apos;au {fmtDate(sub?.current_period_end ?? null)}
       </div>
@@ -439,7 +442,7 @@ function StateBanner({ state, sub, isPastDue }: {
   }
   if (state === 'expired') {
     return (
-      <div className={`${base} bg-white/10 text-white/70`}>
+      <div className={`${base} bg-neutral-100 text-neutral-500`}>
         <AlertTriangle size={14} className="flex-shrink-0" />
         Abonnement expiré — réactivez pour retrouver l&apos;accès
       </div>
