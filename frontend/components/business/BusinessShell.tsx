@@ -34,13 +34,22 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
   const router = useRouter();
   const pathname = usePathname();
 
+  // L'écran de connexion vit sous /business mais AVANT toute session : ni
+  // garde d'authentification ni chrome (header/nav) — il se rend nu, comme
+  // /pro/connexion hors de la coquille pro.
+  const estConnexion = pathname.startsWith('/business/connexion');
+
   useEffect(() => {
-    if (isLoading) return;
-    if (!user) { router.replace('/pro/connexion'); return; }
+    if (estConnexion || isLoading) return;
+    if (!user) { router.replace('/business/connexion'); return; }
     if (user.role === 'client') { router.replace('/app'); return; }
     // Coiffeur qui ne gère AUCUN salon : son monde est CHAIR PRO.
     if (user.can_manage_salon === false) router.replace('/pro');
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, estConnexion]);
+
+  if (estConnexion) {
+    return <>{children}</>;
+  }
 
   if (isLoading || !user || user.role === 'client' || user.can_manage_salon === false) {
     return (

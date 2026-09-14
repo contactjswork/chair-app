@@ -194,18 +194,20 @@ export function binaryLockVerdict(subject: LockSubject, context: AppContext = ge
       return {
         allowed: false,
         message: 'Ce compte est un compte client. CHAIR BUSINESS est l’app des gérants de salon — utilisez l’app CHAIR.',
-        loginPath: '/pro/connexion',
+        loginPath: '/business/connexion',
       };
     }
-    // Coiffeur sans salon : son espace est CHAIR PRO. On ne refuse que si on
-    // SAIT qu'il ne gère aucun salon (false explicite) — pas de casquette
-    // connue (undefined) = prudence, on laisse entrer. Un salon_owner passe
-    // toujours (le rôle même vaut casquette, ex. inscription fraîche).
+    // Coiffeur sans salon : son espace est CHAIR PRO (mêmes identifiants —
+    // un seul compte pro pour les deux apps, seul le monde change). On ne
+    // refuse que si on SAIT qu'il ne gère aucun salon (false explicite) — pas
+    // de casquette connue (undefined) = prudence, on laisse entrer. Un
+    // salon_owner passe toujours (le rôle même vaut casquette, ex.
+    // inscription fraîche).
     if (role === 'hairdresser' && can_manage_salon === false) {
       return {
         allowed: false,
-        message: 'CHAIR BUSINESS est réservée aux gérants de salon. Ton espace coiffeur est dans l’app CHAIR PRO.',
-        loginPath: '/pro/connexion',
+        message: 'CHAIR BUSINESS est réservée aux gérants de salon. Ton espace coiffeur est dans l’app CHAIR PRO — avec ces mêmes identifiants.',
+        loginPath: '/business/connexion',
       };
     }
   }

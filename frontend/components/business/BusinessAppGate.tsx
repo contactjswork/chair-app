@@ -2,6 +2,7 @@
 
 import { Building2, Users, Armchair, Briefcase, ExternalLink, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
 import ChairLogo from '@/components/ui/ChairLogo';
 
 /**
@@ -13,10 +14,10 @@ import ChairLogo from '@/components/ui/ChairLogo';
  * au premium, jamais à un écran d'orientation (audit 03/09/2026).
  *
  * Tant que CHAIR BUSINESS n'est pas publiée sur l'App Store, le bouton mène
- * à l'espace web (navigateur externe). Remplacer BUSINESS_APP_STORE_URL par
- * l'URL réelle de la fiche App Store dès qu'elle existe.
+ * à l'espace web (navigateur externe). La fiche App Store se renseigne dans
+ * lib/appDownload.ts (BUSINESS_APP_STORE_URL) — source unique, partagée avec
+ * les ponts des écrans de connexion.
  */
-const BUSINESS_APP_STORE_URL: string | null = null; // ex: 'https://apps.apple.com/fr/app/idXXXXXXXXX'
 
 const POINTS = [
   { icon: Building2, label: 'Votre salon', desc: 'Page publique, photos, SIRET, avis.' },

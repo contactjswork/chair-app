@@ -4,10 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { isClientBinary, useAppContext, WRONG_APP_MSG_KEY } from '@/lib/appContext';
+import { isBusinessBinary, isClientBinary, useAppContext, WRONG_APP_MSG_KEY } from '@/lib/appContext';
+import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
 import ChairLogo from '@/components/ui/ChairLogo';
+import AppBridgeCard from '@/components/auth/AppBridgeCard';
 import OnboardingCarousel, { type OnboardingSlide } from '@/components/ui/OnboardingCarousel';
-import { TrendingUp, Award, CalendarClock, Briefcase } from 'lucide-react';
+import { TrendingUp, Award, CalendarClock, Briefcase, Building2, Eye, EyeOff } from 'lucide-react';
 
 const ONBOARDING_KEY = 'chair_pro_onboarding_seen';
 
@@ -18,19 +20,25 @@ const SLIDES: OnboardingSlide[] = [
   { Icon: Briefcase,    title: 'Trouve de nouvelles opportunités.',     body: 'Location de fauteuil, recrutement et réseau professionnel.' },
 ];
 
+// ── Connexion CHAIR PRO — même squelette clair que la connexion client ────
+//
+// Retour Julien 09/09/2026 : les écrans d'entrée des trois apps étaient
+// « brouillon » (le PRO en carte sombre, le client en clair, BUSINESS sans
+// écran du tout). Un seul langage désormais : fond blanc, champs neutral-50,
+// CTA noir — la DA de la famille, identique à /connexion et
+// /business/connexion. Et un PONT : le gérant qui a installé CHAIR PRO par
+// erreur est mené vers CHAIR BUSINESS dès cet écran.
+
 export default function ProConnexionPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd]   = useState(false);
   const [error, setError]       = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // Bug préexistant corrigé au passage (trouvé en vérifiant cette page) :
-  // l'ancien lazy initializer lisait localStorage directement dans useState,
-  // renvoyant `false` côté serveur (window indéfini) mais potentiellement
-  // `true` côté client dès le premier rendu — désync d'hydratation SSR/client
-  // classique. État initial toujours `false` (identique aux deux rendus),
-  // lecture de localStorage repoussée dans un effet, après montage.
+  // Toujours false au premier rendu (identique au serveur) — la vraie valeur
+  // n'est calculée qu'après montage (lecture localStorage impossible en SSR).
   const [showOnboarding, setShowOnboarding] = useState(false);
   // Rendu-sûr à l'hydratation (contrairement à un appel direct isProBinary()
   // pendant le rendu, qui divergerait entre serveur et navigateur).
@@ -39,10 +47,12 @@ export default function ProConnexionPage() {
   // posé en sessionStorage par AuthContext juste avant la redirection ici.
   const [wrongAppMsg, setWrongAppMsg] = useState('');
 
-  // Dans le binaire CHAIR CLIENT, la connexion PRO n'existe pas : chaque app
-  // n'expose que son propre écran d'entrée (décision Julien 01/09/2026).
+  // Chaque app n'expose que son propre écran d'entrée (décision Julien
+  // 01/09/2026) : dans le binaire CLIENT comme dans le binaire BUSINESS, la
+  // connexion PRO n'existe pas.
   useEffect(() => {
-    if (isClientBinary()) router.replace('/connexion');
+    if (isClientBinary()) { router.replace('/connexion'); return; }
+    if (isBusinessBinary()) router.replace('/business/connexion');
   }, [router]);
 
   useEffect(() => {
@@ -97,59 +107,93 @@ export default function ProConnexionPage() {
     );
   }
 
+  const inputCls = 'w-full px-4 py-3.5 bg-neutral-50 rounded-xl text-[16px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-neutral-300 transition-all';
+
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center px-4 py-10 pt-safe">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <ChairLogo href="/pro" size="md" pro dark />
-          <p className="text-sm text-neutral-400 mt-2">Connectez-vous à votre espace professionnel</p>
+    <div className="min-h-[100svh] bg-white flex flex-col items-center justify-center px-5 py-10 pt-safe">
+      <div className="w-full max-w-[360px] flex flex-col gap-8">
+
+        {/* Logo */}
+        <div className="text-center">
+          <ChairLogo href="/pro" size="lg" pro />
+          <p className="text-[14px] text-neutral-400 mt-1.5">L&apos;app des coiffeurs professionnels.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-neutral-900 rounded-[28px] ring-1 ring-white/[0.06] shadow-[0_20px_50px_-16px_rgba(0,0,0,0.6)] p-6 mb-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {wrongAppMsg && !error && (
-            <div className="mb-4 px-4 py-3 bg-amber-900/30 rounded-xl text-sm text-amber-400">{wrongAppMsg}</div>
+            <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">{wrongAppMsg}</div>
           )}
           {error && (
-            <div className="mb-4 px-4 py-3 bg-red-900/40 rounded-xl text-sm text-red-400">{error}</div>
+            <div className="px-4 py-3 bg-red-50 rounded-xl text-[13px] text-red-600">{error}</div>
           )}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="votre@email.fr" required
-                className="w-full px-4 py-3 bg-neutral-800 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 transition-all" />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-neutral-400 mb-1.5">Mot de passe</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required
-                className="w-full px-4 py-3 bg-neutral-800 rounded-xl text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-2 focus:ring-neutral-500 transition-all" />
-            </div>
 
-            {/* Même placement que la connexion client (/connexion) : sous le champ
-                mot de passe, aligné à droite. Son absence ici rendait toute
-                récupération de compte pro impossible. */}
-            <div className="text-right -mt-1">
-              <Link href="/mot-de-passe-oublie" className="inline-flex items-center min-h-[44px] text-[12px] text-neutral-500 hover:text-neutral-300 transition-colors">
-                Mot de passe oublié ?
-              </Link>
-            </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Adresse e-mail"
+            required
+            autoComplete="email"
+            className={inputCls}
+          />
 
-            <button type="submit" disabled={isLoading}
-              className="w-full bg-white text-neutral-900 font-bold py-3.5 rounded-2xl hover:bg-neutral-100 active:scale-[0.98] transition-all text-sm mt-2 disabled:opacity-50">
-              {isLoading ? 'Connexion...' : 'Se connecter'}
+          <div className="relative">
+            <input
+              type={showPwd ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Mot de passe"
+              required
+              autoComplete="current-password"
+              className={`${inputCls} pr-12`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              aria-label={showPwd ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+            >
+              {showPwd ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
+
+          <div className="text-right -mt-1">
+            <Link href="/mot-de-passe-oublie" className="inline-flex items-center min-h-[44px] text-[12px] text-neutral-400 hover:text-neutral-700 transition-colors">
+              Mot de passe oublié ?
+            </Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-neutral-900 text-white font-semibold py-3.5 rounded-xl text-[14px] hover:bg-neutral-700 active:bg-black transition-colors disabled:opacity-50 mt-1"
+          >
+            {isLoading ? 'Connexion…' : 'Se connecter'}
+          </button>
         </form>
 
-        <p className="text-center text-sm text-neutral-500">
+        <p className="text-center text-[13px] text-neutral-400 -mt-2">
           Pas encore de compte pro ?{' '}
-          <Link href="/pro/inscription" className="font-semibold text-white hover:underline">Créer mon espace pro</Link>
+          <Link href="/pro/inscription" className="font-semibold text-neutral-900 hover:underline">Créer mon espace pro</Link>
         </p>
+
+        {/* Pont gérant → CHAIR BUSINESS (un seul compte pro pour les deux apps). */}
+        <AppBridgeCard
+          icon={Building2}
+          title="Vous êtes gérant de salon ?"
+          subtitle="Salon, équipe, fauteuils, recrutement : tout se passe sur CHAIR BUSINESS — avec ce même compte."
+          storeUrl={BUSINESS_APP_STORE_URL}
+          externalUrl="https://getchair.app/business"
+          internalPath="/business/connexion"
+        />
+
         {/* Dans le binaire PRO, aucun pont vers l'espace client : le verrou
             binaire ↔ rôle refuserait de toute façon la connexion au bout. */}
         {appContext !== 'pro' && (
-          <p className="text-center text-sm text-neutral-600 mt-3">
+          <p className="text-center text-[13px] text-neutral-400 -mt-3">
             Vous êtes client ?{' '}
-            <Link href="/connexion" className="text-neutral-500 hover:text-neutral-300 hover:underline">Connexion client</Link>
+            <Link href="/connexion" className="text-neutral-500 hover:text-neutral-800 hover:underline">Connexion CHAIR</Link>
           </p>
         )}
       </div>

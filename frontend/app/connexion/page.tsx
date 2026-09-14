@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeInternalPath } from '@/lib/auth';
-import { isProBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
+import { isProBinary, useAppContext, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 
 
 function ConnexionContent() {
@@ -14,6 +14,9 @@ function ConnexionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sessionExpired, setSessionExpired] = useState(false);
+  // Rendu-sûr à l'hydratation — sert au lien pro ci-dessous (jamais dans le
+  // binaire CLIENT : chaque app n'expose que son propre écran d'entrée).
+  const { context: appContext } = useAppContext();
   // Message du verrou binaire ↔ rôle (compte pro évincé de l'app CLIENT) —
   // posé en sessionStorage par AuthContext juste avant la redirection ici.
   const [wrongAppMsg, setWrongAppMsg] = useState('');
@@ -40,7 +43,6 @@ function ConnexionContent() {
     try {
       const msg = sessionStorage.getItem(WRONG_APP_MSG_KEY);
       if (msg) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setWrongAppMsg(msg);
         sessionStorage.removeItem(WRONG_APP_MSG_KEY);
       }
@@ -166,6 +168,15 @@ function ConnexionContent() {
             Créer un compte
           </Link>
         </p>
+
+        {/* Miroir du lien « Vous êtes client ? » de /pro/connexion — le
+            coiffeur arrivé ici par erreur trouve son entrée sans chercher. */}
+        {appContext !== 'client' && (
+          <p className="text-center text-[13px] text-neutral-400 -mt-4">
+            Vous êtes professionnel ?{' '}
+            <Link href="/pro/connexion" className="text-neutral-500 hover:text-neutral-800 hover:underline">Connexion CHAIR PRO</Link>
+          </p>
+        )}
 
       </div>
     </div>

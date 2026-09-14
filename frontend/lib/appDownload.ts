@@ -35,6 +35,15 @@
 export const APP_STORE_URL  = '';
 export const PLAY_STORE_URL = '';
 
+// Fiches App Store des DEUX autres binaires — mêmes règles que ci-dessus :
+// vides tant que non publiées, à renseigner le jour J
+// (https://apps.apple.com/fr/app/chair-pro/id<APPLE_ID> etc.). Utilisées par
+// les ponts entre apps sur les écrans de connexion/inscription
+// (components/auth/AppBridgeCard.tsx) et par BusinessAppGate : tant qu'elles
+// sont vides, les ponts retombent sur l'espace web correspondant.
+export const PRO_APP_STORE_URL = '';
+export const BUSINESS_APP_STORE_URL = '';
+
 // Lien de démo/prévisualisation à utiliser tant que l'app n'est pas publiée
 // (ex: lien TestFlight public si Julien en crée un). Laissé vide pour l'instant.
 export const PREVIEW_APP_URL = '';

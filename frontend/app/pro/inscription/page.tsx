@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { isClientBinary } from '@/lib/appContext';
+import { isClientBinary, useAppContext } from '@/lib/appContext';
+import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
 import { salons } from '@/lib/api';
 import type { ApiSalonFull } from '@/lib/types';
 import {
-  AlertCircle, Building2, CheckCircle, Loader,
+  AlertCircle, Building2, CheckCircle, ExternalLink, Loader,
   Lock, Mail, MapPin, Scissors, Search, User, X,
 } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
@@ -57,12 +58,21 @@ function Screen(props: Omit<React.ComponentProps<typeof QuestionScreen>, 'theme'
 
 const inputCls = 'w-full px-4 py-4 bg-neutral-900 border border-neutral-700 rounded-2xl text-[16px] text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-400 transition-all';
 
-export default function ProInscriptionPage() {
+function ProInscriptionContent() {
   const { register } = useAuth();
   const { animClass, transition } = useStepTransition();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Rendu-sûr à l'hydratation — sert au pont gérant → CHAIR BUSINESS sur
+  // l'écran de rôle (dans le binaire PRO, on n'inscrit pas de gérant ici).
+  const { context: appContext } = useAppContext();
 
-  const [showSlides, setShowSlides] = useState(true);
+  // Arrivée depuis /business/connexion (« Créer mon compte gérant ») : le
+  // rôle est déjà décidé, on saute les slides ET l'écran de choix — la
+  // première question posée est directement l'identité.
+  const gerantPrefill = searchParams.get('role') === 'gerant';
+
+  const [showSlides, setShowSlides] = useState(!gerantPrefill);
 
   // Dans le binaire CHAIR CLIENT, pas de création de compte pro : chaque app
   // n'expose que son propre parcours d'entrée (verrou binaire ↔ rôle).
@@ -70,7 +80,7 @@ export default function ProInscriptionPage() {
     if (isClientBinary()) router.replace('/inscription');
   }, [router]);
 
-  const [role, setRole] = useState<ProRole | null>(null);
+  const [role, setRole] = useState<ProRole | null>(gerantPrefill ? 'salon_owner' : null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -98,7 +108,10 @@ export default function ProInscriptionPage() {
   const [siretResult, setSiretResult] = useState<SiretResult>({ status: 'idle' });
   const siretTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [stepIndex, setStepIndex] = useState(0);
+  // path[0] = 'role' : quand le rôle est déjà connu (?role=gerant), on
+  // démarre à l'étape suivante — la flèche retour de l'étape 1 réaffiche
+  // l'écran de rôle, ce n'est pas un piège.
+  const [stepIndex, setStepIndex] = useState(gerantPrefill ? 1 : 0);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -237,14 +250,40 @@ export default function ProInscriptionPage() {
                 active={role === 'hairdresser'}
                 onClick={() => setRole('hairdresser')}
               />
-              <ChoiceCard
-                variant="dark"
-                icon={Building2}
-                label="Gérant de salon"
-                sublabel="Crée la page de ton salon et gère ton équipe"
-                active={role === 'salon_owner'}
-                onClick={() => setRole('salon_owner')}
-              />
+              {appContext === 'pro' ? (
+                // Dans le binaire CHAIR PRO, on n'inscrit pas de gérant ici :
+                // son app est CHAIR BUSINESS (retour Julien 09/09/2026 — « si
+                // un gérant installe CHAIR PRO, un bouton le mène vers l'app
+                // CHAIR BUSINESS »). Même compte pro des deux côtés, seule
+                // l'app change. Tant que la fiche App Store n'existe pas
+                // (lib/appDownload.ts), repli sur l'espace web public.
+                <a
+                  href={BUSINESS_APP_STORE_URL || 'https://getchair.app/business'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative flex flex-col items-center justify-center text-center gap-2.5 rounded-2xl border-2 border-neutral-700 bg-neutral-900 py-7 px-4 transition-all duration-150 active:scale-[0.96] hover:border-neutral-500"
+                >
+                  <Building2 size={32} strokeWidth={1.5} className="text-neutral-400" />
+                  <div>
+                    <p className="font-bold text-[16px] text-neutral-200">Gérant de salon</p>
+                    <p className="text-[11px] mt-0.5 leading-snug text-neutral-500">
+                      Salon, équipe et location de fauteuils se gèrent dans l&apos;app CHAIR BUSINESS
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white">
+                    <ExternalLink size={11} strokeWidth={2.5} /> Ouvrir CHAIR BUSINESS
+                  </span>
+                </a>
+              ) : (
+                <ChoiceCard
+                  variant="dark"
+                  icon={Building2}
+                  label="Gérant de salon"
+                  sublabel="Crée la page de ton salon et gère ton équipe"
+                  active={role === 'salon_owner'}
+                  onClick={() => setRole('salon_owner')}
+                />
+              )}
             </div>
           </Screen>
         )}
@@ -510,5 +549,15 @@ export default function ProInscriptionPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ProInscriptionPage() {
+  // useSearchParams (présélection ?role=gerant) exige une frontière Suspense
+  // au prérendu — même montage que /connexion.
+  return (
+    <Suspense fallback={null}>
+      <ProInscriptionContent />
+    </Suspense>
   );
 }
