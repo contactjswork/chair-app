@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isClientBinary, isProBinary, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 import { PRO_APP_STORE_URL } from '@/lib/appDownload';
@@ -27,6 +27,17 @@ export default function BusinessConnexionPage() {
   const [showPwd, setShowPwd]   = useState(false);
   const [error, setError]       = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Le formulaire n'apparaît qu'après le bouton « Se connecter avec mon
+  // compte CHAIR PRO » — sauf éviction du verrou binaire (message à montrer
+  // au-dessus des champs : le formulaire s'ouvre alors directement).
+  const [formVisible, setFormVisible] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+
+  function montrerFormulaire() {
+    setFormVisible(true);
+    // Focus après le rendu du formulaire — pose le clavier direct sur l'e-mail.
+    setTimeout(() => emailRef.current?.focus(), 50);
+  }
   // Message du verrou binaire ↔ rôle (compte client ou coiffeur sans salon
   // évincé de l'app BUSINESS) — posé en sessionStorage par AuthContext.
   const [wrongAppMsg, setWrongAppMsg] = useState('');
@@ -44,6 +55,9 @@ export default function BusinessConnexionPage() {
       if (msg) {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setWrongAppMsg(msg);
+        // Le message d'éviction doit être VU : il vit au-dessus des champs,
+        // donc le formulaire s'ouvre sans passer par le bouton d'entrée.
+        setFormVisible(true);
         sessionStorage.removeItem(WRONG_APP_MSG_KEY);
       }
     } catch { /* stockage indisponible : pas de message, l'écran reste utilisable */ }
@@ -75,16 +89,30 @@ export default function BusinessConnexionPage() {
           <p className="text-[14px] text-neutral-400 mt-1.5">L&apos;app des gérants de salon.</p>
         </div>
 
-        {/* Form */}
+        {/* LE bouton d'entrée (retour Julien 15/09 : « carrément mettre un
+            bouton se connecter à l'aide de CHAIR PRO pour que le mec galère
+            pas ») : un seul compte pro pour les deux apps — le bouton le dit,
+            révèle le formulaire et pose le focus sur l'e-mail. */}
+        {!formVisible ? (
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={montrerFormulaire}
+              className="w-full flex items-center justify-center gap-2 bg-neutral-900 text-white font-bold py-4 rounded-2xl text-[14.5px] hover:bg-neutral-700 active:scale-[0.98] transition-all"
+            >
+              <BadgeCheck size={16} strokeWidth={2} />
+              Se connecter avec mon compte CHAIR PRO
+            </button>
+            <p className="text-center text-[12px] text-neutral-400 leading-snug">
+              Mêmes identifiants que CHAIR PRO — c&apos;est le même compte professionnel.
+            </p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Un seul compte pro pour CHAIR PRO et CHAIR BUSINESS — dit ICI,
-              avant les champs, pour qu'un gérant venu de CHAIR PRO n'hésite
-              pas une seconde sur « quel compte » utiliser. */}
           <div className="flex items-start gap-2.5 px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl">
             <BadgeCheck size={15} className="text-neutral-500 flex-shrink-0 mt-0.5" strokeWidth={2} />
             <p className="text-[12.5px] text-neutral-600 leading-snug">
-              Vous avez déjà un compte <span className="font-semibold text-neutral-900">CHAIR PRO</span> ?
-              Continuez avec les mêmes identifiants — c&apos;est le même compte.
+              Vos identifiants <span className="font-semibold text-neutral-900">CHAIR PRO</span> fonctionnent
+              ici — c&apos;est le même compte.
             </p>
           </div>
 
@@ -96,6 +124,7 @@ export default function BusinessConnexionPage() {
           )}
 
           <input
+            ref={emailRef}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -139,6 +168,7 @@ export default function BusinessConnexionPage() {
             {isLoading ? 'Connexion…' : 'Se connecter'}
           </button>
         </form>
+        )}
 
         <p className="text-center text-[13px] text-neutral-400 -mt-2">
           Pas encore de compte ?{' '}

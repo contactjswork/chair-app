@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { isBusinessBinary, isClientBinary, useAppContext, WRONG_APP_MSG_KEY } from '@/lib/appContext';
 import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
@@ -32,6 +32,7 @@ const SLIDES: OnboardingSlide[] = [
 export default function ProConnexionPage() {
   const { login } = useAuth();
   const router = useRouter();
+  const emailRef = useRef<HTMLInputElement>(null);
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
@@ -121,18 +122,6 @@ export default function ProConnexionPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          {/* Miroir du bandeau de /business/connexion : un gérant envoyé ici
-              depuis CHAIR BUSINESS (ou l'inverse) ne doit jamais se demander
-              « quel compte » — PRO et BUSINESS partagent les mêmes
-              identifiants, seul CHAIR (clients) est un compte à part. */}
-          <div className="flex items-start gap-2.5 px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl">
-            <BadgeCheck size={15} className="text-neutral-500 flex-shrink-0 mt-0.5" strokeWidth={2} />
-            <p className="text-[12.5px] text-neutral-600 leading-snug">
-              Vous avez un compte <span className="font-semibold text-neutral-900">CHAIR BUSINESS</span> ?
-              Mêmes identifiants ici — c&apos;est le même compte.
-            </p>
-          </div>
-
           {wrongAppMsg && !error && (
             <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">{wrongAppMsg}</div>
           )}
@@ -141,6 +130,7 @@ export default function ProConnexionPage() {
           )}
 
           <input
+            ref={emailRef}
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -189,6 +179,18 @@ export default function ProConnexionPage() {
           Pas encore de compte pro ?{' '}
           <Link href="/pro/inscription" className="font-semibold text-neutral-900 hover:underline">Créer mon espace pro</Link>
         </p>
+
+        {/* Miroir du bouton « Se connecter avec mon compte CHAIR PRO » de
+            /business/connexion : mêmes identifiants dans les deux sens, seul
+            CHAIR (clients) est un compte à part. Le tap pose le focus sur
+            l'e-mail — c'est LE même formulaire. */}
+        <button
+          onClick={() => emailRef.current?.focus()}
+          className="-mt-3 mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-neutral-500 hover:text-neutral-900 transition-colors"
+        >
+          <BadgeCheck size={13} strokeWidth={2} />
+          Un compte CHAIR BUSINESS ? Mêmes identifiants — connectez-vous ici
+        </button>
 
         {/* Pont gérant → CHAIR BUSINESS (un seul compte pro pour les deux apps). */}
         <AppBridgeCard

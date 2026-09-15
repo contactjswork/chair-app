@@ -12,6 +12,7 @@ import {
 import { api, salons as salonsApi, subscription as subscriptionApi } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview, type ApiMySubscription, type ApiSalonPulse } from '@/lib/types';
 import { isBusinessBinary } from '@/lib/appContext';
+import { PRO_APP_STORE_URL } from '@/lib/appDownload';
 import { CARTE, CARTE_TAP, CARTE_SOMBRE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 import { contributionLigne, type MembreContribution } from '@/lib/teamContribution';
 import OwnerTeamMember from '@/components/owner/OwnerTeamMember';
@@ -403,25 +404,48 @@ export default function BusinessHome() {
         <ChevronRight size={16} className="text-neutral-300 shrink-0" />
       </Link>
 
-      {/* ══ Double casquette — en bas : utile, mais pas prioritaire. ══ */}
-      {!user?.has_hairdresser_profile && (
+      {/* ══ Double casquette — en bas : utile, mais pas prioritaire.
+          Un bouton de switch doit VRAIMENT changer d'app (retour Julien
+          15/09) : dans le binaire BUSINESS, « Ouvrir CHAIR PRO » sort vers
+          l'app coiffeur (fiche App Store, ou l'espace web en repli) — que le
+          gérant ait déjà son profil coiffeur (il y travaille) ou pas encore
+          (il l'y créera). Sur le web, l'activation instantanée reste. ══ */}
+      {isBusinessBinary() ? (
+        <div className={`${CARTE} p-4 flex items-center gap-3.5`}>
+          <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+            <Scissors size={16} className="text-neutral-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-neutral-900">
+              {user?.has_hairdresser_profile ? 'Votre activité coiffeur' : 'Vous coupez aussi les cheveux ?'}
+            </p>
+            <p className="text-xs text-neutral-400">
+              {user?.has_hairdresser_profile
+                ? 'Profil, réalisations et agenda — même compte, autre app.'
+                : 'Créez votre profil coiffeur dans l’app CHAIR PRO — même compte.'}
+            </p>
+          </div>
+          <a
+            href={PRO_APP_STORE_URL || 'https://getchair.app/pro'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 flex items-center gap-1.5 text-xs font-bold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
+          >
+            Ouvrir CHAIR PRO
+          </a>
+        </div>
+      ) : !user?.has_hairdresser_profile && (
         <div className={`${CARTE} p-4 flex items-center gap-3.5`}>
           <div className="w-9 h-9 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
             <Scissors size={16} className="text-neutral-500" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-neutral-900">Vous coupez aussi les cheveux ?</p>
-            <p className="text-xs text-neutral-400">
-              {isBusinessBinary()
-                ? 'Votre activité de coiffeur vit dans l’app CHAIR PRO.'
-                : `Activez votre profil coiffeur dans ${salon.name}.`}
-            </p>
+            <p className="text-xs text-neutral-400">Activez votre profil coiffeur dans {salon.name}.</p>
           </div>
-          {!isBusinessBinary() && (
-            <PrimaryButton size="sm" loading={enabling} onClick={handleEnableHairdresserMode} className="flex-shrink-0">
-              Activer
-            </PrimaryButton>
-          )}
+          <PrimaryButton size="sm" loading={enabling} onClick={handleEnableHairdresserMode} className="flex-shrink-0">
+            Activer
+          </PrimaryButton>
         </div>
       )}
 
