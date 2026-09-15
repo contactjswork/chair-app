@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { isClientBinary, useAppContext } from '@/lib/appContext';
-import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
+import { BUSINESS_APP_STORE_URL, PRO_APP_STORE_URL } from '@/lib/appDownload';
 import { salons } from '@/lib/api';
 import type { ApiSalonFull } from '@/lib/types';
 import {
@@ -132,6 +132,16 @@ function ProInscriptionContent() {
   function goBack() {
     tapFeedback();
     setError('');
+    // Entrée « Créer mon compte gérant » (?role=gerant) : le rôle n'est PAS
+    // une étape de ce parcours — revenir en arrière depuis la première
+    // question SORT du flux (retour connexion BUSINESS) au lieu de révéler
+    // l'écran de choix de rôle. Sinon un tap en arrière suffisait à créer un
+    // compte coiffeur depuis l'app gérant (retour Julien 15/09/2026).
+    if (gerantPrefill && stepIndex === 1) {
+      if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+      else router.push('/business/connexion');
+      return;
+    }
     // Première étape : on QUITTE l'inscription au lieu de ne rien faire.
     // Même correctif que l'inscription client (voir app/inscription/page.tsx) :
     // arrivé ici depuis les slides d'accueil, l'utilisateur était piégé — la
@@ -242,14 +252,39 @@ function ProInscriptionContent() {
         {step === 'role' && (
           <Screen eyebrow="Bienvenue" title="Tu es..." ctaLabel="Continuer" ctaDisabled={!role} onNext={goNext}>
             <div className="grid grid-cols-1 gap-3">
-              <ChoiceCard
-                variant="dark"
-                icon={Scissors}
-                label="Coiffeur"
-                sublabel="Gère ton profil, tes réalisations et tes RDV"
-                active={role === 'hairdresser'}
-                onClick={() => setRole('hairdresser')}
-              />
+              {appContext === 'business' ? (
+                // Miroir exact du pont ci-dessous : dans le binaire CHAIR
+                // BUSINESS, on n'inscrit pas de coiffeur — son app est CHAIR
+                // PRO (retour Julien 15/09/2026 : « j'ai pu créer un compte
+                // CHAIR PRO dans CHAIR BUSINESS, c'est pas ça qu'il faut »).
+                // Mêmes identifiants des deux côtés, seule l'app change.
+                <a
+                  href={PRO_APP_STORE_URL || 'https://getchair.app/pro'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative flex flex-col items-center justify-center text-center gap-2.5 rounded-2xl border-2 border-neutral-700 bg-neutral-900 py-7 px-4 transition-all duration-150 active:scale-[0.96] hover:border-neutral-500"
+                >
+                  <Scissors size={32} strokeWidth={1.5} className="text-neutral-400" />
+                  <div>
+                    <p className="font-bold text-[16px] text-neutral-200">Coiffeur</p>
+                    <p className="text-[11px] mt-0.5 leading-snug text-neutral-500">
+                      Profil, réalisations et RDV se gèrent dans l&apos;app CHAIR PRO
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-white">
+                    <ExternalLink size={11} strokeWidth={2.5} /> Ouvrir CHAIR PRO
+                  </span>
+                </a>
+              ) : (
+                <ChoiceCard
+                  variant="dark"
+                  icon={Scissors}
+                  label="Coiffeur"
+                  sublabel="Gère ton profil, tes réalisations et tes RDV"
+                  active={role === 'hairdresser'}
+                  onClick={() => setRole('hairdresser')}
+                />
+              )}
               {appContext === 'pro' ? (
                 // Dans le binaire CHAIR PRO, on n'inscrit pas de gérant ici :
                 // son app est CHAIR BUSINESS (retour Julien 09/09/2026 — « si

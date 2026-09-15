@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown, Trophy, BadgeCheck, Gift, Sparkles, AlertTriangle } from 'lucide-react';
+import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown, Trophy, BadgeCheck, Gift, Sparkles, AlertTriangle, Building2, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,29 +38,59 @@ function notifIcon(type: string) {
       return <Sparkles size={16} className="text-neutral-900" />;
     case 'chair_plus_payment_failed':
       return <AlertTriangle size={16} className="text-red-500" />;
+    case 'salon_invitation':
+    case 'salon_invitation_cancelled':
+      return <Building2 size={16} className="text-neutral-600" />;
     default:
       return <Bell size={16} className="text-neutral-500" />;
+  }
+}
+
+/**
+ * Destination d'une notification quand il y a une action à faire derrière —
+ * une invitation de salon annonçait « X vous invite à rejoindre leur équipe »
+ * sans être cliquable : le coiffeur n'avait littéralement aucun chemin vers
+ * l'écran d'acceptation (retour Julien 15/09/2026). null = carte informative,
+ * pas de navigation.
+ */
+function notifHref(type: string): string | null {
+  switch (type) {
+    case 'salon_invitation':
+      return '/pro/salon'; // JoinSalonPanel, onglet Invitations
+    case 'appointment_created':
+    case 'appointment_confirmed':
+    case 'appointment_cancelled':
+    case 'appointment_rescheduled':
+      return '/pro/agenda';
+    case 'review_received':
+      return '/pro/profil';
+    default:
+      return null;
   }
 }
 
 function NotifCard({
   notif,
   onMarkRead,
+  onOpen,
 }: {
   notif: ApiNotification;
   onMarkRead: (id: number) => void;
+  onOpen: (notif: ApiNotification, href: string) => void;
 }) {
   const isUnread = !notif.read_at;
   const title = notif.title ?? notif.type;
   const message = notif.message ?? '';
+  const href = notifHref(notif.type);
 
   return (
     <div
+      onClick={href ? () => onOpen(notif, href) : undefined}
       className={`flex gap-3 px-4 py-3.5 rounded-2xl transition-shadow ${
         isUnread
           ? 'bg-white shadow-[0_4px_16px_-8px_rgba(10,10,10,0.14)] ring-1 ring-neutral-100'
           : 'bg-white ring-1 ring-neutral-50'
-      }`}
+      } ${href ? 'cursor-pointer active:scale-[0.99] transition-transform' : ''}`}
     >
       <div className="mt-0.5 shrink-0 w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center">
         {notifIcon(notif.type)}
@@ -73,7 +103,9 @@ function NotifCard({
           </p>
           {isUnread && (
             <button
-              onClick={() => onMarkRead(notif.id)}
+              // stopPropagation : « marquer comme lu » ne doit pas déclencher
+              // la navigation de la carte (invitation, RDV...).
+              onClick={(e) => { e.stopPropagation(); onMarkRead(notif.id); }}
               className="relative before:absolute before:-inset-[15px] before:content-[''] shrink-0 mt-0.5 text-neutral-400 hover:text-neutral-700 transition-colors"
               aria-label="Marquer comme lu"
             >
@@ -87,6 +119,9 @@ function NotifCard({
         <p className="text-[11px] text-neutral-400 mt-1">{formatDate(notif.created_at)}</p>
       </div>
 
+      {href && (
+        <ChevronRight size={14} className="shrink-0 self-center text-neutral-300" />
+      )}
       {isUnread && (
         <div className="mt-2 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500 self-start" />
       )}
@@ -133,6 +168,12 @@ export default function ProNotificationsPage() {
       setUnreadCount((c) => Math.max(0, c - 1));
       refreshBadge();
     } catch {}
+  };
+
+  const handleOpen = (notif: ApiNotification, href: string) => {
+    // Ouvrir = lu : on ne laisse pas la pastille rouge survivre à l'action.
+    if (!notif.read_at) handleMarkRead(notif.id);
+    router.push(href);
   };
 
   const handleMarkAllRead = async () => {
@@ -205,7 +246,7 @@ export default function ProNotificationsPage() {
           </p>
           <div className="px-4 pt-1 space-y-2">
             {unread.map((n) => (
-              <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
+              <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} onOpen={handleOpen} />
             ))}
           </div>
         </section>
@@ -223,7 +264,7 @@ export default function ProNotificationsPage() {
           {showRead && (
             <div className="px-4 pt-1 space-y-2">
               {read.map((n) => (
-                <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} />
+                <NotifCard key={n.id} notif={n} onMarkRead={handleMarkRead} onOpen={handleOpen} />
               ))}
             </div>
           )}

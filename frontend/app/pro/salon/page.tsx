@@ -43,7 +43,15 @@ function JoinSalonPanel() {
 
   useEffect(() => {
     salons.myJoinRequests().then(setMyRequests).catch(() => {});
-    api.get<SalonInvitation[]>('/my-invitations').then((res) => { if (Array.isArray(res)) setInvitations(res); }).catch(() => {});
+    api.get<SalonInvitation[]>('/my-invitations').then((res) => {
+      if (!Array.isArray(res)) return;
+      setInvitations(res);
+      // Une invitation en attente est LA raison d'être de cet écran quand
+      // elle existe (le coiffeur arrive depuis la notification « X vous
+      // invite ») : on ouvre directement l'onglet Invitations plutôt que de
+      // la laisser derrière l'onglet Rechercher.
+      if (res.some((i) => i.status === 'pending')) setTab('invitations');
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -38,6 +38,12 @@ function salarieNav(): ProNavConfig {
       { href: '/pro/profil',    label: 'Profil',    icon: User },
     ],
     secondary: [
+      // La relation au salon (rejoindre, accepter une invitation reçue,
+      // quitter) vit sur /pro/salon — sans cet item, un coiffeur invité par
+      // un salon n'avait AUCUN endroit où accepter (retour Julien
+      // 15/09/2026) : la notification n'était pas cliquable et la page
+      // n'était atteignable nulle part.
+      { href: '/pro/salon',         label: 'Mon salon',       icon: Building2 },
       { href: '/pro/services',      label: 'Mes expertises',  icon: Scissors },
       { href: '/pro/business',      label: 'Performance',     icon: TrendingUp },
       { href: '/pro/badges',        label: 'Progression',     icon: Crown },
@@ -63,6 +69,9 @@ function independantNav(): ProNavConfig {
     ],
     secondary: [
       { href: '/pro/reservations',      label: 'Réservations',      icon: Clock },
+      // Même raison que salarieNav : un indépendant peut être invité par un
+      // salon (ou vouloir en rejoindre un) — l'écran d'acceptation est là.
+      { href: '/pro/salon',             label: 'Mon salon',         icon: Building2 },
       { href: '/pro/services',          label: 'Services',          icon: Scissors },
       { href: '/pro/badges',            label: 'Progression',       icon: Crown },
       { href: '/pro/classements',       label: 'Classement',        icon: Trophy },

@@ -9,7 +9,7 @@ import { BUSINESS_APP_STORE_URL } from '@/lib/appDownload';
 import ChairLogo from '@/components/ui/ChairLogo';
 import AppBridgeCard from '@/components/auth/AppBridgeCard';
 import OnboardingCarousel, { type OnboardingSlide } from '@/components/ui/OnboardingCarousel';
-import { TrendingUp, Award, CalendarClock, Briefcase, Building2, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, Award, CalendarClock, Briefcase, Building2, Eye, EyeOff, BadgeCheck } from 'lucide-react';
 
 const ONBOARDING_KEY = 'chair_pro_onboarding_seen';
 
@@ -121,6 +121,18 @@ export default function ProConnexionPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          {/* Miroir du bandeau de /business/connexion : un gérant envoyé ici
+              depuis CHAIR BUSINESS (ou l'inverse) ne doit jamais se demander
+              « quel compte » — PRO et BUSINESS partagent les mêmes
+              identifiants, seul CHAIR (clients) est un compte à part. */}
+          <div className="flex items-start gap-2.5 px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl">
+            <BadgeCheck size={15} className="text-neutral-500 flex-shrink-0 mt-0.5" strokeWidth={2} />
+            <p className="text-[12.5px] text-neutral-600 leading-snug">
+              Vous avez un compte <span className="font-semibold text-neutral-900">CHAIR BUSINESS</span> ?
+              Mêmes identifiants ici — c&apos;est le même compte.
+            </p>
+          </div>
+
           {wrongAppMsg && !error && (
             <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">{wrongAppMsg}</div>
           )}
