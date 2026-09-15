@@ -11,6 +11,7 @@ use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\Review;
 use App\Services\BadgeService;
+use App\Services\SalonPulseService;
 use App\Services\MailService;
 use App\Services\NotificationService;
 use App\Services\StreakService;
@@ -706,6 +707,10 @@ class AppointmentController extends Controller
         // Un avis reçu alimente le score de la spécialité + peut débloquer des badges
         BadgeService::refresh($profile);
 
+        // Radar gérant : un avis ≤ 3★ sur un membre d'équipe prévient le
+        // patron immédiatement (voir SalonPulseService).
+        SalonPulseService::notifierAvisNegatif($review);
+
         // Notification → coiffeur (nouvel avis reçu)
         $profile->loadMissing('user');
         if ($profile->user_id) {
@@ -789,6 +794,9 @@ class AppointmentController extends Controller
         $count   = Review::where('hairdresser_id', $profile->id)->count();
         $profile->update(['avg_rating' => round($avg, 2), 'reviews_count' => $count]);
         BadgeService::refresh($profile);
+
+        // Radar gérant — même règle que le dépôt d'avis client connecté.
+        SalonPulseService::notifierAvisNegatif($review);
 
         return response()->json($review->load('hairdresser'), 201);
     }

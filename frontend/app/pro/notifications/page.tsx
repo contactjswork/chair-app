@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Bell, Check, CheckCheck, Calendar, Star, UserPlus, Users, ChevronDown, Trophy, BadgeCheck, Gift, Sparkles, AlertTriangle, Building2, ChevronRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
@@ -40,7 +40,10 @@ function notifIcon(type: string) {
       return <AlertTriangle size={16} className="text-red-500" />;
     case 'salon_invitation':
     case 'salon_invitation_cancelled':
+    case 'salon_weekly_pulse':
       return <Building2 size={16} className="text-neutral-600" />;
+    case 'salon_negative_review':
+      return <AlertTriangle size={16} className="text-amber-500" />;
     default:
       return <Bell size={16} className="text-neutral-500" />;
   }
@@ -52,11 +55,16 @@ function notifIcon(type: string) {
  * sans être cliquable : le coiffeur n'avait littéralement aucun chemin vers
  * l'écran d'acceptation (retour Julien 15/09/2026). null = carte informative,
  * pas de navigation.
+ *
+ * `estBusiness` : cette page est aussi montée sous /business/notifications
+ * (coquille CHAIR BUSINESS) — les destinations gérant restent alors dans
+ * l'espace /business pour ne jamais sortir du chrome de l'app.
  */
-function notifHref(type: string): string | null {
+function notifHref(type: string, estBusiness: boolean): string | null {
+  const base = estBusiness ? '/business' : '/pro';
   switch (type) {
     case 'salon_invitation':
-      return '/pro/salon'; // JoinSalonPanel, onglet Invitations
+      return '/pro/salon'; // JoinSalonPanel, onglet Invitations (coiffeur)
     case 'appointment_created':
     case 'appointment_confirmed':
     case 'appointment_cancelled':
@@ -64,6 +72,14 @@ function notifHref(type: string): string | null {
       return '/pro/agenda';
     case 'review_received':
       return '/pro/profil';
+    // Notifications gérant (Pulse du lundi, radar avis négatif, équipe).
+    case 'salon_weekly_pulse':
+      return base;
+    case 'salon_negative_review':
+    case 'invitation_accepted':
+    case 'invitation_declined':
+    case 'new_member':
+      return `${base}/equipe`;
     default:
       return null;
   }
@@ -81,7 +97,8 @@ function NotifCard({
   const isUnread = !notif.read_at;
   const title = notif.title ?? notif.type;
   const message = notif.message ?? '';
-  const href = notifHref(notif.type);
+  const estBusiness = usePathname().startsWith('/business');
+  const href = notifHref(notif.type, estBusiness);
 
   return (
     <div

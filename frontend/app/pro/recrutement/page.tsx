@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { jobOffers, api } from '@/lib/api';
-import { resolveMediaUrl, type ApiJobOffer } from '@/lib/types';
+import { jobOffers, api, salons as salonsApi, invitations as invitationsApi } from '@/lib/api';
+import { resolveMediaUrl, type ApiJobOffer, type ApiRecruitmentMatch } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import OwnerEmptyState from '@/components/owner/OwnerEmptyState';
 import OwnerOfferCard from '@/components/owner/OwnerOfferCard';
 import OwnerApplicantCard, { type ApplicantStatus, APPLICANT_STATUS_LABELS } from '@/components/owner/OwnerApplicantCard';
 import OwnerWizardShell from '@/components/owner/OwnerWizardShell';
-import { Plus, Briefcase } from 'lucide-react';
+import { Plus, Briefcase, Star, UserPlus, Check, ExternalLink } from 'lucide-react';
 
 const JOB_TYPE_OPTIONS = [
   { value: 'hairdresser', label: 'Coiffeur(se)' },
@@ -120,17 +122,37 @@ export default function RecrutementPage() {
   const [toast,       setToast]       = useState<string | null>(null);
   const [tab,         setTab]         = useState<'offres' | 'candidatures'>('offres');
   const [expandedApp, setExpandedApp] = useState<number | null>(null);
+  // Matching plateforme : les coiffeurs de la ville qui ont dit chercher un
+  // salon (onboarding) — la valeur qu'un job board classique ne peut pas offrir.
+  const [matches,     setMatches]     = useState<ApiRecruitmentMatch[]>([]);
+  const [invitedIds,  setInvitedIds]  = useState<Set<number>>(new Set());
+  const [invitingId,  setInvitingId]  = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
     Promise.allSettled([
       jobOffers.myOffers(),
       api.get<JobApplication[]>('/my-salon/applications'),
-    ]).then(([offersRes, appsRes]) => {
+      salonsApi.recruitmentMatches(),
+    ]).then(([offersRes, appsRes, matchesRes]) => {
       if (offersRes.status === 'fulfilled')  setOffers(offersRes.value);
       if (appsRes.status === 'fulfilled')    setApplications(appsRes.value);
+      if (matchesRes.status === 'fulfilled' && Array.isArray(matchesRes.value)) setMatches(matchesRes.value);
     }).finally(() => setLoading(false));
   }, [user]);
+
+  async function handleInviteMatch(m: ApiRecruitmentMatch) {
+    setInvitingId(m.id);
+    try {
+      await invitationsApi.invite({ hairdresser_id: m.id, message: 'Nous recrutons — votre profil nous intéresse !' });
+      setInvitedIds((prev) => new Set(prev).add(m.id));
+      showToast('Invitation envoyée !');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Impossible d'envoyer l'invitation.");
+    } finally {
+      setInvitingId(null);
+    }
+  }
 
   function showToast(msg: string) {
     setToast(msg);
@@ -271,6 +293,62 @@ export default function RecrutementPage() {
                     onDelete={() => handleDelete(offer.id)}
                   />
                 ))}
+              </div>
+            )}
+
+            {/* ── ILS CHERCHENT UN SALON — le matching que seul CHAIR peut
+                faire : coiffeurs de la ville, sans équipe, qui ont coché
+                « trouver un salon » à l'onboarding. ── */}
+            {matches.length > 0 && (
+              <div className="mt-7">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 mb-1">Près de chez vous</p>
+                <h2 className="text-[17px] font-bold text-neutral-900 mb-3">Ils cherchent un salon</h2>
+                <div className="space-y-2">
+                  {matches.map((m) => {
+                    const avatarUrl = resolveMediaUrl(m.avatar);
+                    const note = parseFloat(String(m.avg_rating ?? 0));
+                    const invited = invitedIds.has(m.id);
+                    return (
+                      <div key={m.id} className="flex items-center gap-3 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-3.5">
+                        <div className="w-11 h-11 rounded-full bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          {avatarUrl
+                            ? <Image src={avatarUrl} alt="" width={44} height={44} className="object-cover w-11 h-11" />
+                            : <span className="text-sm font-bold text-neutral-400">{m.name?.[0] ?? '?'}</span>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-bold text-neutral-900 truncate">{m.name}</p>
+                            <Link href={`/app/coiffeur/${m.slug}`} target="_blank" className="text-neutral-300 hover:text-neutral-600 transition-colors flex-shrink-0" aria-label="Voir le profil">
+                              <ExternalLink size={11} />
+                            </Link>
+                          </div>
+                          <p className="text-[11px] text-neutral-400 truncate">
+                            {m.city}
+                            {m.reviews_count > 0 && note > 0 && (
+                              <span className="inline-flex items-center gap-0.5 ml-1.5">
+                                <Star size={9} className="fill-amber-400 stroke-none" />{note.toFixed(1)} · {m.reviews_count} avis
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleInviteMatch(m)}
+                          disabled={invited || invitingId === m.id}
+                          className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl transition-colors ${
+                            invited
+                              ? 'bg-neutral-100 text-neutral-400'
+                              : 'bg-neutral-900 text-white hover:bg-neutral-700 disabled:opacity-60'
+                          }`}
+                        >
+                          {invited ? <><Check size={12} />Invité</> : <><UserPlus size={12} />{invitingId === m.id ? '...' : 'Inviter'}</>}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-2 leading-relaxed">
+                  Ces coiffeurs ont indiqué chercher un salon sur CHAIR. L&apos;invitation les ajoute à votre équipe s&apos;ils acceptent.
+                </p>
               </div>
             )}
           </>

@@ -9,6 +9,7 @@ use App\Models\Review;
 use App\Models\SalonJoinRequest;
 use App\Services\NotificationService;
 use App\Services\QrTokenService;
+use App\Services\SalonPulseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
@@ -211,6 +212,62 @@ class SalonController extends Controller
             ]);
 
         return response()->json($reviews);
+    }
+
+    /**
+     * GET /my-salon/pulse — le pouls du salon (home CHAIR BUSINESS) :
+     * semaine (avis/note/top), alertes membres (étoile montante / perte de
+     * vitesse) et classement local du mois. Voir SalonPulseService.
+     */
+    public function pulse(Request $request)
+    {
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+
+        return response()->json(SalonPulseService::pulse($salon));
+    }
+
+    /**
+     * GET /my-salon/recruitment-matches — les coiffeurs CHAIR de la ville qui
+     * ont dit chercher un salon (pro_goals contient find_job à l'onboarding)
+     * et n'appartiennent à aucune équipe. C'est le croisement que seule la
+     * plateforme peut faire — un job board classique ne sait pas qui cherche.
+     *
+     * Champs publics uniquement (PublicScope) : pro_goals est une donnée
+     * privée du profil, on ne renvoie que le FAIT du match, jamais le champ.
+     */
+    public function recruitmentMatches(Request $request)
+    {
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+        if (!$salon->city) {
+            return response()->json([]);
+        }
+
+        $matches = HairdresserProfile::with('user')
+            ->whereNull('salon_id')
+            ->where('is_hidden', false)
+            ->whereJsonContains('pro_goals', 'find_job')
+            ->where(function ($q) use ($salon) {
+                $q->where('city', $salon->city);
+                if ($salon->department) {
+                    $q->orWhere('department', $salon->department);
+                }
+            })
+            ->orderByDesc('avg_rating')
+            ->orderByDesc('reviews_count')
+            ->limit(6)
+            ->get()
+            ->map(fn (HairdresserProfile $p) => [
+                'id'            => $p->id,
+                'slug'          => $p->slug,
+                'name'          => $p->user?->name,
+                'avatar'        => $p->user?->avatar,
+                'city'          => $p->city,
+                'avg_rating'    => $p->avg_rating,
+                'reviews_count' => $p->reviews_count,
+                'tagline'       => $p->tagline,
+            ]);
+
+        return response()->json($matches);
     }
 
     /** PUT /my-salon — mise à jour du salon (owner) */

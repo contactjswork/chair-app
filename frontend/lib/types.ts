@@ -1027,6 +1027,38 @@ export interface ApiSalonRecentReview {
   client_name: string | null;
 }
 
+// ── Pulse salon (home CHAIR BUSINESS) ────────────────────────────────
+
+export interface ApiSalonPulseAlerte {
+  type: 'etoile' | 'baisse';
+  nom: string;
+  avis?: number;
+  avis_precedents?: number;
+}
+
+export interface ApiSalonPulse {
+  semaine: {
+    avis: number;
+    note: number | null;
+    avis_precedent: number;
+    top: { nom: string; avis: number } | null;
+  } | null;
+  alertes: ApiSalonPulseAlerte[];
+  classement_local: { rang: number; total: number; ville: string } | null;
+}
+
+/** Coiffeur libre de la ville qui a dit chercher un salon (matching recrutement). */
+export interface ApiRecruitmentMatch {
+  id: number;
+  slug: string;
+  name: string | null;
+  avatar: string | null;
+  city: string | null;
+  avg_rating: string | null;
+  reviews_count: number;
+  tagline: string | null;
+}
+
 // ── Available hairdressers ───────────────────────────────────────────
 
 export interface ApiAvailableHairdresser extends ApiHairdresserProfile {

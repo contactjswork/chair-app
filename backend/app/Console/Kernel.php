@@ -35,6 +35,12 @@ class Kernel extends ConsoleKernel
         // semaine. Jamais envoye vide, idempotent par jour (voir la commande).
         $schedule->command('chair:send-weekly-recap')->weeklyOn(0, '19:00')->timezone('Europe/Paris');
 
+        // Le Pulse du lundi matin — pendant gerant du recap coiffeur : avis
+        // de la semaine, note, membre en tete. Jamais envoye vide, idempotent
+        // par jour (voir la commande). 09:00 tombe sur un multiple de 15 min,
+        // le cron Infomaniak (toutes les 15 min) le couvre.
+        $schedule->command('chair:send-salon-pulse')->weeklyOn(1, '09:00')->timezone('Europe/Paris');
+
         // Le rappel de re-reservation, cale sur le rythme reel de chaque
         // client. Un seul par rendez-vous termine, jamais si un rendez-vous
         // futur existe deja.

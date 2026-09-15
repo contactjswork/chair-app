@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\VerifiedVisit;
 use App\Services\BadgeService;
 use App\Services\QrTokenService;
+use App\Services\SalonPulseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -325,6 +326,9 @@ class VisitController extends Controller
         // Un avis vérifié alimente le score de la spécialité visée + peut
         // débloquer des badges carrière/exceptionnels.
         BadgeService::refresh($visit->hairdresser);
+
+        // Radar gérant : avis <= 3 étoiles sur un membre d'équipe -> le patron est prévenu.
+        SalonPulseService::notifierAvisNegatif($review);
 
         return response()->json(['message' => 'Avis publié avec succès.'], 201);
     }

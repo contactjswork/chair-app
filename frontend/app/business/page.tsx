@@ -7,10 +7,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import {
   Building2, Armchair, Briefcase, ChevronRight, UserPlus,
-  LogOut, Scissors, Star, Check, Sparkles,
+  LogOut, Scissors, Star, Check, Sparkles, TrendingUp, Trophy,
 } from 'lucide-react';
 import { api, salons as salonsApi, subscription as subscriptionApi } from '@/lib/api';
-import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview, type ApiMySubscription } from '@/lib/types';
+import { resolveMediaUrl, type ApiSalonFull, type ApiSalonRecentReview, type ApiMySubscription, type ApiSalonPulse } from '@/lib/types';
 import { isBusinessBinary } from '@/lib/appContext';
 import { CARTE, CARTE_TAP, CARTE_SOMBRE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 import { contributionLigne, type MembreContribution } from '@/lib/teamContribution';
@@ -64,6 +64,7 @@ export default function BusinessHome() {
   const [pendingApps, setPendingApps] = useState(0);
   const [pendingRentals, setPendingRentals] = useState(0);
   const [recentReviews, setRecentReviews] = useState<ApiSalonRecentReview[]>([]);
+  const [pulse, setPulse] = useState<ApiSalonPulse | null>(null);
   const [sub, setSub] = useState<ApiMySubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [enabling, setEnabling] = useState(false);
@@ -87,14 +88,16 @@ export default function BusinessHome() {
       // refusées gonflaient le compteur (bug de l'ancienne home, corrigé ici).
       api.get<unknown[]>('/my-salon/rental-requests?status=pending'),
       salonsApi.recentReviews(),
+      salonsApi.pulse(),
       subscriptionApi.mine(),
-    ]).then(([salonRes, appsRes, rentalReqsRes, reviewsRes, subRes]) => {
+    ]).then(([salonRes, appsRes, rentalReqsRes, reviewsRes, pulseRes, subRes]) => {
       const salonData = salonRes.status === 'fulfilled' ? salonRes.value : null;
       setSalon(salonData?.salon ?? null);
       setPendingJoins(salonData?.pending_requests?.length ?? 0);
       setPendingApps(appsRes.status === 'fulfilled' && appsRes.value && typeof appsRes.value === 'object' && 'count' in appsRes.value ? (appsRes.value as { count: number }).count : 0);
       setPendingRentals(rentalReqsRes.status === 'fulfilled' && Array.isArray(rentalReqsRes.value) ? rentalReqsRes.value.length : 0);
       if (reviewsRes.status === 'fulfilled') setRecentReviews(reviewsRes.value);
+      if (pulseRes.status === 'fulfilled') setPulse(pulseRes.value);
       if (subRes.status === 'fulfilled') setSub(subRes.value);
     }).finally(() => setLoading(false));
   }, [user, isLoading]);
@@ -128,6 +131,11 @@ export default function BusinessHome() {
     }
     if (!salon.description || !salon.cover_image) {
       aTraiter.push({ compte: null, label: 'Complétez votre page salon', href: '/business/salon' });
+    }
+    // Alerte membre « perte de vitesse » (Pulse) : un point à faire, donc
+    // À TRAITER — l'étoile montante, elle, vit dans « Votre semaine ».
+    for (const a of (pulse?.alertes ?? []).filter((a) => a.type === 'baisse')) {
+      aTraiter.push({ compte: null, label: `${a.nom} n'a reçu aucun avis depuis 30 j — un point ensemble ?`, href: '/business/equipe' });
     }
   }
 
@@ -252,6 +260,59 @@ export default function BusinessHome() {
           </div>
         </div>
       )}
+
+      {/* ══ VOTRE SEMAINE — le Pulse : 7 jours d'avis, tendance, top membre,
+          étoile montante et position locale. Masquée quand la semaine n'a
+          rien produit — jamais de « 0 avis » en guise de bilan. ══ */}
+      {(() => {
+        const sem = pulse?.semaine;
+        const etoile = (pulse?.alertes ?? []).find((a) => a.type === 'etoile');
+        const rangLocal = pulse?.classement_local ?? null;
+        if (!sem || (sem.avis === 0 && !etoile && !rangLocal)) return null;
+        const delta = sem.avis - sem.avis_precedent;
+        return (
+          <div className={`${CARTE} p-5`}>
+            <p className={`${MICRO_TITRE} mb-3`}>Votre semaine</p>
+            {sem.avis > 0 && (
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <p className="text-[22px] font-bold text-neutral-900 tabular-nums">
+                  {sem.avis} avis
+                </p>
+                {sem.note != null && (
+                  <span className="flex items-center gap-0.5 text-[14px] font-bold text-neutral-900">
+                    <Star size={12} className="fill-amber-400 stroke-none" />{sem.note.toFixed(1)}
+                  </span>
+                )}
+                {delta !== 0 && (
+                  <span className={`text-[12px] font-semibold ${delta > 0 ? 'text-emerald-600' : 'text-neutral-400'}`}>
+                    {delta > 0 ? `+${delta}` : delta} vs sem. précédente
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="mt-2 space-y-1.5">
+              {sem.top && sem.avis > 0 && (
+                <p className="flex items-center gap-1.5 text-[12.5px] text-neutral-600">
+                  <Trophy size={12} className="text-neutral-400 shrink-0" />
+                  <span className="font-semibold text-neutral-900">{sem.top.nom}</span> en tête ({sem.top.avis} avis)
+                </p>
+              )}
+              {etoile && (
+                <p className="flex items-center gap-1.5 text-[12.5px] text-neutral-600">
+                  <TrendingUp size={12} className="text-emerald-500 shrink-0" />
+                  <span className="font-semibold text-neutral-900">{etoile.nom}</span> décolle : {etoile.avis} avis en 30 j
+                </p>
+              )}
+              {rangLocal && (
+                <p className="flex items-center gap-1.5 text-[12.5px] text-neutral-600">
+                  <Building2 size={12} className="text-neutral-400 shrink-0" />
+                  n°{rangLocal.rang} sur {rangLocal.total} salons à {rangLocal.ville} ce mois-ci
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ══ MON ÉQUIPE — des visages, pas des chiffres. ══ */}
       {team.length > 0 ? (

@@ -13,10 +13,111 @@ import OwnerChairWizard from '@/components/owner/OwnerChairWizard';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
 import OwnerChairRequestSheet from '@/components/owner/OwnerChairRequestSheet';
 import OwnerStat from '@/components/owner/OwnerStat';
+import StoryShareSheet from '@/components/pro/StoryShareSheet';
+import { genererStoryFauteuil } from '@/lib/storyImage';
 import {
   Armchair, Plus, ExternalLink, Copy, EyeOff, Eye, Trash2,
-  Inbox, FileEdit, Clock, Percent, TrendingUp,
+  Inbox, FileEdit, Clock, Percent, TrendingUp, Share2, Check, Megaphone,
 } from 'lucide-react';
+
+/** Le lien public de l'annonce — celui qu'on colle partout (réseaux, groupes). */
+function lienFauteuil(r: ApiChairRental): string {
+  return `https://getchair.app/fauteuil/${r.slug}`;
+}
+
+/** Âge d'une annonce en jours — hors rendu (Date.now est impur pour React). */
+function joursDepuis(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+}
+
+/** Le meilleur prix à afficher sur la pub : mois > semaine > jour. */
+function prixPub(r: ApiChairRental): string | null {
+  if (r.price_per_month != null) return `${r.price_per_month} €/mois`;
+  if (r.price_per_week != null) return `${r.price_per_week} €/semaine`;
+  if (r.price_per_day != null) return `${r.price_per_day} €/jour`;
+  return null;
+}
+
+/**
+ * Feuille de partage d'une annonce (retour Julien 15/09/2026 : « travaille
+ * bien le partage des locations, moyen de faire de la pub, même sur les
+ * autres réseaux ») : lien à copier, partage natif, et visuel story prêt à
+ * poster sur Instagram/Facebook ou dans les groupes pro.
+ */
+function FauteuilPartageSheet({ rental, salonName, onClose, onVisuel }: {
+  rental: ApiChairRental;
+  salonName: string;
+  onClose: () => void;
+  onVisuel: () => void;
+}) {
+  const [copie, setCopie] = useState(false);
+  const lien = lienFauteuil(rental);
+
+  async function copier() {
+    try {
+      await navigator.clipboard.writeText(lien);
+      setCopie(true);
+      setTimeout(() => setCopie(false), 2000);
+    } catch { /* clipboard indisponible : le lien reste lisible dans la feuille */ }
+  }
+
+  async function partagerLien() {
+    const texte = `Fauteuil à louer chez ${salonName}${rental.city ? ` à ${rental.city}` : ''}${prixPub(rental) ? ` — ${prixPub(rental)}` : ''}. Postulez sur CHAIR :`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ text: texte, url: lien });
+        onClose();
+        return;
+      } catch { /* annulé ou refusé : la feuille reste ouverte, rien de perdu */ }
+    } else {
+      copier();
+    }
+  }
+
+  const ligneCls = 'w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-neutral-50 hover:bg-neutral-100 transition-colors text-left';
+
+  return (
+    <OwnerBottomSheet open onClose={onClose} title="Faire connaître ce fauteuil" subtitle={rental.title}>
+      <div className="space-y-2 pb-2">
+        <button onClick={partagerLien} className={ligneCls}>
+          <span className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+            <Share2 size={15} className="text-white" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[13.5px] font-bold text-neutral-900">Partager le lien</span>
+            <span className="block text-[11.5px] text-neutral-500">WhatsApp, SMS, réseaux — l&apos;annonce publique CHAIR.</span>
+          </span>
+        </button>
+
+        <button onClick={onVisuel} className={ligneCls}>
+          <span className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+            <Megaphone size={15} className="text-white" />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[13.5px] font-bold text-neutral-900">Créer le visuel de pub</span>
+            <span className="block text-[11.5px] text-neutral-500">Story 1080×1920 prête pour Instagram et Facebook.</span>
+          </span>
+        </button>
+
+        <button onClick={copier} className={ligneCls}>
+          <span className="w-9 h-9 rounded-xl bg-neutral-100 ring-1 ring-neutral-200 flex items-center justify-center flex-shrink-0">
+            {copie ? <Check size={15} className="text-emerald-600" /> : <Copy size={15} className="text-neutral-600" />}
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-[13.5px] font-bold text-neutral-900">{copie ? 'Lien copié !' : 'Copier le lien'}</span>
+            <span className="block text-[11.5px] text-neutral-500 truncate">{lien}</span>
+          </span>
+        </button>
+
+        <p className="text-[11px] text-neutral-400 leading-relaxed px-1 pt-1">
+          Astuce : les groupes Facebook de coiffeurs de votre région et les
+          stories locales sont les meilleurs endroits — le lien mène à
+          l&apos;annonce, où un coiffeur peut postuler directement.
+        </p>
+      </div>
+    </OwnerBottomSheet>
+  );
+}
 
 type TabKey = 'listings' | 'drafts' | 'requests' | 'stats';
 
@@ -43,6 +144,9 @@ export default function FauteuilsPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingRental, setEditingRental] = useState<ApiChairRental | null>(null);
   const [detailRequest, setDetailRequest] = useState<ApiChairRentalRequest | null>(null);
+  // Partage/pub d'une annonce : la feuille d'options, puis la story générée.
+  const [partage, setPartage] = useState<ApiChairRental | null>(null);
+  const [visuelPour, setVisuelPour] = useState<ApiChairRental | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000); }
@@ -227,7 +331,13 @@ export default function FauteuilsPage() {
               />
             ) : (
               <div className="space-y-2">
-                {activeListings.map((r) => (
+                {activeListings.map((r) => {
+                  // Annonce dormante : disponible depuis 14 j+ sans AUCUNE
+                  // demande — on suggère d'agir au lieu de laisser mourir.
+                  const demandes = requests.filter((q) => q.chair_rental_id === r.id).length;
+                  const ageJours = joursDepuis(r.published_at ?? r.created_at);
+                  const dormante = r.status === 'available' && demandes === 0 && ageJours >= 14;
+                  return (
                   <div key={r.id} className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 overflow-hidden">
                     <OwnerChairCard
                       bare
@@ -238,8 +348,22 @@ export default function FauteuilsPage() {
                       status={r.status}
                       onClick={() => openEdit(r)}
                     />
+                    {dormante && (
+                      <button onClick={() => setPartage(r)} className="w-full flex items-start gap-2 px-4 py-2.5 bg-amber-50 text-left hover:bg-amber-100/70 transition-colors">
+                        <Megaphone size={13} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-[11.5px] text-amber-700 leading-snug">
+                          Aucune demande en {ageJours} jours — <span className="font-bold">partagez l&apos;annonce</span>
+                          {!r.photos?.length ? ', ajoutez des photos' : ''} ou ajustez le prix.
+                        </span>
+                      </button>
+                    )}
                     <div className="flex border-t border-neutral-100 text-xs font-semibold">
-                      <button onClick={() => duplicateRental(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-neutral-600 hover:bg-neutral-50 transition-colors">
+                      {r.status !== 'disabled' && (
+                        <button onClick={() => setPartage(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-neutral-900 hover:bg-neutral-50 transition-colors">
+                          <Share2 size={12} />Partager
+                        </button>
+                      )}
+                      <button onClick={() => duplicateRental(r)} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-neutral-600 hover:bg-neutral-50 transition-colors ${r.status !== 'disabled' ? 'border-l border-neutral-100' : ''}`}>
                         <Copy size={12} />Dupliquer
                       </button>
                       <button onClick={() => toggleDisabled(r)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 border-l border-neutral-100 text-neutral-600 hover:bg-neutral-50 transition-colors">
@@ -250,7 +374,8 @@ export default function FauteuilsPage() {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </>
@@ -374,6 +499,30 @@ export default function FauteuilsPage() {
           />
         )}
       </OwnerBottomSheet>
+
+      {/* Partage / pub d'une annonce — options, puis la story générée. */}
+      {partage && !visuelPour && (
+        <FauteuilPartageSheet
+          rental={partage}
+          salonName={salon.name}
+          onClose={() => setPartage(null)}
+          onVisuel={() => setVisuelPour(partage)}
+        />
+      )}
+      {visuelPour && (
+        <StoryShareSheet
+          generer={() => genererStoryFauteuil({
+            title: visuelPour.title,
+            salonName: salon.name,
+            city: visuelPour.city ?? salon.city,
+            priceLabel: prixPub(visuelPour),
+            photoUrl: visuelPour.photos?.[0] ? resolveMediaUrl(visuelPour.photos[0]) : null,
+            slug: visuelPour.slug,
+          })}
+          lien={lienFauteuil(visuelPour)}
+          onClose={() => { setVisuelPour(null); setPartage(null); }}
+        />
+      )}
     </div>
   );
 }

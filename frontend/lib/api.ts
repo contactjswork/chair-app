@@ -701,6 +701,10 @@ export const salons = {
   show: (slug: string) => api.get<ApiSalonFull>(`/salons/${slug}`),
   mySalon: () => api.get<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] }>('/my-salon'),
   recentReviews: () => api.get<import('./types').ApiSalonRecentReview[]>('/my-salon/recent-reviews'),
+  /** Le pouls du salon — semaine, alertes membres, classement local (home BUSINESS). */
+  pulse: () => api.get<import('./types').ApiSalonPulse>('/my-salon/pulse'),
+  /** Coiffeurs de la ville qui cherchent un salon (onglet Recrutement BUSINESS). */
+  recruitmentMatches: () => api.get<import('./types').ApiRecruitmentMatch[]>('/my-salon/recruitment-matches'),
   updateMySalon: (data: Partial<ApiSalonFull>) => api.put<ApiSalonFull>('/my-salon', data),
   uploadLogo: (file: Blob) => {
     const form = new FormData();

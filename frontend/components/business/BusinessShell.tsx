@@ -3,8 +3,9 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Building2, Users, Briefcase, Armchair, Sparkles } from 'lucide-react';
+import { Home, Building2, Users, Briefcase, Armchair, Sparkles, Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationCount } from '@/contexts/NotificationContext';
 import { isProBinary } from '@/lib/appContext';
 import BusinessAppGate from '@/components/business/BusinessAppGate';
 import ChairLogo from '@/components/ui/ChairLogo';
@@ -31,6 +32,7 @@ const TABS: NavItem[] = [
 
 export default function BusinessShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { unreadCount } = useNotificationCount();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -67,12 +69,20 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
   return (
     <div className="min-h-[100dvh] bg-neutral-50">
 
-      {/* ── Header mobile — mêmes classes que ProTopBar (opaque + ombre). ── */}
+      {/* ── Header mobile — mêmes classes que ProTopBar (opaque + ombre),
+          cloche notifications comprise (Pulse du lundi, radar avis…). ── */}
       <div className="md:hidden fixed top-[var(--chair-banner-h,0px)] inset-x-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] pt-safe">
         <div className="h-14 flex items-center justify-between px-4">
           <div className="w-9" />
           <ChairLogo href="/business" size="md" business />
-          <div className="w-9" />
+          <Link href="/business/notifications" className="relative w-11 h-11 flex items-center justify-center">
+            <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-3 h-3 bg-red-500 rounded-full text-[7px] text-white font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 

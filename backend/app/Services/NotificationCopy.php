@@ -305,6 +305,22 @@ class NotificationCopy
             ],
         ],
 
+        'salon_negative_review' => [
+            self::AUDIENCE_SALON => [
+                'title'    => 'Avis à surveiller',
+                'message'  => '{coiffeur} a reçu {note}/5. Jetez-y un œil — répondre vite change tout.',
+                'fallback' => 'Un membre de votre équipe a reçu un avis en dessous de 4 étoiles.',
+            ],
+        ],
+
+        'salon_weekly_pulse' => [
+            self::AUDIENCE_SALON => [
+                'title'    => 'Votre semaine au salon',
+                'message'  => '{resume}',
+                'fallback' => 'Le bilan hebdomadaire de votre salon est prêt.',
+            ],
+        ],
+
         'invitation_accepted' => [
             self::AUDIENCE_SALON => [
                 'title'    => 'Invitation acceptée',
