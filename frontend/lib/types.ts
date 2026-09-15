@@ -1084,6 +1084,28 @@ export interface ApiRecruitmentMatch {
   tagline: string | null;
 }
 
+// ── Contrat de mise à disposition d'un fauteuil ──────────────────────
+
+export interface ApiRentalContract {
+  accepted_at: string | null;
+  salon: { name: string; siret: string | null; address: string; owner_name: string | null };
+  locataire: { name: string | null; siret: string | null; city: string | null };
+  fauteuil: {
+    title: string;
+    address: string;
+    price_per_day: number | null;
+    price_per_week: number | null;
+    price_per_month: number | null;
+    deposit_amount: number | null;
+    available_days: number[] | null;
+    equipment: ChairEquipmentKey[] | null;
+    insurance_required: boolean;
+    insurance_notes: string | null;
+    products_policy: string | null;
+    conditions: string | null;
+  };
+}
+
 // ── QR avis du salon (sticker caisse) ────────────────────────────────
 
 export interface ApiSalonScanInfo {

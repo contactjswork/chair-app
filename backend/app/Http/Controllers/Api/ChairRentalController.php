@@ -10,6 +10,7 @@ use App\Models\Salon;
 use App\Services\CloudinaryService;
 use App\Services\GeocodingService;
 use App\Services\NotificationService;
+use App\Services\StripeConnectService;
 use App\Support\PublicScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -418,6 +419,118 @@ class ChairRentalController extends Controller
     }
 
     /** GET /my-chair-requests — demandes envoyées par le coiffeur */
+    /**
+     * GET /chair-rental-requests/{id}/contract — les données du contrat de
+     * mise à disposition, réservées aux DEUX parties d'une demande ACCEPTÉE
+     * (le gérant du salon de l'annonce, ou le coiffeur demandeur). Les SIRET
+     * des deux parties y figurent : c'est un document contractuel entre eux,
+     * pas une donnée publique (PublicScope ne s'applique pas ici).
+     */
+    public function contractData(Request $request, int $id)
+    {
+        $rentalReq = ChairRentalRequest::with(['chairRental.salon.owner', 'hairdresser.user'])
+            ->where('status', 'accepted')
+            ->findOrFail($id);
+
+        $user   = $request->user();
+        $salon  = $rentalReq->chairRental?->salon;
+        $profil = $rentalReq->hairdresser;
+
+        $estGerant   = $salon && (int) $salon->owner_id === (int) $user->id;
+        $estLocataire = $profil && (int) $profil->user_id === (int) $user->id;
+        if (!$estGerant && !$estLocataire) {
+            return response()->json(['message' => 'Ce contrat ne vous concerne pas.'], 403);
+        }
+
+        $rental = $rentalReq->chairRental;
+
+        return response()->json([
+            'accepted_at' => $rentalReq->updated_at?->toDateString(),
+            'salon' => [
+                'name'    => $salon->name,
+                'siret'   => $salon->siret,
+                'address' => trim(($salon->address ? $salon->address . ', ' : '') . ($salon->postal_code ? $salon->postal_code . ' ' : '') . ($salon->city ?? '')),
+                'owner_name' => $salon->owner?->name,
+            ],
+            'locataire' => [
+                'name'  => $profil->user?->name,
+                'siret' => $profil->siret,
+                'city'  => $profil->city,
+            ],
+            'fauteuil' => [
+                'title'               => $rental->title,
+                'address'             => trim(($rental->address ? $rental->address . ', ' : '') . ($rental->city ?? '')),
+                'price_per_day'       => $rental->price_per_day,
+                'price_per_week'      => $rental->price_per_week,
+                'price_per_month'     => $rental->price_per_month,
+                'deposit_amount'      => $rental->deposit_amount,
+                'available_days'      => $rental->available_days,
+                'equipment'           => $rental->equipment,
+                'insurance_required'  => $rental->insurance_required,
+                'insurance_notes'     => $rental->insurance_notes,
+                'products_policy'     => $rental->products_policy,
+                'conditions'          => $rental->conditions,
+            ],
+        ]);
+    }
+
+    // ── Paiement via CHAIR (Stripe Connect, commission plateforme) ───────
+
+    /** POST /my-salon/stripe-connect/onboard — le gérant active les paiements. */
+    public function connectOnboard(Request $request)
+    {
+        if (!StripeConnectService::enabled()) {
+            return response()->json(['message' => 'Les paiements CHAIR ne sont pas encore ouverts — bientôt disponible.'], 503);
+        }
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+
+        return response()->json(['url' => StripeConnectService::onboardingUrl($salon)]);
+    }
+
+    /** GET /my-salon/stripe-connect/status */
+    public function connectStatus(Request $request)
+    {
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+
+        if (!StripeConnectService::enabled()) {
+            return response()->json(['available' => false, 'connected' => (bool) $salon->stripe_account_id]);
+        }
+
+        return response()->json(array_merge(['available' => true], StripeConnectService::accountStatus($salon)));
+    }
+
+    /**
+     * POST /chair-rental-requests/{id}/pay {period} — le coiffeur paie une
+     * période de SA demande acceptée. Refus propre si le salon n'a pas
+     * activé les paiements (les deux parties peuvent toujours régler en
+     * direct : le paiement CHAIR est un service, pas une obligation).
+     */
+    public function payRequest(Request $request, int $id)
+    {
+        $request->validate(['period' => 'required|in:day,week,month']);
+
+        if (!StripeConnectService::enabled()) {
+            return response()->json(['message' => 'Les paiements CHAIR ne sont pas encore ouverts — réglez directement avec le salon.'], 503);
+        }
+
+        $profile = HairdresserProfile::where('user_id', $request->user()->id)->firstOrFail();
+        $rentalReq = ChairRentalRequest::with(['chairRental.salon'])
+            ->where('hairdresser_id', $profile->id)
+            ->where('status', 'accepted')
+            ->findOrFail($id);
+
+        $salon = $rentalReq->chairRental?->salon;
+        if (!$salon?->stripe_account_id) {
+            return response()->json(['message' => 'Ce salon n\'a pas encore activé le paiement via CHAIR — réglez directement avec lui.'], 422);
+        }
+        $status = StripeConnectService::accountStatus($salon);
+        if (empty($status['charges_enabled'])) {
+            return response()->json(['message' => 'Le salon finalise l\'activation de ses paiements — réessayez bientôt.'], 422);
+        }
+
+        return response()->json(['checkout_url' => StripeConnectService::createRentalCheckout($rentalReq, $request->period)]);
+    }
+
     public function myRequests_hairdresser(Request $request)
     {
         $profile = HairdresserProfile::where('user_id', $request->user()->id)->first();

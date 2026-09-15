@@ -484,6 +484,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::put('/my-salon/rentals/{id}/photos/order',        [ChairRentalController::class, 'reorderPhotos']);
     Route::delete('/my-salon/rentals/{id}/photos',           [ChairRentalController::class, 'deletePhoto']);
     Route::get('/my-salon/rental-requests',                  [ChairRentalController::class, 'myRequests']);
+    Route::post('/my-salon/stripe-connect/onboard',          [ChairRentalController::class, 'connectOnboard']);
+    Route::get('/my-salon/stripe-connect/status',            [ChairRentalController::class, 'connectStatus']);
     Route::post('/my-salon/rental-requests/{id}/accept',     [ChairRentalController::class, 'acceptRequest']);
     Route::post('/my-salon/rental-requests/{id}/decline',    [ChairRentalController::class, 'declineRequest']);
 
@@ -508,6 +510,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
 
     // Fauteuils (coiffeur indépendant) — listing/fiche publics déplacés hors de ce groupe (voir plus haut)
     Route::post('/chair-rentals/{id}/request',               [ChairRentalController::class, 'sendRequest']);
+    Route::get('/chair-rental-requests/{id}/contract',       [ChairRentalController::class, 'contractData']);
+    Route::post('/chair-rental-requests/{id}/pay',           [ChairRentalController::class, 'payRequest']);
     Route::get('/my-chair-requests',                         [ChairRentalController::class, 'myRequests_hairdresser']);
     Route::post('/my-chair-requests/{id}/cancel',            [ChairRentalController::class, 'cancelRequest']);
 

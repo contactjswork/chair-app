@@ -847,6 +847,14 @@ export interface ChairRentalPublicParams {
 export const chairRentals = {
   // ── Gérant ──
   myRentals: () => api.get<ApiChairRental[]>('/my-salon/rentals'),
+  /** Paiements via CHAIR (Stripe Connect) — activation KYC du salon. */
+  connectOnboard: () => api.post<{ url: string }>('/my-salon/stripe-connect/onboard', {}),
+  connectStatus: () => api.get<{ available: boolean; connected: boolean; charges_enabled?: boolean; payouts_enabled?: boolean; details_submitted?: boolean }>('/my-salon/stripe-connect/status'),
+  /** Les DEUX parties d'une demande acceptée : données du contrat de mise à disposition. */
+  contract: (requestId: number) => api.get<import('./types').ApiRentalContract>(`/chair-rental-requests/${requestId}/contract`),
+  /** Coiffeur : payer une période de sa demande acceptée (Checkout Connect, commission CHAIR). */
+  pay: (requestId: number, period: 'day' | 'week' | 'month') =>
+    api.post<{ checkout_url: string }>(`/chair-rental-requests/${requestId}/pay`, { period }),
   create: (data: Partial<ApiChairRental>) => api.post<ApiChairRental>('/my-salon/rentals', data),
   update: (id: number, data: Partial<ApiChairRental>) => api.put<ApiChairRental>(`/my-salon/rentals/${id}`, data),
   remove: (id: number) => api.delete<{ ok: boolean }>(`/my-salon/rentals/${id}`),

@@ -104,6 +104,14 @@ class StripeService
     private static function onCheckoutCompleted(array $session): void
     {
         $metadata = $session['metadata'] ?? [];
+
+        // Paiement de location de fauteuil (mode payment, Stripe Connect) —
+        // rien à voir avec les abonnements : délégué et terminé.
+        if (($metadata['type'] ?? null) === 'chair_rental_payment') {
+            StripeConnectService::onRentalPaid($session);
+            return;
+        }
+
         $plan = $metadata['plan'] ?? null;
         $subscriptionId = $session['subscription'] ?? null;
         if (!$plan || !$subscriptionId) return;

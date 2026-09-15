@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Check, X, Star, ShieldCheck, ShieldAlert, ChevronRight, Send } from 'lucide-react';
+import { Check, X, Star, ShieldCheck, ShieldAlert, ChevronRight, Send, FileText } from 'lucide-react';
 import { resolveMediaUrl, type ApiChairRentalRequest, type ChairRentalRequestStatus } from '@/lib/types';
 
 const STATUS_LABELS: Record<ChairRentalRequestStatus, string> = {
@@ -127,7 +127,7 @@ export default function OwnerChairRequestSheet({ request, onAccept, onDecline, o
             </button>
           </div>
 
-          {request.status !== 'accepted' && (
+          {request.status !== 'accepted' ? (
             <div className="flex gap-2 pt-1">
               <button
                 onClick={onDecline}
@@ -142,6 +142,18 @@ export default function OwnerChairRequestSheet({ request, onAccept, onDecline, o
                 <Check size={13} />Accepter
               </button>
             </div>
+          ) : (
+            // Demande acceptée : le contrat de mise à disposition pré-rempli
+            // (protège le gérant de la requalification — clauses
+            // d'indépendance du locataire, SIRET des deux parties).
+            <a
+              href={`/contrat-fauteuil/${request.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 text-sm font-semibold bg-neutral-900 text-white py-2.5 rounded-xl hover:bg-neutral-700 transition-colors mt-1"
+            >
+              <FileText size={13} />Contrat de location
+            </a>
           )}
         </>
       )}

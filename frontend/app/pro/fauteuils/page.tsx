@@ -16,6 +16,7 @@ import OwnerStat from '@/components/owner/OwnerStat';
 import {
   Armchair, Plus, ExternalLink, Copy, EyeOff, Eye, Trash2,
   Inbox, FileEdit, Clock, Percent, TrendingUp, Share2, Check, Megaphone,
+  CreditCard, CheckCircle,
 } from 'lucide-react';
 
 /** Le lien public de l'annonce — celui qu'on colle partout (réseaux, groupes). */
@@ -135,6 +136,9 @@ export default function FauteuilsPage() {
   // Partage/pub d'une annonce : la feuille lien + partage natif.
   const [partage, setPartage] = useState<ApiChairRental | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  // Paiements via CHAIR (Stripe Connect) — état du compte du salon.
+  const [connect, setConnect] = useState<{ available: boolean; connected: boolean; charges_enabled?: boolean } | null>(null);
+  const [connectBusy, setConnectBusy] = useState(false);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000); }
 
@@ -147,7 +151,19 @@ export default function FauteuilsPage() {
         setRequests(requestsData);
       })
       .finally(() => setLoading(false));
+    chairRentals.connectStatus().then(setConnect).catch(() => {});
   }, [user]);
+
+  async function activerPaiements() {
+    setConnectBusy(true);
+    try {
+      const res = await chairRentals.connectOnboard();
+      window.location.assign(res.url);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Activation indisponible pour le moment.');
+      setConnectBusy(false);
+    }
+  }
 
   const activeListings = rentals.filter((r) => r.status !== 'draft');
   const drafts = rentals.filter((r) => r.status === 'draft');
@@ -446,6 +462,45 @@ export default function FauteuilsPage() {
             <OwnerStat icon={Percent} value={acceptanceRate !== null ? `${acceptanceRate}%` : '—'} label="Taux d’acceptation" />
             <OwnerStat icon={TrendingUp} value={activeListings.filter((r) => r.status === 'rented').length} label="Fauteuils loués" />
           </div>
+        )}
+
+        {/* ── Paiements via CHAIR (Stripe Connect, commission plateforme) —
+            visible sur l'onglet Annonces uniquement, l'endroit où le gérant
+            pense argent. Trois états honnêtes : bientôt (clés pas encore
+            actives), à activer (KYC Stripe), activé. ── */}
+        {tab === 'listings' && connect && (
+          connect.available && connect.charges_enabled ? (
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-[11.5px] font-semibold text-emerald-600">
+              <CheckCircle size={12} /> Paiements via CHAIR activés — commission 10 % prélevée automatiquement.
+            </p>
+          ) : (
+            <button
+              onClick={connect.available ? activerPaiements : undefined}
+              disabled={connectBusy || !connect.available}
+              className="mt-4 w-full flex items-center gap-3 bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4 text-left disabled:cursor-default"
+            >
+              <span className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+                <CreditCard size={16} className="text-white" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-bold text-neutral-900">
+                  {connect.available
+                    ? (connect.connected ? 'Finaliser l’activation des paiements' : 'Encaissez vos locations via CHAIR')
+                    : 'Paiements via CHAIR — bientôt'}
+                </span>
+                <span className="block text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                  {connect.available
+                    ? 'Le coiffeur paie en ligne, vous êtes viré automatiquement (commission CHAIR 10 %). Activation sécurisée par Stripe.'
+                    : 'Paiement en ligne des locations avec virement automatique — en cours d’ouverture.'}
+                </span>
+              </span>
+              {connect.available && (
+                <span className="flex-shrink-0 text-xs font-bold bg-neutral-900 text-white px-3 py-2 rounded-xl">
+                  {connectBusy ? '…' : connect.connected ? 'Reprendre' : 'Activer'}
+                </span>
+              )}
+            </button>
+          )
         )}
 
         {/* Page du monde COIFFEUR (/pro) : sous /business (onglet Fauteuils

@@ -13,6 +13,7 @@ import ChairSearchMap from '@/components/chairSearch/ChairSearchMap';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
 import {
   Armchair, MapPin, Search, X, Camera, List, Map as MapIcon, SlidersHorizontal, Check,
+  CreditCard, FileText,
 } from 'lucide-react';
 
 const DEFAULT_MAP_CENTER = { lat: 46.6, lng: 2.2 };
@@ -49,6 +50,9 @@ export default function FauteuilsALouerPage() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(EMPTY_FILTERS);
+  // Paiement d'une location acceptée via CHAIR (Stripe Connect).
+  const [payingId, setPayingId] = useState<number | null>(null);
+  const [payMsg, setPayMsg] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -82,6 +86,18 @@ export default function FauteuilsALouerPage() {
   function applyFilters() { setFilters(draftFilters); setFiltersOpen(false); }
   function resetFilters() { setDraftFilters(EMPTY_FILTERS); }
 
+  async function payer(requestId: number, period: 'day' | 'week' | 'month') {
+    setPayingId(requestId);
+    setPayMsg('');
+    try {
+      const res = await chairRentals.pay(requestId, period);
+      window.location.assign(res.checkout_url);
+    } catch (e) {
+      setPayMsg(e instanceof Error ? e.message : 'Paiement indisponible pour le moment.');
+      setPayingId(null);
+    }
+  }
+
   if (isLoading || loading) {
     return <div className="min-h-screen bg-neutral-50 flex items-center justify-center"><div className="w-5 h-5 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" /></div>;
   }
@@ -93,6 +109,63 @@ export default function FauteuilsALouerPage() {
           <h1 className="text-xl font-bold text-neutral-900">Fauteuils à louer</h1>
           <p className="text-xs text-neutral-400 mt-0.5">{filtered.length} annonce{filtered.length !== 1 ? 's' : ''} disponible{filtered.length !== 1 ? 's' : ''}</p>
         </div>
+
+        {/* ── Mes locations acceptées — payer via CHAIR + contrat. ── */}
+        {(() => {
+          const acceptees = myRequests.filter((r) => r.status === 'accepted' && r.chair_rental);
+          if (acceptees.length === 0) return null;
+          return (
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 mb-2">Mes locations acceptées</p>
+              {payMsg && (
+                <div className="mb-2 px-4 py-3 bg-amber-50 rounded-xl text-[12px] text-amber-700">{payMsg}</div>
+              )}
+              <div className="space-y-2">
+                {acceptees.map((req) => {
+                  const rental = req.chair_rental!;
+                  const periodes: { period: 'day' | 'week' | 'month'; label: string; prix: number }[] = [
+                    rental.price_per_day != null ? { period: 'day' as const, label: '1 jour', prix: rental.price_per_day } : null,
+                    rental.price_per_week != null ? { period: 'week' as const, label: '1 semaine', prix: rental.price_per_week } : null,
+                    rental.price_per_month != null ? { period: 'month' as const, label: '1 mois', prix: rental.price_per_month } : null,
+                  ].filter((p): p is NonNullable<typeof p> => p !== null);
+                  return (
+                    <div key={req.id} className="bg-white rounded-[22px] shadow-[0_4px_16px_-8px_rgba(10,10,10,0.1)] ring-1 ring-neutral-100 p-4">
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-neutral-900 truncate">{rental.title}</p>
+                          <p className="text-[11px] text-neutral-400 truncate">{rental.city ?? ''}</p>
+                        </div>
+                        <a
+                          href={`/contrat-fauteuil/${req.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-neutral-600 ring-1 ring-neutral-200 px-2.5 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
+                        >
+                          <FileText size={11} /> Contrat
+                        </a>
+                      </div>
+                      {periodes.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {periodes.map((p) => (
+                            <button
+                              key={p.period}
+                              onClick={() => payer(req.id, p.period)}
+                              disabled={payingId !== null}
+                              className="flex items-center gap-1.5 text-[11.5px] font-bold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors disabled:opacity-50"
+                            >
+                              <CreditCard size={11} />
+                              {payingId === req.id ? '…' : `Payer ${p.label} — ${p.prix.toLocaleString('fr-FR')} €`}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="flex items-center gap-2 mb-4">
           <div className="relative flex-1">
