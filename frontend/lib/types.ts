@@ -1084,6 +1084,21 @@ export interface ApiRecruitmentMatch {
   tagline: string | null;
 }
 
+// ── QR avis du salon (sticker caisse) ────────────────────────────────
+
+export interface ApiSalonScanInfo {
+  salon_name: string;
+  logo: string | null;
+  city: string | null;
+  team: {
+    id: number;
+    name: string | null;
+    avatar: string | null;
+    avg_rating: string | null;
+    reviews_count: number;
+  }[];
+}
+
 // ── Available hairdressers ───────────────────────────────────────────
 
 export interface ApiAvailableHairdresser extends ApiHairdresserProfile {

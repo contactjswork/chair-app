@@ -66,6 +66,9 @@ class PublicScope
         'suspended_at',
         'suspended_reason',
         'owner_id',
+        // Secret du QR avis imprimé à la caisse — le divulguer permettrait de
+        // frapper des jetons de scan sans être dans le salon.
+        'qr_token',
     ];
 
     /** Masque un profil coiffeur + son user imbriqué, en place. */

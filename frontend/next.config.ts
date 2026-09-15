@@ -151,6 +151,8 @@ const nextConfig: NextConfig = {
       { source: '/realisation/:id',  destination: '/app/realisation/:id', permanent: true },
       { source: '/avis/:token',      destination: '/app/avis/:token',   permanent: true },
       { source: '/scan/:token',      destination: '/app/scan/:token',   permanent: true },
+      // QR avis du salon (sticker caisse) — meme famille que /scan.
+      { source: '/salon-scan/:token', destination: '/app/salon-scan/:token', permanent: true },
       // Anciennes routes pro → /pro/...
       { source: '/dashboard',                  destination: '/pro',                   permanent: true },
       { source: '/dashboard/:path*',           destination: '/pro/:path*',            permanent: true },

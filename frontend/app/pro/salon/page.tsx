@@ -10,10 +10,12 @@ import { api, geo, salons } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull, type ApiSalonJoinRequest } from '@/lib/types';
 import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import ImageCropModal from '@/components/ui/ImageCropModal';
+import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   Building2, Users, Check, X, MapPin, ExternalLink, Edit2,
   CheckCircle, AlertCircle, UserMinus, LogOut, Search, Clock, ChevronRight, Mail, Camera,
-  ShieldCheck,
+  ShieldCheck, QrCode, Download, Copy, RefreshCw,
 } from 'lucide-react';
 
 interface SalonInvitation {
@@ -300,6 +302,97 @@ function JoinSalonPanel() {
   );
 }
 
+// ── QR avis du salon — le sticker unique à la caisse ─────────────────────────
+
+/**
+ * Feuille du QR salon (idée validée par Julien 15/09/2026) : UN QR permanent
+ * à imprimer — le client scanne, choisit qui l'a coiffé, avis vérifié pour
+ * le bon coiffeur. Téléchargeable en PNG haute résolution pour l'imprimeur ;
+ * régénérable si le sticker fuit (l'ancien devient inerte).
+ */
+function SalonQrSheet({ salonName, onClose }: { salonName: string; onClose: () => void }) {
+  const [scanUrl, setScanUrl] = useState<string | null>(null);
+  const [erreur, setErreur] = useState('');
+  const [copie, setCopie] = useState(false);
+  const [regen, setRegen] = useState(false);
+
+  useEffect(() => {
+    salons.qr()
+      .then((r) => setScanUrl(r.scan_url))
+      .catch(() => setErreur('Impossible de charger le QR — réessayez.'));
+  }, []);
+
+  function telecharger() {
+    const canvas = document.querySelector<HTMLCanvasElement>('#qr-salon-canvas canvas');
+    if (!canvas) return;
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'chair-qr-salon.png';
+    a.click();
+  }
+
+  async function copier() {
+    if (!scanUrl) return;
+    try {
+      await navigator.clipboard.writeText(scanUrl);
+      setCopie(true);
+      setTimeout(() => setCopie(false), 2000);
+    } catch { /* clipboard indisponible : le QR reste téléchargeable */ }
+  }
+
+  async function regenerer() {
+    if (!confirm('Générer un nouveau QR ? Les stickers déjà imprimés ne fonctionneront plus.')) return;
+    setRegen(true);
+    try {
+      const r = await salons.refreshQr();
+      setScanUrl(r.scan_url);
+    } catch {
+      setErreur('La régénération a échoué — réessayez.');
+    } finally {
+      setRegen(false);
+    }
+  }
+
+  return (
+    <OwnerBottomSheet open onClose={onClose} title="QR avis du salon" subtitle="Un seul QR à la caisse, pour toute l'équipe">
+      <div className="pb-2">
+        {erreur ? (
+          <p className="text-[13px] font-semibold text-red-600 py-8 text-center">{erreur}</p>
+        ) : !scanUrl ? (
+          <div className="w-[220px] h-[220px] mx-auto rounded-2xl bg-neutral-100 animate-pulse my-4" />
+        ) : (
+          <>
+            <div id="qr-salon-canvas" className="w-fit mx-auto p-4 bg-white rounded-[24px] ring-1 ring-neutral-100 shadow-[0_2px_10px_-4px_rgba(10,10,10,0.08)] my-2">
+              {/* 1024px : assez pour un sticker imprimé net — affiché réduit. */}
+              <QRCodeCanvas value={scanUrl} size={1024} level="M" includeMargin style={{ width: 200, height: 200, display: 'block' }} />
+            </div>
+            <p className="text-center text-[12px] text-neutral-500 mb-5">
+              Le client scanne, choisit qui l&apos;a coiffé chez {salonName}, et laisse
+              un avis vérifié — au bon coiffeur, à chaque fois.
+            </p>
+
+            <div className="flex gap-2">
+              <button onClick={telecharger} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-neutral-900 text-white text-[13px] font-bold rounded-2xl hover:bg-neutral-700 transition-colors">
+                <Download size={13} /> Télécharger
+              </button>
+              <button onClick={copier} className="flex-1 flex items-center justify-center gap-1.5 py-3 bg-white ring-1 ring-neutral-200 text-neutral-700 text-[13px] font-semibold rounded-2xl hover:bg-neutral-50 transition-colors">
+                {copie ? <><Check size={13} className="text-emerald-600" /> Copié !</> : <><Copy size={13} /> Copier le lien</>}
+              </button>
+            </div>
+            <button
+              onClick={regenerer}
+              disabled={regen}
+              className="w-full flex items-center justify-center gap-1.5 py-3 mt-1 text-[12px] font-semibold text-neutral-400 hover:text-neutral-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={12} className={regen ? 'animate-spin' : ''} /> Régénérer (invalide les stickers imprimés)
+            </button>
+          </>
+        )}
+      </div>
+    </OwnerBottomSheet>
+  );
+}
+
 // ── Formulaire de création de salon ──────────────────────────────────────────
 
 function CreateSalonForm({ onCreated }: { onCreated: (salon: ApiSalonFull) => void }) {
@@ -383,6 +476,7 @@ export default function DashboardSalonPage() {
   const [regionsList, setRegionsList]         = useState<string[]>([]);
   const [departmentsList, setDepartmentsList] = useState<Array<{ code: string; name: string }>>([]);
 
+  const [qrOpen, setQrOpen] = useState(false);
   const [logoCropSrc, setLogoCropSrc]   = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [coverCropSrc, setCoverCropSrc] = useState<string | null>(null);
@@ -825,6 +919,26 @@ export default function DashboardSalonPage() {
           </div>
         )}
 
+        {/* QR avis du salon — l'objet physique qui fait exister CHAIR dans
+            le salon : un sticker à la caisse, des avis pour toute l'équipe. */}
+        {isSalonOwner && (
+          <button
+            onClick={() => setQrOpen(true)}
+            className="w-full flex items-center gap-3 bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5 text-left active:scale-[0.99] transition-transform"
+          >
+            <div className="w-10 h-10 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
+              <QrCode size={16} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-neutral-900">QR avis du salon</p>
+              <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                Un seul QR à la caisse — le client choisit qui l&apos;a coiffé, l&apos;avis va au bon coiffeur.
+              </p>
+            </div>
+            <ChevronRight size={16} className="text-neutral-300 flex-shrink-0" />
+          </button>
+        )}
+
         {/* Demandes en attente */}
         {isSalonOwner && pending_requests.length > 0 && (
           <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
@@ -982,6 +1096,8 @@ export default function DashboardSalonPage() {
           )}
         </div>
       </main>
+
+      {qrOpen && <SalonQrSheet salonName={salon.name} onClose={() => setQrOpen(false)} />}
 
       {logoCropSrc && (
         <ImageCropModal imageSrc={logoCropSrc} aspect={1} shape="rect" onConfirm={(blob) => uploadLogoBlob(blob)} onCancel={() => setLogoCropSrc(null)} />

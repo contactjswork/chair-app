@@ -703,6 +703,15 @@ export const salons = {
   recentReviews: () => api.get<import('./types').ApiSalonRecentReview[]>('/my-salon/recent-reviews'),
   /** Le pouls du salon — semaine, alertes membres, classement local (home BUSINESS). */
   pulse: () => api.get<import('./types').ApiSalonPulse>('/my-salon/pulse'),
+  /** QR avis du salon (sticker caisse) — créé au premier appel. */
+  qr: () => api.get<{ qr_token: string; scan_url: string }>('/my-salon/qr'),
+  /** Nouveau secret : l'ancien sticker devient inerte. */
+  refreshQr: () => api.post<{ qr_token: string; scan_url: string }>('/my-salon/qr/refresh', {}),
+  /** Public — l'écran « Qui vous a coiffé ? » derrière le QR salon. */
+  salonScanInfo: (qrToken: string) => api.get<import('./types').ApiSalonScanInfo>(`/salon-scan/${qrToken}`),
+  /** Public — frappe un jeton de scan pour le coiffeur choisi. */
+  salonScanChoose: (qrToken: string, hairdresserId: number) =>
+    api.post<{ scan_token: string }>(`/salon-scan/${qrToken}/choose`, { hairdresser_id: hairdresserId }),
   /** Coiffeurs de la ville qui cherchent un salon (onglet Recrutement BUSINESS). */
   recruitmentMatches: () => api.get<import('./types').ApiRecruitmentMatch[]>('/my-salon/recruitment-matches'),
   updateMySalon: (data: Partial<ApiSalonFull>) => api.put<ApiSalonFull>('/my-salon', data),

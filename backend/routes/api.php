@@ -284,6 +284,11 @@ Route::get('/available-hairdressers', [AvailableHairdressersController::class, '
 
 // Fauteuils publics — consultable sans compte (seule l'envoi d'une demande exige d'être connecté + SIRET vérifié)
 Route::get('/chair-rentals', [ChairRentalController::class, 'publicList']);
+// QR avis du salon (sticker caisse) : infos publiques + frappe d'un jeton de
+// scan pour le coiffeur choisi. Throttle serre : un sticker photographie ne
+// doit pas permettre de miner des jetons en masse.
+Route::get('/salon-scan/{qrToken}',         [SalonController::class, 'qrScanInfo'])->middleware('throttle:30,1');
+Route::post('/salon-scan/{qrToken}/choose', [SalonController::class, 'qrScanChoose'])->middleware('throttle:10,1');
 Route::get('/chair-rentals/slug/{slug}', [ChairRentalController::class, 'show']);
 
 // Protected
@@ -455,6 +460,8 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     Route::get('/my-salon/recent-reviews',                 [SalonController::class, 'recentReviews']);
     Route::get('/my-salon/pulse',                          [SalonController::class, 'pulse']);
     Route::get('/my-salon/recruitment-matches',            [SalonController::class, 'recruitmentMatches']);
+    Route::get('/my-salon/qr',                             [SalonController::class, 'myQr']);
+    Route::post('/my-salon/qr/refresh',                    [SalonController::class, 'refreshQr']);
     Route::put('/my-salon',                                [SalonController::class, 'updateMySalon']);
     Route::post('/my-salon/logo',                          [SalonController::class, 'uploadLogo']);
     Route::post('/my-salon/cover',                         [SalonController::class, 'uploadCover']);

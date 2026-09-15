@@ -270,6 +270,109 @@ class SalonController extends Controller
         return response()->json($matches);
     }
 
+    // ── QR avis du salon — le sticker unique à la caisse ─────────────────
+    //
+    // Un seul QR PERMANENT pour tout le salon : le client scanne, choisit
+    // qui l'a coiffé, et le serveur frappe un jeton de scan classique pour
+    // ce coiffeur — la suite (visite vérifiée, garde-fous anti-fraude,
+    // avis, fidélité) est le circuit existant, inchangé (VisitController).
+
+    private function urlFrontend(): string
+    {
+        return rtrim(config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3000')), '/');
+    }
+
+    /** GET /my-salon/qr — le QR du salon (créé au premier appel). */
+    public function myQr(Request $request)
+    {
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+
+        if (!$salon->qr_token) {
+            $salon->forceFill(['qr_token' => bin2hex(random_bytes(24))])->save();
+        }
+
+        return response()->json([
+            'qr_token' => $salon->qr_token,
+            'scan_url' => $this->urlFrontend() . '/salon-scan/' . $salon->qr_token,
+        ]);
+    }
+
+    /** POST /my-salon/qr/refresh — révoque l'ancien sticker (nouveau secret). */
+    public function refreshQr(Request $request)
+    {
+        $salon = Salon::where('owner_id', $request->user()->id)->firstOrFail();
+        $salon->forceFill(['qr_token' => bin2hex(random_bytes(24))])->save();
+
+        return response()->json([
+            'qr_token' => $salon->qr_token,
+            'scan_url' => $this->urlFrontend() . '/salon-scan/' . $salon->qr_token,
+        ], 201);
+    }
+
+    /** GET /salon-scan/{qrToken} — public : le salon et son équipe, pour
+     *  l'écran « Qui vous a coiffé ? ». Champs publics uniquement. */
+    public function qrScanInfo(string $qrToken)
+    {
+        $salon = Salon::where('qr_token', $qrToken)->whereNull('suspended_at')->first();
+        if (!$salon) {
+            return response()->json(['message' => 'QR invalide — demandez au salon de vérifier son affiche.'], 404);
+        }
+
+        $team = HairdresserProfile::with('user')
+            ->where('salon_id', $salon->id)
+            ->where('is_hidden', false)
+            ->get()
+            ->map(fn (HairdresserProfile $p) => [
+                'id'            => $p->id,
+                'name'          => $p->user?->name,
+                'avatar'        => $p->user?->avatar,
+                'avg_rating'    => $p->avg_rating,
+                'reviews_count' => $p->reviews_count,
+            ])
+            ->values();
+
+        return response()->json([
+            'salon_name' => $salon->name,
+            'logo'       => $salon->logo,
+            'city'       => $salon->city,
+            'team'       => $team,
+        ]);
+    }
+
+    /**
+     * POST /salon-scan/{qrToken}/choose — public : le client a choisi son
+     * coiffeur, on frappe un jeton de scan éphémère pour lui et on renvoie
+     * vers le parcours existant. Équivalent exact d'être devant le QR
+     * personnel du coiffeur : tous les contrôles (compte requis, anti
+     * auto-scan, intervalle 12 h, plafond quotidien) s'appliquent à la
+     * confirmation, dans VisitController::confirmVisit.
+     */
+    public function qrScanChoose(Request $request, string $qrToken)
+    {
+        $request->validate(['hairdresser_id' => 'required|integer']);
+
+        $salon = Salon::where('qr_token', $qrToken)->whereNull('suspended_at')->first();
+        if (!$salon) {
+            return response()->json(['message' => 'QR invalide — demandez au salon de vérifier son affiche.'], 404);
+        }
+
+        // Le coiffeur choisi doit appartenir à CE salon — sinon le QR d'un
+        // salon permettrait de générer des jetons pour n'importe qui.
+        $profile = HairdresserProfile::where('id', $request->hairdresser_id)
+            ->where('salon_id', $salon->id)
+            ->where('is_hidden', false)
+            ->first();
+        if (!$profile) {
+            return response()->json(['message' => 'Ce coiffeur ne fait pas partie de ce salon.'], 422);
+        }
+
+        $token = QrTokenService::createToken($profile);
+
+        return response()->json([
+            'scan_token' => $token->token_hash,
+        ], 201);
+    }
+
     /** PUT /my-salon — mise à jour du salon (owner) */
     public function updateMySalon(Request $request)
     {
