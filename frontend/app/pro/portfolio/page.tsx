@@ -6,9 +6,8 @@ import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { api } from '@/lib/api';
 import type { ApiPost, ApiSpecialty } from '@/lib/types';
-import { getAllImagesRaw, getAfterImage, getBeforeImage, resolveMediaUrl } from '@/lib/types';
-import { genererStory } from '@/lib/storyImage';
-import StoryShareSheet from '@/components/pro/StoryShareSheet';
+import { getAllImagesRaw, resolveMediaUrl } from '@/lib/types';
+import { partagerLien } from '@/lib/partage';
 import { getStoredToken } from '@/lib/auth';
 import { PremiumBadge } from '@/components/ui/PremiumLock';
 import { SPECIALTY_ILLUSTRATIONS, HOMME_SPECIALTY_SLUGS, FEMME_SPECIALTY_SLUGS } from '@/lib/specialties';
@@ -463,20 +462,13 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
   const allImages = getAllImagesRaw(post).map((url) => resolveMediaUrl(url) ?? '').filter(Boolean);
   const coverImg = allImages[0] ?? null;
 
-  // Story Instagram : seulement pour les réalisations photo (une vidéo ne se
-  // compose pas dans un canvas). Le partage passe par StoryShareSheet —
-  // génération à l'ouverture, partage au tap suivant : iOS refuse
-  // navigator.share hors geste utilisateur, le partage direct échouait.
-  const [storyOpen, setStoryOpen] = useState(false);
-  const storyImage = post.type !== 'video' ? resolveMediaUrl(getAfterImage(post)) : null;
-  const genererStoryPost = useCallback(() => genererStory({
-    imageUrl: storyImage!,
-    beforeImageUrl: post.type === 'before_after' ? resolveMediaUrl(getBeforeImage(post)) : null,
-    name: storyMeta.name,
-    city: storyMeta.city,
-    specialty: (post.specialty ?? post.tags?.[0])?.name ?? null,
-    slug: storyMeta.slug,
-  }), [storyImage, post, storyMeta]);
+  // Partage natif du profil depuis la réalisation — plus de visuel généré
+  // (décision Julien 15/09) : la feuille du téléphone fait le reste.
+  const partagerPost = useCallback(() => {
+    if (!storyMeta.slug) return;
+    const spe = (post.specialty ?? post.tags?.[0])?.name;
+    void partagerLien(`${spe ? spe + ' par ' : ''}${storyMeta.name} — sur CHAIR :`, `https://getchair.app/coiffeur/${storyMeta.slug}`);
+  }, [post, storyMeta]);
 
   async function handleTogglePin() {
     // Garde côté client — évite l'aller-retour réseau pour le cas courant.
@@ -647,14 +639,7 @@ function PostCard({ post, specialties, reorderMode, pinnedCount, onDelete, onUpd
                 onEdit={() => setEditing(true)}
                 onToggleArchive={handleToggleArchive}
                 onDelete={handleDelete}
-                onShareStory={storyImage ? () => setStoryOpen(true) : undefined}
-              />
-            )}
-            {storyOpen && storyImage && (
-              <StoryShareSheet
-                generer={genererStoryPost}
-                lien={storyMeta.slug ? `https://getchair.app/coiffeur/${storyMeta.slug}` : null}
-                onClose={() => setStoryOpen(false)}
+                onShareStory={storyMeta.slug ? partagerPost : undefined}
               />
             )}
           </>

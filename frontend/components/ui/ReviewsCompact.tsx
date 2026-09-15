@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { Star, ShieldCheck, BadgeCheck, X, Share2 } from 'lucide-react';
-import StoryShareSheet from '@/components/pro/StoryShareSheet';
-import { genererStoryAvis } from '@/lib/storyImage';
+import { partagerLien } from '@/lib/partage';
 import StarRating from '@/components/ui/StarRating';
 import ReviewsSection from '@/components/ui/ReviewsSection';
 import BottomSheet from '@/components/ui/BottomSheet';
@@ -178,7 +177,15 @@ export default function ReviewsCompact({
 }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   // L'avis en cours de partage en story (propriétaire, avis 4★+ seulement).
-  const [avisStory, setAvisStory] = useState<ApiReview | null>(null);
+  // Partage direct d'un bel avis — plus de visuel généré (Julien 15/09).
+  const partagerAvis = (r: ApiReview) => {
+    if (!storyMeta) return;
+    const etoiles = '★'.repeat(Math.max(1, Math.min(5, r.rating)));
+    void partagerLien(
+      `${etoiles} « ${r.comment} » — avis vérifié sur CHAIR :`,
+      storyMeta.slug ? `https://getchair.app/coiffeur/${storyMeta.slug}` : 'https://getchair.app',
+    );
+  };
   // Copie locale : la réponse tout juste publiée doit apparaître sans
   // recharger la page — le coiffeur doit voir sa parole en place.
   const [liste, setListe] = useState(initialReviews);
@@ -243,7 +250,7 @@ export default function ReviewsCompact({
             <div className="divide-y divide-neutral-100 mb-4">
               {top3.map((r) => (
                 <SimpleReviewCard key={r.id} review={r} isOwner={isOwner} onReplied={surReponse}
-                  onShareStory={storyMeta && r.rating >= 4 ? () => setAvisStory(r) : undefined} />
+                  onShareStory={storyMeta && r.rating >= 4 ? () => partagerAvis(r) : undefined} />
               ))}
             </div>
           )}
@@ -265,21 +272,6 @@ export default function ReviewsCompact({
             </p>
           </div>
         </div>
-      )}
-
-      {avisStory && storyMeta && (
-        <StoryShareSheet
-          generer={() => genererStoryAvis({
-            rating: avisStory.rating,
-            comment: avisStory.comment,
-            clientFirstName: (avisStory.client?.name ?? 'Client').split(' ')[0],
-            name: storyMeta.name,
-            city: storyMeta.city,
-            slug: storyMeta.slug,
-          })}
-          lien={storyMeta.slug ? `https://getchair.app/coiffeur/${storyMeta.slug}` : null}
-          onClose={() => setAvisStory(null)}
-        />
       )}
 
       {/* Bottom sheet — tous les avis */}

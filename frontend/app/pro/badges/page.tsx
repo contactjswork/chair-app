@@ -15,8 +15,7 @@ import {
 } from 'lucide-react';
 import { BadgeMedallion, BadgeExplainSheet, METIER_LEVEL_ICONS } from '@/components/ui/ChairBadges';
 import BadgeUnlockModal from '@/components/ui/BadgeUnlockModal';
-import StoryShareSheet from '@/components/pro/StoryShareSheet';
-import { genererStoryReussite } from '@/lib/storyImage';
+import { partagerLien } from '@/lib/partage';
 
 /**
  * Progression — refonte UX complète (01/09/2026, « on comprend vraiment rien »).
@@ -231,7 +230,7 @@ export default function BadgesPage() {
   const [selectedBadge,  setSelectedBadge]  = useState<ApiChairBadge | null>(null);
   const [catalogOuvert,  setCatalogOuvert]  = useState(false);
   // « Partage ta réussite » — story de montée de palier (levier viral entre coiffeurs).
-  const [reussiteOpen,   setReussiteOpen]   = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
@@ -358,7 +357,16 @@ export default function BadgesPage() {
                   coiffeurs. On ne le propose pas au palier « Nouveau ». */}
               {bestSpecialty.level >= 1 && (
                 <button
-                  onClick={() => setReussiteOpen(true)}
+                  onClick={() => {
+                    // Partage direct — plus de visuel généré (Julien 15/09).
+                    const rang = bestSpecialty.local_rank != null && user.city
+                      ? ` (${bestSpecialty.local_rank}${bestSpecialty.local_rank === 1 ? 'ᵉʳ' : 'ᵉ'} à ${user.city})`
+                      : '';
+                    void partagerLien(
+                      `${bestSpecialty.level_name} en ${bestSpecialty.specialty_name ?? 'ma spécialité'}${rang} sur CHAIR :`,
+                      user.hairdresser_profile?.slug ? `https://getchair.app/coiffeur/${user.hairdresser_profile.slug}` : 'https://getchair.app',
+                    );
+                  }}
                   className="mt-5 w-full flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white font-semibold py-3 rounded-2xl text-[13px] transition-colors"
                 >
                   <Share2 size={14} /> Partager ma réussite
@@ -501,22 +509,6 @@ export default function BadgesPage() {
         <BadgeUnlockModal badges={newlyUnlocked} onClose={() => setCelebrationDismissed(true)} />
       )}
 
-      {reussiteOpen && bestSpecialty && (
-        <StoryShareSheet
-          generer={() => genererStoryReussite({
-            niveau: bestSpecialty.level_name,
-            specialite: bestSpecialty.specialty_name ?? 'ma spécialité',
-            rang: bestSpecialty.local_rank != null && user.city
-              ? `${bestSpecialty.local_rank}${bestSpecialty.local_rank === 1 ? 'ᵉʳ' : 'ᵉ'} à ${user.city}`
-              : null,
-            name: user.name,
-            city: user.city,
-            slug: user.hairdresser_profile?.slug ?? null,
-          })}
-          lien={user.hairdresser_profile?.slug ? `https://getchair.app/coiffeur/${user.hairdresser_profile.slug}` : null}
-          onClose={() => setReussiteOpen(false)}
-        />
-      )}
     </div>
   );
 }

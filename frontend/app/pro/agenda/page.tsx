@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import BottomSheet from '@/components/ui/BottomSheet';
-import StoryShareSheet from '@/components/pro/StoryShareSheet';
-import { genererStoryCreneau } from '@/lib/storyImage';
+import { partagerLien } from '@/lib/partage';
 import { appointments as apptApi, api, schedule as scheduleApi, specialtyProgress } from '@/lib/api';
 import type { AppointmentStatus } from '@/lib/types';
 import { type ApiAppointment, type ApiUnavailability, apptDateStr, resolveMediaUrl, getAfterImage } from '@/lib/types';
@@ -1359,7 +1358,15 @@ export default function AgendaPage() {
   const [flashPromos, setFlashPromos] = useState<FlashPromoDto[]>([]);
   const [promoSheetOpen, setPromoSheetOpen] = useState(false);
   const [mesSpecialites, setMesSpecialites] = useState<{id:number; nom:string}[]>([]);
-  const [storyCreneau, setStoryCreneau] = useState<{date:string; time:string}|null>(null);
+  // Partage direct du créneau libéré — plus de visuel généré (Julien 15/09) :
+  // texte + lien de réservation, la feuille native fait le reste.
+  const partagerCreneau = (date: string, time: string) => {
+    const slug = user?.hairdresser_profile?.slug;
+    void partagerLien(
+      `Créneau libéré ${libelleJourStory(date).toLowerCase()} à ${time} — réserve vite :`,
+      slug ? `https://getchair.app/coiffeur/${slug}` : 'https://getchair.app',
+    );
+  };
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
   const weekStart = getWeekStart(current);
@@ -1560,7 +1567,7 @@ export default function AgendaPage() {
           onStatusChange={updateStatus}
           promoPct={flashPromos.find(p=>p.date===isoDate(current))?.discount_percent ?? null}
           onPromoTap={()=>setPromoSheetOpen(true)}
-          onStoryCreneau={(time)=>setStoryCreneau({date: isoDate(current), time})}
+          onStoryCreneau={(time)=>partagerCreneau(isoDate(current), time)}
         />
       )}
       {view==='week'&&(
@@ -1620,22 +1627,6 @@ export default function AgendaPage() {
           unavail={selectedUnavail}
           onClose={()=>setSelectedUnavail(null)}
           onDeleted={(id)=>{ setUnavailabilities(prev=>prev.filter(u=>u.id!==id)); setSelectedUnavail(null); }}
-        />
-      )}
-
-      {/* Story « créneau libéré » — génération à l'ouverture, partage au tap
-          suivant (voir StoryShareSheet : iOS refuse le partage hors geste). */}
-      {storyCreneau&&(
-        <StoryShareSheet
-          generer={()=>genererStoryCreneau({
-            dateLabel: libelleJourStory(storyCreneau.date),
-            timeLabel: storyCreneau.time,
-            name: user?.name ?? '',
-            city: user?.hairdresser_profile?.city ?? null,
-            slug: user?.hairdresser_profile?.slug ?? null,
-          })}
-          lien={user?.hairdresser_profile?.slug ? `https://getchair.app/coiffeur/${user.hairdresser_profile.slug}` : null}
-          onClose={()=>setStoryCreneau(null)}
         />
       )}
 
