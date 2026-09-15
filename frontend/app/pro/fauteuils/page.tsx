@@ -13,8 +13,6 @@ import OwnerChairWizard from '@/components/owner/OwnerChairWizard';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
 import OwnerChairRequestSheet from '@/components/owner/OwnerChairRequestSheet';
 import OwnerStat from '@/components/owner/OwnerStat';
-import StoryShareSheet from '@/components/pro/StoryShareSheet';
-import { genererStoryFauteuil } from '@/lib/storyImage';
 import {
   Armchair, Plus, ExternalLink, Copy, EyeOff, Eye, Trash2,
   Inbox, FileEdit, Clock, Percent, TrendingUp, Share2, Check, Megaphone,
@@ -41,14 +39,14 @@ function prixPub(r: ApiChairRental): string | null {
 /**
  * Feuille de partage d'une annonce (retour Julien 15/09/2026 : « travaille
  * bien le partage des locations, moyen de faire de la pub, même sur les
- * autres réseaux ») : lien à copier, partage natif, et visuel story prêt à
- * poster sur Instagram/Facebook ou dans les groupes pro.
+ * autres réseaux ») : partage natif + lien à copier. Pas de visuel généré —
+ * second retour Julien : « les gens savent que s'ils partagent, ils peuvent
+ * mettre ça en story » — le lien suffit, chacun l'habille comme il veut.
  */
-function FauteuilPartageSheet({ rental, salonName, onClose, onVisuel }: {
+function FauteuilPartageSheet({ rental, salonName, onClose }: {
   rental: ApiChairRental;
   salonName: string;
   onClose: () => void;
-  onVisuel: () => void;
 }) {
   const [copie, setCopie] = useState(false);
   const lien = lienFauteuil(rental);
@@ -86,16 +84,6 @@ function FauteuilPartageSheet({ rental, salonName, onClose, onVisuel }: {
           <span className="flex-1 min-w-0">
             <span className="block text-[13.5px] font-bold text-neutral-900">Partager le lien</span>
             <span className="block text-[11.5px] text-neutral-500">WhatsApp, SMS, réseaux — l&apos;annonce publique CHAIR.</span>
-          </span>
-        </button>
-
-        <button onClick={onVisuel} className={ligneCls}>
-          <span className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center flex-shrink-0">
-            <Megaphone size={15} className="text-white" />
-          </span>
-          <span className="flex-1 min-w-0">
-            <span className="block text-[13.5px] font-bold text-neutral-900">Créer le visuel de pub</span>
-            <span className="block text-[11.5px] text-neutral-500">Story 1080×1920 prête pour Instagram et Facebook.</span>
           </span>
         </button>
 
@@ -144,9 +132,8 @@ export default function FauteuilsPage() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingRental, setEditingRental] = useState<ApiChairRental | null>(null);
   const [detailRequest, setDetailRequest] = useState<ApiChairRentalRequest | null>(null);
-  // Partage/pub d'une annonce : la feuille d'options, puis la story générée.
+  // Partage/pub d'une annonce : la feuille lien + partage natif.
   const [partage, setPartage] = useState<ApiChairRental | null>(null);
-  const [visuelPour, setVisuelPour] = useState<ApiChairRental | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3000); }
@@ -500,27 +487,12 @@ export default function FauteuilsPage() {
         )}
       </OwnerBottomSheet>
 
-      {/* Partage / pub d'une annonce — options, puis la story générée. */}
-      {partage && !visuelPour && (
+      {/* Partage / pub d'une annonce — lien public + partage natif. */}
+      {partage && (
         <FauteuilPartageSheet
           rental={partage}
           salonName={salon.name}
           onClose={() => setPartage(null)}
-          onVisuel={() => setVisuelPour(partage)}
-        />
-      )}
-      {visuelPour && (
-        <StoryShareSheet
-          generer={() => genererStoryFauteuil({
-            title: visuelPour.title,
-            salonName: salon.name,
-            city: visuelPour.city ?? salon.city,
-            priceLabel: prixPub(visuelPour),
-            photoUrl: visuelPour.photos?.[0] ? resolveMediaUrl(visuelPour.photos[0]) : null,
-            slug: visuelPour.slug,
-          })}
-          lien={lienFauteuil(visuelPour)}
-          onClose={() => { setVisuelPour(null); setPartage(null); }}
         />
       )}
     </div>
