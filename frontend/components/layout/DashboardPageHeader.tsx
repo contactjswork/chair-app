@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 interface DashboardPageHeaderProps {
@@ -20,6 +20,24 @@ export default function DashboardPageHeader({
   right,
 }: DashboardPageHeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Sous /business, les pages gérant (salon, équipe, recrutement, fauteuils)
+  // ne sont plus des sous-pages du dashboard PRO mais des ONGLETS de premier
+  // niveau de l'app CHAIR BUSINESS (bottom nav) : une flèche retour n'y a
+  // aucun sens — un onglet ne « revient » nulle part, exactement comme les
+  // onglets de CHAIR PRO. À la place : le titre d'écran posé à gauche, même
+  // graisse que les titres de la home BUSINESS.
+  const estOngletBusiness = pathname.startsWith('/business');
+
+  if (estOngletBusiness) {
+    return (
+      <header className="flex items-center justify-between gap-3 pt-1 pb-3 md:hidden">
+        <h1 className="text-[22px] font-black tracking-tight text-neutral-900">{title}</h1>
+        {right}
+      </header>
+    );
+  }
 
   function handleBack() {
     if (typeof window !== 'undefined' && window.history.length > 1) {

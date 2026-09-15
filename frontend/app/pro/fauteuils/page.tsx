@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { salons, chairRentals } from '@/lib/api';
 import { resolveMediaUrl, type ApiSalonFull, type ApiChairRental, type ApiChairRentalRequest, type ChairRentalRequestStatus } from '@/lib/types';
@@ -29,6 +30,10 @@ const REQUEST_COLUMNS: { key: ChairRentalRequestStatus; label: string }[] = [
 
 export default function FauteuilsPage() {
   const { user, isLoading: authLoading } = useRequireAuth(['salon_owner']);
+  // Onglet Fauteuils de CHAIR BUSINESS ou sous-page du dashboard PRO :
+  // même page, deux espaces — les liens vers le monde coiffeur (/pro)
+  // n'existent que dans le second.
+  const estBusiness = usePathname().startsWith('/business');
 
   const [salon, setSalon] = useState<ApiSalonFull | null>(null);
   const [rentals, setRentals] = useState<ApiChairRental[]>([]);
@@ -331,13 +336,18 @@ export default function FauteuilsPage() {
           </div>
         )}
 
-        <div className="mt-4">
-          {/* Page du même espace pro : navigation interne. target="_blank" éjectait
-              vers Safari dans l'app native, où le token n'existe pas. */}
-          <Link href="/pro/fauteuils-a-louer" className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">
-            <ExternalLink size={12} />Voir la recherche côté coiffeurs
-          </Link>
-        </div>
+        {/* Page du monde COIFFEUR (/pro) : sous /business (onglet Fauteuils
+            de CHAIR BUSINESS), ce lien ferait sortir du chrome gérant vers la
+            nav coiffeur — on ne le montre que dans l'espace PRO. Navigation
+            interne, pas de target="_blank" : ça éjectait vers Safari dans
+            l'app native, où le token n'existe pas. */}
+        {!estBusiness && (
+          <div className="mt-4">
+            <Link href="/pro/fauteuils-a-louer" className="flex items-center justify-center gap-1.5 text-xs font-semibold text-neutral-500 hover:text-neutral-700 transition-colors">
+              <ExternalLink size={12} />Voir la recherche côté coiffeurs
+            </Link>
+          </div>
+        )}
       </div>
 
       {wizardOpen && (

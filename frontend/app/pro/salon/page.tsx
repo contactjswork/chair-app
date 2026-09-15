@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { api, geo, salons } from '@/lib/api';
@@ -13,6 +13,7 @@ import ImageCropModal from '@/components/ui/ImageCropModal';
 import {
   Building2, Users, Check, X, MapPin, ExternalLink, Edit2,
   CheckCircle, AlertCircle, UserMinus, LogOut, Search, Clock, ChevronRight, Mail, Camera,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface SalonInvitation {
@@ -356,7 +357,12 @@ export default function DashboardSalonPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser', 'salon_owner']);
   const { logout } = useAuth();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const autoEdit = searchParams.get('edit') === '1';
+  // Cette page vit dans DEUX espaces (onglet Salon de CHAIR BUSINESS,
+  // sous-page du dashboard PRO) : les liens internes doivent rester dans
+  // l'espace courant pour ne jamais faire sortir du chrome BUSINESS.
+  const base = pathname.startsWith('/business') ? '/business' : '/pro';
 
   const [salonData, setSalonData] = useState<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] } | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -393,6 +399,11 @@ export default function DashboardSalonPage() {
 
   useEffect(() => {
     if (salonData?.salon) {
+      // Réinitialisation du brouillon d'édition à chaque (re)chargement du
+      // salon — l'état dérive d'une donnée fetchée, pas d'un rendu : le
+      // pattern habituel de ce codebase (violation préexistante, annotée en
+      // passant sur cette page).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEditData({
         name:          salonData.salon.name,
         description:   salonData.salon.description ?? '',
@@ -611,14 +622,29 @@ export default function DashboardSalonPage() {
           <div className="relative h-28 bg-neutral-200 group">
             {coverUrl && <Image src={coverUrl} alt={salon.name} fill className="object-cover" sizes="600px" />}
             {isSalonOwner && (
+              // Sans photo : l'invitation est TOUJOURS visible — l'ancienne
+              // révélation au survol n'existait pas au doigt, la bannière
+              // restait un rectangle gris muet sur mobile (retour Julien
+              // 14/09/2026, onglet Salon de CHAIR BUSINESS).
               <button
                 onClick={() => triggerFileInput('cover-input')}
-                className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors"
+                className={`absolute inset-0 flex items-center justify-center transition-colors ${
+                  coverUrl ? 'bg-black/0 group-hover:bg-black/30' : 'bg-black/5'
+                }`}
               >
-                <span className="opacity-0 group-hover:opacity-100 flex items-center gap-1.5 text-white text-xs font-semibold transition-opacity">
-                  {coverUploading ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Camera size={14} />}
-                  {coverUrl ? 'Changer la photo' : 'Ajouter une photo'}
+                <span className={`flex items-center gap-1.5 text-xs font-semibold transition-opacity ${
+                  coverUrl ? 'opacity-0 group-hover:opacity-100 text-white' : 'text-neutral-500'
+                }`}>
+                  {coverUploading ? <div className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" /> : <Camera size={14} />}
+                  {coverUrl ? 'Changer la photo' : 'Ajouter une photo de votre salon'}
                 </span>
+                {/* Photo déjà en place : pastille appareil photo permanente
+                    sur mobile (pas de survol au doigt). */}
+                {coverUrl && (
+                  <span className="md:hidden absolute bottom-2 right-2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center">
+                    <Camera size={14} />
+                  </span>
+                )}
               </button>
             )}
             <input id="cover-input" type="file" accept="image/*" className="hidden"
@@ -751,6 +777,46 @@ export default function DashboardSalonPage() {
           </div>
         )}
 
+        {/* Vérification du salon — le badge « Vérifié » est LE signal de
+            confiance de la fiche publique : tant qu'il manque, la marche à
+            suivre (SIRET) est affichée ici, pas enterrée dans le formulaire. */}
+        {isSalonOwner && !salon.is_verified && !editing && (
+          <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
+            {salon.verification_status === 'pending_review' ? (
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                  <Clock size={16} className="text-amber-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-neutral-900">Vérification en cours</p>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                    Votre SIRET est en cours d&apos;examen — le badge « Vérifié » apparaîtra
+                    sur votre fiche publique dès validation.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck size={16} className="text-neutral-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-neutral-900">Faites vérifier votre salon</p>
+                  <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">
+                    Renseignez votre SIRET pour obtenir le badge « Vérifié » sur votre fiche.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditing(true)}
+                  className="flex-shrink-0 text-xs font-semibold bg-neutral-900 text-white px-3 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
+                >
+                  Renseigner
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Demandes en attente */}
         {isSalonOwner && pending_requests.length > 0 && (
           <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
@@ -805,12 +871,32 @@ export default function DashboardSalonPage() {
 
         {/* Équipe actuelle */}
         <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4 mb-5">
-          <h2 className="text-sm font-bold text-neutral-900 mb-3 flex items-center gap-2">
-            <Users size={15} className="text-neutral-400" />
-            L&apos;équipe ({salon.hairdressers?.length ?? 0} coiffeur{(salon.hairdressers?.length ?? 0) > 1 ? 's' : ''})
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-neutral-900 flex items-center gap-2">
+              <Users size={15} className="text-neutral-400" />
+              L&apos;équipe ({salon.hairdressers?.length ?? 0} coiffeur{(salon.hairdressers?.length ?? 0) > 1 ? 's' : ''})
+            </h2>
+            {isSalonOwner && (
+              <Link
+                href={`${base}/equipe`}
+                className="flex items-center gap-0.5 text-xs font-semibold text-neutral-500 hover:text-neutral-900 transition-colors"
+              >
+                Gérer <ChevronRight size={13} />
+              </Link>
+            )}
+          </div>
           {(salon.hairdressers?.length ?? 0) === 0 ? (
-            <p className="text-sm text-neutral-400 text-center py-6">Aucun coiffeur dans l&apos;équipe.</p>
+            <div className="text-center py-6">
+              <p className="text-sm text-neutral-400 mb-3">Aucun coiffeur dans l&apos;équipe.</p>
+              {isSalonOwner && (
+                <Link
+                  href={`${base}/equipe`}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-4 py-2.5 rounded-xl hover:bg-neutral-700 transition-colors"
+                >
+                  <Users size={12} /> Inviter un coiffeur
+                </Link>
+              )}
+            </div>
           ) : (
             <div className="space-y-2">
               {salon.hairdressers?.map((h) => {
@@ -850,17 +936,33 @@ export default function DashboardSalonPage() {
           )}
         </div>
 
-        {/* Déconnexion (gérant) / Quitter le salon (coiffeur membre) — un seul
-            bloc, le contenu dépend du rôle plutôt que deux blocs dupliqués. */}
+        {/* Compte (gérant) / Quitter le salon (coiffeur membre) — un seul
+            bloc, le contenu dépend du rôle plutôt que deux blocs dupliqués.
+            Pour le gérant : un vrai bloc compte (l'app BUSINESS n'a pas
+            d'onglet Compte — c'est ICI que vivent son identité et sa
+            déconnexion), plus un bouton orphelin. */}
         <div className="bg-white rounded-[24px] shadow-[0_4px_18px_-8px_rgba(10,10,10,0.12)] ring-1 ring-neutral-50 p-4">
           {isSalonOwner ? (
-            <button
-              onClick={logout}
-              className="flex items-center gap-2 text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
-            >
-              <LogOut size={15} />
-              Se déconnecter
-            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                {user?.avatar ? (
+                  <Image src={resolveMediaUrl(user.avatar)!} alt="" width={40} height={40} className="object-cover" />
+                ) : (
+                  <span className="text-sm font-bold text-neutral-400">{user?.name?.[0] ?? '?'}</span>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-neutral-900 truncate">{user?.name}</p>
+                <p className="text-xs text-neutral-400 truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={logout}
+                className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-neutral-500 ring-1 ring-neutral-200 px-3 py-2 rounded-xl hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
+              >
+                <LogOut size={13} />
+                Déconnexion
+              </button>
+            </div>
           ) : (
             <button
               onClick={handleLeaveSalon}
