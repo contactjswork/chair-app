@@ -22,6 +22,24 @@ async function getRental(slug: string): Promise<ApiChairRental | null> {
   }
 }
 
+// Métadonnées de partage — l'annonce est faite pour être collée dans les
+// groupes pro et les stories : le lien doit porter titre, ville et prix.
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const rental = await getRental(slug);
+  if (!rental) return { title: 'Fauteuil à louer — CHAIR' };
+  const prix = rental.price_per_month != null ? `${rental.price_per_month} €/mois`
+    : rental.price_per_week != null ? `${rental.price_per_week} €/semaine`
+    : rental.price_per_day != null ? `${rental.price_per_day} €/jour` : null;
+  const title = ['Fauteuil à louer', rental.city, prix].filter(Boolean).join(' · ') + ' — CHAIR';
+  const description = `${rental.title}${rental.salon?.name ? ` chez ${rental.salon.name}` : ''}${rental.city ? ` à ${rental.city}` : ''}. Coiffeurs indépendants : postulez sur CHAIR.`;
+  const photo = rental.photos?.[0] ? resolveMediaUrl(rental.photos[0]) : null;
+  return {
+    title, description,
+    openGraph: { title, description, type: 'website' as const, ...(photo ? { images: [{ url: photo }] } : {}) },
+  };
+}
+
 export default async function ChairRentalPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const rental = await getRental(slug);

@@ -113,6 +113,23 @@ function TeamMemberCard({ h }: { h: ApiSalonFull['hairdressers'][number] }) {
   );
 }
 
+// Métadonnées de partage — un lien de salon collé sur WhatsApp/Google doit
+// dire qui c'est (SEO local = acquisition gratuite, sprint pré-lancement).
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const salon = await getSalon(slug);
+  if (!salon) return { title: 'Salon — CHAIR' };
+  const title = [salon.name, salon.city].filter(Boolean).join(' · ') + ' — CHAIR';
+  const description = salon.description
+    ? salon.description.slice(0, 160)
+    : `${salon.name}${salon.city ? ` à ${salon.city}` : ''} — équipe, avis vérifiés et réservation sur CHAIR.`;
+  const cover = resolveMediaUrl(salon.cover_image ?? salon.logo ?? null);
+  return {
+    title, description,
+    openGraph: { title, description, type: 'website' as const, ...(cover ? { images: [{ url: cover }] } : {}) },
+  };
+}
+
 export default async function SalonPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const salon = await getSalon(slug);

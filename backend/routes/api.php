@@ -274,6 +274,16 @@ Route::get('/invitations/{token}', [SalonInvitationController::class, 'showByTok
 
 // Salons publics
 Route::get('/salons', [SalonController::class, 'index']);
+// Slugs publics pour le sitemap du frontend (SEO) — leger, cache 1 h.
+Route::get('/sitemap-slugs', function () {
+    return \Illuminate\Support\Facades\Cache::remember('sitemap_slugs', 3600, function () {
+        return [
+            'hairdressers' => \App\Models\HairdresserProfile::where('is_hidden', false)->whereNotNull('slug')->pluck('slug'),
+            'salons'       => \App\Models\Salon::whereNull('suspended_at')->whereNotNull('slug')->pluck('slug'),
+            'rentals'      => \App\Models\ChairRental::where('status', 'available')->whereNotNull('slug')->pluck('slug'),
+        ];
+    });
+});
 Route::get('/salons/{slug}', [SalonController::class, 'show']);
 Route::get('/verify-siret', [SalonController::class, 'verifySiret'])->middleware('throttle:10,1');
 Route::get('/job-offers', [JobOfferController::class, 'index']);
