@@ -136,7 +136,7 @@ export default function BusinessHome() {
     // Alerte membre « perte de vitesse » (Pulse) : un point à faire, donc
     // À TRAITER — l'étoile montante, elle, vit dans « Votre semaine ».
     for (const a of (pulse?.alertes ?? []).filter((a) => a.type === 'baisse')) {
-      aTraiter.push({ compte: null, label: `${a.nom} n'a reçu aucun avis depuis 30 j — un point ensemble ?`, href: '/business/equipe' });
+      aTraiter.push({ compte: null, label: `${a.nom} : aucun avis en 30 j`, href: '/business/equipe' });
     }
   }
 

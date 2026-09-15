@@ -59,17 +59,17 @@ function Reveal({ children, className = '', delay = 0 }: { children: React.React
 // les rend pas exclusifs. Ce qui suit est réellement câblé aujourd'hui,
 // rien d'autre.
 const FEATURES_LIVE = [
-  { icon: BadgeCheck,  name: 'Badge Certifié CHAIR Business', desc: 'Visible sur votre fiche salon publique, à côté du nom.' },
-  { icon: Headphones,  name: 'Support prioritaire',            desc: 'Vos demandes remontent en tête de file côté équipe CHAIR.' },
+  { icon: BadgeCheck,  name: 'Badge Certifié CHAIR Business', desc: 'Sur votre fiche publique.' },
+  { icon: Headphones,  name: 'Support prioritaire',            desc: 'En tête de file.' },
 ];
 
 const COMING_SOON = [
-  { icon: BarChart3,       name: 'Statistiques d\'équipe avancées', desc: 'Performance consolidée de tous vos coiffeurs, sur une seule vue.' },
-  { icon: TrendingUp,      name: 'Mise en avant du salon',          desc: 'Un boost plafonné dans les résultats de recherche locaux.' },
-  { icon: Building2,       name: 'Multi-salons',                    desc: 'Gérer plusieurs établissements depuis un seul compte.' },
+  { icon: BarChart3,       name: 'Statistiques d\'équipe avancées', desc: 'Toute l’équipe, une vue.' },
+  { icon: TrendingUp,      name: 'Mise en avant du salon',          desc: 'Boost local.' },
+  { icon: Building2,       name: 'Multi-salons',                    desc: 'Un compte, plusieurs adresses.' },
   { icon: FileSpreadsheet, name: 'Export comptable',                desc: 'Vos données d\'activité prêtes pour votre comptable.' },
-  { icon: Megaphone,       name: 'Outils marketing',                desc: 'Modèles de communication pour vos réseaux sociaux.' },
-  { icon: Bot,             name: 'IA Premium',                      desc: 'Suggestions de contenu et de description automatiques.' },
+  { icon: Megaphone,       name: 'Outils marketing',                desc: 'Pour vos réseaux.' },
+  { icon: Bot,             name: 'IA Premium',                      desc: 'Contenus suggérés.' },
 ];
 
 const FAQ = [

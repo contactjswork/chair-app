@@ -38,10 +38,7 @@ export default function WeekCard() {
       {semaine === null ? (
         <div className="h-12 bg-neutral-100 rounded-xl animate-pulse" />
       ) : semaine.scans_7j === 0 && semaine.avis_7j === 0 ? (
-        <p className="text-[14px] text-neutral-600 leading-relaxed">
-          Aucun passage scanné ces 7 derniers jours — faites scanner votre QR
-          à chaque client : c&apos;est lui qui fait monter votre niveau.
-        </p>
+        <p className="text-[14px] text-neutral-500">Aucun passage cette semaine.</p>
       ) : (
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2.5">

@@ -39,12 +39,12 @@ const CARNET_LIMITE = 25; // miroir de ClientBookController::CARNET_GRATUIT_MAX
 const OR = '#f5b942';
 
 const FEATURES = [
-  { icon: BadgeCheck,  label: 'Badge CHAIR+',       desc: 'Visible sur votre profil, la recherche et vos réalisations.' },
-  { icon: TrendingUp,  label: 'Boost local',        desc: 'Un coup de pouce de visibilité, jamais au détriment du mérite.' },
-  { icon: BarChart3,   label: 'Analytics avancées', desc: 'Visites, favoris, conversion — sur 90 jours et 12 mois.' },
-  { icon: Film,        label: 'Vidéos',             desc: 'Le format court qui montre votre geste.' },
-  { icon: Pin,         label: 'Posts épinglés',     desc: 'Vos 3 meilleures réalisations en tête de portfolio.' },
-  { icon: Heart,       label: 'Coup de cœur',       desc: 'Éligibilité à la sélection éditoriale CHAIR.' },
+  { icon: BadgeCheck,  label: 'Badge CHAIR+',       desc: 'Partout sur votre profil.' },
+  { icon: TrendingUp,  label: 'Boost local',        desc: 'Plus de visibilité.' },
+  { icon: BarChart3,   label: 'Analytics avancées', desc: '12 mois d’historique.' },
+  { icon: Film,        label: 'Vidéos',             desc: 'Montrez votre geste.' },
+  { icon: Pin,         label: 'Posts épinglés',     desc: 'Vos 3 meilleures en tête.' },
+  { icon: Heart,       label: 'Coup de cœur',       desc: 'Sélection éditoriale.' },
 ];
 
 // Comparatif : une valeur peut être un booléen (✓/✗) ou un texte (« 25 clients »).
@@ -374,9 +374,8 @@ export default function ChairPlusPage() {
                       L&apos;outil qui fidélise
                     </p>
                     <p className="text-[18px] font-black leading-tight mb-1.5">Carnet client illimité</p>
-                    <p className="text-[13px] text-white/55 leading-relaxed">
-                      Notes privées, conseils, rythme de retour, relances — sur TOUS vos
-                      clients. Sans CHAIR+, votre carnet s&apos;arrête aux {CARNET_LIMITE} derniers.
+                    <p className="text-[13px] text-white/55">
+                      Notes, relances, rythme de retour — tous vos clients, plus seulement {CARNET_LIMITE}.
                     </p>
                   </div>
                 </div>

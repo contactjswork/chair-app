@@ -50,9 +50,7 @@ export default function TodayCard({ appointments, href = '/pro/agenda' }: Props)
       </div>
 
       {duJour.length === 0 ? (
-        <p className="text-[15px] text-neutral-500 mt-3 leading-relaxed">
-          Aucun rendez-vous prévu. Bonne journée pour publier une réalisation.
-        </p>
+        <p className="text-[15px] text-neutral-500 mt-3">Journée libre.</p>
       ) : prochain ? (
         <>
           <div className="flex items-baseline gap-3 mt-3">

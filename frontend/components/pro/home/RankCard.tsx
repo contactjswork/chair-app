@@ -123,10 +123,8 @@ export default function RankCard({ highlights, city, isIndependent }: Props) {
         <p className="text-[19px] font-bold leading-snug mt-3">
           Pas encore classé{city ? ` à ${city}` : ''}
         </p>
-        <p className="text-[13px] text-white/50 leading-relaxed mt-2">
-          {isIndependent
-            ? 'Le classement se construit sur vos rendez-vous terminés et les avis qui suivent. Publiez, et chaque client compte.'
-            : 'Le classement se construit sur les passages confirmés par vos clients. Faites scanner votre QR code en fin de prestation pour y entrer.'}
+        <p className="text-[13px] text-white/50 mt-2">
+          {isIndependent ? 'Chaque client compte.' : 'Chaque passage scanné compte.'}
         </p>
         <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-white mt-4">
           {isIndependent ? 'Voir mon portfolio' : 'Voir mon QR code'} <ChevronRight size={15} />

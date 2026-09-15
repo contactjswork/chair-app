@@ -109,13 +109,13 @@ export default function StreakCard() {
         })}
       </div>
 
-      <p className="text-[13px] text-neutral-500 mt-3.5 leading-relaxed">
+      <p className="text-[13px] text-neutral-500 mt-3.5">
         {courante === 0
-          ? 'Publiez une réalisation ou confirmez un passage pour lancer une série.'
+          ? 'Publiez pour lancer une série.'
           : actifAujourdhui
             ? record > courante
-              ? `Record : ${record} jours. Il reste ${record - courante} ${record - courante > 1 ? 'jours' : 'jour'} pour l'égaler.`
-              : 'Vous êtes à votre record. Chaque jour compte double.'
+              ? `Record : ${record} jours.`
+              : 'Votre record.'
             : 'La série est en jeu aujourd’hui.'}
       </p>
     </Link>

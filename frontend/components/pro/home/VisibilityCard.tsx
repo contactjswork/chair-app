@@ -55,10 +55,7 @@ export default function VisibilityCard({ stats, slug, name }: Props) {
         </div>
 
         {rienEncore ? (
-          <p className="text-[15px] text-neutral-500 mt-3 leading-relaxed">
-            Personne n&apos;a encore vu votre profil. Partagez-le à vos clients :
-            c&apos;est ce qui lance les avis, les abonnés et le classement.
-          </p>
+          <p className="text-[15px] text-neutral-500 mt-3">Partagez votre profil pour lancer la machine.</p>
         ) : (
           <div className="flex items-start gap-6 mt-4">
             <Chiffre valeur={vues} libelle={vues > 1 ? 'vues du profil' : 'vue du profil'} />
