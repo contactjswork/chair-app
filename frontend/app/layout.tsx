@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/Providers";
 import CookieBanner from "@/components/ui/CookieBanner";
 import AppBanner from "@/components/ui/AppBanner";
+import OfflineScreen from "@/components/ui/OfflineScreen";
 import PwaManifest from "@/components/ui/PwaManifest";
 import SiteIntro from "@/components/ui/SiteIntro";
 import { NATIVE_CLASS_BOOTSTRAP } from "@/lib/native";
@@ -87,6 +88,7 @@ export default function RootLayout({
         <AppBanner />
         <Providers>{children}</Providers>
         <CookieBanner />
+        <OfflineScreen />
       </body>
     </html>
   );
