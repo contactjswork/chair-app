@@ -239,6 +239,8 @@ class AppointmentController extends Controller
             $service->increment('visits_count');
             \App\Models\ServiceCategory::where('id', $service->category_id)->increment('visits_count');
 
+            \App\Services\EventLog::record('reservation', $clientId, ['hairdresser_id' => (int) $validated['hairdresser_id'], 'service_id' => $service->id]);
+
             // Notification → coiffeur (nouvelle réservation)
             $hairdresserProfile = \App\Models\HairdresserProfile::with('user')->find($validated['hairdresser_id']);
             if ($hairdresserProfile) {
@@ -710,6 +712,7 @@ class AppointmentController extends Controller
         // Radar gérant : un avis ≤ 3★ sur un membre d'équipe prévient le
         // patron immédiatement (voir SalonPulseService).
         SalonPulseService::notifierAvisNegatif($review);
+        \App\Services\EventLog::record('avis_verifie', $user->id, ['rating' => (int) $validated['rating']]);
 
         // Notification → coiffeur (nouvel avis reçu)
         $profile->loadMissing('user');
@@ -797,6 +800,7 @@ class AppointmentController extends Controller
 
         // Radar gérant — même règle que le dépôt d'avis client connecté.
         SalonPulseService::notifierAvisNegatif($review);
+        \App\Services\EventLog::record('avis_verifie', $clientId, ['rating' => (int) $validated['rating']]);
 
         return response()->json($review->load('hairdresser'), 201);
     }

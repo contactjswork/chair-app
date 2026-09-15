@@ -114,6 +114,8 @@ class AuthController extends Controller
                 ReferralService::attributeSignup($user, $validated['ref']);
             }
 
+            \App\Services\EventLog::record($user->role === 'client' ? 'inscription_client' : 'inscription_pro', $user->id, ['role' => $user->role]);
+
             if ($user->role === 'salon_owner') {
                 if (!empty($validated['salon_name'])) {
                     $salonSlug  = Str::slug($validated['salon_name']);

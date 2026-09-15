@@ -32,6 +32,7 @@ class SubscriptionNotifier
     /** Entitlement ouvert pour la première fois (essai lancé). */
     public static function started(Subscription $sub): void
     {
+        EventLog::record('abonnement_demarre', null, ['plan' => $sub->plan, 'subscription_id' => $sub->id]);
         self::emit($sub, 'chair_plus_started');
     }
 

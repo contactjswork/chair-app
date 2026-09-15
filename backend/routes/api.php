@@ -78,6 +78,8 @@ Route::prefix('admin/auth')->group(function () {
 
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin.auth'])->group(function () {
     Route::get('/stats',                        [AdminController::class, 'stats'])->middleware('admin.permission:dashboard.view');
+    Route::get('/map-points',                   [AdminController::class, 'mapPoints'])->middleware('admin.permission:dashboard.view');
+    Route::get('/product-events',               [AdminController::class, 'productEvents'])->middleware('admin.permission:dashboard.view');
     // Premier écran admin : "aujourd'hui"/"cette semaine" + alertes (voir
     // rapport de mission "Statistiques et Insights").
     Route::get('/dashboard/today',              [AdminController::class, 'dashboardToday'])->middleware('admin.permission:dashboard.view');

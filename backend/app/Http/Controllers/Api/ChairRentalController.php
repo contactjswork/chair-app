@@ -569,6 +569,7 @@ class ChairRentalController extends Controller
             ['chair_rental_id' => $rental->id, 'hairdresser_id' => $profile->id],
             ['status' => 'pending', 'message' => $validated['message'] ?? null]
         );
+        \App\Services\EventLog::record('demande_fauteuil', $request->user()->id, ['rental_id' => $rental->id]);
 
         // Notifier le gérant du salon
         NotificationService::send(

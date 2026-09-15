@@ -218,6 +218,7 @@ class VisitController extends Controller
         }
 
         $visit = QrTokenService::recordVisit($token, $clientUserId, $serviceName, $specialtyId);
+        \App\Services\EventLog::record('visite_verifiee', $clientUserId, ['hairdresser_id' => $token->hairdresser_id]);
 
         // La boucle se referme ICI, et nulle part ailleurs.
         //
@@ -329,6 +330,7 @@ class VisitController extends Controller
 
         // Radar gérant : avis <= 3 étoiles sur un membre d'équipe -> le patron est prévenu.
         SalonPulseService::notifierAvisNegatif($review);
+        \App\Services\EventLog::record('avis_verifie', $clientId, ['rating' => (int) $request->rating]);
 
         return response()->json(['message' => 'Avis publié avec succès.'], 201);
     }

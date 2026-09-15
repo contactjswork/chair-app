@@ -281,6 +281,7 @@ class SalonInvitationController extends Controller
         // « J'ai changé de salon » : ses abonnés et favoris le suivent.
         \App\Services\SalonMoveNotifier::annoncer($profile, $invitation->salon);
         $invitation->update(['status' => 'accepted']);
+        \App\Services\EventLog::record('invitation_equipe_acceptee', $profile->user_id, ['salon_id' => $invitation->salon_id]);
 
         NotificationService::send(
             $invitation->salon->owner_id,

@@ -34,6 +34,50 @@ class AdminController extends Controller
         return $user && $user->role === 'admin' && !$user->suspended_at;
     }
 
+    /**
+     * GET /admin/map-points — le monde CHAIR : positions des coiffeurs, des
+     * salons et des clients géolocalisés, pour la carte de l'admin. Réservé
+     * à l'admin (dashboard.view) : ces points ne sortent jamais d'ici.
+     */
+    public function mapPoints(Request $request)
+    {
+        $arrondi = fn ($rows) => $rows->map(fn ($r) => [round((float) $r->latitude, 3), round((float) $r->longitude, 3)])->values();
+
+        return response()->json([
+            'coiffeurs' => $arrondi(HairdresserProfile::where('is_hidden', false)
+                ->whereNotNull('latitude')->whereNotNull('longitude')
+                ->get(['latitude', 'longitude'])),
+            'salons' => $arrondi(Salon::whereNull('suspended_at')
+                ->whereNotNull('latitude')->whereNotNull('longitude')
+                ->get(['latitude', 'longitude'])),
+            'clients' => $arrondi(User::where('role', 'client')
+                ->whereNotNull('latitude')->whereNotNull('longitude')
+                ->get(['latitude', 'longitude'])),
+        ]);
+    }
+
+    /**
+     * GET /admin/product-events — le pouls produit : totaux et 14 derniers
+     * jours par événement (voir App\Services\EventLog pour la liste).
+     */
+    public function productEvents(Request $request)
+    {
+        $depuis = now()->subDays(14)->startOfDay();
+
+        $totaux = \DB::table('product_events')
+            ->select('name', \DB::raw('COUNT(*) as total'))
+            ->groupBy('name')->pluck('total', 'name');
+
+        $parJour = \DB::table('product_events')
+            ->where('created_at', '>=', $depuis)
+            ->select('name', \DB::raw('DATE(created_at) as jour'), \DB::raw('COUNT(*) as total'))
+            ->groupBy('name', 'jour')->orderBy('jour')->get()
+            ->groupBy('name')
+            ->map(fn ($rows) => $rows->map(fn ($r) => ['jour' => $r->jour, 'total' => (int) $r->total])->values());
+
+        return response()->json(['totaux' => $totaux, 'quatorze_jours' => $parJour]);
+    }
+
     public function stats(Request $request)
     {
         if (!$this->checkAdmin($request)) {

@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   X,
+  Globe2,
 } from 'lucide-react';
 import {
   adminApi,
@@ -120,6 +121,7 @@ function NavContent({ user, env, visibleNav, pathname, onNavigate, onLogout }: N
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, permission: PERMISSIONS.DASHBOARD_VIEW },
+  { href: '/admin/monde', label: 'Monde', icon: Globe2, permission: PERMISSIONS.DASHBOARD_VIEW },
   { href: '/admin/recherche', label: 'Recherche', icon: Search, permission: PERMISSIONS.USERS_READ },
   { href: '/admin/utilisateurs', label: 'Utilisateurs', icon: Users, permission: PERMISSIONS.USERS_READ },
   { href: '/admin/coiffeurs', label: 'Professionnels', icon: Scissors, permission: PERMISSIONS.HAIRDRESSERS_READ },
