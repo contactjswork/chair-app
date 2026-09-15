@@ -189,14 +189,14 @@ export default function ProConnexionPage() {
           className="-mt-3 mx-auto flex items-center gap-1.5 text-[12px] font-semibold text-neutral-500 hover:text-neutral-900 transition-colors"
         >
           <BadgeCheck size={13} strokeWidth={2} />
-          Un compte CHAIR BUSINESS ? Mêmes identifiants — connectez-vous ici
+          Compte CHAIR BUSINESS ? Mêmes identifiants
         </button>
 
         {/* Pont gérant → CHAIR BUSINESS (un seul compte pro pour les deux apps). */}
         <AppBridgeCard
           icon={Building2}
           title="Vous êtes gérant de salon ?"
-          subtitle="Salon, équipe, fauteuils, recrutement : tout se passe sur CHAIR BUSINESS — avec ce même compte."
+          subtitle="Salon, équipe, fauteuils — sur CHAIR BUSINESS, même compte."
           storeUrl={BUSINESS_APP_STORE_URL}
           externalUrl="https://getchair.app/business"
           internalPath="/business/connexion"

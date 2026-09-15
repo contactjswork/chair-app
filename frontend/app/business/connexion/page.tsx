@@ -103,19 +103,11 @@ export default function BusinessConnexionPage() {
               Se connecter avec mon compte CHAIR PRO
             </button>
             <p className="text-center text-[12px] text-neutral-400 leading-snug">
-              Mêmes identifiants que CHAIR PRO — c&apos;est le même compte professionnel.
+              Même compte, mêmes identifiants.
             </p>
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <div className="flex items-start gap-2.5 px-4 py-3 bg-neutral-50 ring-1 ring-neutral-100 rounded-xl">
-            <BadgeCheck size={15} className="text-neutral-500 flex-shrink-0 mt-0.5" strokeWidth={2} />
-            <p className="text-[12.5px] text-neutral-600 leading-snug">
-              Vos identifiants <span className="font-semibold text-neutral-900">CHAIR PRO</span> fonctionnent
-              ici — c&apos;est le même compte.
-            </p>
-          </div>
-
           {wrongAppMsg && !error && (
             <div className="px-4 py-3 bg-amber-50 rounded-xl text-[13px] text-amber-700">{wrongAppMsg}</div>
           )}
@@ -179,7 +171,7 @@ export default function BusinessConnexionPage() {
         <AppBridgeCard
           icon={Scissors}
           title="Vous êtes coiffeur ?"
-          subtitle="Profil, réalisations, avis, agenda : mettez en avant votre activité avec CHAIR PRO."
+          subtitle="Votre activité vit dans CHAIR PRO."
           storeUrl={PRO_APP_STORE_URL}
           externalUrl="https://getchair.app/pro"
           internalPath="/pro/connexion"

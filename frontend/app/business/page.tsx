@@ -421,8 +421,8 @@ export default function BusinessHome() {
             </p>
             <p className="text-xs text-neutral-400">
               {user?.has_hairdresser_profile
-                ? 'Profil, réalisations et agenda — même compte, autre app.'
-                : 'Créez votre profil coiffeur dans l’app CHAIR PRO — même compte.'}
+                ? 'Même compte, autre app.'
+                : 'Même compte, autre app.'}
             </p>
           </div>
           <a
