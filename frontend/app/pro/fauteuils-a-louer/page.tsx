@@ -6,8 +6,8 @@ import Image from 'next/image';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { chairRentals } from '@/lib/api';
 import {
-  resolveMediaUrl, CHAIR_SPACE_TYPES, CHAIR_EQUIPMENT_LABELS,
-  type ApiChairRental, type ApiChairRentalRequest, type ChairEquipmentKey, type ChairSpaceType,
+  resolveMediaUrl, CHAIR_EQUIPMENT_LABELS,
+  type ApiChairRental, type ApiChairRentalRequest, type ChairEquipmentKey,
 } from '@/lib/types';
 import ChairSearchMap from '@/components/chairSearch/ChairSearchMap';
 import OwnerBottomSheet from '@/components/owner/OwnerBottomSheet';
@@ -31,13 +31,12 @@ const REQUEST_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 interface Filters {
-  space_type: ChairSpaceType | '';
   min_price: string;
   max_price: string;
   equipment: ChairEquipmentKey[];
 }
 
-const EMPTY_FILTERS: Filters = { space_type: '', min_price: '', max_price: '', equipment: [] };
+const EMPTY_FILTERS: Filters = { min_price: '', max_price: '', equipment: [] };
 
 export default function FauteuilsALouerPage() {
   const { user, isLoading } = useRequireAuth(['hairdresser']);
@@ -55,7 +54,6 @@ export default function FauteuilsALouerPage() {
     if (!user) return;
     Promise.all([
       chairRentals.list({
-        space_type: filters.space_type || undefined,
         min_price: filters.min_price ? parseFloat(filters.min_price) : undefined,
         max_price: filters.max_price ? parseFloat(filters.max_price) : undefined,
         equipment: filters.equipment.length ? filters.equipment : undefined,
@@ -78,7 +76,7 @@ export default function FauteuilsALouerPage() {
   });
 
   const getMyRequest = (id: number) => myRequests.find((r) => r.chair_rental_id === id);
-  const activeFilterCount = (filters.space_type ? 1 : 0) + (filters.min_price ? 1 : 0) + (filters.max_price ? 1 : 0) + filters.equipment.length;
+  const activeFilterCount = (filters.min_price ? 1 : 0) + (filters.max_price ? 1 : 0) + filters.equipment.length;
 
   function openFilters() { setDraftFilters(filters); setFiltersOpen(true); }
   function applyFilters() { setFilters(draftFilters); setFiltersOpen(false); }
@@ -254,23 +252,8 @@ export default function FauteuilsALouerPage() {
 
       <OwnerBottomSheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtres">
         <div className="space-y-5">
-          <div>
-            <p className="text-xs font-semibold text-neutral-700 mb-2">Type d’espace</p>
-            <div className="flex flex-wrap gap-1.5">
-              {CHAIR_SPACE_TYPES.map(({ value, label }) => (
-                <button
-                  key={value}
-                  onClick={() => setDraftFilters((f) => ({ ...f, space_type: f.space_type === value ? '' : value }))}
-                  className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                    draftFilters.space_type === value ? 'bg-neutral-900 border-neutral-900 text-white' : 'bg-white border-neutral-200 text-neutral-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* Plus de filtre « type d'espace » : toutes les annonces sont des
+              fauteuils (l'étape a été retirée du wizard gérant, 15/09/2026). */}
           <div>
             <p className="text-xs font-semibold text-neutral-700 mb-2">Prix / jour</p>
             <div className="flex items-center gap-2">

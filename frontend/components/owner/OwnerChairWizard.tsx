@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Armchair, Scissors, DoorClosed, Palette, User as UserIcon,
   MapPin, PartyPopper, ShieldCheck, Star,
 } from 'lucide-react';
 import OwnerWizardShell from './OwnerWizardShell';
@@ -14,22 +13,16 @@ import AvailabilityStep from './chairWizard/AvailabilityStep';
 import PricingStep from './chairWizard/PricingStep';
 import { chairRentals } from '@/lib/api';
 import {
-  CHAIR_SPACE_TYPES, CHAIR_EQUIPMENT_LABELS, resolveMediaUrl,
-  type ApiChairRental, type ApiSalonFull, type ChairEquipmentKey, type ChairSpaceType,
+  CHAIR_EQUIPMENT_LABELS, resolveMediaUrl,
+  type ApiChairRental, type ApiSalonFull, type ChairEquipmentKey,
 } from '@/lib/types';
 
-const STEPS = ['Espace', 'Adresse', 'Photos', 'Description', 'Équipements', 'Disponibilités', 'Tarifs', 'Conditions', 'Aperçu'];
-
-const SPACE_ICONS: Record<ChairSpaceType, typeof Armchair> = {
-  chair: Armchair,
-  barber_post: Scissors,
-  private_cabin: DoorClosed,
-  coloring_corner: Palette,
-  independent_post: UserIcon,
-};
+// Plus d'étape « type d'espace » (retour Julien 15/09/2026 : « dans tous les
+// cas ce sera un fauteuil — chez un coiffeur, un barbier, peu importe ») :
+// le champ space_type reste en base pour compat mais est fixé à 'chair'.
+const STEPS = ['Adresse', 'Photos', 'Description', 'Équipements', 'Disponibilités', 'Tarifs', 'Conditions', 'Aperçu'];
 
 interface DraftState {
-  space_type: ChairSpaceType | null;
   address: string;
   city: string;
   access_instructions: string;
@@ -51,7 +44,6 @@ interface DraftState {
 
 function initialDraft(initial: ApiChairRental | null | undefined, salon: ApiSalonFull): DraftState {
   return {
-    space_type: initial?.space_type ?? null,
     address: initial?.address ?? '',
     city: initial?.city ?? salon.city ?? '',
     access_instructions: initial?.access_instructions ?? '',
@@ -98,7 +90,9 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
 
   async function persist(extra?: Partial<ApiChairRental>): Promise<ApiChairRental> {
     const payload: Partial<ApiChairRental> = {
-      space_type: data.space_type ?? undefined,
+      // Toujours 'chair' — l'étape de choix a été retirée, le backend exige
+      // encore la valeur à la création (voir ChairRental::SPACE_TYPES).
+      space_type: 'chair',
       address: data.address || undefined,
       city: data.city || undefined,
       access_instructions: data.access_instructions || undefined,
@@ -177,10 +171,9 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
 
   const nextDisabled = (() => {
     switch (step) {
-      case 0: return !data.space_type;
-      case 1: return !data.city.trim();
-      case 3: return !data.title.trim();
-      case 6: return !data.price_per_day && !data.price_per_week && !data.price_per_month;
+      case 0: return !data.city.trim();
+      case 2: return !data.title.trim();
+      case 5: return !data.price_per_day && !data.price_per_week && !data.price_per_month;
       default: return false;
     }
   })();
@@ -228,34 +221,6 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
 
       {step === 0 && (
         <div>
-          <h2 className="text-lg font-bold text-neutral-900 mb-1">Quel type d’espace louez-vous ?</h2>
-          <p className="text-sm text-neutral-500 mb-5">Ça aide les coiffeurs indépendants à trouver exactement ce qu’il leur faut.</p>
-          <div className="space-y-3">
-            {CHAIR_SPACE_TYPES.map(({ value, label }) => {
-              const Icon = SPACE_ICONS[value];
-              const active = data.space_type === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => patch({ space_type: value })}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
-                    active ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-neutral-200 hover:border-neutral-300'
-                  }`}
-                >
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${active ? 'bg-white/10' : 'bg-neutral-100'}`}>
-                    <Icon size={20} strokeWidth={1.75} />
-                  </div>
-                  <span className="font-semibold text-sm">{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {step === 1 && (
-        <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Où se trouve l’espace ?</h2>
           <p className="text-sm text-neutral-500 mb-5 flex items-center gap-1.5"><MapPin size={13} />Repris de {salon.name} par défaut — modifiable si besoin.</p>
           <div className="space-y-4">
@@ -275,7 +240,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 2 && (
+      {step === 1 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Ajoutez des photos</h2>
           <p className="text-sm text-neutral-500 mb-5">Les annonces avec plusieurs photos reçoivent bien plus de demandes.</p>
@@ -289,7 +254,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 3 && (
+      {step === 2 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Décrivez votre espace</h2>
           <p className="text-sm text-neutral-500 mb-5">Un bon titre est court et concret ; la description donne envie et rassure.</p>
@@ -312,7 +277,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Quels équipements sont inclus ?</h2>
           <p className="text-sm text-neutral-500 mb-5">Sélectionnez tout ce qui est disponible sur place.</p>
@@ -322,7 +287,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 5 && (
+      {step === 4 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Quand l’espace est-il disponible ?</h2>
           <p className="text-sm text-neutral-500 mb-5">Une base hebdomadaire, avec la possibilité de bloquer des dates précises.</p>
@@ -339,7 +304,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 6 && (
+      {step === 5 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Fixez votre tarif</h2>
           <p className="text-sm text-neutral-500 mb-5">Au moins un tarif est requis — les autres sont optionnels.</p>
@@ -353,7 +318,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 7 && (
+      {step === 6 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Conditions de location</h2>
           <p className="text-sm text-neutral-500 mb-5">Ce que le locataire doit savoir avant de faire une demande.</p>
@@ -381,7 +346,7 @@ export default function OwnerChairWizard({ salon, initial, onClose, onSaved }: P
         </div>
       )}
 
-      {step === 8 && (
+      {step === 7 && (
         <div>
           <h2 className="text-lg font-bold text-neutral-900 mb-1">Aperçu de votre annonce</h2>
           <p className="text-sm text-neutral-500 mb-5">Voici ce que verra un coiffeur indépendant.</p>

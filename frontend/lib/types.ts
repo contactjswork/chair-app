@@ -836,24 +836,49 @@ export const CHAIR_SPACE_TYPES: { value: ChairSpaceType; label: string }[] = [
 ];
 
 export type ChairEquipmentKey =
-  | 'mirror' | 'premium_chair' | 'sink' | 'wifi' | 'ac' | 'heating' | 'parking'
-  | 'break_room' | 'products_included' | 'card_terminal' | 'city_center' | 'near_station' | 'pmr';
+  | 'mirror' | 'premium_chair' | 'sink' | 'dryer' | 'tools_included' | 'storage'
+  | 'coloring_space' | 'products_included' | 'towels_service' | 'sterilizer' | 'product_showcase'
+  | 'wifi' | 'card_terminal' | 'break_room' | 'ac' | 'heating'
+  | 'city_center' | 'near_station' | 'parking' | 'pmr' | 'flexible_hours';
 
+// Miroir de ChairRental::EQUIPMENT_OPTIONS — enrichi métier le 15/09/2026
+// (sèche-cheveux, coloration, serviettes, stérilisateur, rangement, vitrine,
+// horaires libres) : « pas fou pour un salon de coiffure » avant ça.
 export const CHAIR_EQUIPMENT_LABELS: Record<ChairEquipmentKey, string> = {
+  // Le poste de travail
   mirror: 'Grand miroir',
   premium_chair: 'Fauteuil premium',
   sink: 'Bac à shampoing',
+  dryer: 'Sèche-cheveux & casque',
+  tools_included: 'Matériel fourni',
+  storage: 'Rangement fermé',
+  // Technique & produits
+  coloring_space: 'Espace coloration',
+  products_included: 'Produits inclus',
+  towels_service: 'Serviettes fournies',
+  sterilizer: 'Stérilisateur',
+  product_showcase: 'Vitrine pour vos produits',
+  // Confort du salon
   wifi: 'Wi-Fi',
+  card_terminal: 'Terminal CB',
+  break_room: 'Salle de pause',
   ac: 'Climatisation',
   heating: 'Chauffage',
-  parking: 'Parking',
-  break_room: 'Salle de pause',
-  products_included: 'Produits inclus',
-  card_terminal: 'Terminal CB',
+  // Accès & emplacement
   city_center: 'Centre-ville',
   near_station: 'Gare proche',
+  parking: 'Parking',
   pmr: 'Accès PMR',
+  flexible_hours: 'Horaires libres',
 };
+
+/** Groupes d'équipements affichés dans le wizard — l'ordre raconte le métier. */
+export const CHAIR_EQUIPMENT_GROUPS: { titre: string; keys: ChairEquipmentKey[] }[] = [
+  { titre: 'Le poste de travail',   keys: ['mirror', 'premium_chair', 'sink', 'dryer', 'tools_included', 'storage'] },
+  { titre: 'Technique & produits',  keys: ['coloring_space', 'products_included', 'towels_service', 'sterilizer', 'product_showcase'] },
+  { titre: 'Confort du salon',      keys: ['wifi', 'card_terminal', 'break_room', 'ac', 'heating'] },
+  { titre: 'Accès & emplacement',   keys: ['city_center', 'near_station', 'parking', 'pmr', 'flexible_hours'] },
+];
 
 /** Hypothèse produit — taux plateforme utilisé pour l'estimation de revenu affichée au gérant, aucun paiement réel ne transite (Stripe Connect non branché). Doit rester identique à ChairRental::COMMISSION_RATE côté backend. */
 export const CHAIR_COMMISSION_RATE = 0.10;
