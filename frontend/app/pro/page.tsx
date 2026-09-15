@@ -26,6 +26,7 @@ import CompletionCard from '@/components/pro/home/CompletionCard';
 import FirstStepsCard, { type Geste } from '@/components/pro/home/FirstStepsCard';
 import VisibilityCard from '@/components/pro/home/VisibilityCard';
 import { completionFromProfile } from '@/lib/profileCompletion';
+import { partagerLien } from '@/lib/partage';
 import ProModeSwitcher from '@/components/layout/ProModeSwitcher';
 import { CARTE, CARTE_TAP, MICRO_TITRE } from '@/lib/proStyle';
 
@@ -52,6 +53,13 @@ export default function CockpitPage() {
   const [nextBadges,    setNextBadges]    = useState<ApiNextBadge[]>([]);
   const [unlockedBadges, setUnlockedBadges] = useState<ApiChairBadge[]>([]);
   const [badgeCatalogueTotal, setBadgeCatalogueTotal] = useState(0);
+  // « Partager votre profil » (checklist) — mémorisé en localStorage, lu
+  // après montage (SSR sans window), même pattern que le reste de la home.
+  const [profilPartage, setProfilPartage] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (localStorage.getItem('chair_profil_partage') === '1') setProfilPartage(true);
+  }, []);
 
   const isIndependent = user?.hairdresser_profile?.is_independent !== false;
 
@@ -112,6 +120,15 @@ export default function CockpitPage() {
     { libelle: 'Ajouter votre photo de profil', fait: !!user.avatar, href: '/pro/profil' },
     { libelle: 'Compléter votre profil', fait: (completion?.pct ?? 0) >= 100, href: '/pro/profil' },
     { libelle: 'Publier 3 réalisations', fait: posts.length >= 3, href: '/pro/portfolio' },
+    {
+      libelle: 'Partager votre profil',
+      fait: profilPartage,
+      action: () => {
+        void partagerLien('Mon profil coiffeur sur CHAIR :', `https://getchair.app/coiffeur/${profile?.slug ?? ''}`);
+        localStorage.setItem('chair_profil_partage', '1');
+        setProfilPartage(true);
+      },
+    },
     { libelle: 'Valider votre premier passage client', fait: (fullProfile?.visits_count ?? 0) >= 1, href: '/pro/mon-qr' },
     { libelle: 'Décrocher un premier avis vérifié', fait: (stats?.reviews_count ?? 0) >= 1, href: '/pro/mon-qr' },
   ];
@@ -155,6 +172,12 @@ export default function CockpitPage() {
         </h1>
         <span className="text-[12px] text-neutral-400 capitalize shrink-0">{todayDateStr}</span>
       </div>
+
+      {/* ══════════ Bien démarrer — EN TÊTE tant que le profil n'est pas
+          lancé : pour un nouveau coiffeur, rien d'autre ne compte. ══════════ */}
+      {!dataLoading && !lancementFini && (
+        <div className="mb-3"><FirstStepsCard gestes={gestes} /></div>
+      )}
 
       {/* ══════════ Où je me situe ══════════
           En tête, et volontairement. C'est le seul écran de l'app qui
@@ -205,9 +228,8 @@ export default function CockpitPage() {
               catalogueTotal={badgeCatalogueTotal}
             />
 
-            {/* Lancement d'abord ; la complétion fine ne prend le relais
-                qu'une fois les cinq gestes faits. */}
-            {!lancementFini && <FirstStepsCard gestes={gestes} />}
+            {/* La complétion fine prend le relais une fois le lancement
+                fini (la checklist vit en tête de page jusque-là). */}
             {lancementFini && completion && <CompletionCard completion={completion} />}
           </>
         )}
