@@ -148,24 +148,42 @@ export default function ClientOnboardingPage() {
               </h1>
             </div>
 
-            {/* Cartes principales — flex-1 pour remplir */}
+            {/* Cartes principales — de VRAIES photos (passe Apple 16/09) :
+                les images des spécialités (Cloudinary, administrables) plein
+                cadre, l'illustration statique en simple repli. */}
             <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
               {([
-                { g: 'femme' as Gender, label: 'Femme',  sub: 'Couleurs, coupes, textures', icon: '/onboarding/coiffure-femme.png' },
-                { g: 'homme' as Gender, label: 'Homme',  sub: 'Barber, dégradés, styles',   icon: '/onboarding/coiffure-homme.png' },
-              ]).map(({ g, label, sub, icon }) => (
-                <button
-                  key={g as string}
-                  onClick={() => pickGender(g)}
-                  className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-neutral-100 bg-neutral-50 hover:border-neutral-300 hover:bg-neutral-100 active:scale-[0.96] transition-all duration-150"
-                >
-                  <Image src={icon} alt={label} width={90} height={90} className="object-contain mix-blend-multiply" />
-                  <div className="text-center px-2">
-                    <p className="text-[16px] font-bold text-neutral-900">{label}</p>
-                    <p className="text-[11px] text-neutral-400 mt-0.5 leading-snug">{sub}</p>
-                  </div>
-                </button>
-              ))}
+                { g: 'femme' as Gender, label: 'Femme', sub: 'Couleurs, coupes, textures', slug: 'coupe-femme', icon: '/onboarding/coiffure-femme.png' },
+                { g: 'homme' as Gender, label: 'Homme', sub: 'Barber, dégradés, styles',   slug: 'coupe-homme', icon: '/onboarding/coiffure-homme.png' },
+              ]).map(({ g, label, sub, slug, icon }) => {
+                const photo = liveSpecialties.find((s) => s.slug === slug)?.image_url;
+                return (
+                  <button
+                    key={g as string}
+                    onClick={() => pickGender(g)}
+                    className="relative overflow-hidden rounded-[24px] active:scale-[0.96] transition-transform duration-150 bg-neutral-50 border border-neutral-100"
+                  >
+                    {photo ? (
+                      <>
+                        <Image src={photo} alt={label} fill sizes="50vw" className="object-cover" />
+                        <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                        <span className="absolute bottom-4 inset-x-2 text-center">
+                          <span className="block text-[17px] font-bold text-white">{label}</span>
+                          <span className="block text-[11px] text-white/70 mt-0.5 leading-snug">{sub}</span>
+                        </span>
+                      </>
+                    ) : (
+                      <span className="flex flex-col items-center justify-center gap-3 h-full">
+                        <Image src={icon} alt={label} width={90} height={90} className="object-contain mix-blend-multiply" />
+                        <span className="text-center px-2">
+                          <span className="block text-[16px] font-bold text-neutral-900">{label}</span>
+                          <span className="block text-[11px] text-neutral-400 mt-0.5 leading-snug">{sub}</span>
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Options secondaires */}

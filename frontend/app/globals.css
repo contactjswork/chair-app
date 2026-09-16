@@ -313,3 +313,24 @@ html.dark .from-white { --tw-gradient-from: #17171a; }
 html.dark .via-white  { --tw-gradient-via: #17171a; }
 html.dark .to-white   { --tw-gradient-to: #17171a; }
 html.dark .via-white\/95 { --tw-gradient-via: rgba(23, 23, 26, 0.95); }
+
+
+/* ── Le geste (passe Apple 16/09/2026) — apparition douce au CHARGEMENT
+   uniquement. CSS pur, aucun IntersectionObserver : la version au scroll a
+   été retirée sur demande de Julien (cartes bloquées à mi-chemin sur
+   iPhone) ; ici l'animation joue une fois au montage, aucun état
+   intermédiaire possible. `backwards` : l'élément reste invisible pendant
+   son délai. */
+@keyframes chair-entree {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.anim-entree   { animation: chair-entree 0.45s ease-out backwards; }
+.anim-entree-1 { animation-delay: 0.04s; }
+.anim-entree-2 { animation-delay: 0.09s; }
+.anim-entree-3 { animation-delay: 0.14s; }
+.anim-entree-4 { animation-delay: 0.19s; }
+.anim-entree-5 { animation-delay: 0.24s; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-entree { animation: none; }
+}

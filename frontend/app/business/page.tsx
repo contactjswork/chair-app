@@ -223,7 +223,7 @@ export default function BusinessHome() {
 
       {/* ══ À TRAITER — le bloc roi, visible sans scroller. ══ */}
       {aTraiter.length > 0 ? (
-        <div className={CARTE}>
+        <div className={`${CARTE} anim-entree anim-entree-1`}>
           <p className={`${MICRO_TITRE} px-5 pt-4`}>À traiter</p>
           <div className="mt-2 pb-1.5">
             {aTraiter.map((t, i) => (
@@ -290,7 +290,7 @@ export default function BusinessHome() {
         if (!sem || (sem.avis === 0 && !etoile && !rangLocal)) return null;
         const delta = sem.avis - sem.avis_precedent;
         return (
-          <div className={`${CARTE} p-5`}>
+          <div className={`${CARTE} p-5 anim-entree anim-entree-2`}>
             <p className={`${MICRO_TITRE} mb-3`}>Votre semaine</p>
             {sem.avis > 0 && (
               <div className="flex items-baseline gap-2 flex-wrap">
@@ -335,7 +335,7 @@ export default function BusinessHome() {
 
       {/* ══ MON ÉQUIPE — des visages, pas des chiffres. ══ */}
       {team.length > 0 ? (
-        <div className={`${CARTE} p-5`}>
+        <div className={`${CARTE} p-5 anim-entree anim-entree-3`}>
           <div className="flex items-center justify-between mb-3">
             <p className={MICRO_TITRE}>Mon équipe</p>
             <Link href="/business/equipe" className="flex items-center text-neutral-300 hover:text-neutral-500 transition-colors -m-2 p-2">

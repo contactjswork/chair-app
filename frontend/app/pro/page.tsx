@@ -176,7 +176,7 @@ export default function CockpitPage() {
       {/* ══════════ Bien démarrer — EN TÊTE tant que le profil n'est pas
           lancé : pour un nouveau coiffeur, rien d'autre ne compte. ══════════ */}
       {!dataLoading && !lancementFini && (
-        <div className="mb-3"><FirstStepsCard gestes={gestes} /></div>
+        <div className="mb-3 anim-entree"><FirstStepsCard gestes={gestes} /></div>
       )}
 
       {/* ══════════ Où je me situe ══════════
@@ -186,7 +186,7 @@ export default function CockpitPage() {
       {dataLoading ? (
         <div className="h-48 bg-neutral-100 rounded-[24px] animate-pulse" />
       ) : (
-        <RankCard highlights={specialtyHighlights} city={profile?.city ?? null} isIndependent={isIndependent} />
+        <div className="anim-entree anim-entree-1"><RankCard highlights={specialtyHighlights} city={profile?.city ?? null} isIndependent={isIndependent} /></div>
       )}
 
       {/* ══════════ Ma journée ══════════ */}
@@ -240,7 +240,7 @@ export default function CockpitPage() {
             relief, coins à 28. Les gros titres de section pesaient autant que
             « Bonjour Julien » et écrasaient la hiérarchie. */}
         {!dataLoading && (
-          <div className={`${CARTE} p-5`}>
+          <div className={`${CARTE} p-5 anim-entree anim-entree-3`}>
             <div className="flex items-center justify-between gap-3 mb-1">
               <p className={MICRO_TITRE}>Ma vitrine</p>
               <Link href="/pro/portfolio" className="relative before:absolute before:-inset-2 before:content-[''] text-neutral-300 active:text-neutral-500 transition-colors">
@@ -260,7 +260,7 @@ export default function CockpitPage() {
             l'app, donc « 0 € » sur l'accueil d'un coiffeur qui travaille
             était simplement faux. */}
         {!dataLoading && stats && (
-          <VisibilityCard stats={stats} slug={profile?.slug ?? null} name={firstName} />
+          <div className="anim-entree anim-entree-4"><VisibilityCard stats={stats} slug={profile?.slug ?? null} name={firstName} /></div>
         )}
 
         {/* ══════════ CHAIR+ ══════════
