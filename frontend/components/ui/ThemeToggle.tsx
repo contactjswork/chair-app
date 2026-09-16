@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Monitor, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { applyThemeChoice, getThemeChoice, type ThemeChoice } from '@/lib/theme';
 
 /**
@@ -12,9 +12,8 @@ export default function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice());
 
   const CHOIX: { valeur: ThemeChoice; icone: typeof Sun; label: string }[] = [
-    { valeur: 'system', icone: Monitor, label: 'Apparence système' },
-    { valeur: 'light',  icone: Sun,     label: 'Apparence claire' },
-    { valeur: 'dark',   icone: Moon,    label: 'Apparence sombre' },
+    { valeur: 'light', icone: Sun,  label: 'Apparence claire' },
+    { valeur: 'dark',  icone: Moon, label: 'Apparence sombre' },
   ];
 
   return (

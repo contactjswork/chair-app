@@ -654,9 +654,8 @@ function ThemePicker() {
   return (
     <div className="flex gap-2">
       {([
-        { valeur: 'system', libelle: 'Système' },
-        { valeur: 'light',  libelle: 'Clair' },
-        { valeur: 'dark',   libelle: 'Sombre' },
+        { valeur: 'light', libelle: 'Clair' },
+        { valeur: 'dark',  libelle: 'Sombre' },
       ] as const).map(({ valeur, libelle }) => (
         <button key={valeur}
           onClick={() => { applyThemeChoice(valeur); setTheme(valeur); }}
