@@ -191,16 +191,34 @@ export default function BusinessHome() {
           </h1>
           <span className="text-[12px] text-neutral-400 capitalize shrink-0">{todayDateStr}</span>
         </div>
-        <Link href="/business/salon" className="mt-1 inline-flex items-center gap-2 group">
-          <span className="relative w-7 h-7 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center flex-shrink-0">
-            {logoUrl
-              ? <Image src={logoUrl} alt="" fill className="object-cover" sizes="28px" />
-              : <Building2 size={13} className="text-neutral-400" />
-            }
-          </span>
-          <span className="text-[13px] font-semibold text-neutral-500 group-hover:text-neutral-900 transition-colors truncate">{salon.name}</span>
-          <ChevronRight size={14} className="text-neutral-300 flex-shrink-0" />
-        </Link>
+        {/* La photo du salon comme matière (passe Apple 16/09) : quand elle
+            existe, elle ouvre la page — sinon la ligne sobre habituelle. */}
+        {salon.cover_image ? (
+          <Link href="/business/salon" className="relative block mt-3 h-24 rounded-[24px] overflow-hidden active:scale-[0.99] transition-transform">
+            <Image src={resolveMediaUrl(salon.cover_image)!} alt="" fill className="object-cover" sizes="672px" />
+            <span className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+            <span className="absolute bottom-3 left-4 right-4 flex items-center gap-2">
+              {logoUrl && (
+                <span className="relative w-6 h-6 rounded-full overflow-hidden ring-1 ring-white/40 flex-shrink-0">
+                  <Image src={logoUrl} alt="" fill className="object-cover" sizes="24px" />
+                </span>
+              )}
+              <span className="text-[14px] font-bold text-white truncate">{salon.name}</span>
+              <ChevronRight size={14} className="text-white/60 flex-shrink-0 ml-auto" />
+            </span>
+          </Link>
+        ) : (
+          <Link href="/business/salon" className="mt-1 inline-flex items-center gap-2 group">
+            <span className="relative w-7 h-7 rounded-full bg-neutral-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+              {logoUrl
+                ? <Image src={logoUrl} alt="" fill className="object-cover" sizes="28px" />
+                : <Building2 size={13} className="text-neutral-400" />
+              }
+            </span>
+            <span className="text-[13px] font-semibold text-neutral-500 group-hover:text-neutral-900 transition-colors truncate">{salon.name}</span>
+            <ChevronRight size={14} className="text-neutral-300 flex-shrink-0" />
+          </Link>
+        )}
       </div>
 
       {/* ══ À TRAITER — le bloc roi, visible sans scroller. ══ */}

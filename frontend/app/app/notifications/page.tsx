@@ -239,7 +239,7 @@ export default function NotificationsPage() {
           <EmptyState
             icon={Bell}
             title="Reste informé"
-            subtitle="Connecte-toi pour voir tes notifications : réservations, avis et nouveaux abonnés."
+            subtitle="Connecte-toi pour les voir."
             action={
               <div className="flex flex-col items-center gap-3">
                 <PrimaryButton href="/connexion?returnTo=%2Fapp%2Fnotifications" icon={<LogIn size={15} />}>
@@ -290,7 +290,7 @@ export default function NotificationsPage() {
             <EmptyState
               icon={Bell}
               title="Rien à signaler"
-              subtitle="Réservations, avis et nouveaux abonnés apparaîtront ici."
+              subtitle="Tout arrivera ici."
             />
           )}
 

@@ -273,7 +273,7 @@ export default function RecrutementPage() {
               <OwnerEmptyState
                 icon={Briefcase}
                 title="Aucune offre publiée."
-                subtitle="Créez votre première offre pour attirer des coiffeurs."
+                subtitle="Attirez des coiffeurs."
                 action={{ label: 'Créer une offre', onClick: openCreate, icon: Plus }}
               />
             ) : (
@@ -361,7 +361,7 @@ export default function RecrutementPage() {
               <OwnerEmptyState
                 icon={Briefcase}
                 title="Aucune candidature reçue."
-                subtitle="Les candidatures apparaîtront ici dès qu'un coiffeur postule."
+                subtitle="Elles arriveront ici."
               />
             ) : (
               <div className="space-y-3">

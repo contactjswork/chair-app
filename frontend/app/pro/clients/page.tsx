@@ -256,7 +256,7 @@ export default function ProClientsPage() {
           <EmptyState
             icon={Users}
             title="Pas encore de client dans le carnet"
-            subtitle="Vos clients apparaissent ici dès leur premier rendez-vous ou leur premier passage scanné."
+            subtitle="Dès le premier passage."
           />
         ) : (
           <div className={`${CARTE} overflow-hidden divide-y divide-neutral-50`}>

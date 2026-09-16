@@ -58,8 +58,10 @@ function StatCard({
         <Icon size={15} className="text-neutral-400" strokeWidth={1.5} />
         {trend && <Trend direction={trend.direction} pct={trend.pct} />}
       </div>
-      <p className="text-2xl font-bold text-neutral-900 leading-none">{value}</p>
-      <p className="text-xs font-medium text-neutral-500 mt-1">{label}</p>
+      {/* Le chiffre EST le design (passe Apple 16/09) : géant, tabulaire,
+          libellé minuscule en capitales dessous. */}
+      <p className="text-[34px] font-bold text-neutral-900 leading-none tracking-tight tabular-nums">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400 mt-1.5">{label}</p>
       {context && <p className="text-[10px] text-neutral-400 mt-0.5 leading-snug">{context}</p>}
     </div>
   );
@@ -322,7 +324,7 @@ export default function PerformancePage() {
                 <div className="mt-3">
                   <PremiumLockCard
                     title="Vues réelles & conversion"
-                    subtitle="Visites du profil (pas seulement les RDV) et taux de conversion en rendez-vous, jusqu'à 90 jours d'historique."
+                    subtitle="Visites, conversion, 90 jours d'historique."
                     compact
                   />
                 </div>
@@ -411,7 +413,7 @@ export default function PerformancePage() {
                 ) : (
                   <PremiumLockCard
                     title="Analytics avancées"
-                    subtitle="Services les plus réservés, réalisations qui marchent le mieux, meilleurs jours/heures et croissance des favoris."
+                    subtitle="Vos services et créneaux qui marchent."
                   />
                 )}
               </section>

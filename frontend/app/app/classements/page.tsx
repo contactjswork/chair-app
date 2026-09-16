@@ -630,7 +630,7 @@ export default function ClassementsPage() {
                 <EmptyState
                   icon={Trophy}
                   title="Pas encore assez de données"
-                  subtitle="Le classement sera disponible dès que suffisamment d'avis vérifiés auront été publiés."
+                  subtitle="Bientôt, avec les premiers avis."
                 />
               )}
             </div>

@@ -218,7 +218,7 @@ export default function FavorisPage() {
           <SharedEmptyState
             icon={Heart}
             title="Tes favoris t'attendent"
-            subtitle="Connecte-toi pour sauvegarder tes coiffeurs et réalisations préférés."
+            subtitle="Connecte-toi pour les garder."
             action={
               <div className="flex flex-col items-center gap-3">
                 <PrimaryButton href="/connexion?returnTo=%2Fapp%2Ffavoris" icon={<LogIn size={15} />}>Se connecter</PrimaryButton>

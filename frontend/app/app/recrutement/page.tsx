@@ -176,7 +176,7 @@ export default async function RecrutementPage() {
             <EmptyState
               icon={Briefcase}
               title="Aucune offre pour le moment"
-              subtitle="Les nouvelles offres de recrutement des salons apparaîtront ici."
+              subtitle="Les offres arriveront ici."
               compact
             />
           ) : (

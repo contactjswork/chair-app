@@ -329,7 +329,7 @@ export default function FauteuilsPage() {
               <OwnerEmptyState
                 icon={Armchair}
                 title="Aucune annonce publiée"
-                subtitle="Créez votre première annonce pour louer un fauteuil libre."
+                subtitle="Louez un fauteuil libre."
                 action={{ label: 'Créer une annonce', icon: Plus, onClick: openCreate }}
               />
             ) : (
@@ -387,7 +387,7 @@ export default function FauteuilsPage() {
         {/* ── BROUILLONS ── */}
         {tab === 'drafts' && (
           drafts.length === 0 ? (
-            <OwnerEmptyState icon={FileEdit} title="Aucun brouillon" subtitle="Les annonces non terminées apparaissent ici — reprenez-les à tout moment." />
+            <OwnerEmptyState icon={FileEdit} title="Aucun brouillon" subtitle="À reprendre quand vous voulez." />
           ) : (
             <div className="space-y-2">
               {drafts.map((r) => (
