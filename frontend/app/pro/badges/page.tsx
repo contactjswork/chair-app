@@ -353,7 +353,7 @@ export default function BadgesPage() {
               ) : null}
 
               {/* Partage ta réussite : dès le palier Confirmé (level ≥ 1), le
-                  coiffeur poste sa montée en story CHAIR — pub gratuite entre
+                  coiffeur partage sa montée (lien natif) — pub gratuite entre
                   coiffeurs. On ne le propose pas au palier « Nouveau ». */}
               {bestSpecialty.level >= 1 && (
                 <button

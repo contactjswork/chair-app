@@ -16,7 +16,6 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
-        $schedule->command('chair:purge-expired-stories')->hourly();
 
         // Rappels de RDV (24h et 1h) — fenêtres de ±15 min, donc la commande
         // DOIT passer toutes les 15 min pour qu'aucun RDV ne tombe entre deux

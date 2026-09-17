@@ -325,18 +325,6 @@ export const subscription = {
     api.post<{ has_chair_plus: boolean }>('/iap/verify', { receipt }),
 };
 
-// ── Stories CHAIR+ ──────────────────────────────────────────────────────
-
-import type { ApiStoryBubble, ApiStory } from './types';
-
-export const stories = {
-  feed: () => api.get<{ bubbles: ApiStoryBubble[] }>('/stories/feed'),
-  mine: () => api.get<ApiStory[]>('/stories/mine'),
-  byHairdresser: (hairdresserId: number) => api.get<ApiStory[]>(`/stories/by-hairdresser/${hairdresserId}`),
-  view: (id: number) => api.post<{ views_count: number }>(`/stories/${id}/view`, {}),
-  remove: (id: number) => api.delete<{ message: string }>(`/stories/${id}`),
-};
-
 // ── Support prioritaire CHAIR+ ──────────────────────────────────────────
 
 import type { ApiSupportRequest } from './types';

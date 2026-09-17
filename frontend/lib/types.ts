@@ -276,26 +276,6 @@ export interface ApiSupportRequest {
   created_at: string;
 }
 
-// ── Stories CHAIR+ (voir docs/CHAIR_PLUS.md) ──
-export interface ApiStoryBubble {
-  hairdresser_id: number;
-  slug: string;
-  name: string;
-  avatar: string | null;
-  stories_count: number;
-  has_unseen: boolean;
-}
-
-export interface ApiStory {
-  id: number;
-  user_id: number;
-  media_url: string;
-  type: 'image' | 'video';
-  expires_at: string;
-  views_count: number;
-  created_at: string;
-}
-
 // ── Programme ambassadeur (voir docs/GROWTH.md) ──
 export interface ApiReferral {
   code: string;

@@ -9,7 +9,7 @@ import { resolveMediaUrl } from '@/lib/types';
 import type { ApiHairdresserProfile } from '@/lib/types';
 import { LEVEL_RING, ringGradientClass } from '@/lib/chairLevel';
 import { getUserGeo, getUserSpecialtySlugs } from '@/lib/homeFilters';
-import { fetchHairdressersProgressive } from '@/lib/homeFetch';
+import { fetchHairdressersProgressive, fetchChairPicks } from '@/lib/homeFetch';
 import { useDedupedList } from '@/contexts/HomeDedupeContext';
 import Reveal from './Reveal';
 
@@ -186,13 +186,15 @@ export function CoupDeCoeurStrip({
 }: { fallback: ApiHairdresserProfile[]; titleOverride?: string | null; limit?: number }) {
   const { user, isLoading } = useAuth();
   const [hairdressers, setHairdressers] = useState<ApiHairdresserProfile[]>(fallback);
-  const [isGeo, setIsGeo] = useState(false);
   const effectiveLimit = limit && limit > 0 ? limit : 10;
 
+  // Les VRAIS coups de cœur (chair_pick posé par l'admin) — plus jamais un
+  // listing générique relabellisé. Pas de filtre spécialité : une sélection
+  // éditoriale ne se personnalise pas ; la géo ne fait qu'ordonner. Si aucun
+  // pick actif, la section se cache entièrement.
   useEffect(() => {
     if (isLoading || !user) return;
-    fetchHairdressersProgressive(getUserSpecialtySlugs(), getUserGeo(user), effectiveLimit)
-      .then(({ results, isGeo: geoHit }) => { setHairdressers(results); setIsGeo(geoHit); });
+    fetchChairPicks(getUserGeo(user), effectiveLimit).then(setHairdressers);
   }, [user, isLoading, effectiveLimit]);
 
   // Exclut les coiffeurs déjà affichés par "Pour toi" (voir HomeDedupeContext)
@@ -205,7 +207,7 @@ export function CoupDeCoeurStrip({
       <Reveal>
         <SectionHeader
           tag="Sélection CHAIR"
-          title={titleOverride ?? (isGeo ? 'Coups de cœur près de chez toi' : 'Coup de cœur CHAIR')}
+          title={titleOverride ?? 'Coup de cœur CHAIR'}
           href="/app/recherche"
         />
       </Reveal>

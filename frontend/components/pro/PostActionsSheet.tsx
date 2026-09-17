@@ -55,7 +55,7 @@ export default function PostActionsSheet({
             {onShareStory && (
               <button className={rowCls} disabled={busy} onClick={() => { onShareStory(); onClose(); }}>
                 <Share2 size={17} className="text-neutral-500" />
-                Partager en story
+                Partager
               </button>
             )}
             <button className={rowCls} disabled={busy} onClick={() => { onTogglePin(); onClose(); }}>

@@ -87,7 +87,6 @@ class AccountDeletionService
             // coiffeur tiers reste juste, mais plus rien ne le relie à la
             // personne partie (minimisation, 5.1.1(iii)).
             DB::table('profile_views')->where('viewer_user_id', $id)->update(['viewer_user_id' => null]);
-            DB::table('stories')->where('user_id', $id)->delete();
 
             self::scrubHairdresserProfile($id);
 

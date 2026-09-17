@@ -111,7 +111,7 @@ function SimpleReviewCard({ review, isOwner, onReplied, onShareStory }: { review
           onClick={onShareStory}
           className="relative before:absolute before:-inset-y-[8px] before:inset-x-0 before:content-[''] mt-2 ml-11 flex items-center gap-1.5 text-[12px] font-semibold text-neutral-400 hover:text-neutral-900 transition-colors"
         >
-          <Share2 size={12} /> Partager en story
+          <Share2 size={12} /> Partager
         </button>
       )}
 

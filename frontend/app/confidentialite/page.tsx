@@ -157,7 +157,6 @@ export default function ConfidentialitePage() {
               ['Favoris et abonnements', 'Retrouver les coiffeurs enregistrés, fil personnalisé', 'Exécution du contrat'],
               ['Likes et enregistrements de réalisations', 'Retrouver les réalisations enregistrées', 'Exécution du contrat'],
               ['Profils consultés (profil, date, ton identifiant si connecté)', 'Recommandations, et statistiques d’audience AGRÉGÉES pour le coiffeur', 'Intérêt légitime'],
-              ['Stories vues', 'Ne pas te remontrer une story déjà vue, compteur de vues', 'Intérêt légitime'],
               ['Partages effectués depuis l’app', 'Programme de parrainage, badges', 'Intérêt légitime'],
               ['Préférences de style (onboarding)', 'Adapter les suggestions', 'Consentement'],
               ['Préférences de notifications', 'Ne t’envoyer que ce que tu as accepté', 'Exécution du contrat'],

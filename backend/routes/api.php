@@ -42,7 +42,6 @@ use App\Http\Controllers\Api\AdminHairdresserController;
 use App\Http\Controllers\Api\AdminSalonController;
 use App\Http\Controllers\Api\SpecialtyProgressController;
 use App\Http\Controllers\Api\ReferralController;
-use App\Http\Controllers\Api\StoryController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\GeoController;
@@ -583,14 +582,6 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Achat intégré Apple (binaire CHAIR PRO iOS) — l'app envoie le reçu
     // StoreKit après paiement via la feuille Apple, le serveur le valide.
     Route::post('/iap/verify',        [\App\Http\Controllers\Api\IapController::class, 'verify']);
-
-    // Stories CHAIR+ (voir docs/CHAIR_PLUS.md)
-    Route::get('/stories/feed',                    [StoryController::class, 'feed']);
-    Route::get('/stories/mine',                     [StoryController::class, 'mine']);
-    Route::get('/stories/by-hairdresser/{id}',      [StoryController::class, 'byHairdresser']);
-    Route::post('/stories',                         [StoryController::class, 'store']);
-    Route::post('/stories/{id}/view',                [StoryController::class, 'view']);
-    Route::delete('/stories/{id}',                   [StoryController::class, 'destroy']);
 
     // Analytics
     Route::get('/my-analytics', [AnalyticsController::class, 'show']);

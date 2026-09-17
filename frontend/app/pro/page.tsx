@@ -16,7 +16,6 @@ import {
   ChevronRight, Sparkles,
 } from 'lucide-react';
 import PortfolioSnapshotCard from '@/components/ui/PortfolioSnapshotCard';
-import StoryCreateCard from '@/components/ui/StoryCreateCard';
 import RankCard from '@/components/pro/home/RankCard';
 import TodayCard from '@/components/pro/home/TodayCard';
 import WeekCard from '@/components/pro/home/WeekCard';
@@ -248,9 +247,6 @@ export default function CockpitPage() {
               </Link>
             </div>
             <PortfolioSnapshotCard posts={posts} />
-            {hasChairPlus(fullProfile) && (
-              <div className="mt-4"><StoryCreateCard profile={fullProfile} /></div>
-            )}
           </div>
         )}
 
@@ -276,7 +272,7 @@ export default function CockpitPage() {
             <Sparkles size={17} className="text-neutral-400 shrink-0" />
             <span className="flex-1 min-w-0">
               <span className="block text-[14px] font-semibold text-neutral-900">CHAIR+</span>
-              <span className="block text-[12px] text-neutral-500">Stories, boost et statistiques détaillées</span>
+              <span className="block text-[12px] text-neutral-500">Boost, carnet illimité et statistiques détaillées</span>
             </span>
             <ChevronRight size={16} className="text-neutral-300 shrink-0" />
           </Link>

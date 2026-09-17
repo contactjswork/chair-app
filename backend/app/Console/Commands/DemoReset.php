@@ -246,7 +246,6 @@ class DemoReset extends Command
         $delPostIds    = DB::table('posts')->whereIn('hairdresser_id', $delProfileIds)->pluck('id')->all();
         $delOfferIds   = DB::table('job_offers')->whereIn('salon_id', $delSalonIds)->pluck('id')->all();
         $delRentalIds  = DB::table('chair_rentals')->whereIn('salon_id', $delSalonIds)->pluck('id')->all();
-        $delStoryIds   = DB::table('stories')->whereIn('user_id', $delUserIds)->pluck('id')->all();
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
@@ -283,9 +282,6 @@ class DemoReset extends Command
         $purge('follows',      fn ($q) => $q->where(fn ($w) => $w->whereIn('follower_id', $delUserIds)->orWhereIn('hairdresser_id', $delProfileIds)));
         $purge('saved_posts',  fn ($q) => $q->where(fn ($w) => $w->whereIn('user_id', $delUserIds)->orWhereIn('post_id', $delPostIds)));
         $purge('saved_profiles', fn ($q) => $q->where(fn ($w) => $w->whereIn('user_id', $delUserIds)->orWhereIn('hairdresser_id', $delProfileIds)));
-
-        $purge('story_views', fn ($q) => $q->where(fn ($w) => $w->whereIn('user_id', $delUserIds)->orWhereIn('story_id', $delStoryIds)));
-        $purge('stories',     fn ($q) => $chunkIn($q, 'user_id', $delUserIds));
 
         foreach (['notifications', 'notification_preferences', 'personal_access_tokens',
                   'push_subscriptions', 'user_preferences', 'support_requests', 'referral_rewards'] as $t) {

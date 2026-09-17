@@ -220,7 +220,7 @@ export function binaryLockVerdict(subject: LockSubject, context: AppContext = ge
  * storefront américain (la France en fait partie), une app ne peut pas
  * présenter de bouton, de lien externe ou d'appel à l'action dirigeant vers
  * un moyen de paiement autre que l'achat intégré, POUR DU CONTENU NUMÉRIQUE.
- * CHAIR+ (stories, vidéos, badge, boost, analytics) est numérique : sur le
+ * CHAIR+ (vidéos, badge, boost, analytics) est numérique : sur le
  * web il passe par Stripe, et dans le binaire PRO par l'achat intégré Apple
  * (lib/iap.ts) — conforme dans les deux cas. Dans le binaire CHAIR CLIENT en
  * revanche, ni tarif ni bouton de souscription : ce n'est pas son monde.

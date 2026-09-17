@@ -128,6 +128,54 @@ class HairdresserController extends Controller
                 $sq->where('name', 'like', '%' . $request->q . '%')
             )->orWhere('city', 'like', '%' . $request->q . '%'));
 
+        // ── Mode coup de cœur (sélection éditoriale RÉELLE) ──────────────────
+        // Uniquement les profils avec un chair_pick actif — posé à la main par
+        // l'admin, expire tout seul, jamais automatique ni lié à l'abonnement
+        // (AdminHairdresserController::setChairPick). S'il n'y a aucun pick
+        // actif, la liste est VIDE et la section home se cache : on ne
+        // maquille jamais un listing générique en « sélection CHAIR ».
+        // Placé AVANT le mode géoloc : lat/lng ne sert ici qu'à trier les
+        // picks par proximité, pas à changer de mode.
+        if ($request->sort === 'chair_pick') {
+            $hairdressers = $query
+                ->whereNotNull('chair_pick_until')
+                ->where('chair_pick_until', '>', now())
+                ->get();
+            $chairPlusMap = $this->batchChairPlusMap($hairdressers);
+
+            $hairdressers = $hairdressers
+                ->map(function ($h) use ($chairPlusMap, $lat, $lng) {
+                    // Ordre entre picks : mérite + proximité si position connue.
+                    $score = (float)($h->avg_rating ?? 0) * min($h->reviews_count ?? 0, 50) * 3;
+                    $score += $this->profileCompletionScore($h);
+                    if ($lat !== null && $lng !== null && $h->latitude !== null && $h->longitude !== null) {
+                        $dist = $this->haversine($lat, $lng, (float) $h->latitude, (float) $h->longitude);
+                        $h->distance_km = round($dist, 1);
+                        if ($dist <= 3)      $score += 60;
+                        elseif ($dist <= 8)  $score += 45;
+                        elseif ($dist <= 15) $score += 30;
+                        elseif ($dist <= 30) $score += 15;
+                    }
+                    $h->_score = $score;
+                    $h->is_chair_plus = $chairPlusMap[$h->id] ?? false;
+                    return $h;
+                })
+                ->sortByDesc('_score')
+                ->values();
+
+            $page = $hairdressers->take($perPage)->values();
+            BadgeService::attachGamification($page);
+            PublicScope::hairdressers($page);
+
+            return response()->json([
+                'data'         => $page,
+                'total'        => $hairdressers->count(),
+                'per_page'     => $perPage,
+                'current_page' => 1,
+                'last_page'    => 1,
+            ]);
+        }
+
         // ── Mode géolocalisation (nearby scored) ──────────────────────────────
         if ($lat !== null && $lng !== null) {
             $days = max(7, min(365, intval($request->days ?? 90)));
@@ -155,6 +203,9 @@ class HairdresserController extends Controller
                     $score += min($h->visits_count ?? 0, 300) * 0.5;
                     $score += $h->is_verified ? 25 : 0;
                     $score += $h->is_featured ? 50 : 0;
+                    // Coup de cœur éditorial actif — même famille que is_featured,
+                    // un peu en dessous : la sélection remonte aussi hors de sa strip.
+                    $score += $h->is_chair_pick ? 30 : 0;
                     // Boost CHAIR+ — volontairement inférieur à is_featured (50) :
                     // léger coup de pouce, jamais un dépassement garanti du mérite.
                     $score += ($chairPlusMap[$h->id] ?? false) ? 15 : 0;
@@ -207,6 +258,8 @@ class HairdresserController extends Controller
                     $score += min($h->visits_count ?? 0, 500) * 0.6;
                     $score += min($h->posts_count ?? 0, 50) * 1.5;
                     $score += $h->is_verified ? 30 : 0;
+                    // Coup de cœur éditorial actif — même famille que is_featured (100).
+                    $score += $h->is_chair_pick ? 60 : 0;
                     // Boost CHAIR+ — même logique bornée que le mode géoloc.
                     $score += ($chairPlusMap[$h->id] ?? false) ? 30 : 0;
                     $score += $this->profileCompletionScore($h);

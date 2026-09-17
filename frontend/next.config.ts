@@ -40,7 +40,7 @@ if (IS_PROD_BUILD) {
 //  - res.cloudinary.com / images.unsplash.com / i.pravatar.cc : hôtes
 //    d'images déjà déclarés dans images.remotePatterns ci-dessous ;
 //  - blob: / data: : aperçus locaux avant upload (ImageCropModal,
-//    StoryCreateCard, ImageUpload — URL.createObjectURL) et export CSV admin.
+//    ImageUpload — URL.createObjectURL) et export CSV admin.
 // Les polices passent par next/font/google, qui les auto-héberge au build :
 // aucun accès runtime à fonts.googleapis.com / fonts.gstatic.com n'est requis.
 const API_ORIGIN = (() => {

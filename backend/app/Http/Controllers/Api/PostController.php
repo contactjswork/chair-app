@@ -410,8 +410,8 @@ class PostController extends Controller
             ->firstOrFail();
 
         // Les réalisations épinglées sont une fonctionnalité CHAIR+ (docs/
-        // CHAIR_PLUS.md). Le garde premium était présent sur les vidéos et les
-        // stories mais AVAIT ÉTÉ OUBLIÉ ici — un pro non abonné pouvait épingler
+        // CHAIR_PLUS.md). Le garde premium était présent sur les vidéos mais
+        // AVAIT ÉTÉ OUBLIÉ ici — un pro non abonné pouvait épingler
         // via un appel API direct (audit sécurité 01/09/2026). On ne bloque que
         // l'ACTION d'épingler : désépingler reste toujours possible.
         if (!$post->is_pinned && !($profile?->hasChairPlus())) {

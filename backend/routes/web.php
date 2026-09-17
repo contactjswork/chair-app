@@ -26,7 +26,7 @@ Route::get('/', function () {
 | commandes shell : impossible d'y mettre le `php artisan schedule:run` que
 | Laravel attend normalement dans un cron. Cette route fait le pont — le
 | planificateur l'appelle toutes les minutes, elle exécute les tâches dues
-| (rappels de rendez-vous, purge des stories expirées).
+| (rappels de rendez-vous, pulse hebdomadaire, classements).
 |
 | Sécurité : la route est publique par nature (le planificateur ne peut pas
 | s'authentifier), elle est donc protégée par un jeton secret comparé en

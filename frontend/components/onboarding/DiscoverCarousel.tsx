@@ -9,8 +9,7 @@ export interface DiscoverFeature {
   desc: string;
 }
 
-// Les stories sont gratuites depuis le 01/09/2026 (sorties de CHAIR+) — la
-// carte CHAIR+ vend désormais le carnet client illimité, le badge et le boost.
+// La carte CHAIR+ vend le carnet client illimité, le badge et le boost.
 const HAIRDRESSER_FEATURES: DiscoverFeature[] = [
   { icon: Trophy,   title: 'Classements',      desc: 'Grimpe dans le top de ta spécialité et de ta ville — vu par tous les clients qui cherchent près de chez eux.' },
   { icon: Award,    title: 'Badges & niveau',  desc: 'Chaque réalisation, chaque avis, chaque visite te fait gagner des points et monter de niveau.' },

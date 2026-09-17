@@ -634,7 +634,7 @@ class NotificationCopy
         'chair_plus_expired' => [
             self::AUDIENCE_PRO => [
                 'title'    => 'CHAIR+ a pris fin',
-                'message'  => 'Réabonne-toi quand tu veux pour retrouver stories, badge et analytics.',
+                'message'  => 'Réabonne-toi quand tu veux pour retrouver badge, boost et analytics.',
                 'fallback' => 'Ton abonnement CHAIR+ a pris fin.',
             ],
         ],

@@ -10,8 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-// Stories retirées de l'offre le 01/09/2026 (gratuites pour tous — décision
-// Julien) ; le carnet client illimité les remplace dans l'argumentaire.
+// Le carnet client illimité est l'argument n°1 de l'offre (décision Julien).
 const POINTS = [
   { icon: BookUser,   label: 'Carnet client illimité' },
   { icon: BarChart3,  label: 'Analytics avancées' },

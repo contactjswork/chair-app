@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
  * Garde route pour les endpoints entièrement réservés CHAIR+ (ex: upload
  * vidéo courte, plage analytics étendue). Les fonctionnalités où l'accès est
  * partiel (ex: contenu gratuit visible mais action bloquée au milieu d'une
- * méthode) restent en check inline via hasChairPlus(), comme StoryService —
+ * méthode) restent en check inline via hasChairPlus(), comme PostController —
  * ce middleware ne remplace pas ce pattern, il le complète pour les cas
  * "tout ou rien" où toute la route est premium.
  */

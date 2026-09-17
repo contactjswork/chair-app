@@ -28,7 +28,7 @@ const SLIDES: Slide[] = [
   {
     eyebrow: 'Carrière',
     title: 'Fais évoluer ta carrière.',
-    body: 'Stories, CHAIR+, classements, badges, statistiques — tout est réuni.',
+    body: 'CHAIR+, classements, badges, statistiques — tout est réuni.',
     icon: Sparkles,
   },
   {

@@ -1,7 +1,6 @@
 import AppShell from '@/components/layout/AppShell';
 import HideOnScrollBar from '@/components/layout/HideOnScrollBar';
 import HeroSearch from '@/components/ui/HeroSearch';
-import StoriesBar from '@/components/ui/StoriesBar';
 import HomeCTASection from '@/components/ui/HomeCTASection';
 import SpecialtyQuickLinks from '@/components/ui/SpecialtyQuickLinks';
 import LocationBar from '@/components/ui/LocationBar';
@@ -69,7 +68,14 @@ export default async function HomePage() {
   const newTalentsLimit = sectionByKey.get('new_talents')?.limit ?? 8;
 
   const [featuredHD, newTalentsHD, ranking, trendingPosts] = await Promise.all([
-    isEnabled('coup_de_coeur') ? getHairdressers('featured', coupDeCoeurLimit) : Promise.resolve([]),
+    // Les VRAIS coups de cœur (sélection admin) — si aucun pick actif, la
+    // liste est vide et la section se cache : jamais un listing générique
+    // déguisé en « sélection CHAIR ».
+    // (le .filter garde la section honnête même si le backend en prod ne
+    // connaît pas encore sort=chair_pick et renvoie un listing générique)
+    isEnabled('coup_de_coeur')
+      ? getHairdressers('chair_pick', coupDeCoeurLimit).then((l) => l.filter((h) => h.is_chair_pick))
+      : Promise.resolve([]),
     isEnabled('new_talents') ? getHairdressers('new_quality', newTalentsLimit, 60) : Promise.resolve([]),
     isEnabled('ranking') ? getRanking(rankingLimit) : Promise.resolve([]),
     isEnabled('realisations') ? getFeedPosts('trending', 24) : Promise.resolve([]),
@@ -159,12 +165,6 @@ export default async function HomePage() {
       <div className="px-4 md:px-8 max-w-6xl md:mx-auto pt-4">
         <BookingIntentReminder />
       </div>
-
-      {/* Stories — coiffeurs suivis uniquement, jamais un feed mondial. Se
-          masque toute seule si vide (visiteur, ou personne suivi) : ne
-          repousse jamais le contenu personnalisé ci-dessous d'un espace
-          vide. */}
-      <StoriesBar />
 
       {/* Les 7 sections ci-dessous : présence/ordre/titre/limite pilotés par
           la config Super Admin (voir getHomeSectionsConfig ci-dessus).

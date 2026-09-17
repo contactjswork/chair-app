@@ -29,7 +29,6 @@ import {
 // « + » du wordmark, un micro-titre), jamais un aplat ni un bouton.
 //
 // Contenu (retours Julien 01-02/09) :
-//  - stories GRATUITES (sorties de l'offre) ;
 //  - carnet client = argument n°1 (25 clients sans CHAIR+, illimité avec) ;
 //  - timeline d'essai transparente (J1 / J27 alerte / J30 débit) ;
 //  - carte parrainage « gagne-le sans payer » (1 mois chacun).
@@ -50,7 +49,7 @@ const FEATURES = [
 // Comparatif : une valeur peut être un booléen (✓/✗) ou un texte (« 25 clients »).
 const COMPARISON: { label: string; free: boolean | string; plus: boolean | string }[] = [
   { label: 'Profil, réservations, agenda', free: true,          plus: true },
-  { label: 'Portfolio et stories',         free: true,          plus: true },
+  { label: 'Portfolio',                    free: true,          plus: true },
   { label: 'Carnet client',                free: `${CARNET_LIMITE} clients`, plus: 'Illimité' },
   { label: 'Analytics',                    free: '30 jours',    plus: '12 mois' },
   { label: 'Vidéos 15s',                   free: false,         plus: true },
