@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// Activer la protection bêta via variable d'env
-const BETA_ENABLED = process.env.NEXT_PUBLIC_BETA_ENABLED === 'true';
+// Le mur bêta (mot de passe sur tout le site) a été retiré le 17/09/2026 —
+// décision Julien à l'approche de la publication des apps : le site est
+// public. Ne reste ici que la protection de l'espace admin.
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,77 +18,7 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  if (!BETA_ENABLED) return NextResponse.next();
-
-  // Toujours laisser passer
-  if (
-    // Universal Links : Apple récupère /.well-known/apple-app-site-association
-    // sans suivre les redirections, et met le résultat en cache sur son CDN
-    // pendant plusieurs jours. Si le mur bêta est réactivé et intercepte ce
-    // chemin, Apple met en cache un échec et les liens profonds cessent
-    // d'ouvrir l'app bien après la désactivation du mur.
-    pathname.startsWith('/.well-known') ||
-    pathname.startsWith('/beta') ||
-    pathname.startsWith('/api/beta-auth') ||
-    pathname.startsWith('/api/admin-auth') ||
-    pathname.startsWith('/admin') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.startsWith('/mockups') ||
-    pathname.startsWith('/onboarding') ||
-    // Apps natives CHAIR (client) et CHAIR PRO — déjà protégées par
-    // l'invitation TestFlight, pas besoin du mot de passe bêta en plus.
-    // Inclut les pages hors /app et /pro que ces apps utilisent quand même
-    // (connexion, inscription...).
-    pathname.startsWith('/app') ||
-    pathname.startsWith('/pro') ||
-    // CHAIR BUSINESS charge getchair.app/business en remote-URL : bloqué par
-    // le mur bêta, l'app entière affiche la page de mot de passe.
-    pathname.startsWith('/business') ||
-    // Fiches publiques d'annonces fauteuil — listées dans le sitemap.
-    pathname.startsWith('/fauteuil') ||
-    // SEO : Google doit lire le sitemap et robots.txt même mur bêta actif,
-    // sinon il met en cache la redirection /beta comme réponse.
-    pathname === '/sitemap.xml' ||
-    pathname === '/robots.txt' ||
-    pathname.startsWith('/connexion') ||
-    pathname.startsWith('/inscription') ||
-    pathname.startsWith('/mot-de-passe-oublie') ||
-    // Lien de réinitialisation envoyé par email — doit rester accessible même
-    // à quelqu'un qui n'a jamais ouvert l'app/le site (a fortiori pas le
-    // cookie bêta), sinon le lien de récupération de mot de passe est un
-    // cul-de-sac.
-    pathname.startsWith('/reinitialiser-mot-de-passe') ||
-    // Pages légales et support : Apple exige que la politique de
-    // confidentialité, les CGU et l'URL de support soumises dans App Store
-    // Connect s'ouvrent SANS authentification. Un reviewer qui tombe sur le
-    // portail bêta considère le lien comme mort (guideline 2.1 / 1.2).
-    // /app/regles-communaute est déjà couvert par l'exemption /app.
-    pathname.startsWith('/cgu') ||
-    pathname.startsWith('/confidentialite') ||
-    pathname.startsWith('/mentions-legales') ||
-    pathname.startsWith('/contact') ||
-    pathname.endsWith('.png') ||
-    pathname.endsWith('.jpg') ||
-    pathname.endsWith('.svg') ||
-    pathname.endsWith('.ico') ||
-    // Manifests PWA — iOS/Android les récupèrent SANS cookie au moment de
-    // "Ajouter à l'écran d'accueil" : bloqués par le gate bêta, l'installation
-    // retombait sur un simple raccourci Safari (bug constaté par Julien).
-    pathname.endsWith('.webmanifest')
-  ) {
-    return NextResponse.next();
-  }
-
-  // Vérifier le cookie
-  const betaCookie = request.cookies.get('chair_beta');
-  if (betaCookie?.value === '1') return NextResponse.next();
-
-  // Rediriger vers la page de mot de passe
-  const url = request.nextUrl.clone();
-  url.pathname = '/beta';
-  url.searchParams.set('from', pathname);
-  return NextResponse.redirect(url);
+  return NextResponse.next();
 }
 
 export const config = {
