@@ -49,6 +49,13 @@ class SubscriptionController extends Controller
             return response()->json(['message' => "CHAIR+ n'est pas encore disponible."], 403);
         }
 
+        // CHAIR BUSINESS : défaut FALSE tant que le flag n'existe pas en base
+        // (prix pas encore décidé) — l'inverse des autres flags, où l'absence
+        // vaut activé. La page frontend suit la même convention.
+        if ($validated['plan'] === 'chair_business' && !FeatureFlagService::isEnabled('chair_business_enabled', false)) {
+            return response()->json(['message' => "CHAIR BUSINESS n'est pas encore disponible."], 403);
+        }
+
         try {
             $url = StripeService::createCheckoutSession($request->user(), $validated['plan']);
         } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
+import { getFeatureFlags } from '@/lib/featureFlags';
 import SubscriptionElsewhereState from '@/components/pro/SubscriptionElsewhereState';
 import { subscription } from '@/lib/api';
 import { acheterChairBusiness, restaurerChairBusiness, gererAbonnementApple, iapDisponible, AchatAnnule } from '@/lib/iap';
@@ -108,6 +109,13 @@ export default function ChairBusinessPage() {
   // Achat intégré Apple — binaire CHAIR BUSINESS uniquement (même règle
   // App Store 3.1.1 que CHAIR+ dans le binaire PRO).
   const [iapOk, setIapOk] = useState(false);
+  // Le prix de CHAIR BUSINESS n'est pas encore décidé (Julien 17/09/2026) :
+  // tant que le flag chair_business_enabled n'est pas EXPLICITEMENT true,
+  // la page reste en « Bientôt disponible » — ni tarif ni bouton. Convention
+  // inversée par rapport aux autres flags (absence = désactivé) : on ne
+  // vend jamais un prix par défaut.
+  const [flagEnabled, setFlagEnabled] = useState(false);
+  const [flagLoading, setFlagLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -118,6 +126,12 @@ export default function ChairBusinessPage() {
     if (appContext !== 'business') return;
     iapDisponible().then(setIapOk).catch(() => {});
   }, [appContext]);
+
+  useEffect(() => {
+    getFeatureFlags()
+      .then((f) => setFlagEnabled(f['chair_business_enabled'] === true))
+      .finally(() => setFlagLoading(false));
+  }, []);
 
   async function handleSubscribe() {
     setBusy(true);
@@ -196,6 +210,10 @@ export default function ChairBusinessPage() {
   const sub = data?.salon_subscription;
   const hasBusiness = data?.has_chair_business ?? false;
   const state = chairPlusState(hasBusiness, sub ?? null);
+  const canManage = !!sub && state !== 'expired';
+  // Un salon déjà abonné (mode test admin, ancien abonnement) garde la
+  // gestion — le « Bientôt disponible » ne s'applique qu'à la souscription.
+  const showComingSoon = !flagEnabled && !canManage;
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -246,8 +264,16 @@ export default function ChairBusinessPage() {
           Un badge de confiance et un support prioritaire pour votre salon — sans jamais toucher aux outils déjà gratuits.
         </p>
 
-        {dataLoading ? (
+        {dataLoading || flagLoading ? (
           <div className="h-32 bg-neutral-100 rounded-2xl animate-pulse max-w-xs mx-auto" />
+        ) : showComingSoon ? (
+          // Prix pas encore décidé — ni tarif ni bouton, juste l'annonce.
+          <div className={`${CARTE} max-w-xs mx-auto px-6 py-6 text-center`}>
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-neutral-900 mb-2">Prochainement</p>
+            <p className="text-[12px] text-neutral-500 leading-relaxed">
+              Le tarif sera annoncé au lancement. Vos outils actuels restent gratuits.
+            </p>
+          </div>
         ) : (
           <>
             <div className="flex items-end justify-center gap-1 mb-1">
@@ -373,7 +399,7 @@ export default function ChairBusinessPage() {
         </section>
 
         {/* ── CTA final — LA carte sombre de la page ── */}
-        {!hasBusiness && (
+        {!hasBusiness && !showComingSoon && (
           <Reveal>
             <section className={`${CARTE_SOMBRE} p-8 md:p-12 text-center`}>
               <Sparkles size={22} className="text-white/50 mx-auto mb-4" />
