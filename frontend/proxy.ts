@@ -41,6 +41,15 @@ export function proxy(request: NextRequest) {
     // (connexion, inscription...).
     pathname.startsWith('/app') ||
     pathname.startsWith('/pro') ||
+    // CHAIR BUSINESS charge getchair.app/business en remote-URL : bloqué par
+    // le mur bêta, l'app entière affiche la page de mot de passe.
+    pathname.startsWith('/business') ||
+    // Fiches publiques d'annonces fauteuil — listées dans le sitemap.
+    pathname.startsWith('/fauteuil') ||
+    // SEO : Google doit lire le sitemap et robots.txt même mur bêta actif,
+    // sinon il met en cache la redirection /beta comme réponse.
+    pathname === '/sitemap.xml' ||
+    pathname === '/robots.txt' ||
     pathname.startsWith('/connexion') ||
     pathname.startsWith('/inscription') ||
     pathname.startsWith('/mot-de-passe-oublie') ||
