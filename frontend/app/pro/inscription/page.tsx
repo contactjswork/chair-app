@@ -314,7 +314,7 @@ function ProInscriptionContent() {
                   variant="dark"
                   icon={Building2}
                   label="Gérant de salon"
-                  sublabel="Crée la page de ton salon et gère ton équipe"
+                  sublabel="Salon, équipe, fauteuils — ton espace CHAIR BUSINESS"
                   active={role === 'salon_owner'}
                   onClick={() => setRole('salon_owner')}
                 />

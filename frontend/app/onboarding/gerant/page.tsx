@@ -65,7 +65,7 @@ export default function OwnerOnboardingPage() {
 
   useEffect(() => {
     if (isLoading) return;
-    if (!user) { router.push('/pro/connexion'); return; }
+    if (!user) { router.push('/business/connexion'); return; }
     if (!user.can_manage_salon) { router.push('/pro'); return; }
 
     salons.mySalon().then(({ salon }) => {
@@ -161,13 +161,13 @@ export default function OwnerOnboardingPage() {
             {salonName} est prêt.
           </h1>
           <p className="text-[14px] text-neutral-500 leading-relaxed mb-8 max-w-xs">
-            Vous pouvez continuer à compléter votre fiche salon à tout moment depuis votre espace gérant.
+            Votre salon se gère dans CHAIR BUSINESS — l&apos;espace des gérants.
           </p>
           <button
-            onClick={() => router.push('/pro/salon-owner')}
+            onClick={() => router.push('/business')}
             className="w-full max-w-xs bg-neutral-900 text-white font-bold py-4 rounded-2xl text-[15px] active:bg-neutral-700 transition-colors"
           >
-            Aller à mon espace gérant
+            Ouvrir CHAIR BUSINESS
           </button>
         </div>
       </div>
