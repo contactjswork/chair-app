@@ -5,7 +5,9 @@ import type { MetadataRoute } from 'next';
 // public léger (cache 1 h côté backend), régénérés ici toutes les heures.
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api';
-const SITE = 'https://getchair.app';
+// www est l'hôte canonique (l'apex 308 vers www) : des URLs apex dans le
+// sitemap feraient de chaque entrée une redirection aux yeux de Google.
+const SITE = 'https://www.getchair.app';
 
 export const revalidate = 3600;
 

@@ -12,6 +12,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/pro/', '/business/', '/admin/', '/app/compte/', '/dashboard/', '/contrat-fauteuil/'],
       },
     ],
-    sitemap: 'https://getchair.app/sitemap.xml',
+    sitemap: 'https://www.getchair.app/sitemap.xml',
   };
 }
