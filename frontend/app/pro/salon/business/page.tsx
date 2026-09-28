@@ -289,7 +289,13 @@ export default function ChairBusinessPage() {
 
             <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
 
-            {sub && state !== 'expired' ? (
+            {sub && state !== 'expired' && appContext === 'business' && sub.provider !== 'apple' ? (
+              // Abonnement Stripe (web) : pas de lien vers le portail Stripe
+              // dans le binaire iOS (App Store 3.1.1).
+              <p className="text-[12px] text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                Abonnement souscrit en dehors de l&apos;app — il se gère là où vous l&apos;avez souscrit.
+              </p>
+            ) : sub && state !== 'expired' ? (
               <PrimaryButton
                 onClick={handleManage}
                 loading={busy}

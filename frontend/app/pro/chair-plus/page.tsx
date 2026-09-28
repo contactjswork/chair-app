@@ -284,7 +284,14 @@ export default function ChairPlusPage() {
 
                 <StateBanner state={state} sub={sub ?? null} isPastDue={sub?.status === 'past_due'} />
 
-                {canManage ? (
+                {canManage && appContext === 'pro' && sub?.provider !== 'apple' ? (
+                  // Abonnement souscrit sur le web (Stripe) : dans le binaire
+                  // iOS, aucun lien vers le portail Stripe — Apple refuse tout
+                  // renvoi vers un moyen de paiement externe (3.1.1).
+                  <p className="text-[12px] text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                    Abonnement souscrit en dehors de l&apos;app — il se gère là où vous l&apos;avez souscrit.
+                  </p>
+                ) : canManage ? (
                   <PrimaryButton
                     onClick={handleManage}
                     loading={busy}
