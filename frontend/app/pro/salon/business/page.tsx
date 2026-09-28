@@ -281,8 +281,14 @@ export default function ChairBusinessPage() {
               <span className="text-5xl font-black text-neutral-900 tracking-tight">49,99</span>
               <span className="text-[15px] text-neutral-400 font-semibold mb-1.5">/mois</span>
             </div>
-            <p className="text-xs text-neutral-400 font-medium mb-7">
+            <p className="text-xs text-neutral-400 font-medium mb-1">
               30 jours d&apos;essai gratuit · sans engagement · annulation à tout moment
+            </p>
+            {/* Exigé par Apple pour un abonnement auto-renouvelable (3.1.2). */}
+            <p className="text-[11px] text-neutral-400 mb-7">
+              Renouvellement mensuel automatique ·{' '}
+              <Link href="/cgu" className="underline underline-offset-2">Conditions</Link>{' '}·{' '}
+              <Link href="/confidentialite" className="underline underline-offset-2">Confidentialité</Link>
             </p>
 
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}

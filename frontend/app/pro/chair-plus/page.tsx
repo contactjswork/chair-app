@@ -313,6 +313,13 @@ export default function ChairPlusPage() {
                     <p className="text-[12px] text-neutral-400 font-medium mt-3">
                       Puis {prixLabel}/mois. Sans engagement, annulable en deux taps.
                     </p>
+                    {/* Exigé par Apple pour tout abonnement auto-renouvelable
+                        (3.1.2) : durée, prix et liens CGU + confidentialité. */}
+                    <p className="text-[11px] text-neutral-400 mt-2">
+                      Abonnement mensuel à renouvellement automatique ·{' '}
+                      <Link href="/cgu" className="underline underline-offset-2">Conditions</Link>{' '}·{' '}
+                      <Link href="/confidentialite" className="underline underline-offset-2">Confidentialité</Link>
+                    </p>
                   </>
                 )}
 
