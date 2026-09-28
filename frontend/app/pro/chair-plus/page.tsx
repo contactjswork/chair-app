@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { subscription } from '@/lib/api';
@@ -317,8 +318,8 @@ export default function ChairPlusPage() {
                         (3.1.2) : durée, prix et liens CGU + confidentialité. */}
                     <p className="text-[11px] text-neutral-400 mt-2">
                       Abonnement mensuel à renouvellement automatique ·{' '}
-                      <Link href="/cgu" className="underline underline-offset-2">Conditions</Link>{' '}·{' '}
-                      <Link href="/confidentialite" className="underline underline-offset-2">Confidentialité</Link>
+                      <LienSite path="/cgu" className="underline underline-offset-2">Conditions</LienSite>{' '}·{' '}
+                      <LienSite path="/confidentialite" className="underline underline-offset-2">Confidentialité</LienSite>
                     </p>
                   </>
                 )}

@@ -137,8 +137,6 @@ export default function FauteuilsALouerPage() {
                         </div>
                         <a
                           href={`/contrat-fauteuil/${req.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
                           className="flex-shrink-0 flex items-center gap-1.5 text-[11px] font-semibold text-neutral-600 ring-1 ring-neutral-200 px-2.5 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
                         >
                           <FileText size={11} /> Contrat

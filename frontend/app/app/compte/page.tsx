@@ -2,6 +2,7 @@
 
 import AppShell from '@/components/layout/AppShell';
 import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveMediaUrl, getAfterImage, formatApptDate, type ApiAppointment } from '@/lib/types';
@@ -495,27 +496,27 @@ export default function ComptePage() {
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
                 </Link>
-                <Link href="/confidentialite" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
+                <LienSite path="/confidentialite" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <Shield size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Confidentialité</span>
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
-                </Link>
-                <Link href="/cgu" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
+                </LienSite>
+                <LienSite path="/cgu" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <FileText size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Conditions d&apos;utilisation</span>
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
-                </Link>
-                <Link href="/mentions-legales" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
+                </LienSite>
+                <LienSite path="/mentions-legales" className="flex items-center justify-between px-5 py-4 hover:bg-neutral-50 active:bg-neutral-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <Scale size={17} className="text-neutral-400" />
                     <span className="font-medium text-[14px] text-neutral-900">Mentions légales</span>
                   </div>
                   <ChevronRight size={15} className="text-neutral-300" />
-                </Link>
+                </LienSite>
               </div>
             </section>
 

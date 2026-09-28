@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/layout/PageHeader';
 import { Mail, Clock, ChevronDown, ShieldCheck, FileText, Users, Scale, ShieldOff } from 'lucide-react';
@@ -138,18 +139,18 @@ export default function AidePage() {
         <div className="mt-6">
           <p className="text-[11px] font-semibold tracking-[0.2em] uppercase text-neutral-400 mb-3">Légal</p>
           <div className="bg-white rounded-2xl border border-neutral-100 divide-y divide-neutral-50 overflow-hidden">
-            <Link href="/confidentialite" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+            <LienSite path="/confidentialite" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <ShieldCheck size={17} className="text-neutral-400" />
               </div>
               <p className="text-[14px] font-semibold text-neutral-900">Confidentialité</p>
-            </Link>
-            <Link href="/cgu" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+            </LienSite>
+            <LienSite path="/cgu" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <FileText size={17} className="text-neutral-400" />
               </div>
               <p className="text-[14px] font-semibold text-neutral-900">Conditions générales</p>
-            </Link>
+            </LienSite>
             <Link href="/app/regles-communaute" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <Users size={17} className="text-neutral-400" />
@@ -168,12 +169,12 @@ export default function AidePage() {
                 <p className="text-[11px] text-neutral-400 mt-0.5">Voir et débloquer les comptes que tu as bloqués</p>
               </div>
             </Link>
-            <Link href="/mentions-legales" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
+            <LienSite path="/mentions-legales" className="flex items-center gap-4 px-5 py-4 active:bg-neutral-50 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center flex-shrink-0">
                 <Scale size={17} className="text-neutral-400" />
               </div>
               <p className="text-[14px] font-semibold text-neutral-900">Mentions légales</p>
-            </Link>
+            </LienSite>
           </div>
         </div>
 

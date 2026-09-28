@@ -148,8 +148,6 @@ export default function OwnerChairRequestSheet({ request, onAccept, onDecline, o
             // d'indépendance du locataire, SIRET des deux parties).
             <a
               href={`/contrat-fauteuil/${request.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
               className="flex items-center justify-center gap-1.5 text-sm font-semibold bg-neutral-900 text-white py-2.5 rounded-xl hover:bg-neutral-700 transition-colors mt-1"
             >
               <FileText size={13} />Contrat de location

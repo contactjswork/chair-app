@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Building2, Users, Briefcase, Armchair, Sparkles, Bell } from 'lucide-react';
+import { Home, Building2, Users, Briefcase, Armchair, Sparkles, Bell, CircleUser } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationCount } from '@/contexts/NotificationContext';
 import { isProBinary } from '@/lib/appContext';
@@ -73,7 +73,11 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
           cloche notifications comprise (Pulse du lundi, radar avis…). ── */}
       <div className="md:hidden fixed top-[var(--chair-banner-h,0px)] inset-x-0 z-50 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] pt-safe">
         <div className="h-14 flex items-center justify-between px-4">
-          <div className="w-9" />
+          {/* Mon compte : infos, aide & informations légales, déconnexion,
+              suppression du compte (exigée par Apple, 5.1.1(v)). */}
+          <Link href="/business/compte" aria-label="Mon compte" className="w-11 h-11 -ml-1 flex items-center justify-center">
+            <CircleUser size={20} strokeWidth={1.5} className="text-neutral-500" />
+          </Link>
           <ChairLogo href="/business" size="md" business />
           <Link href="/business/notifications" className="relative w-11 h-11 flex items-center justify-center">
             <Bell size={19} strokeWidth={1.5} className="text-neutral-500" />
@@ -110,6 +114,9 @@ export default function BusinessShell({ children }: { children: React.ReactNode 
               className="ml-1 h-9 px-3.5 inline-flex items-center gap-1.5 rounded-full text-[13px] font-semibold text-white bg-neutral-900 hover:bg-neutral-800 transition-colors"
             >
               <Sparkles size={13} /> Abonnement
+            </Link>
+            <Link href="/business/compte" aria-label="Mon compte" className="ml-1 w-9 h-9 inline-flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-900">
+              <CircleUser size={19} strokeWidth={1.5} />
             </Link>
           </nav>
         </div>

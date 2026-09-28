@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import { useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAppContext, allowsDigitalSubscriptionUI } from '@/lib/appContext';
@@ -287,8 +288,8 @@ export default function ChairBusinessPage() {
             {/* Exigé par Apple pour un abonnement auto-renouvelable (3.1.2). */}
             <p className="text-[11px] text-neutral-400 mb-7">
               Renouvellement mensuel automatique ·{' '}
-              <Link href="/cgu" className="underline underline-offset-2">Conditions</Link>{' '}·{' '}
-              <Link href="/confidentialite" className="underline underline-offset-2">Confidentialité</Link>
+              <LienSite path="/cgu" className="underline underline-offset-2">Conditions</LienSite>{' '}·{' '}
+              <LienSite path="/confidentialite" className="underline underline-offset-2">Confidentialité</LienSite>
             </p>
 
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}

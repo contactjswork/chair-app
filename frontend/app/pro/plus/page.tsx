@@ -8,6 +8,7 @@ import DashboardPageHeader from '@/components/layout/DashboardPageHeader';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProNav } from '@/hooks/useProNav';
+import ReglagesLegaux from '@/components/ui/ReglagesLegaux';
 
 // Équivalent mobile de la section "Outils" de la sidebar desktop — sans ça,
 // ces pages (fauteuils, offres d'emploi, badges, classement...) ne sont
@@ -141,6 +142,8 @@ export default function ProPlusPage() {
             ))}
           </div>
         </div>
+
+        <ReglagesLegaux className="mt-6" />
       </div>
     </div>
   );

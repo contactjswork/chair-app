@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
 import { chairRentals } from '@/lib/api';
 import { CHAIR_EQUIPMENT_LABELS, type ApiRentalContract } from '@/lib/types';
-import { Printer, Loader2, AlertCircle } from 'lucide-react';
+import { Printer, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 const JOURS: Record<number, string> = { 1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi', 7: 'dimanche' };
 
@@ -25,6 +26,9 @@ function euros(n: number | null): string | null {
  */
 export default function ContratFauteuilPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  // Faux au rendu serveur, vrai dans les apps : aucune divergence d'hydratation.
+  const natif = useSyncExternalStore(() => () => {}, () => Capacitor.isNativePlatform(), () => false);
   const [data, setData] = useState<ApiRentalContract | null>(null);
   const [erreur, setErreur] = useState('');
 
@@ -67,13 +71,22 @@ export default function ContratFauteuilPage() {
     <div className="min-h-screen bg-neutral-100 print:bg-white">
       {/* Barre d'action — jamais imprimée. */}
       <div className="print:hidden sticky top-0 z-10 bg-white shadow-[0_4px_20px_-8px_rgba(10,10,10,0.08)] px-4 h-14 flex items-center justify-between">
-        <span className="text-sm font-bold tracking-tight text-neutral-900">Contrat de location</span>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
-        >
-          <Printer size={13} /> Imprimer / PDF
-        </button>
+        <div className="flex items-center gap-2 min-w-0">
+          <button onClick={() => router.back()} aria-label="Retour" className="w-9 h-9 -ml-2 flex items-center justify-center text-neutral-500">
+            <ArrowLeft size={18} />
+          </button>
+          <span className="text-sm font-bold tracking-tight text-neutral-900 truncate">Contrat de location</span>
+        </div>
+        {/* window.print n'existe pas dans la vue web des apps iOS : le bouton
+            n'est proposé que sur le web (ordinateur). */}
+        {!natif && (
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-neutral-900 text-white px-3.5 py-2 rounded-xl hover:bg-neutral-700 transition-colors"
+          >
+            <Printer size={13} /> Imprimer / PDF
+          </button>
+        )}
       </div>
 
       <div className="max-w-[720px] mx-auto bg-white my-6 print:my-0 px-8 py-10 md:px-12 shadow-[0_10px_40px_-16px_rgba(10,10,10,0.15)] print:shadow-none rounded-[8px] print:rounded-none text-[13px] leading-relaxed text-neutral-800">

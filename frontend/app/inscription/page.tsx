@@ -10,6 +10,7 @@ import { AlertCircle, Lock, Mail, MapPin, Phone, User } from 'lucide-react';
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
 import CityAutocomplete from '@/components/ui/CityAutocomplete';
+import LienSite from '@/components/ui/LienSite';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
 
 type Step = 'name' | 'city' | 'email' | 'phone' | 'password';
@@ -254,9 +255,9 @@ function InscriptionContent() {
             </div>
             <p className="text-[11px] text-neutral-400 leading-relaxed mt-4">
               En continuant, tu acceptes nos{' '}
-              <a href="/cgu" className="underline hover:text-neutral-600">CGU</a>
+              <LienSite path="/cgu" className="underline hover:text-neutral-600">CGU</LienSite>
               {' '}et notre{' '}
-              <a href="/confidentialite" className="underline hover:text-neutral-600">Politique de confidentialité</a>.
+              <LienSite path="/confidentialite" className="underline hover:text-neutral-600">Politique de confidentialité</LienSite>.
             </p>
           </Screen>
         )}

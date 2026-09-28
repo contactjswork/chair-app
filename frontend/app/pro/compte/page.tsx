@@ -7,6 +7,7 @@ import { useRequireAuth } from '@/hooks/useRequireAuth';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import { ChevronLeft, Check, LogOut, Trash2 } from 'lucide-react';
+import ReglagesLegaux from '@/components/ui/ReglagesLegaux';
 
 /**
  * Page "Mon compte" pour un gérant de salon — l'équivalent de /pro/profil
@@ -43,7 +44,9 @@ export default function ProComptePage() {
     setError('');
     setSaved(false);
     try {
-      await api.put('/user/profile', { name, city, phone });
+      // Le numéro actuel n'est pas prérempli : un champ laissé vide ne doit
+      // pas effacer celui déjà enregistré.
+      await api.put('/user/profile', { name, city, ...(phone.trim() ? { phone } : {}) });
       updateUser({ name, city });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -151,6 +154,8 @@ export default function ProComptePage() {
             {pwSaved ? <><Check size={15} />Mis à jour</> : pwSaving ? 'Mise à jour...' : 'Changer le mot de passe'}
           </button>
         </form>
+
+        <ReglagesLegaux className="mt-6" />
 
         <button onClick={logout}
           className="w-full flex items-center justify-center gap-2 text-sm text-neutral-400 hover:text-red-500 transition-colors mt-6 py-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import { isNativeApp } from '@/hooks/useGeolocation';
 
 const COOKIE_KEY = 'chair_cookies_consent';
@@ -85,9 +85,9 @@ export default function CookieBanner() {
         <p className="text-[13px] text-neutral-700 leading-relaxed mb-4">
           CHAIR utilise uniquement du stockage local nécessaire à son fonctionnement (session, préférences,
           recherches récentes). Aucun cookie publicitaire, aucun traceur tiers, aucune mesure d&apos;audience.{' '}
-          <Link href="/confidentialite" className="underline text-neutral-900 font-medium">
+          <LienSite path="/confidentialite" className="underline text-neutral-900 font-medium">
             Politique de confidentialité
-          </Link>
+          </LienSite>
         </p>
         <button
           onClick={acknowledge}

@@ -15,6 +15,7 @@ import {
 import OnboardingHeader from '@/components/onboarding/OnboardingHeader';
 import ChoiceCard from '@/components/onboarding/ChoiceCard';
 import WelcomeSlides from '@/components/onboarding/WelcomeSlides';
+import LienSite from '@/components/ui/LienSite';
 import QuestionScreen from '@/components/onboarding/QuestionScreen';
 import LocationAccordion from '@/components/onboarding/LocationAccordion';
 import { useStepTransition, tapFeedback } from '@/hooks/useStepTransition';
@@ -394,6 +395,12 @@ function ProInscriptionContent() {
                 className={`${inputCls} pl-11`}
               />
             </div>
+            <p className="text-[11px] text-neutral-500 leading-relaxed mt-4">
+              En continuant, tu acceptes nos{' '}
+              <LienSite path="/cgu" className="underline hover:text-neutral-300">CGU</LienSite>
+              {' '}et notre{' '}
+              <LienSite path="/confidentialite" className="underline hover:text-neutral-300">Politique de confidentialité</LienSite>.
+            </p>
           </Screen>
         )}
 
