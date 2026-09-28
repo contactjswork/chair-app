@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 /**
  * Enregistrement des tokens push APNs des appareils.
  *
- * POST   /push/register   {token, platform:'ios', device_name?, app?:'client'|'pro'}
+ * POST   /push/register   {token, platform:'ios', device_name?, app?:'client'|'pro'|'business'}
  * DELETE /push/register   {token}
  *
  * - Upsert par token (unique en base) : un appareil qui se reconnecte avec un
@@ -30,7 +30,7 @@ class PushTokenController extends Controller
             'token'       => 'required|string|min:16|max:200|regex:/^[0-9a-fA-F]+$/',
             'platform'    => 'required|string|in:ios',
             'device_name' => 'nullable|string|max:100',
-            'app'         => 'nullable|string|in:client,pro',
+            'app'         => 'nullable|string|in:client,pro,business',
         ]);
 
         PushSubscription::updateOrCreate(

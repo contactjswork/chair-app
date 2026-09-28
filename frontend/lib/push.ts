@@ -131,7 +131,7 @@ async function registerTokenWithBackend(token: string): Promise<void> {
   await pushApi.register({
     token,
     platform: 'ios',
-    ...(context === 'client' || context === 'pro' ? { app: context } : {}),
+    ...(context === 'client' || context === 'pro' || context === 'business' ? { app: context } : {}),
   });
   try {
     localStorage.setItem(PUSH_TOKEN_KEY, token);

@@ -613,7 +613,7 @@ export const push = {
    * aujourd'hui (l'envoi backend est APNs uniquement) — Android rejoindra le
    * contrat avec FCM.
    */
-  register: (data: { token: string; platform: 'ios'; app?: 'client' | 'pro' }) =>
+  register: (data: { token: string; platform: 'ios'; app?: 'client' | 'pro' | 'business' }) =>
     api.post<{ message: string }>('/push/register', data),
 
   /** Retire le token de CET appareil (au logout) — les autres appareils restent abonnés. Idempotent. */

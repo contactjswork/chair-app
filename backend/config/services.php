@@ -38,6 +38,7 @@ return [
         'team_id'       => env('APNS_TEAM_ID'),
         'bundle_id'     => env('APNS_BUNDLE_ID', 'app.getchair.client'),
         'bundle_id_pro' => env('APNS_BUNDLE_ID_PRO', 'app.getchair.pro'),
+        'bundle_id_business' => env('APNS_BUNDLE_ID_BUSINESS', 'app.getchair.business'),
         'environment'   => env('APNS_ENVIRONMENT', 'production'),
         // Surcharge du host APNs, réservée aux tests locaux (mock) —
         // ne JAMAIS définir APNS_HOST en production.

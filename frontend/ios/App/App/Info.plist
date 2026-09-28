@@ -55,6 +55,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- HTTPS uniquement, aucun chiffrement propriétaire : exemption
+	     d'export. Sans cette clé, App Store Connect bloque chaque build
+	     TestFlight en « Missing Compliance » jusqu'à réponse manuelle. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>CHAIR utilise l'appareil photo pour te laisser prendre ta photo de profil directement depuis l'app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

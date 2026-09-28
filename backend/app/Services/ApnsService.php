@@ -85,11 +85,14 @@ class ApnsService
         return (bool) (($v['features'] ?? 0) & CURL_VERSION_HTTP2);
     }
 
-    /** Topic APNs pour un binaire donné ('client' | 'pro' | null → défaut). */
+    /** Topic APNs pour un binaire donné ('client' | 'pro' | 'business' | null → défaut). */
     public static function topicForApp(?string $app): string
     {
         if ($app === 'pro') {
             return (string) config('services.apns.bundle_id_pro', 'app.getchair.pro');
+        }
+        if ($app === 'business') {
+            return (string) config('services.apns.bundle_id_business', 'app.getchair.business');
         }
         return (string) config('services.apns.bundle_id', 'app.getchair.client');
     }

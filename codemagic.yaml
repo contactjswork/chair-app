@@ -188,8 +188,8 @@ workflows:
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR PRO'" "$PLIST"
 
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
-          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR PRO utilise l appareil photo pour publier vos realisations et votre photo de profil.'" "$PLIST" 2>/dev/null || \
+          /usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR PRO utilise l appareil photo pour publier vos realisations et votre photo de profil.'" "$PLIST"
 
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
           /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
