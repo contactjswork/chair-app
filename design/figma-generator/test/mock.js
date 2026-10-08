@@ -49,7 +49,7 @@ class Node {
   clone() { return deepCopy(this, null); }
   createInstance() {
     if (this.type !== 'COMPONENT') throw new Error('createInstance sur ' + this.type);
-    const i = deepCopy(this, null); i.type = 'INSTANCE'; i.mainComponent = this; markInInstance(i);
+    const i = deepCopy(this, null); i.type = 'INSTANCE'; i._main = this; markInInstance(i);
     i._defs = this.parent && this.parent.type === 'COMPONENT_SET' ? this.parent._propDefs() : this._propDefs();
     return i;
   }
@@ -69,12 +69,15 @@ class Node {
     for (const [k, v] of Object.entries(obj)) {
       const d = this._defs[k];
       if (!d) throw new Error('in setProperties: propriété inconnue « ' + k + ' » sur ' + this.name);
-      if (d.type === 'VARIANT' && !d.values.has(v)) throw new Error('in setProperties: variante inexistante ' + k + '=' + v + ' sur ' + this.mainComponent.parent.name);
+      if (d.type === 'VARIANT' && !d.values.has(v)) throw new Error('in setProperties: variante inexistante ' + k + '=' + v + ' sur ' + this._main.parent.name);
       if (d.type === 'TEXT' && typeof v !== 'string') throw new Error('TEXT attend une chaîne : ' + k);
       if (d.type === 'BOOLEAN' && typeof v !== 'boolean') throw new Error('BOOLEAN attend un booléen : ' + k + ' = ' + v);
     }
   }
-  swapComponent(c) { if (!c || c.type !== 'COMPONENT') throw new Error('swapComponent invalide'); this.mainComponent = c; }
+  swapComponent(c) { if (!c || c.type !== 'COMPONENT') throw new Error('swapComponent invalide'); this._main = c; }
+  // documentAccess: dynamic-page — lecture synchrone interdite, comme dans Figma.
+  get mainComponent() { throw new Error('in get_mainComponent: Cannot call with documentAccess: dynamic-page. Use node.getMainComponentAsync instead.'); }
+  async getMainComponentAsync() { return this._main; }
   addComponentProperty(name, type, def) {
     if (this.type !== 'COMPONENT' && this.type !== 'COMPONENT_SET') throw new Error('addComponentProperty sur ' + this.type);
     if (this.type === 'COMPONENT' && this.parent && this.parent.type === 'COMPONENT_SET') throw new Error('propriété à ajouter sur l\'ensemble, pas la variante');
@@ -85,7 +88,7 @@ class Node {
 function markInInstance(n) { for (const c of n.children) { c._inInstance = true; markInInstance(c); } }
 function deepCopy(n, parent) {
   const c = new Node(n.type, n.name);
-  for (const k of ['fontName', '_ch', 'layoutMode', 'width', 'height', '_defs', 'mainComponent']) c[k] = n[k];
+  for (const k of ['fontName', '_ch', 'layoutMode', 'width', 'height', '_defs', '_main']) c[k] = n[k];
   c.parent = parent;
   c.children = n.children.map((x) => deepCopy(x, c));
   return c;
@@ -102,6 +105,9 @@ function makeFigma(log) {
   const figma = {
     root,
     get currentPage() { return current; },
+    getNodeById() { throw new Error('in getNodeById: Cannot call with documentAccess: dynamic-page. Use figma.getNodeByIdAsync instead.'); },
+    getLocalTextStyles() { throw new Error('getLocalTextStyles interdit en dynamic-page'); },
+    getLocalEffectStyles() { throw new Error('getLocalEffectStyles interdit en dynamic-page'); },
     async setCurrentPageAsync(p) { if (p.type !== 'PAGE') throw new Error('setCurrentPageAsync attend une page'); current = p; },
     async loadAllPagesAsync() {},
     createPage() { if (root.children.length >= pageLimit) throw new Error('Limited to ' + pageLimit + ' pages'); const p = new Node('PAGE'); p.flowStartingPoints = []; root.appendChild(p); return p; },

@@ -17,6 +17,7 @@ const TS = {};                     // styles de texte par nom
 const ES = {};                     // styles d'effet par nom
 const K = {};                      // composants / ensembles par nom
 const ICON = {};                   // composants icônes par nom
+const ICON_OF = new Map();         // id d'instance d'icône → id du composant (mainComponent est asynchrone en dynamic-page)
 let FONT = null;
 let COLOR_COL = null;         // collection de couleurs
 let DARK_MODE = null;         // identifiant du mode Sombre
@@ -348,6 +349,7 @@ function ic(name, size, color) {
   if (size && size !== 24) i.rescale(size / 24);
   recolorIcon(i, color || 'texte/principal');
   i.name = name;
+  ICON_OF.set(i.id, comp.id);
   return i;
 }
 function recolorIcon(node, color) {
@@ -391,7 +393,9 @@ function propBool(comp, label, node, def) {
   return key;
 }
 function propSwap(comp, label, instanceNode) {
-  const key = comp.addComponentProperty(label, 'INSTANCE_SWAP', instanceNode.mainComponent.id);
+  const mainId = ICON_OF.get(instanceNode.id);
+  if (!mainId) throw new Error('propSwap : instance icône inconnue (' + instanceNode.name + ')');
+  const key = comp.addComponentProperty(label, 'INSTANCE_SWAP', mainId);
   instanceNode.componentPropertyReferences = Object.assign({}, instanceNode.componentPropertyReferences || {}, { mainComponent: key });
   return key;
 }
