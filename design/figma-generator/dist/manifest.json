@@ -1,0 +1,16 @@
+{
+  "name": "CHAIR — Générateur du système de design",
+  "id": "chair-design-system-generator",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "https://www.getchair.app"
+    ],
+    "reasoning": "Illustrations officielles des spécialités CHAIR."
+  }
+}
