@@ -107,7 +107,7 @@ export default function PortfolioGrid({ posts }: Props) {
 
   const visible   = expanded ? posts : posts.slice(0, INITIAL_COUNT);
   const remaining = posts.length - INITIAL_COUNT;
-  const showBtn   = !expanded && posts.length >= INITIAL_COUNT;
+  const showBtn   = !expanded && remaining > 0;
 
   // Non atteint depuis PublicProfilePortfolio (qui filtre déjà ce cas en
   // amont avec le même EmptyState), mais gardé en garde-fou défensif pour
