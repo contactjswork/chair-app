@@ -21,6 +21,7 @@ class LaunchCleanup extends Command
 {
     protected $signature = 'chair:launch-cleanup
         {--review : Supprimer aussi les 3 comptes App Review}
+        {--keep= : Repartir de zéro : ne garder QUE ces comptes (ids séparés par des virgules) + les admins}
         {--force : Exécuter réellement (sinon simple aperçu)}';
 
     protected $description = 'Supprime les comptes de démonstration avant le lancement public';
@@ -29,15 +30,28 @@ class LaunchCleanup extends Command
 
     public function handle(): int
     {
-        $query = DB::table('users')->where('email', 'like', '%@demo.getchair.app');
-        if ($this->option('review')) {
-            $query->orWhereIn('email', self::REVIEW_EMAILS);
+        $keepOpt = $this->option('keep');
+        if ($keepOpt !== null && $keepOpt !== '') {
+            // Remise à zéro complète : tout compte hors de la liste part,
+            // sauf les admins (garde-fou absolu, accès à la console).
+            $keepIds = array_values(array_filter(array_map('intval', explode(',', $keepOpt))));
+            if (empty($keepIds)) {
+                $this->error('--keep attend des numéros de comptes, ex. --keep=38,179,180,181');
+                return self::FAILURE;
+            }
+            $delUsers = DB::table('users')->whereNotIn('id', $keepIds)->whereNull('admin_role_id')
+                ->get(['id', 'name', 'email', 'role', 'admin_role_id']);
+        } else {
+            $query = DB::table('users')->where('email', 'like', '%@demo.getchair.app');
+            if ($this->option('review')) {
+                $query->orWhereIn('email', self::REVIEW_EMAILS);
+            }
+            // Garde-fou : jamais un admin ni l'équipe fondatrice.
+            $delUsers = $query->get(['id', 'name', 'email', 'role', 'admin_role_id'])
+                ->reject(fn ($u) => $u->admin_role_id !== null
+                    || stripos($u->name, 'schillinger') !== false
+                    || stripos($u->name, 'koehler') !== false);
         }
-        // Garde-fou absolu : jamais un admin ni l'équipe fondatrice.
-        $delUsers = $query->get(['id', 'name', 'email', 'role', 'admin_role_id'])
-            ->reject(fn ($u) => $u->admin_role_id !== null
-                || stripos($u->name, 'schillinger') !== false
-                || stripos($u->name, 'koehler') !== false);
 
         $delUserIds    = $delUsers->pluck('id')->all();
         $delProfileIds = DB::table('hairdresser_profiles')->whereIn('user_id', $delUserIds ?: [0])->pluck('id')->all();
@@ -46,6 +60,13 @@ class LaunchCleanup extends Command
         $kept = DB::table('users')->whereNotIn('id', $delUserIds ?: [0])->orderBy('id')->get(['id', 'name', 'email', 'role']);
 
         $this->info('À SUPPRIMER : ' . count($delUserIds) . ' comptes, ' . count($delProfileIds) . ' profils coiffeur, ' . count($delSalonIds) . ' salons.');
+        if ($keepOpt) {
+            foreach ($delUsers->reject(fn ($u) => str_ends_with((string) $u->email, '@demo.getchair.app')) as $u) {
+                $this->line("  - #{$u->id}  {$u->name}  <{$u->email}>  ({$u->role})");
+            }
+            $demoCount = $delUsers->filter(fn ($u) => str_ends_with((string) $u->email, '@demo.getchair.app'))->count();
+            if ($demoCount) $this->line("  - + {$demoCount} comptes du jeu de démo (@demo.getchair.app)");
+        }
         $reviewLeft = DB::table('users')->whereIn('email', self::REVIEW_EMAILS)->whereNotIn('id', $delUserIds ?: [0])->count();
         if ($reviewLeft) {
             $this->line("  ({$reviewLeft} compte(s) App Review conservé(s) — ajoutez --review pour les supprimer aussi)");
