@@ -688,6 +688,8 @@ export const salons = {
   },
   show: (slug: string) => api.get<ApiSalonFull>(`/salons/${slug}`),
   mySalon: () => api.get<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] }>('/my-salon'),
+  /** Le salon dont je suis membre (coiffeur salarié, pas gérant) — lecture seule. */
+  myTeamSalon: () => api.get<{ salon: ApiSalonFull; pending_requests: ApiSalonJoinRequest[] }>('/my-team-salon'),
   recentReviews: () => api.get<import('./types').ApiSalonRecentReview[]>('/my-salon/recent-reviews'),
   /** Le pouls du salon — semaine, alertes membres, classement local (home BUSINESS). */
   pulse: () => api.get<import('./types').ApiSalonPulse>('/my-salon/pulse'),

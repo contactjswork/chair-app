@@ -468,6 +468,7 @@ Route::middleware(['auth:sanctum', 'not.suspended'])->group(function () {
     // Salons (gestion)
     Route::post('/my-salon',                               [SalonController::class, 'createMySalon']);
     Route::get('/my-salon',                                [SalonController::class, 'mySalon']);
+    Route::get('/my-team-salon',                           [SalonController::class, 'myTeamSalon']);
     Route::get('/my-salon/recent-reviews',                 [SalonController::class, 'recentReviews']);
     Route::get('/my-salon/pulse',                          [SalonController::class, 'pulse']);
     Route::get('/my-salon/recruitment-matches',            [SalonController::class, 'recruitmentMatches']);

@@ -36,7 +36,8 @@ class CreatePreviewAccounts extends Command
 {
     protected $signature = 'chair:make-preview-accounts
         {password : Mot de passe commun — à reporter dans App Store Connect}
-        {--fresh : Supprime les anciens comptes de review avant de recréer}';
+        {--fresh : Supprime les anciens comptes de review avant de recréer}
+        {--sans-client : Ne touche pas au compte client (seulement PRO et BUSINESS)}';
 
     protected $description = 'Crée les 3 comptes de démonstration App Review (client, coiffeur, gérant)';
 
@@ -44,15 +45,33 @@ class CreatePreviewAccounts extends Command
     private const EMAIL_COIFFEUR = 'review.coiffeur@getchair.app';
     private const EMAIL_GERANT   = 'review.gerant@getchair.app';
 
+    // Photos coiffure de démonstration (Cloudinary CHAIR) : utilisées quand la
+    // base n'a pas de contenu à emprunter (prod remise à zéro au lancement).
+    private const IMAGES_COIFFEUR = [
+        'https://res.cloudinary.com/dnwtc0dra/image/upload/v1780487253/chair/avatars/xi3j61fxkdbkuhrneusn.jpg',
+        'https://res.cloudinary.com/dnwtc0dra/image/upload/v1783013582/chair/avatars/p4x7v0u5ig1zylgjuiyg.jpg',
+        'https://res.cloudinary.com/dnwtc0dra/image/upload/v1783005429/chair/avatars/ttyykj6fn8d0fec9djc4.jpg',
+    ];
+    private const AVATAR_COIFFEUR = 'https://res.cloudinary.com/dnwtc0dra/image/upload/v1783025889/chair/avatars/epmyomrm39dhi8cezpgp.jpg';
+    private const BANNIERE_COIFFEUR = 'https://res.cloudinary.com/dnwtc0dra/image/upload/v1780433759/chair/posts/vmxlzjtvoz7oe9v2xsgf.jpg';
+    private const PHOTO_SALON = 'https://res.cloudinary.com/dnwtc0dra/image/upload/v1780402866/chair/banners/ap6xf7gelwfd2zaooo8b.webp';
+
     public function handle(): int
     {
         $password = (string) $this->argument('password');
+        $sansClient = (bool) $this->option('sans-client');
+        $emails = $sansClient ? [self::EMAIL_COIFFEUR, self::EMAIL_GERANT] : [self::EMAIL_CLIENT, self::EMAIL_COIFFEUR, self::EMAIL_GERANT];
 
-        if ($this->option('fresh')) {
-            $this->purgerAnciens();
+        if (strlen($password) < 12) {
+            $this->error('Mot de passe trop court : 12 caractères minimum.');
+            return 1;
         }
 
-        foreach ([self::EMAIL_CLIENT, self::EMAIL_COIFFEUR, self::EMAIL_GERANT] as $email) {
+        if ($this->option('fresh')) {
+            $this->purgerAnciens($emails);
+        }
+
+        foreach ($emails as $email) {
             if (User::where('email', $email)->exists()) {
                 $this->error("{$email} existe déjà — relancez avec --fresh pour repartir propre.");
                 return 1;
@@ -82,7 +101,7 @@ class CreatePreviewAccounts extends Command
             'department' => 'Bas-Rhin',
             'latitude'  => 48.5819, 'longitude' => 7.7480,
             'logo'      => Salon::whereNotNull('logo')->value('logo'),
-            'cover_image' => Salon::whereNotNull('cover_image')->value('cover_image'),
+            'cover_image' => Salon::whereNotNull('cover_image')->value('cover_image') ?: self::PHOTO_SALON,
         ]);
 
         // ── Le coiffeur, rattaché au salon ───────────────────────────────
@@ -94,7 +113,7 @@ class CreatePreviewAccounts extends Command
             'city'     => 'Strasbourg',
             'latitude' => 48.5734, 'longitude' => 7.7521,
             'email_verified_at' => now(),
-            'avatar'   => User::whereNotNull('avatar')->where('role', 'hairdresser')->value('avatar'),
+            'avatar'   => self::AVATAR_COIFFEUR,
         ]);
 
         $profil = HairdresserProfile::create([
@@ -106,22 +125,44 @@ class CreatePreviewAccounts extends Command
             'region'         => 'Grand Est',
             'department'     => 'Bas-Rhin',
             'latitude'       => 48.5822, 'longitude' => 7.7465,
-            'is_independent' => false,
+            // Indépendant installé au salon (location de fauteuil) : la nav
+            // CHAIR PRO complète (Agenda, Performance) s'affiche pour le
+            // reviewer, et l'équipe du salon le liste toujours.
+            'is_independent' => true,
             'salon_id'       => $salon->id,
             'years_experience' => 8,
-            'banner_image'   => HairdresserProfile::whereNotNull('banner_image')->value('banner_image'),
+            'banner_image'   => self::BANNIERE_COIFFEUR,
         ]);
 
-        // Services réels (3), rattachés aux vraies spécialités.
+        // Horaires : mardi → samedi, 9 h – 19 h, pause 12 h 30 – 13 h 30
+        // (créneaux réservables et agenda réaliste pour le reviewer).
+        foreach (range(0, 6) as $jour) {
+            \App\Models\HairdresserSchedule::create([
+                'hairdresser_id' => $profil->id, 'day_of_week' => $jour,
+                'start_time' => '09:00', 'end_time' => '19:00', 'break_start' => '12:30', 'break_end' => '13:30',
+                'is_open' => $jour >= 2,
+            ]);
+        }
+
+        // Services réels (3), rattachés aux vraies spécialités, dans les
+        // catégories PROPRES au coiffeur (une catégorie appartient à un
+        // coiffeur ; la base peut n'en contenir aucune après la remise à zéro).
         $specialites = Specialty::whereIn('slug', ['coupe-homme', 'couleur-balayage', 'barbe'])->get()->keyBy('slug');
+        // Spécialités affichées sur le profil et en tête de « Mes services »
+        // (sans elles : « Aucune spécialité sélectionnée »).
+        $profil->specialties()->sync($specialites->pluck('id')->all());
+        $categories = [];
+        foreach (['Coupe' => 0, 'Couleur' => 1, 'Barbe' => 2] as $nomCat => $ordre) {
+            $categories[$nomCat] = \App\Models\ServiceCategory::create(['hairdresser_id' => $profil->id, 'name' => $nomCat, 'display_order' => $ordre])->id;
+        }
         foreach ([
-            ['name' => 'Coupe homme',        'price' => 28, 'duration_minutes' => 30, 'slug' => 'coupe-homme'],
-            ['name' => 'Balayage complet',   'price' => 95, 'duration_minutes' => 120, 'slug' => 'couleur-balayage'],
-            ['name' => 'Taille de barbe',    'price' => 18, 'duration_minutes' => 20, 'slug' => 'barbe'],
+            ['name' => 'Coupe homme',        'price' => 28, 'duration_minutes' => 30, 'slug' => 'coupe-homme', 'cat' => 'Coupe'],
+            ['name' => 'Balayage complet',   'price' => 95, 'duration_minutes' => 120, 'slug' => 'couleur-balayage', 'cat' => 'Couleur'],
+            ['name' => 'Taille de barbe',    'price' => 18, 'duration_minutes' => 20, 'slug' => 'barbe', 'cat' => 'Barbe'],
         ] as $svc) {
             Service::create([
                 'hairdresser_id'   => $profil->id,
-                'category_id'      => \App\Models\ServiceCategory::value('id'),
+                'category_id'      => $categories[$svc['cat']],
                 'specialty_id'     => $specialites[$svc['slug']]->id ?? null,
                 'name'             => $svc['name'],
                 'price'            => $svc['price'],
@@ -131,13 +172,14 @@ class CreatePreviewAccounts extends Command
         }
 
         // Portfolio : 3 réalisations, images empruntées aux posts existants.
-        $imagesDemo = PostImage::orderByDesc('id')->limit(3)->pluck('url');
+        $imagesDemo = collect(self::IMAGES_COIFFEUR);
         foreach ($imagesDemo as $i => $url) {
             $post = Post::create([
                 'hairdresser_id' => $profil->id,
                 'specialty_id'   => $specialites['coupe-homme']->id ?? null,
                 'type'           => 'result',
-                'description'    => ['Dégradé net, finition rasoir.', 'Balayage caramel sur base châtain.', 'Coupe texturée + barbe sculptée.'][$i] ?? 'Réalisation',
+                'cover_image'    => $url,
+                'description'    => ['Dégradé net, finition rasoir.', 'Coupe texturée, effet naturel.', 'Boucles travaillées aux ciseaux.'][$i] ?? 'Réalisation',
                 'is_published'   => true,
             ]);
             PostImage::create(['post_id' => $post->id, 'url' => $url, 'type' => 'result', 'order' => 0]);
@@ -172,7 +214,7 @@ class CreatePreviewAccounts extends Command
         ]);
 
         // ── Le client — la commande existante fait déjà tout bien ────────
-        Artisan::call('chair:create-review-account', [
+        if (!$sansClient) Artisan::call('chair:create-review-account', [
             'email'    => self::EMAIL_CLIENT,
             'password' => $password,
             '--city'   => 'Strasbourg',
@@ -181,19 +223,19 @@ class CreatePreviewAccounts extends Command
 
         $this->newLine();
         $this->info('Comptes App Review prêts (mot de passe commun fourni) :');
-        $this->table(['App', 'E-mail', 'Contenu'], [
-            ['CHAIR',          self::EMAIL_CLIENT,   'favoris, abonnement, RDV à annuler, RDV à noter'],
+        $this->table(['App', 'E-mail', 'Contenu'], array_filter([
+            $sansClient ? null : ['CHAIR', self::EMAIL_CLIENT, 'favoris, abonnement, RDV à annuler, RDV à noter'],
             ['CHAIR PRO',      self::EMAIL_COIFFEUR, '3 services, 3 réalisations, rattaché à Atelier Dumont'],
             ['CHAIR BUSINESS', self::EMAIL_GERANT,   'salon complet, 1 coiffeur, 1 annonce fauteuil, 1 offre'],
-        ]);
+        ]));
 
         return 0;
     }
 
     /** Supprime les anciens comptes de review (et leurs contenus, en cascade). */
-    private function purgerAnciens(): void
+    private function purgerAnciens(array $emails): void
     {
-        foreach ([self::EMAIL_CLIENT, self::EMAIL_COIFFEUR, self::EMAIL_GERANT] as $email) {
+        foreach ($emails as $email) {
             $user = User::where('email', $email)->first();
             if (!$user) {
                 continue;

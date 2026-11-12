@@ -490,7 +490,10 @@ export default function DashboardSalonPage() {
 
   useEffect(() => {
     if (!user) return;
+    // Gérant : son salon. Coiffeur membre : le salon de son équipe, en
+    // lecture seule (sinon il voyait « pas encore rattaché » alors qu'il l'est).
     salons.mySalon()
+      .catch(() => salons.myTeamSalon())
       .then((data) => {
         setSalonData(data);
         setNoSalon(false);

@@ -188,6 +188,27 @@ class SalonController extends Controller
         ]);
     }
 
+    /**
+     * GET /my-team-salon — le salon dont le coiffeur fait partie (membre, pas
+     * gérant). Lecture seule : l'équipe sans e-mail ni téléphone, et jamais
+     * les demandes en attente (réservées au gérant via /my-salon).
+     */
+    public function myTeamSalon(Request $request)
+    {
+        $profile = HairdresserProfile::where('user_id', $request->user()->id)->first();
+        if (!$profile || !$profile->salon_id) {
+            return response()->json(['message' => 'Aucun salon.'], 404);
+        }
+
+        $salon = Salon::with(['hairdressers.user', 'hairdressers.specialties'])
+            ->findOrFail($profile->salon_id);
+
+        return response()->json([
+            'salon'            => \App\Support\PublicScope::salon($salon),
+            'pending_requests' => [],
+        ]);
+    }
+
     /** GET /my-salon/recent-reviews — derniers avis reçus par l'équipe du salon (cockpit) */
     public function recentReviews(Request $request)
     {
