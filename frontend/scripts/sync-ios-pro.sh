@@ -56,20 +56,24 @@ sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = app.get
 # Le numéro se passe donc explicitement :   ./sync-ios-pro.sh 13
 # Sans argument, le script n'y touche pas et rappelle simplement la valeur.
 if [ "$#" -ge 1 ]; then
+  # Seule méthode fiable (agvtool fige la valeur en dur dans Info.plist et
+  # Xcode réécrit le pbxproj en quittant) : Xcode doit être FERMÉ.
   echo "→ Build number : $1 (fourni explicitement)"
-  (cd ios/App && agvtool new-version -all "$1")
+  osascript -e 'quit app "Xcode"' 2>/dev/null || true
+  sleep 2
+  sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $1;/g" ios/App/App.xcodeproj/project.pbxproj
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $1" ios/App/App/Info.plist
 else
-  CURRENT_BUILD=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+  CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/App/App/Info.plist 2>/dev/null || echo "?")
   echo "→ Build number inchangé ($CURRENT_BUILD)"
   echo "  ⚠ Vérifie sur App Store Connect qu'aucun build ne porte déjà ce numéro,"
   echo "    sinon l'envoi sera refusé. Pour le fixer : $0 <numéro>"
 fi
-
 echo "→ Nom affiché + permissions (CHAIR PRO)"
 /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'CHAIR PRO'" "$PLIST"
 
-/usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR PRO utilise l appareil photo pour publier vos realisations et vos stories.'" "$PLIST"
+/usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'CHAIR PRO utilise l appareil photo pour publier vos realisations et votre photo de profil.'" "$PLIST" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSCameraUsageDescription 'CHAIR PRO utilise l appareil photo pour publier vos realisations et votre photo de profil.'" "$PLIST"
 
 /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'CHAIR PRO accede a vos photos pour publier une realisation depuis votre galerie.'" "$PLIST"
@@ -79,7 +83,7 @@ echo "→ Nom affiché + permissions (CHAIR PRO)"
 # inutilisée (risque de rejet App Review).
 /usr/libexec/PlistBuddy -c "Delete :NSLocationWhenInUseUsageDescription" "$PLIST" 2>/dev/null || true
 
-BUILD_NUM=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+BUILD_NUM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/App/App/Info.plist 2>/dev/null || echo "?")
 ACTUAL_URL=$(node -e "console.log(require('./ios/App/App/capacitor.config.json').server.url)" 2>/dev/null || echo "?")
 
 echo ""
@@ -91,6 +95,13 @@ echo "════════════════════════�
 if [ "$ACTUAL_URL" != "https://www.getchair.app/pro" ]; then
   echo "✗ ATTENTION : l'URL ne correspond pas à ce qui est attendu (https://www.getchair.app/pro) !"
   echo "  Ne pas archiver tant que ce n'est pas corrigé."
+  exit 1
+fi
+# Sans ce marqueur, la page CHAIR+ ne reconnaît pas le binaire PRO et masque
+# l'achat intégré (« CHAIR+ se gère dans l'espace professionnel »).
+if ! grep -q "CHAIRPro" ios/App/App/capacitor.config.json; then
+  echo "✗ Marqueur CHAIRPro absent de ios/App/App/capacitor.config.json — l'achat CHAIR+ serait masqué."
+  echo "  Ne pas archiver. Relance ce script depuis le dossier à jour (git pull)."
   exit 1
 fi
 echo "✓ Vérifié — ouvre maintenant ios/App/App.xcodeproj dans Xcode et Archive."

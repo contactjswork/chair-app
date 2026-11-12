@@ -59,9 +59,12 @@ sed -i '' "s/PRODUCT_BUNDLE_IDENTIFIER = .*;/PRODUCT_BUNDLE_IDENTIFIER = app.get
 # Sans argument, le script n'y touche pas et rappelle simplement la valeur.
 if [ "$#" -ge 1 ]; then
   echo "→ Build number : $1 (fourni explicitement)"
-  (cd ios/App && agvtool new-version -all "$1")
+  osascript -e 'quit app "Xcode"' 2>/dev/null || true
+  sleep 2
+  sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $1;/g" ios/App/App.xcodeproj/project.pbxproj
+  /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $1" ios/App/App/Info.plist
 else
-  CURRENT_BUILD=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+  CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/App/App/Info.plist 2>/dev/null || echo "?")
   echo "→ Build number inchangé ($CURRENT_BUILD)"
   echo "  ⚠ Vérifie sur App Store Connect qu'aucun build ne porte déjà ce numéro,"
   echo "    sinon l'envoi sera refusé. Pour le fixer : $0 <numéro>"
@@ -79,7 +82,7 @@ echo "→ Nom affiché + permissions (CHAIR)"
 /usr/libexec/PlistBuddy -c "Add :NSLocationWhenInUseUsageDescription string 'CHAIR utilise ta position pour te montrer les coiffeurs les plus proches de toi.'" "$PLIST" 2>/dev/null || \
 /usr/libexec/PlistBuddy -c "Set :NSLocationWhenInUseUsageDescription 'CHAIR utilise ta position pour te montrer les coiffeurs les plus proches de toi.'" "$PLIST"
 
-BUILD_NUM=$(cd ios/App && agvtool what-version -terse 2>/dev/null || echo "?")
+BUILD_NUM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" ios/App/App/Info.plist 2>/dev/null || echo "?")
 ACTUAL_URL=$(node -e "console.log(require('./ios/App/App/capacitor.config.json').server.url)" 2>/dev/null || echo "?")
 
 echo ""
@@ -91,6 +94,11 @@ echo "════════════════════════�
 if [ "$ACTUAL_URL" != "https://www.getchair.app/app" ]; then
   echo "✗ ATTENTION : l'URL ne correspond pas à ce qui est attendu (https://www.getchair.app/app) !"
   echo "  Ne pas archiver tant que ce n'est pas corrigé."
+  exit 1
+fi
+if ! grep -q "CHAIRClient" ios/App/App/capacitor.config.json; then
+  echo "✗ Marqueur CHAIRClient absent de ios/App/App/capacitor.config.json — l'app ne saurait pas qui elle est."
+  echo "  Ne pas archiver. Relance ce script depuis le dossier à jour (git pull)."
   exit 1
 fi
 echo "✓ Vérifié — ouvre maintenant ios/App/App.xcodeproj dans Xcode et Archive."
