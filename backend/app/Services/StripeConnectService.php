@@ -36,7 +36,15 @@ class StripeConnectService
     public static function enabled(): bool
     {
         $secret = (string) config('services.stripe.secret');
-        return $secret !== '' && !str_contains($secret, 'placeholder');
+        if ($secret === '' || str_contains($secret, 'placeholder')) return false;
+
+        // En production, une clé de TEST ne doit jamais ouvrir le KYC Stripe :
+        // un vrai gérant y créerait un compte de test, et ses locations ne
+        // seraient jamais encaissées. L'interface affiche « bientôt » tant que
+        // Stripe n'est pas passé en mode réel (sk_live_).
+        if (app()->environment('production') && str_starts_with($secret, 'sk_test_')) return false;
+
+        return true;
     }
 
     /**
