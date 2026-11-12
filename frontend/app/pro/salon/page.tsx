@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import LienSite from '@/components/ui/LienSite';
 import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
@@ -791,15 +792,14 @@ export default function DashboardSalonPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <a
-                  href={`/salon/${salon.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <LienSite
+                  path={`/salon/${salon.slug}`}
+                  nouvelOnglet
                   className="flex items-center gap-1.5 text-xs font-semibold text-neutral-600 ring-1 ring-neutral-200 px-3 py-1.5 rounded-xl hover:bg-neutral-50 transition-colors"
                 >
                   <ExternalLink size={12} />
                   Voir
-                </a>
+                </LienSite>
                 {isSalonOwner && (
                   <button
                     onClick={() => setEditing((v) => !v)}
