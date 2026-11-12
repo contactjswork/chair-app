@@ -25,52 +25,9 @@ class HairdresserController extends Controller
      */
     private function batchChairPlusMap($hairdressers): array
     {
-        $ids = $hairdressers->pluck('id')->all();
-        if (empty($ids)) return [];
-
-        $now = now();
-        $map = [];
-
-        // 1. Mode test admin puis banqué (déjà chargés sur le modèle, coût nul)
-        foreach ($hairdressers as $h) {
-            if ($h->chair_plus_test_mode) {
-                $map[$h->id] = true;
-                continue;
-            }
-            if ($h->chair_plus_until && $now->lt($h->chair_plus_until)) {
-                $map[$h->id] = true;
-            }
-        }
-
-        // 2. Abonnement individuel payé — une requête pour tout le lot
-        $remaining = array_diff($ids, array_keys($map));
-        if (!empty($remaining)) {
-            \App\Models\Subscription::whereIn('hairdresser_profile_id', $remaining)
-                ->where('plan', 'chair_plus')
-                ->whereIn('status', ['trialing', 'active', 'past_due'])
-                ->get()
-                ->groupBy('hairdresser_profile_id')
-                ->each(function ($subs, $hid) use (&$map) {
-                    if ($subs->first(fn($s) => $s->coversToday())) $map[$hid] = true;
-                });
-        }
-
-        // 3. CHAIR BUSINESS du salon — une requête pour tous les salons du lot
-        $salonIds = $hairdressers->pluck('salon_id')->filter()->unique()->all();
-        if (!empty($salonIds)) {
-            $businessSalonIds = \App\Models\Subscription::whereIn('salon_id', $salonIds)
-                ->where('plan', 'chair_business')
-                ->whereIn('status', ['trialing', 'active', 'past_due'])
-                ->get()
-                ->groupBy('salon_id')
-                ->filter(fn($subs) => $subs->first(fn($s) => $s->coversToday()))
-                ->keys();
-            foreach ($hairdressers as $h) {
-                if ($h->salon_id && $businessSalonIds->contains($h->salon_id)) $map[$h->id] = true;
-            }
-        }
-
-        return $map;
+        // Même calcul partout (badge, boost, coup de cœur) : voir
+        // RecommendationService::chairPlusMap() et HairdresserProfile::hasChairPlus().
+        return \App\Services\RecommendationService::chairPlusMap($hairdressers);
     }
 
     // ════════════════════════════════════════════════════════════════

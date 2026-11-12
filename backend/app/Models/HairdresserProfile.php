@@ -130,13 +130,20 @@ class HairdresserProfile extends Model
             ->first();
         if ($own && $own->coversToday()) return true;
 
-        if ($this->salon_id) {
-            $salonSub = Subscription::where('salon_id', $this->salon_id)
+        // CHAIR BUSINESS couvre l'équipe du salon ET son patron quand il coiffe
+        // lui-même (double casquette) : le patron n'est pas forcément rattaché
+        // à son propre salon comme membre (salon_id), d'où la 2e source.
+        $salonIds = array_values(array_unique(array_filter([
+            $this->salon_id,
+            Salon::where('owner_id', $this->user_id)->value('id'),
+        ])));
+        if ($salonIds) {
+            $salonSub = Subscription::whereIn('salon_id', $salonIds)
                 ->where('plan', 'chair_business')
                 ->whereIn('status', ['trialing', 'active', 'past_due'])
-                ->latest('id')
-                ->first();
-            if ($salonSub && $salonSub->coversToday()) return true;
+                ->get()
+                ->first(fn ($s) => $s->coversToday());
+            if ($salonSub) return true;
         }
 
         return false;

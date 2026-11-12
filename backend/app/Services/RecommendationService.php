@@ -378,7 +378,12 @@ class RecommendationService
                 });
         }
 
-        $salonIds = $hairdressers->pluck('salon_id')->filter()->unique()->all();
+        // Salon du patron qui coiffe (double casquette) — même règle que
+        // HairdresserProfile::hasChairPlus().
+        $ownedSalonByUser = \App\Models\Salon::whereIn('owner_id', $hairdressers->pluck('user_id')->filter()->unique()->all())
+            ->pluck('id', 'owner_id');
+        $salonIds = $hairdressers->pluck('salon_id')->filter()
+            ->merge($ownedSalonByUser->values())->unique()->values()->all();
         if (!empty($salonIds)) {
             $businessSalonIds = Subscription::whereIn('salon_id', $salonIds)
                 ->where('plan', 'chair_business')
@@ -388,7 +393,9 @@ class RecommendationService
                 ->filter(fn ($subs) => $subs->first(fn ($s) => $s->coversToday()))
                 ->keys();
             foreach ($hairdressers as $h) {
-                if ($h->salon_id && $businessSalonIds->contains($h->salon_id)) $map[$h->id] = true;
+                $owned = $ownedSalonByUser[$h->user_id] ?? null;
+                if (($h->salon_id && $businessSalonIds->contains($h->salon_id))
+                    || ($owned && $businessSalonIds->contains($owned))) $map[$h->id] = true;
             }
         }
 
